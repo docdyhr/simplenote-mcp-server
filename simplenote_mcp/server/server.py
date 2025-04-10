@@ -5,7 +5,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, Union
 
 import mcp.server.stdio
 import mcp.types as types
@@ -13,41 +13,26 @@ from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from simplenote import Simplenote
 
-# Set the log file path in the logs directory
-LOGS_DIR = Path(__file__).parent.parent.parent / "simplenote_mcp" / "logs"
-LOG_FILE = LOGS_DIR / "server.log"
-
-# Create logs directory if it doesn't exist
-LOGS_DIR.mkdir(parents=True, exist_ok=True)
-
-def log_debug(message):
-    """Log debug messages to stderr for Claude Desktop logs."""
-    print(f"DEBUG: {message}", file=sys.stderr, flush=True)
-
-    # Also log to a file for debugging
-    with open(LOG_FILE, "a") as f:
-        from datetime import datetime
-        f.write(f"{datetime.now().isoformat()}: {message}\n")
-
-    # For legacy support, also log to the old location
-    with open("/tmp/simplenote_mcp_debug.log", "a") as f:
-        from datetime import datetime
-        f.write(f"{datetime.now().isoformat()}: {message}\n")
-
-
-# Debug logging
-log_debug("Server starting...")
-log_debug(f"Python version: {sys.version}")
-log_debug(f"Environment vars: SIMPLENOTE_EMAIL={os.environ.get('SIMPLENOTE_EMAIL', 'Not set')}, SIMPLENOTE_PASSWORD={'*****' if os.environ.get('SIMPLENOTE_PASSWORD') else 'Not set'}")
-log_debug(f"Running from: {os.path.dirname(os.path.abspath(__file__))}")
+from .cache import BackgroundSync, NoteCache
+from .config import Config, get_config
+from .errors import (
+    AuthenticationError,
+    ErrorCategory,
+    NetworkError,
+    ResourceNotFoundError,
+    ServerError,
+    ValidationError,
+    handle_exception,
+)
+from .logging import logger, log_debug
 
 # Create a server instance
 try:
-    log_debug("Creating MCP server instance")
+    logger.info("Creating MCP server instance")
     server = Server("simplenote-mcp-server")
-    log_debug("MCP server instance created successfully")
+    logger.info("MCP server instance created successfully")
 except Exception as e:
-    log_debug(f"Error creating server instance: {str(e)}")
+    logger.error(f"Error creating server instance: {str(e)}", exc_info=True)
     raise
 
 # Initialize Simplenote client
@@ -55,27 +40,65 @@ simplenote_client = None
 
 
 def get_simplenote_client() -> Simplenote:
+    """Get or create the Simplenote client.
+    
+    Returns:
+        The Simplenote client instance
+        
+    Raises:
+        AuthenticationError: If Simplenote credentials are not configured
+    """
     global simplenote_client
     if simplenote_client is None:
         try:
-            log_debug("Initializing Simplenote client")
-            # Get credentials from environment variables
-            username = os.environ.get("SIMPLENOTE_EMAIL") or os.environ.get("SIMPLENOTE_USERNAME")
-            password = os.environ.get("SIMPLENOTE_PASSWORD")
-
-            if not username or not password:
-                log_debug("Missing Simplenote credentials in environment variables")
-                raise ValueError(
+            logger.info("Initializing Simplenote client")
+            
+            # Get credentials from config
+            config = get_config()
+            
+            if not config.has_credentials:
+                logger.error("Missing Simplenote credentials in environment variables")
+                raise AuthenticationError(
                     "SIMPLENOTE_EMAIL (or SIMPLENOTE_USERNAME) and SIMPLENOTE_PASSWORD environment variables must be set"
                 )
-
-            log_debug(f"Creating Simplenote client with username: {username[:3]}***")
-            simplenote_client = Simplenote(username, password)
-            log_debug("Simplenote client created successfully")
+            
+            logger.info(f"Creating Simplenote client with username: {config.simplenote_email[:3]}***")
+            simplenote_client = Simplenote(config.simplenote_email, config.simplenote_password)
+            logger.info("Simplenote client created successfully")
+        
         except Exception as e:
-            log_debug(f"Error initializing Simplenote client: {str(e)}")
-            raise
+            if isinstance(e, ServerError):
+                raise
+            logger.error(f"Error initializing Simplenote client: {str(e)}", exc_info=True)
+            raise handle_exception(e, "initializing Simplenote client")
+    
     return simplenote_client
+
+
+# Initialize note cache and background sync
+note_cache: Optional[NoteCache] = None
+background_sync: Optional[BackgroundSync] = None
+
+
+async def initialize_cache() -> None:
+    """Initialize the note cache and start background sync."""
+    global note_cache, background_sync
+    
+    try:
+        logger.info("Initializing note cache")
+        sn = get_simplenote_client()
+        note_cache = NoteCache(sn)
+        await note_cache.initialize()
+        
+        # Start background sync
+        background_sync = BackgroundSync(note_cache)
+        await background_sync.start()
+        
+    except Exception as e:
+        if isinstance(e, ServerError):
+            raise
+        logger.error(f"Error initializing cache: {str(e)}", exc_info=True)
+        raise handle_exception(e, "initializing cache")
 
 
 # ===== RESOURCE CAPABILITIES =====
@@ -83,52 +106,110 @@ def get_simplenote_client() -> Simplenote:
 
 @server.list_resources()
 async def handle_list_resources() -> List[types.Resource]:
-    # Add stack trace to debug where the call is coming from
-    import traceback
-    stack_trace = traceback.format_stack()
-    log_debug(f"list_resources called from: {stack_trace[-2]}")
-
-    sn = get_simplenote_client()
+    """Handle the list_resources capability.
+    
+    Returns:
+        List of Simplenote note resources
+    """
+    logger.debug("list_resources called")
+    
     try:
-        # Get the list of notes from Simplenote
-        resp, status = sn.get_note_list()
-        if status == 0:
-            # Only log every 10th call to reduce log spam
-            import random
-            if random.random() < 0.1:  # ~10% of calls
-                log_debug(f"Listing resources, found {len(resp)} notes")
-            return [
-                types.Resource(
-                    uri=f"simplenote://note/{note['key']}",
-                    name=note.get("content", "").splitlines()[0][:30]
-                    if note.get("content")
-                    else note["key"],
-                    description=f"Note from {note.get('modifydate', 'unknown date')}",
-                )
-                for note in resp
-            ]
-        else:
-            log_debug(f"Failed to list resources, status: {status}")
-            return []
+        # Make sure the cache is initialized
+        global note_cache
+        if note_cache is None or not note_cache.is_initialized:
+            logger.info("Cache not initialized, initializing now")
+            await initialize_cache()
+        
+        if note_cache is None:
+            raise ServerError("Note cache initialization failed", category=ErrorCategory.INTERNAL)
+        
+        # Get query parameters if any
+        # TODO: Add support for query parameters like limit and tag_filter
+        
+        # Use the cache to get notes
+        config = get_config()
+        notes = note_cache.get_all_notes(limit=config.default_resource_limit)
+        
+        logger.debug(f"Listing resources, found {len(notes)} notes")
+        return [
+            types.Resource(
+                uri=f"simplenote://note/{note['key']}",
+                name=note.get("content", "").splitlines()[0][:30]
+                if note.get("content")
+                else note["key"],
+                description=f"Note from {note.get('modifydate', 'unknown date')}",
+                meta={"tags": note.get("tags", [])},
+            )
+            for note in notes
+        ]
+    
     except Exception as e:
-        log_debug(f"Error listing resources: {e}")
+        if isinstance(e, ServerError):
+            logger.error(f"Error listing resources: {str(e)}")
+        else:
+            logger.error(f"Error listing resources: {str(e)}", exc_info=True)
+        
+        # Return empty list instead of raising an exception
+        # to avoid breaking the client experience
         return []
 
 
 @server.read_resource()
 async def handle_read_resource(uri: str) -> types.ReadResourceResult:
-    sn = get_simplenote_client()
-
+    """Handle the read_resource capability.
+    
+    Args:
+        uri: The URI of the resource to read
+        
+    Returns:
+        The contents and metadata of the resource
+        
+    Raises:
+        ValidationError: If the URI is invalid
+        ResourceNotFoundError: If the note is not found
+    """
+    logger.debug(f"read_resource called for URI: {uri}")
+    
     # Parse the URI to get the note ID
     if not uri.startswith("simplenote://note/"):
-        raise ValueError(f"Invalid Simplenote URI: {uri}")
-
+        logger.error(f"Invalid Simplenote URI: {uri}")
+        raise ValidationError(f"Invalid Simplenote URI: {uri}")
+    
     note_id = uri.replace("simplenote://note/", "")
-
+    
     try:
-        # Get the note from Simplenote
+        # Try to get the note from cache first
+        global note_cache
+        if note_cache is not None and note_cache.is_initialized:
+            logger.debug(f"Getting note {note_id} from cache")
+            try:
+                note = note_cache.get_note(note_id)
+                logger.debug(f"Found note {note_id} in cache")
+                return types.ReadResourceResult(
+                    content=types.TextContent(
+                        type="text", text=note.get("content", "")
+                    ),
+                    meta={
+                        "tags": note.get("tags", []),
+                        "modifydate": note.get("modifydate", ""),
+                        "createdate": note.get("createdate", ""),
+                        "uri": f"simplenote://note/{note_id}",
+                    },
+                )
+            except ResourceNotFoundError:
+                # If not in cache, we'll try the API directly
+                logger.debug(f"Note {note_id} not found in cache, trying API")
+                pass
+        
+        # Get the note from Simplenote API if not found in cache
+        sn = get_simplenote_client()
         note, status = sn.get_note(note_id)
+        
         if status == 0:
+            # Update the cache if it's initialized
+            if note_cache is not None and note_cache.is_initialized:
+                note_cache.update_cache_after_update(note)
+            
             return types.ReadResourceResult(
                 content=types.TextContent(
                     type="text", text=note.get("content", "")
@@ -137,13 +218,19 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
                     "tags": note.get("tags", []),
                     "modifydate": note.get("modifydate", ""),
                     "createdate": note.get("createdate", ""),
+                    "uri": f"simplenote://note/{note_id}",
                 },
             )
         else:
-            raise ValueError(f"Failed to get note with ID {note_id}")
+            error_msg = f"Failed to get note with ID {note_id}"
+            logger.error(error_msg)
+            raise ResourceNotFoundError(error_msg)
+    
     except Exception as e:
-        print(f"Error reading resource: {e}")
-        raise ValueError(f"Error reading note: {str(e)}") from e
+        if isinstance(e, ServerError):
+            raise
+        logger.error(f"Error reading resource: {str(e)}", exc_info=True)
+        raise handle_exception(e, f"reading note {note_id}")
 
 
 # ===== TOOL CAPABILITIES =====
@@ -151,8 +238,13 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
 
 @server.list_tools()
 async def handle_list_tools() -> List[types.Tool]:
+    """Handle the list_tools capability.
+    
+    Returns:
+        List of available tools
+    """
     try:
-        log_debug("Listing available tools")
+        logger.info("Listing available tools")
         tools = [
             types.Tool(
                 name="create_note",
@@ -217,17 +309,22 @@ async def handle_list_tools() -> List[types.Tool]:
                         "query": {
                             "type": "string",
                             "description": "The search query"
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of results to return"
                         }
                     },
                     "required": ["query"]
                 }
             ),
         ]
-        log_debug(f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}")
+        logger.info(f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}")
         return tools
+    
     except Exception as e:
-        log_debug(f"Error listing tools: {str(e)}")
-        # Return at least one tool to prevent errors
+        logger.error(f"Error listing tools: {str(e)}", exc_info=True)
+        # Return at least the core tools to prevent errors
         return [
             types.Tool(
                 name="create_note",
@@ -242,6 +339,20 @@ async def handle_list_tools() -> List[types.Tool]:
                     },
                     "required": ["content"]
                 }
+            ),
+            types.Tool(
+                name="search_notes",
+                description="Search for notes in Simplenote",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "The search query"
+                        }
+                    },
+                    "required": ["query"]
+                }
             )
         ]
 
@@ -250,277 +361,309 @@ async def handle_list_tools() -> List[types.Tool]:
 async def handle_call_tool(
     name: str, arguments: Dict
 ) -> List[types.TextContent]:
-    log_debug(f"Tool call: {name} with arguments: {json.dumps(arguments)}")
-    sn = get_simplenote_client()
-
-    if name == "create_note":
-        content = arguments.get("content", "")
-        tags_str = arguments.get("tags", "")
-        tags = [tag.strip() for tag in tags_str.split(",")] if tags_str else []
-
-        note = {"content": content}
-        if tags:
-            note["tags"] = tags
-
-        try:
-            note, status = sn.add_note(note)
-            if status == 0:
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(
-                            {
-                                "success": True,
-                                "message": "Note created successfully",
-                                "note_id": note.get("key"),
-                                "first_line": content.splitlines()[0][:30]
-                                if content
-                                else "",
-                            }
-                        ),
-                    )
-                ]
-            else:
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(
-                            {
-                                "success": False,
-                                "message": "Failed to create note",
-                            }
-                        ),
-                    )
-                ]
-        except Exception as e:
-            return [
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {
-                            "success": False,
-                            "message": f"Error creating note: {str(e)}",
-                        }
-                    ),
-                )
-            ]
-
-    elif name == "update_note":
-        note_id = arguments.get("note_id", "")
-        content = arguments.get("content", "")
-        tags_str = arguments.get("tags", "")
-
-        if not note_id:
-            return [
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {"success": False, "message": "Note ID is required"}
-                    ),
-                )
-            ]
-
-        try:
-            # Get the existing note first
-            existing_note, status = sn.get_note(note_id)
-            if status != 0:
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(
-                            {
-                                "success": False,
-                                "message": f"Failed to find note with ID {note_id}",
-                            }
-                        ),
-                    )
-                ]
-
-            # Update the note content
-            existing_note["content"] = content
-
-            # Update tags if provided
-            if tags_str:
-                tags = [tag.strip() for tag in tags_str.split(",")]
-                existing_note["tags"] = tags
-
-            updated_note, status = sn.update_note(existing_note)
-            if status == 0:
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(
-                            {
-                                "success": True,
-                                "message": "Note updated successfully",
-                                "note_id": updated_note.get("key"),
-                            }
-                        ),
-                    )
-                ]
-            else:
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(
-                            {
-                                "success": False,
-                                "message": "Failed to update note",
-                            }
-                        ),
-                    )
-                ]
-        except Exception as e:
-            return [
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {
-                            "success": False,
-                            "message": f"Error updating note: {str(e)}",
-                        }
-                    ),
-                )
-            ]
-
-    elif name == "delete_note":
-        note_id = arguments.get("note_id", "")
-
-        if not note_id:
-            return [
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {"success": False, "message": "Note ID is required"}
-                    ),
-                )
-            ]
-
-        try:
-            status = sn.trash_note(
-                note_id
-            )  # Using trash_note as it's safer than delete_note
-            if status == 0:
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(
-                            {
-                                "success": True,
-                                "message": "Note moved to trash successfully",
-                            }
-                        ),
-                    )
-                ]
-            else:
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(
-                            {
-                                "success": False,
-                                "message": "Failed to move note to trash",
-                            }
-                        ),
-                    )
-                ]
-        except Exception as e:
-            return [
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {
-                            "success": False,
-                            "message": f"Error deleting note: {str(e)}",
-                        }
-                    ),
-                )
-            ]
-
-    elif name == "search_notes":
-        query = arguments.get("query", "")
-
-        if not query:
-            return [
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {
-                            "success": False,
-                            "message": "Search query is required",
-                        }
-                    ),
-                )
-            ]
-
-        try:
-            # Get all notes and filter manually (Simplenote API doesn't have search)
-            notes, status = sn.get_note_list()
-            if status != 0:
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(
-                            {
-                                "success": False,
-                                "message": "Failed to retrieve notes",
-                            }
-                        ),
-                    )
-                ]
-
-            # Simple search in content
-            results = []
-            for note in notes:
-                content = note.get("content", "").lower()
-                if query.lower() in content:
-                    results.append(
-                        {
+    """Handle the call_tool capability.
+    
+    Args:
+        name: The name of the tool to call
+        arguments: The arguments to pass to the tool
+        
+    Returns:
+        The result of the tool call
+    """
+    logger.info(f"Tool call: {name} with arguments: {json.dumps(arguments)}")
+    
+    try:
+        sn = get_simplenote_client()
+        
+        # Make sure the cache is initialized
+        global note_cache
+        if note_cache is None or not note_cache.is_initialized:
+            logger.info("Cache not initialized, initializing now")
+            await initialize_cache()
+        
+        if name == "create_note":
+            content = arguments.get("content", "")
+            tags_str = arguments.get("tags", "")
+            tags = [tag.strip() for tag in tags_str.split(",")] if tags_str else []
+            
+            if not content:
+                raise ValidationError("Note content is required")
+            
+            try:
+                note = {"content": content}
+                if tags:
+                    note["tags"] = tags
+                
+                note, status = sn.add_note(note)
+                
+                if status == 0:
+                    # Update the cache if it's initialized
+                    if note_cache is not None and note_cache.is_initialized:
+                        note_cache.update_cache_after_create(note)
+                    
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "success": True,
+                                    "message": "Note created successfully",
+                                    "note_id": note.get("key"),
+                                    "first_line": content.splitlines()[0][:30]
+                                    if content
+                                    else "",
+                                    "tags": tags,
+                                }
+                            ),
+                        )
+                    ]
+                else:
+                    error_msg = "Failed to create note"
+                    logger.error(error_msg)
+                    raise NetworkError(error_msg)
+            
+            except Exception as e:
+                if isinstance(e, ServerError):
+                    error_dict = e.to_dict()
+                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
+                
+                logger.error(f"Error creating note: {str(e)}", exc_info=True)
+                error = handle_exception(e, "creating note")
+                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+        
+        elif name == "update_note":
+            note_id = arguments.get("note_id", "")
+            content = arguments.get("content", "")
+            tags_str = arguments.get("tags", "")
+            
+            if not note_id:
+                raise ValidationError("Note ID is required")
+            
+            if not content:
+                raise ValidationError("Note content is required")
+            
+            try:
+                # Get the existing note first
+                existing_note = None
+                
+                # Try to get from cache first
+                if note_cache is not None and note_cache.is_initialized:
+                    try:
+                        existing_note = note_cache.get_note(note_id)
+                    except ResourceNotFoundError:
+                        # If not in cache, we'll try the API directly
+                        pass
+                
+                # If not found in cache, get from API
+                if existing_note is None:
+                    existing_note, status = sn.get_note(note_id)
+                    if status != 0:
+                        error_msg = f"Failed to find note with ID {note_id}"
+                        logger.error(error_msg)
+                        raise ResourceNotFoundError(error_msg)
+                
+                # Update the note content
+                existing_note["content"] = content
+                
+                # Update tags if provided
+                if tags_str:
+                    tags = [tag.strip() for tag in tags_str.split(",")]
+                    existing_note["tags"] = tags
+                
+                updated_note, status = sn.update_note(existing_note)
+                
+                if status == 0:
+                    # Update the cache if it's initialized
+                    if note_cache is not None and note_cache.is_initialized:
+                        note_cache.update_cache_after_update(updated_note)
+                    
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "success": True,
+                                    "message": "Note updated successfully",
+                                    "note_id": updated_note.get("key"),
+                                    "tags": updated_note.get("tags", []),
+                                }
+                            ),
+                        )
+                    ]
+                else:
+                    error_msg = "Failed to update note"
+                    logger.error(error_msg)
+                    raise NetworkError(error_msg)
+            
+            except Exception as e:
+                if isinstance(e, ServerError):
+                    error_dict = e.to_dict()
+                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
+                
+                logger.error(f"Error updating note: {str(e)}", exc_info=True)
+                error = handle_exception(e, f"updating note {note_id}")
+                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+        
+        elif name == "delete_note":
+            note_id = arguments.get("note_id", "")
+            
+            if not note_id:
+                raise ValidationError("Note ID is required")
+            
+            try:
+                status = sn.trash_note(note_id)  # Using trash_note as it's safer than delete_note
+                
+                if status == 0:
+                    # Update the cache if it's initialized
+                    if note_cache is not None and note_cache.is_initialized:
+                        note_cache.update_cache_after_delete(note_id)
+                    
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "success": True,
+                                    "message": "Note moved to trash successfully",
+                                    "note_id": note_id,
+                                }
+                            ),
+                        )
+                    ]
+                else:
+                    error_msg = "Failed to move note to trash"
+                    logger.error(error_msg)
+                    raise NetworkError(error_msg)
+            
+            except Exception as e:
+                if isinstance(e, ServerError):
+                    error_dict = e.to_dict()
+                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
+                
+                logger.error(f"Error deleting note: {str(e)}", exc_info=True)
+                error = handle_exception(e, f"deleting note {note_id}")
+                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+        
+        elif name == "search_notes":
+            query = arguments.get("query", "")
+            limit = arguments.get("limit", None)
+            
+            if not query:
+                raise ValidationError("Search query is required")
+            
+            if limit is not None:
+                try:
+                    limit = int(limit)
+                    if limit < 1:
+                        limit = None
+                except (ValueError, TypeError):
+                    limit = None
+            
+            try:
+                # Use the cache for search if available
+                if note_cache is not None and note_cache.is_initialized:
+                    logger.debug(f"Searching notes in cache for query: {query}")
+                    notes = note_cache.search_notes(query, limit=limit)
+                    
+                    results = []
+                    for note in notes:
+                        content = note.get("content", "")
+                        results.append({
                             "id": note.get("key"),
-                            "title": content.splitlines()[0][:30]
-                            if content
-                            else note.get("key"),
-                            "snippet": content[:100] + "..."
-                            if len(content) > 100
-                            else content,
+                            "title": content.splitlines()[0][:30] if content else note.get("key"),
+                            "snippet": content[:100] + "..." if len(content) > 100 else content,
                             "tags": note.get("tags", []),
-                        }
+                            "uri": f"simplenote://note/{note.get('key')}",
+                        })
+                    
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "success": True,
+                                    "results": results,
+                                    "count": len(results),
+                                    "query": query,
+                                }
+                            ),
+                        )
+                    ]
+                
+                # Fall back to API if cache is not available
+                logger.debug(f"Cache not available, using API for search: {query}")
+                notes, status = sn.get_note_list()
+                
+                if status != 0:
+                    error_msg = "Failed to retrieve notes for search"
+                    logger.error(error_msg)
+                    raise NetworkError(error_msg)
+                
+                # Simple search in content
+                query_lower = query.lower()
+                results = []
+                
+                for note in notes:
+                    content = note.get("content", "").lower()
+                    if query_lower in content:
+                        # Calculate a crude relevance score (number of occurrences)
+                        occurrences = content.count(query_lower)
+                        results.append((
+                            {
+                                "id": note.get("key"),
+                                "title": note.get("content", "").splitlines()[0][:30] if note.get("content") else note.get("key"),
+                                "snippet": content[:100] + "..." if len(content) > 100 else content,
+                                "tags": note.get("tags", []),
+                                "uri": f"simplenote://note/{note.get('key')}",
+                            },
+                            occurrences
+                        ))
+                
+                # Sort by relevance (higher score first)
+                results.sort(key=lambda x: x[1], reverse=True)
+                
+                # Apply limit if specified
+                if limit is not None:
+                    results = results[:limit]
+                
+                # Return just the notes, not the scores
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "results": [r[0] for r in results],
+                                "count": len(results),
+                                "query": query,
+                            }
+                        ),
                     )
-
-            return [
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {
-                            "success": True,
-                            "results": results,
-                            "count": len(results),
-                        }
-                    ),
-                )
-            ]
-        except Exception as e:
-            return [
-                types.TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {
-                            "success": False,
-                            "message": f"Error searching notes: {str(e)}",
-                        }
-                    ),
-                )
-            ]
-
-    else:
-        return [
-            types.TextContent(
-                type="text",
-                text=json.dumps(
-                    {"success": False, "message": f"Unknown tool: {name}"}
-                ),
-            )
-        ]
+                ]
+            
+            except Exception as e:
+                if isinstance(e, ServerError):
+                    error_dict = e.to_dict()
+                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
+                
+                logger.error(f"Error searching notes: {str(e)}", exc_info=True)
+                error = handle_exception(e, f"searching notes for '{query}'")
+                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+        
+        else:
+            error_msg = f"Unknown tool: {name}"
+            logger.error(error_msg)
+            error = ValidationError(error_msg)
+            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+    
+    except Exception as e:
+        if isinstance(e, ServerError):
+            error_dict = e.to_dict()
+            return [types.TextContent(type="text", text=json.dumps(error_dict))]
+        
+        logger.error(f"Error in tool call: {str(e)}", exc_info=True)
+        error = handle_exception(e, f"calling tool {name}")
+        return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
 
 
 # ===== PROMPT CAPABILITIES =====
@@ -528,6 +671,13 @@ async def handle_call_tool(
 
 @server.list_prompts()
 async def handle_list_prompts() -> List[types.Prompt]:
+    """Handle the list_prompts capability.
+    
+    Returns:
+        List of available prompts
+    """
+    logger.debug("Listing available prompts")
+    
     return [
         types.Prompt(
             name="create_note_prompt",
@@ -561,13 +711,27 @@ async def handle_list_prompts() -> List[types.Prompt]:
 async def handle_get_prompt(
     name: str, arguments: Optional[Dict[str, str]]
 ) -> types.GetPromptResult:
+    """Handle the get_prompt capability.
+    
+    Args:
+        name: The name of the prompt to get
+        arguments: The arguments to pass to the prompt
+        
+    Returns:
+        The prompt result
+        
+    Raises:
+        ValidationError: If the prompt name is unknown
+    """
+    logger.debug(f"Getting prompt: {name} with arguments: {arguments}")
+    
     if not arguments:
         arguments = {}
-
+    
     if name == "create_note_prompt":
         content = arguments.get("content", "")
         tags = arguments.get("tags", "")
-
+        
         return types.GetPromptResult(
             description="Create a new note in Simplenote",
             messages=[
@@ -587,10 +751,10 @@ async def handle_get_prompt(
                 ),
             ],
         )
-
+    
     elif name == "search_notes_prompt":
         query = arguments.get("query", "")
-
+        
         return types.GetPromptResult(
             description="Search for notes in Simplenote",
             messages=[
@@ -610,52 +774,89 @@ async def handle_get_prompt(
                 ),
             ],
         )
-
+    
     else:
-        raise ValueError(f"Unknown prompt: {name}")
+        error_msg = f"Unknown prompt: {name}"
+        logger.error(error_msg)
+        raise ValidationError(error_msg)
 
 
 async def run() -> None:
-    # Run the server as STDIO
-    log_debug("Starting MCP server STDIO transport")
+    """Run the server using STDIO transport."""
+    logger.info("Starting MCP server STDIO transport")
+    
     try:
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
-            log_debug("STDIO server created, initializing MCP server")
+            logger.info("STDIO server created, initializing MCP server")
+            
             try:
+                # Initialize the cache in the background
+                asyncio.create_task(initialize_cache())
+                
                 # Get capabilities and log them
                 capabilities = server.get_capabilities(
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},
                 )
-                log_debug(f"Server capabilities: {json.dumps({
+                logger.info(f"Server capabilities: {json.dumps({
                     'has_prompts': bool(capabilities.prompts),
                     'has_resources': bool(capabilities.resources),
                     'has_tools': bool(capabilities.tools)
                 })}")
-
+                
+                # Get the config and server version
+                config = get_config()
+                from simplenote_mcp import __version__
+                
                 # Run the server
                 await server.run(
                     read_stream,
                     write_stream,
                     InitializationOptions(
-                        server_name="simplenote-mcp",
-                        server_version="0.1.0",
+                        server_name="simplenote-mcp-server",
+                        server_version=__version__,
                         capabilities=capabilities,
                     ),
                 )
-                log_debug("MCP server run completed")
+                logger.info("MCP server run completed")
+            
             except Exception as e:
-                log_debug(f"Error running MCP server: {str(e)}")
+                logger.error(f"Error running MCP server: {str(e)}", exc_info=True)
                 raise
+    
     except Exception as e:
-        log_debug(f"Error creating STDIO server: {str(e)}")
+        logger.error(f"Error creating STDIO server: {str(e)}", exc_info=True)
         raise
+    
+    finally:
+        # Stop the background sync when the server stops
+        global background_sync
+        if background_sync is not None:
+            logger.info("Stopping background sync")
+            asyncio.create_task(background_sync.stop())
 
 
 def run_main():
     """Entry point for the console script."""
-    asyncio.run(run())
+    try:
+        # Configure logging from environment variables
+        config = get_config()
+        logger.info(f"Starting Simplenote MCP Server v{simplenote_mcp.__version__}")
+        logger.info(f"Python version: {sys.version}")
+        logger.info(f"Environment: SIMPLENOTE_EMAIL={config.simplenote_email[:3]}*** (set: {config.simplenote_email is not None}), SIMPLENOTE_PASSWORD={'*****' if config.simplenote_password else 'Not set'}")
+        logger.info(f"Running from: {os.path.dirname(os.path.abspath(__file__))}")
+        logger.info(f"Sync interval: {config.sync_interval_seconds}s")
+        logger.info(f"Log level: {config.log_level.value}")
+        
+        # Run the async event loop
+        asyncio.run(run())
+    
+    except Exception as e:
+        logger.critical(f"Critical error in MCP server: {str(e)}", exc_info=True)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
+    # Import the version only when needed to avoid circular imports
+    import simplenote_mcp
     run_main()

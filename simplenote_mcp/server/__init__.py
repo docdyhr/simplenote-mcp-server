@@ -1,4 +1,7 @@
 # simplenote_mcp/server/__init__.py
-# Export main server components
+"""Simplenote MCP Server implementation."""
 
-from .server import get_simplenote_client, run, run_main
+from .server import run_main, log_debug, get_simplenote_client
+from .config import Config, get_config
+
+__all__ = ["run_main", "log_debug", "get_simplenote_client", "Config", "get_config"]
