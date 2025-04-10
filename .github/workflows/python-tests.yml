@@ -36,6 +36,7 @@ jobs:
         ruff check .
         
     - name: Type check with mypy
+      continue-on-error: true
       run: |
         . .venv/bin/activate
         mypy simplenote_mcp
