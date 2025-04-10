@@ -117,7 +117,7 @@ class NoteCache:
             logger.info(f"Note cache initialized with {len(self._notes)} notes in {elapsed:.2f}s")
 
             # Get the latest index mark for future syncs
-            data, status = self._client.get_note_list(data=True, since=None, tags=True)
+            data, status = self._client.get_note_list(data=True, since=None, tags=[])
             if status == 0 and 'mark' in data:
                 self._last_index_mark = data['mark']
                 logger.debug(f"Updated last index mark: {self._last_index_mark}")
@@ -145,7 +145,7 @@ class NoteCache:
             data, status = self._client.get_note_list(
                 data=True,
                 since=self._last_index_mark,
-                tags=True
+                tags=[]
             )
 
             if status != 0:

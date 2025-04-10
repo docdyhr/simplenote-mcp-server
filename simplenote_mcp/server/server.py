@@ -806,7 +806,7 @@ async def run() -> None:
                 })}")
 
                 # Get the server version
-                from simplenote_mcp import __version__
+                from simplenote_mcp import __version__ as version
 
                 # Run the server
                 await server.run(
@@ -814,7 +814,7 @@ async def run() -> None:
                     write_stream,
                     InitializationOptions(
                         server_name="simplenote-mcp-server",
-                        server_version=__version__,
+                        server_version=version,
                         capabilities=capabilities,
                     ),
                 )
@@ -839,9 +839,12 @@ async def run() -> None:
 def run_main() -> None:
     """Entry point for the console script."""
     try:
+        # Import the version
+        from simplenote_mcp import __version__
+        
         # Configure logging from environment variables
         config = get_config()
-        logger.info(f"Starting Simplenote MCP Server v{simplenote_mcp.__version__}")
+        logger.info(f"Starting Simplenote MCP Server v{__version__}")
         logger.info(f"Python version: {sys.version}")
         logger.info(f"Environment: SIMPLENOTE_EMAIL={config.simplenote_email[:3]}*** (set: {config.simplenote_email is not None}), SIMPLENOTE_PASSWORD={'*****' if config.simplenote_password else 'Not set'}")
         logger.info(f"Running from: {os.path.dirname(os.path.abspath(__file__))}")
@@ -857,6 +860,4 @@ def run_main() -> None:
 
 
 if __name__ == "__main__":
-    # Import the version only when needed to avoid circular imports
-    import simplenote_mcp
     run_main()

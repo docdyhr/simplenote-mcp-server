@@ -10,7 +10,7 @@ from typing import Any, Dict
 from .config import LogLevel, get_config
 
 # Set the log file path in the logs directory
-LOGS_DIR = Path(__file__).parent.parent.parent / "simplenote_mcp" / "logs"
+LOGS_DIR = Path(__file__).parent.parent / "logs"
 LOG_FILE = LOGS_DIR / "server.log"
 LEGACY_LOG_FILE = Path("/tmp/simplenote_mcp_debug.log")
 
