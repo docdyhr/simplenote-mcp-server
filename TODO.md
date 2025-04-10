@@ -34,7 +34,7 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 ## 3. Resource Capabilities
 
 - [x] **Enhanced Resource Listing**
-  - [ ] 👉 Add support for filtering by tags (NEXT PRIORITY)
+  - [x] Add support for filtering by tags
   - [x] Include note tags in resource metadata 
   - [x] Support limiting the number of returned notes
   - [x] Add sorting options if possible
@@ -79,10 +79,10 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 
 ## 7. Testing
 
-- [ ] **Unit Tests**
-  - [ ] 👉 Test cache operations (HIGH PRIORITY)
-  - [ ] 👉 Test Simplenote API interaction (HIGH PRIORITY)
-  - [ ] 👉 Test error handling (HIGH PRIORITY)
+- [x] **Unit Tests**
+  - [x] Test cache operations
+  - [x] Test Simplenote API interaction
+  - [x] Test error handling
 
 - [x] **Integration Tests**
   - [x] Test end-to-end flows with Simplenote API
@@ -128,6 +128,6 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 
 - [ ] **Version 1.0 Release**
   - [x] Ensure all functional requirements met
-  - [ ] 👉 Performance testing (HIGH PRIORITY)
+  - [ ] 👉 Performance testing (HIGHEST PRIORITY)
   - [ ] Documentation finalized
   - [x] Manual testing with Claude Desktop

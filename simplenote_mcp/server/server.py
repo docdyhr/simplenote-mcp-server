@@ -107,13 +107,17 @@ async def initialize_cache() -> None:
 
 
 @server.list_resources()
-async def handle_list_resources() -> List[types.Resource]:
+async def handle_list_resources(tag: Optional[str] = None, limit: Optional[int] = None) -> List[types.Resource]:
     """Handle the list_resources capability.
     
+    Args:
+        tag: Optional tag to filter notes by
+        limit: Optional limit for the number of notes to return
+        
     Returns:
         List of Simplenote note resources
     """
-    logger.debug("list_resources called")
+    logger.debug(f"list_resources called with tag={tag}, limit={limit}")
 
     try:
         # Make sure the cache is initialized
@@ -125,14 +129,18 @@ async def handle_list_resources() -> List[types.Resource]:
         if note_cache is None:
             raise ServerError("Note cache initialization failed", category=ErrorCategory.INTERNAL)
 
-        # Get query parameters if any
-        # TODO: Add support for query parameters like limit and tag_filter
-
-        # Use the cache to get notes
+        # Use the cache to get notes with filtering
         config = get_config()
-        notes = note_cache.get_all_notes(limit=config.default_resource_limit)
-
-        logger.debug(f"Listing resources, found {len(notes)} notes")
+        
+        # Use provided limit or fall back to default
+        actual_limit = limit if limit is not None else config.default_resource_limit
+        
+        # Apply tag filtering if specified
+        notes = note_cache.get_all_notes(limit=actual_limit, tag_filter=tag)
+        
+        logger.debug(f"Listing resources, found {len(notes)} notes" + 
+                    (f" with tag '{tag}'" if tag else ""))
+                    
         return [
             types.Resource(
                 uri=f"simplenote://note/{note['key']}",

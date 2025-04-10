@@ -116,6 +116,62 @@ class TestHandleListResources:
             assert resources[0].meta["tags"] == ["test"]
             assert str(resources[1].uri) == "simplenote://note/note2"
             assert resources[1].description == "Note from 2025-04-10"
+            
+            # Verify cache call
+            mock_cache.get_all_notes.assert_called_with(limit=100, tag_filter=None)
+            
+    async def test_list_resources_with_tag_filter(self):
+        """Test listing resources with tag filter."""
+        with patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
+             patch("simplenote_mcp.server.server.get_config") as mock_get_config:
+            # Configure mock cache
+            mock_cache.is_initialized = True
+            mock_filtered_notes = [
+                {"key": "note1", "content": "Test note 1", "tags": ["test"]}
+            ]
+            mock_cache.get_all_notes.return_value = mock_filtered_notes
+            
+            # Configure mock config
+            mock_config = MagicMock()
+            mock_config.default_resource_limit = 100
+            mock_get_config.return_value = mock_config
+            
+            # Call handler with tag filter
+            resources = await handle_list_resources(tag="test")
+            
+            # Verify results
+            assert len(resources) == 1
+            assert str(resources[0].uri) == "simplenote://note/note1"
+            assert resources[0].name == "Test note 1"
+            assert resources[0].meta["tags"] == ["test"]
+            
+            # Verify cache call with tag filter
+            mock_cache.get_all_notes.assert_called_with(limit=100, tag_filter="test")
+            
+    async def test_list_resources_with_custom_limit(self):
+        """Test listing resources with custom limit."""
+        with patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
+             patch("simplenote_mcp.server.server.get_config") as mock_get_config:
+            # Configure mock cache
+            mock_cache.is_initialized = True
+            mock_notes = [
+                {"key": "note1", "content": "Test note 1", "tags": ["test"]}
+            ]
+            mock_cache.get_all_notes.return_value = mock_notes
+            
+            # Configure mock config
+            mock_config = MagicMock()
+            mock_config.default_resource_limit = 100
+            mock_get_config.return_value = mock_config
+            
+            # Call handler with custom limit
+            resources = await handle_list_resources(limit=10)
+            
+            # Verify results
+            assert len(resources) == 1
+            
+            # Verify cache call with custom limit
+            mock_cache.get_all_notes.assert_called_with(limit=10, tag_filter=None)
 
     async def test_list_resources_unintialized_cache(self):
         """Test listing resources when cache is not initialized."""
