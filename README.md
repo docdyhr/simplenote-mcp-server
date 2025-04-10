@@ -2,6 +2,9 @@
 
 A simple MCP (Model Context Protocol) server that connects to Simplenote as a proof of concept.
 
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](./CHANGELOG.md)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+
 ## Project Structure
 
 ```
@@ -84,6 +87,16 @@ python simplenote_mcp_server.py
 - `delete_note` - Delete a note from Simplenote
 - `search_notes` - Search for notes in Simplenote
 
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/). See the [CHANGELOG.md](./CHANGELOG.md) file for details on version history and changes.
+
+To release a new version, use the release script:
+
+```bash
+./simplenote_mcp/scripts/release.sh [patch|minor|major]
+```
+
 ## Included Scripts
 
 This project comes with several helper scripts in the `simplenote_mcp/scripts` directory:
@@ -92,6 +105,7 @@ This project comes with several helper scripts in the `simplenote_mcp/scripts` d
 2. **watch_logs.sh** - Monitors the Simplenote MCP server logs in real-time
 3. **verify_tools.sh** - Checks if Simplenote tools are properly registered
 4. **test_tool_visibility.sh** - Tests if tools are visible in Claude Desktop
+5. **release.sh** - Releases a new version with semantic versioning
 
 Testing utilities in the `simplenote_mcp/tests` directory:
 
