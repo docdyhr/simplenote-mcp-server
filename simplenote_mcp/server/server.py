@@ -1,11 +1,11 @@
 # simplenote_mcp/server/server.py
 
 import asyncio
+import contextlib
 import json
 import os
 import sys
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional
 
 import mcp.server.stdio
 import mcp.types as types
@@ -14,7 +14,7 @@ from mcp.server.models import InitializationOptions
 from simplenote import Simplenote
 
 from .cache import BackgroundSync, NoteCache
-from .config import Config, get_config
+from .config import get_config
 from .errors import (
     AuthenticationError,
     ErrorCategory,
@@ -24,7 +24,7 @@ from .errors import (
     ValidationError,
     handle_exception,
 )
-from .logging import logger, log_debug
+from .logging import logger
 
 # Create a server instance
 try:
@@ -52,26 +52,27 @@ def get_simplenote_client() -> Simplenote:
     if simplenote_client is None:
         try:
             logger.info("Initializing Simplenote client")
-            
+
             # Get credentials from config
             config = get_config()
-            
+
             if not config.has_credentials:
                 logger.error("Missing Simplenote credentials in environment variables")
                 raise AuthenticationError(
                     "SIMPLENOTE_EMAIL (or SIMPLENOTE_USERNAME) and SIMPLENOTE_PASSWORD environment variables must be set"
                 )
-            
+
             logger.info(f"Creating Simplenote client with username: {config.simplenote_email[:3]}***")
             simplenote_client = Simplenote(config.simplenote_email, config.simplenote_password)
             logger.info("Simplenote client created successfully")
-        
+
         except Exception as e:
             if isinstance(e, ServerError):
                 raise
             logger.error(f"Error initializing Simplenote client: {str(e)}", exc_info=True)
-            raise handle_exception(e, "initializing Simplenote client")
-    
+            error = handle_exception(e, "initializing Simplenote client")
+            raise error from e
+
     return simplenote_client
 
 
@@ -83,22 +84,23 @@ background_sync: Optional[BackgroundSync] = None
 async def initialize_cache() -> None:
     """Initialize the note cache and start background sync."""
     global note_cache, background_sync
-    
+
     try:
         logger.info("Initializing note cache")
         sn = get_simplenote_client()
         note_cache = NoteCache(sn)
         await note_cache.initialize()
-        
+
         # Start background sync
         background_sync = BackgroundSync(note_cache)
         await background_sync.start()
-        
+
     except Exception as e:
         if isinstance(e, ServerError):
             raise
         logger.error(f"Error initializing cache: {str(e)}", exc_info=True)
-        raise handle_exception(e, "initializing cache")
+        error = handle_exception(e, "initializing cache")
+        raise error from e
 
 
 # ===== RESOURCE CAPABILITIES =====
@@ -112,24 +114,24 @@ async def handle_list_resources() -> List[types.Resource]:
         List of Simplenote note resources
     """
     logger.debug("list_resources called")
-    
+
     try:
         # Make sure the cache is initialized
         global note_cache
         if note_cache is None or not note_cache.is_initialized:
             logger.info("Cache not initialized, initializing now")
             await initialize_cache()
-        
+
         if note_cache is None:
             raise ServerError("Note cache initialization failed", category=ErrorCategory.INTERNAL)
-        
+
         # Get query parameters if any
         # TODO: Add support for query parameters like limit and tag_filter
-        
+
         # Use the cache to get notes
         config = get_config()
         notes = note_cache.get_all_notes(limit=config.default_resource_limit)
-        
+
         logger.debug(f"Listing resources, found {len(notes)} notes")
         return [
             types.Resource(
@@ -142,13 +144,13 @@ async def handle_list_resources() -> List[types.Resource]:
             )
             for note in notes
         ]
-    
+
     except Exception as e:
         if isinstance(e, ServerError):
             logger.error(f"Error listing resources: {str(e)}")
         else:
             logger.error(f"Error listing resources: {str(e)}", exc_info=True)
-        
+
         # Return empty list instead of raising an exception
         # to avoid breaking the client experience
         return []
@@ -169,14 +171,14 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
         ResourceNotFoundError: If the note is not found
     """
     logger.debug(f"read_resource called for URI: {uri}")
-    
+
     # Parse the URI to get the note ID
     if not uri.startswith("simplenote://note/"):
         logger.error(f"Invalid Simplenote URI: {uri}")
         raise ValidationError(f"Invalid Simplenote URI: {uri}")
-    
+
     note_id = uri.replace("simplenote://note/", "")
-    
+
     try:
         # Try to get the note from cache first
         global note_cache
@@ -200,16 +202,16 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
                 # If not in cache, we'll try the API directly
                 logger.debug(f"Note {note_id} not found in cache, trying API")
                 pass
-        
+
         # Get the note from Simplenote API if not found in cache
         sn = get_simplenote_client()
         note, status = sn.get_note(note_id)
-        
+
         if status == 0:
             # Update the cache if it's initialized
             if note_cache is not None and note_cache.is_initialized:
                 note_cache.update_cache_after_update(note)
-            
+
             return types.ReadResourceResult(
                 content=types.TextContent(
                     type="text", text=note.get("content", "")
@@ -225,12 +227,13 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
             error_msg = f"Failed to get note with ID {note_id}"
             logger.error(error_msg)
             raise ResourceNotFoundError(error_msg)
-    
+
     except Exception as e:
         if isinstance(e, ServerError):
             raise
         logger.error(f"Error reading resource: {str(e)}", exc_info=True)
-        raise handle_exception(e, f"reading note {note_id}")
+        error = handle_exception(e, f"reading note {note_id}")
+        raise error from e
 
 
 # ===== TOOL CAPABILITIES =====
@@ -321,7 +324,7 @@ async def handle_list_tools() -> List[types.Tool]:
         ]
         logger.info(f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}")
         return tools
-    
+
     except Exception as e:
         logger.error(f"Error listing tools: {str(e)}", exc_info=True)
         # Return at least the core tools to prevent errors
@@ -371,36 +374,36 @@ async def handle_call_tool(
         The result of the tool call
     """
     logger.info(f"Tool call: {name} with arguments: {json.dumps(arguments)}")
-    
+
     try:
         sn = get_simplenote_client()
-        
+
         # Make sure the cache is initialized
         global note_cache
         if note_cache is None or not note_cache.is_initialized:
             logger.info("Cache not initialized, initializing now")
             await initialize_cache()
-        
+
         if name == "create_note":
             content = arguments.get("content", "")
             tags_str = arguments.get("tags", "")
             tags = [tag.strip() for tag in tags_str.split(",")] if tags_str else []
-            
+
             if not content:
                 raise ValidationError("Note content is required")
-            
+
             try:
                 note = {"content": content}
                 if tags:
                     note["tags"] = tags
-                
+
                 note, status = sn.add_note(note)
-                
+
                 if status == 0:
                     # Update the cache if it's initialized
                     if note_cache is not None and note_cache.is_initialized:
                         note_cache.update_cache_after_create(note)
-                    
+
                     return [
                         types.TextContent(
                             type="text",
@@ -421,39 +424,37 @@ async def handle_call_tool(
                     error_msg = "Failed to create note"
                     logger.error(error_msg)
                     raise NetworkError(error_msg)
-            
+
             except Exception as e:
                 if isinstance(e, ServerError):
                     error_dict = e.to_dict()
                     return [types.TextContent(type="text", text=json.dumps(error_dict))]
-                
+
                 logger.error(f"Error creating note: {str(e)}", exc_info=True)
                 error = handle_exception(e, "creating note")
                 return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
-        
+
         elif name == "update_note":
             note_id = arguments.get("note_id", "")
             content = arguments.get("content", "")
             tags_str = arguments.get("tags", "")
-            
+
             if not note_id:
                 raise ValidationError("Note ID is required")
-            
+
             if not content:
                 raise ValidationError("Note content is required")
-            
+
             try:
                 # Get the existing note first
                 existing_note = None
-                
+
                 # Try to get from cache first
                 if note_cache is not None and note_cache.is_initialized:
-                    try:
+                    with contextlib.suppress(ResourceNotFoundError):
                         existing_note = note_cache.get_note(note_id)
-                    except ResourceNotFoundError:
-                        # If not in cache, we'll try the API directly
-                        pass
-                
+                        # If not found, the API will be used
+
                 # If not found in cache, get from API
                 if existing_note is None:
                     existing_note, status = sn.get_note(note_id)
@@ -461,22 +462,22 @@ async def handle_call_tool(
                         error_msg = f"Failed to find note with ID {note_id}"
                         logger.error(error_msg)
                         raise ResourceNotFoundError(error_msg)
-                
+
                 # Update the note content
                 existing_note["content"] = content
-                
+
                 # Update tags if provided
                 if tags_str:
                     tags = [tag.strip() for tag in tags_str.split(",")]
                     existing_note["tags"] = tags
-                
+
                 updated_note, status = sn.update_note(existing_note)
-                
+
                 if status == 0:
                     # Update the cache if it's initialized
                     if note_cache is not None and note_cache.is_initialized:
                         note_cache.update_cache_after_update(updated_note)
-                    
+
                     return [
                         types.TextContent(
                             type="text",
@@ -494,30 +495,30 @@ async def handle_call_tool(
                     error_msg = "Failed to update note"
                     logger.error(error_msg)
                     raise NetworkError(error_msg)
-            
+
             except Exception as e:
                 if isinstance(e, ServerError):
                     error_dict = e.to_dict()
                     return [types.TextContent(type="text", text=json.dumps(error_dict))]
-                
+
                 logger.error(f"Error updating note: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"updating note {note_id}")
                 return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
-        
+
         elif name == "delete_note":
             note_id = arguments.get("note_id", "")
-            
+
             if not note_id:
                 raise ValidationError("Note ID is required")
-            
+
             try:
                 status = sn.trash_note(note_id)  # Using trash_note as it's safer than delete_note
-                
+
                 if status == 0:
                     # Update the cache if it's initialized
                     if note_cache is not None and note_cache.is_initialized:
                         note_cache.update_cache_after_delete(note_id)
-                    
+
                     return [
                         types.TextContent(
                             type="text",
@@ -534,23 +535,23 @@ async def handle_call_tool(
                     error_msg = "Failed to move note to trash"
                     logger.error(error_msg)
                     raise NetworkError(error_msg)
-            
+
             except Exception as e:
                 if isinstance(e, ServerError):
                     error_dict = e.to_dict()
                     return [types.TextContent(type="text", text=json.dumps(error_dict))]
-                
+
                 logger.error(f"Error deleting note: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"deleting note {note_id}")
                 return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
-        
+
         elif name == "search_notes":
             query = arguments.get("query", "")
-            limit = arguments.get("limit", None)
-            
+            limit = arguments.get("limit")
+
             if not query:
                 raise ValidationError("Search query is required")
-            
+
             if limit is not None:
                 try:
                     limit = int(limit)
@@ -558,13 +559,13 @@ async def handle_call_tool(
                         limit = None
                 except (ValueError, TypeError):
                     limit = None
-            
+
             try:
                 # Use the cache for search if available
                 if note_cache is not None and note_cache.is_initialized:
                     logger.debug(f"Searching notes in cache for query: {query}")
                     notes = note_cache.search_notes(query, limit=limit)
-                    
+
                     results = []
                     for note in notes:
                         content = note.get("content", "")
@@ -575,7 +576,7 @@ async def handle_call_tool(
                             "tags": note.get("tags", []),
                             "uri": f"simplenote://note/{note.get('key')}",
                         })
-                    
+
                     return [
                         types.TextContent(
                             type="text",
@@ -589,20 +590,20 @@ async def handle_call_tool(
                             ),
                         )
                     ]
-                
+
                 # Fall back to API if cache is not available
                 logger.debug(f"Cache not available, using API for search: {query}")
                 notes, status = sn.get_note_list()
-                
+
                 if status != 0:
                     error_msg = "Failed to retrieve notes for search"
                     logger.error(error_msg)
                     raise NetworkError(error_msg)
-                
+
                 # Simple search in content
                 query_lower = query.lower()
                 results = []
-                
+
                 for note in notes:
                     content = note.get("content", "").lower()
                     if query_lower in content:
@@ -618,14 +619,14 @@ async def handle_call_tool(
                             },
                             occurrences
                         ))
-                
+
                 # Sort by relevance (higher score first)
                 results.sort(key=lambda x: x[1], reverse=True)
-                
+
                 # Apply limit if specified
                 if limit is not None:
                     results = results[:limit]
-                
+
                 # Return just the notes, not the scores
                 return [
                     types.TextContent(
@@ -640,27 +641,27 @@ async def handle_call_tool(
                         ),
                     )
                 ]
-            
+
             except Exception as e:
                 if isinstance(e, ServerError):
                     error_dict = e.to_dict()
                     return [types.TextContent(type="text", text=json.dumps(error_dict))]
-                
+
                 logger.error(f"Error searching notes: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"searching notes for '{query}'")
                 return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
-        
+
         else:
             error_msg = f"Unknown tool: {name}"
             logger.error(error_msg)
             error = ValidationError(error_msg)
             return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
-    
+
     except Exception as e:
         if isinstance(e, ServerError):
             error_dict = e.to_dict()
             return [types.TextContent(type="text", text=json.dumps(error_dict))]
-        
+
         logger.error(f"Error in tool call: {str(e)}", exc_info=True)
         error = handle_exception(e, f"calling tool {name}")
         return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
@@ -677,7 +678,7 @@ async def handle_list_prompts() -> List[types.Prompt]:
         List of available prompts
     """
     logger.debug("Listing available prompts")
-    
+
     return [
         types.Prompt(
             name="create_note_prompt",
@@ -724,14 +725,14 @@ async def handle_get_prompt(
         ValidationError: If the prompt name is unknown
     """
     logger.debug(f"Getting prompt: {name} with arguments: {arguments}")
-    
+
     if not arguments:
         arguments = {}
-    
+
     if name == "create_note_prompt":
         content = arguments.get("content", "")
         tags = arguments.get("tags", "")
-        
+
         return types.GetPromptResult(
             description="Create a new note in Simplenote",
             messages=[
@@ -751,10 +752,10 @@ async def handle_get_prompt(
                 ),
             ],
         )
-    
+
     elif name == "search_notes_prompt":
         query = arguments.get("query", "")
-        
+
         return types.GetPromptResult(
             description="Search for notes in Simplenote",
             messages=[
@@ -774,7 +775,7 @@ async def handle_get_prompt(
                 ),
             ],
         )
-    
+
     else:
         error_msg = f"Unknown prompt: {name}"
         logger.error(error_msg)
@@ -784,15 +785,15 @@ async def handle_get_prompt(
 async def run() -> None:
     """Run the server using STDIO transport."""
     logger.info("Starting MCP server STDIO transport")
-    
+
     try:
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
             logger.info("STDIO server created, initializing MCP server")
-            
+
             try:
                 # Initialize the cache in the background
                 asyncio.create_task(initialize_cache())
-                
+
                 # Get capabilities and log them
                 capabilities = server.get_capabilities(
                     notification_options=NotificationOptions(),
@@ -803,11 +804,10 @@ async def run() -> None:
                     'has_resources': bool(capabilities.resources),
                     'has_tools': bool(capabilities.tools)
                 })}")
-                
-                # Get the config and server version
-                config = get_config()
+
+                # Get the server version
                 from simplenote_mcp import __version__
-                
+
                 # Run the server
                 await server.run(
                     read_stream,
@@ -819,15 +819,15 @@ async def run() -> None:
                     ),
                 )
                 logger.info("MCP server run completed")
-            
+
             except Exception as e:
                 logger.error(f"Error running MCP server: {str(e)}", exc_info=True)
                 raise
-    
+
     except Exception as e:
         logger.error(f"Error creating STDIO server: {str(e)}", exc_info=True)
         raise
-    
+
     finally:
         # Stop the background sync when the server stops
         global background_sync
@@ -836,7 +836,7 @@ async def run() -> None:
             asyncio.create_task(background_sync.stop())
 
 
-def run_main():
+def run_main() -> None:
     """Entry point for the console script."""
     try:
         # Configure logging from environment variables
@@ -847,10 +847,10 @@ def run_main():
         logger.info(f"Running from: {os.path.dirname(os.path.abspath(__file__))}")
         logger.info(f"Sync interval: {config.sync_interval_seconds}s")
         logger.info(f"Log level: {config.log_level.value}")
-        
+
         # Run the async event loop
         asyncio.run(run())
-    
+
     except Exception as e:
         logger.critical(f"Critical error in MCP server: {str(e)}", exc_info=True)
         sys.exit(1)

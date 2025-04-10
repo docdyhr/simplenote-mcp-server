@@ -2,7 +2,7 @@
 
 import logging
 from enum import Enum
-from typing import Any, Dict, Optional, Type, Union
+from typing import Any, Dict, Optional, Type
 
 logger = logging.getLogger("simplenote_mcp")
 
@@ -30,10 +30,10 @@ class ServerError(Exception):
     This provides consistent error handling with categories, severity levels,
     and enhanced logging.
     """
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         category: ErrorCategory = ErrorCategory.UNKNOWN,
         severity: ErrorSeverity = ErrorSeverity.ERROR,
         recoverable: bool = True,
@@ -56,22 +56,22 @@ class ServerError(Exception):
         self.recoverable = recoverable
         self.original_error = original_error
         self.details = details or {}
-        
+
         # Construct the full error message
         full_message = f"{category.value.upper()}: {message}"
         if original_error:
             full_message += f" (caused by: {type(original_error).__name__}: {str(original_error)})"
-        
+
         super().__init__(full_message)
-        
+
         # Log the error based on severity
         self._log_error()
-    
+
     def _log_error(self) -> None:
         """Log the error with appropriate severity level."""
         log_message = str(self)
         extra = {"category": self.category.value, "recoverable": self.recoverable}
-        
+
         if self.severity == ErrorSeverity.CRITICAL:
             logger.critical(log_message, extra=extra, exc_info=self.original_error)
         elif self.severity == ErrorSeverity.ERROR:
@@ -80,7 +80,7 @@ class ServerError(Exception):
             logger.warning(log_message, extra=extra, exc_info=self.original_error)
         else:  # INFO
             logger.info(log_message, extra=extra, exc_info=self.original_error)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert the error to a dictionary for API responses."""
         result = {
@@ -92,16 +92,16 @@ class ServerError(Exception):
                 "recoverable": self.recoverable,
             }
         }
-        
+
         if self.details:
             result["error"]["details"] = self.details
-            
+
         return result
 
 # Specific error types
 class AuthenticationError(ServerError):
     """Authentication-related errors."""
-    
+
     def __init__(self, message: str, **kwargs):
         kwargs.setdefault("category", ErrorCategory.AUTHENTICATION)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
@@ -110,7 +110,7 @@ class AuthenticationError(ServerError):
 
 class ConfigurationError(ServerError):
     """Configuration-related errors."""
-    
+
     def __init__(self, message: str, **kwargs):
         kwargs.setdefault("category", ErrorCategory.CONFIGURATION)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
@@ -119,7 +119,7 @@ class ConfigurationError(ServerError):
 
 class NetworkError(ServerError):
     """Network/API connectivity errors."""
-    
+
     def __init__(self, message: str, **kwargs):
         kwargs.setdefault("category", ErrorCategory.NETWORK)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
@@ -128,7 +128,7 @@ class NetworkError(ServerError):
 
 class ResourceNotFoundError(ServerError):
     """Resource not found errors."""
-    
+
     def __init__(self, message: str, **kwargs):
         kwargs.setdefault("category", ErrorCategory.NOT_FOUND)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
@@ -137,7 +137,7 @@ class ResourceNotFoundError(ServerError):
 
 class ValidationError(ServerError):
     """Input validation errors."""
-    
+
     def __init__(self, message: str, **kwargs):
         kwargs.setdefault("category", ErrorCategory.VALIDATION)
         kwargs.setdefault("severity", ErrorSeverity.WARNING)
@@ -146,7 +146,7 @@ class ValidationError(ServerError):
 
 class InternalError(ServerError):
     """Internal server errors."""
-    
+
     def __init__(self, message: str, **kwargs):
         kwargs.setdefault("category", ErrorCategory.INTERNAL)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
@@ -164,10 +164,10 @@ def handle_exception(e: Exception, context: str = "") -> ServerError:
         An appropriate ServerError instance
     """
     context_str = f" while {context}" if context else ""
-    
+
     if isinstance(e, ServerError):
         return e
-    
+
     # Map common exception types to appropriate ServerError subclasses
     error_mapping: Dict[Type[Exception], Type[ServerError]] = {
         ValueError: ValidationError,
@@ -178,7 +178,7 @@ def handle_exception(e: Exception, context: str = "") -> ServerError:
         ConnectionError: NetworkError,
         TimeoutError: NetworkError,
     }
-    
+
     for exc_type, error_class in error_mapping.items():
         if isinstance(e, exc_type):
             if exc_type == PermissionError:
@@ -187,7 +187,7 @@ def handle_exception(e: Exception, context: str = "") -> ServerError:
                     category=ErrorCategory.PERMISSION
                 )
             return error_class(f"{str(e)}{context_str}", original_error=e)
-    
+
     # Default to InternalError for unhandled exception types
     return InternalError(
         f"Unexpected error{context_str}: {str(e)}",
