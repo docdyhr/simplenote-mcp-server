@@ -13,8 +13,8 @@ LOG_FILE="$LOG_DIR/server.log"
 MONITORING_LOG_FILE="$LOG_DIR/monitoring.log"
 
 # Legacy log paths (for backwards compatibility)
-LEGACY_LOG_FILE="/tmp/simplenote_mcp_debug.log"
-LEGACY_MONITORING_LOG_FILE="/tmp/simplenote_monitoring.log"
+LEGACY_LOG_FILE="/tmp/simplenote_mcp_server_debug.log"
+LEGACY_MONITORING_LOG_FILE="/tmp/simplenote_mcp_server_monitoring.log"
 
 # Ensure log directory exists
 mkdir -p "$LOG_DIR"

@@ -1,7 +1,7 @@
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 setup(
-    name="simplenote-mcp",
+    name="simplenote-mcp-server",
     version="0.2.0",
     description="Simplenote MCP Server for Claude Desktop",
     packages=find_packages(),
@@ -11,7 +11,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "simplenote-mcp=simplenote_mcp.server:run_main",
+            "simplenote-mcp-server=simplenote_mcp.server:run_main",
         ],
     },
     classifiers=[

@@ -1,5 +1,5 @@
 [project]
-name = "simplenote-mcp"
+name = "simplenote-mcp-server"
 version = "0.2.0"
 description = "A simple MCP Server that connects to Simplenote"
 readme = "README.md"
@@ -9,7 +9,7 @@ authors = [{ name = "Thomas Juul Dyhr", email = "docdyhr@me.com" }]
 dependencies = ["mcp[cli]>=0.4.0", "simplenote>=2.1.4"]
 
 [project.scripts]
-simplenote-mcp = "simplenote_mcp.server:run_main"
+simplenote-mcp-server = "simplenote_mcp.server:run_main"
 
 [build-system]
 requires = ["setuptools>=42", "wheel"]

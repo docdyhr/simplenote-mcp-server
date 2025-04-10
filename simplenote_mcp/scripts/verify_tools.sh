@@ -14,7 +14,7 @@ YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
 echo "Checking if Simplenote MCP server is running..."
-if pgrep -f "python.*simplenote_mcp.*server.py" > /dev/null; then
+if pgrep -f "python.*simplenote-mcp-server.*" > /dev/null; then
     echo -e "${GREEN}✓ Simplenote MCP server is running${NC}"
 else
     echo -e "${RED}✗ Simplenote MCP server is NOT running${NC}"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# simplenote_mcp_server.py
+# simplenote-mcp-server.py
 
 import os
 import sys

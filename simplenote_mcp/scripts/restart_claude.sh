@@ -10,7 +10,7 @@ source "$SCRIPT_DIR/config.sh"
 
 # Kill the Simplenote MCP server
 echo "Killing any running Simplenote MCP servers..."
-pkill -f "python.*simplenote_mcp.*server.py" 2>/dev/null || true
+pkill -f "python.*simplenote-mcp-server.*" 2>/dev/null || true
 
 # Remove previous debug logs
 echo "Removing previous debug logs..."

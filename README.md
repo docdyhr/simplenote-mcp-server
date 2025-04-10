@@ -5,7 +5,7 @@ A simple MCP (Model Context Protocol) server that connects to Simplenote as a pr
 [![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Python Versions](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11-blue)](./setup.py)
-[![Tests](https://github.com/docdyhr/simplenote-mcp/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp/actions)
+[![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
 
 ## Project Structure
 
@@ -61,7 +61,7 @@ python simplenote_mcp_server.py
 Or, after installation:
 
 ```bash
-simplenote-mcp
+simplenote-mcp-server
 ```
 
 ### Testing the server
@@ -80,7 +80,7 @@ python simplenote_mcp_server.py
 
 1. Run the server as described above
 2. In Claude Desktop, connect to the server by selecting "Connect to Tool" and choosing "Connect to subprocess"
-3. Enter `simplenote-mcp`
+3. Enter `simplenote-mcp-server`
 
 ## Available Tools
 

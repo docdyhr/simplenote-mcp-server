@@ -2,7 +2,6 @@
 # monitor_server.py - Monitor communication with Claude Desktop
 
 import json
-import os
 import sys
 import time
 from pathlib import Path
@@ -22,11 +21,11 @@ LEGACY_MONITORING_LOG_FILE = Path("/tmp/simplenote_monitoring.log")
 def debug_print(message):
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"{timestamp} - {message}")
-    
+
     # Log to the new location
     with open(MONITORING_LOG_FILE, "a") as f:
         f.write(f"{timestamp} - {message}\n")
-    
+
     # Also log to legacy location for backwards compatibility
     with open(LEGACY_MONITORING_LOG_FILE, "a") as f:
         f.write(f"{timestamp} - {message}\n")
@@ -48,27 +47,27 @@ while True:
         if not chunk:
             debug_print("No more input, exiting")
             break
-        
+
         # Add to buffer
         buffer += chunk
-        
+
         # Process complete messages
         while '\r\n' in buffer:
             message, buffer = buffer.split('\r\n', 1)
-            
+
             # Parse the message
             try:
                 data = json.loads(message)
-                
+
                 # Log based on message type
                 if 'method' in data:
                     method = data.get('method', '')
                     debug_print(f">>> Request: {method}")
-                    
+
                     # If it's a tools method, log more details
                     if 'tools' in method:
                         debug_print(f"TOOLS REQUEST: {json.dumps(data)}")
-                        
+
                         # Respond with tool list if it's a tools/list request
                         if method == 'tools/list':
                             response = {
@@ -101,12 +100,12 @@ while True:
                             debug_print(f"<<< Response: tools/list with {len(response['result']['tools'])} tools")
                 elif 'result' in data:
                     debug_print(f"<<< Response: id={data.get('id')}")
-                
+
             except json.JSONDecodeError:
                 debug_print(f"Failed to parse message: {message}")
             except Exception as e:
                 debug_print(f"Error processing message: {str(e)}")
-        
+
     except KeyboardInterrupt:
         debug_print("Interrupted, exiting")
         break

@@ -1,8 +1,11 @@
 """Basic tests for Simplenote client interaction."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
+
 from simplenote_mcp.server import get_simplenote_client
+
 
 def test_simplenote_client_creation(simplenote_env_vars):
     """Test creation of Simplenote client with environment variables."""
@@ -15,9 +18,8 @@ def test_simplenote_client_creation(simplenote_env_vars):
 
 def test_missing_credentials():
     """Test that missing credentials raise an error."""
-    with patch.dict('os.environ', {}, clear=True):
-        with patch('simplenote_mcp.server.server.Simplenote'):
-            with pytest.raises(ValueError) as excinfo:
-                get_simplenote_client()
-            assert "SIMPLENOTE_EMAIL" in str(excinfo.value)
-            assert "SIMPLENOTE_PASSWORD" in str(excinfo.value)
+    with patch.dict('os.environ', {}, clear=True), patch('simplenote_mcp.server.server.Simplenote'):
+        with pytest.raises(ValueError) as excinfo:
+            get_simplenote_client()
+        assert "SIMPLENOTE_EMAIL" in str(excinfo.value)
+        assert "SIMPLENOTE_PASSWORD" in str(excinfo.value)

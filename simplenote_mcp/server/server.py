@@ -4,8 +4,8 @@ import asyncio
 import json
 import os
 import sys
-from typing import Dict, List, Optional
 from pathlib import Path
+from typing import Dict, List, Optional
 
 import mcp.server.stdio
 import mcp.types as types
@@ -23,7 +23,7 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 def log_debug(message):
     """Log debug messages to stderr for Claude Desktop logs."""
     print(f"DEBUG: {message}", file=sys.stderr, flush=True)
-    
+
     # Also log to a file for debugging
     with open(LOG_FILE, "a") as f:
         from datetime import datetime
@@ -54,7 +54,7 @@ except Exception as e:
 simplenote_client = None
 
 
-def get_simplenote_client():
+def get_simplenote_client() -> Simplenote:
     global simplenote_client
     if simplenote_client is None:
         try:
@@ -87,7 +87,7 @@ async def handle_list_resources() -> List[types.Resource]:
     import traceback
     stack_trace = traceback.format_stack()
     log_debug(f"list_resources called from: {stack_trace[-2]}")
-    
+
     sn = get_simplenote_client()
     try:
         # Get the list of notes from Simplenote
@@ -143,7 +143,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
             raise ValueError(f"Failed to get note with ID {note_id}")
     except Exception as e:
         print(f"Error reading resource: {e}")
-        raise ValueError(f"Error reading note: {str(e)}")
+        raise ValueError(f"Error reading note: {str(e)}") from e
 
 
 # ===== TOOL CAPABILITIES =====
@@ -615,7 +615,7 @@ async def handle_get_prompt(
         raise ValueError(f"Unknown prompt: {name}")
 
 
-async def run():
+async def run() -> None:
     # Run the server as STDIO
     log_debug("Starting MCP server STDIO transport")
     try:
@@ -632,7 +632,7 @@ async def run():
                     'has_resources': bool(capabilities.resources),
                     'has_tools': bool(capabilities.tools)
                 })}")
-                
+
                 # Run the server
                 await server.run(
                     read_stream,
