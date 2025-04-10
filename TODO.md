@@ -2,134 +2,122 @@
 
 This file outlines the tasks needed to implement the Simplenote MCP Server according to the requirements in [PRD.md](./PRD.md).
 
-## 1. Project Structure & Framework Transition
+## 1. Server Enhancements
 
-- [ ] **Transition to FastMCP/FastAPI**
-  - [ ] Add FastMCP and FastAPI as dependencies
-  - [ ] Update package structure to accommodate new framework
-  - [ ] Create server implementation using FastMCP/FastAPI
-
-- [ ] **Entry Points**
-  - [ ] Create uvicorn-based server entry point
-  - [ ] Update `setup.py` and `pyproject.toml` for FastMCP requirements
-  - [ ] Create `run_server.sh` script for easy setup and startup
-
-## 2. Authentication & Security
+- [ ] **Improve Existing MCP Implementation**
+  - [ ] Enhance error handling and logging
+  - [ ] Add better documentation for existing functionality
+  - [ ] Optimize performance for resource listing and retrieval
 
 - [ ] **Environment Configuration**
-  - [ ] Implement `.env` file support 
-  - [ ] Add SERVER_PORT, SERVER_AUTH_TOKEN, and SYNC_INTERVAL_SECONDS environment variables
+  - [ ] Add support for SYNC_INTERVAL_SECONDS environment variable
+  - [ ] Improve logging with configurable verbosity levels
+  - [ ] Add more robust error recovery mechanisms
 
-- [ ] **Bearer Token Authentication**
-  - [ ] Implement FastAPI dependency for token verification
-  - [ ] Add authorization middleware
-  - [ ] Create bearer token validation logic
-
-- [ ] **CORS Configuration**
-  - [ ] Implement CORS middleware for FastAPI
-  - [ ] Configure for development and production
-
-## 3. MCP Endpoint Implementation
-
-- [ ] **MCP Discovery**
-  - [ ] Implement `/api/v1/discovery` endpoint
-  - [ ] Define FastMCP resources and tools for Simplenote
-
-- [ ] **Resource Endpoints**
-  - [ ] GET `/context/simplenote/notes` - List notes with filtering
-    - [ ] Support tag filtering
-    - [ ] Support limit and sort parameters
-  - [ ] GET `/context/simplenote/notes/{note_id}` - Get note by ID
-  - [ ] GET `/context/simplenote/search?query=...` - Search notes
-
-- [ ] **Tool Endpoints**
-  - [ ] POST `/context/simplenote/notes` - Create note
-  - [ ] PUT `/context/simplenote/notes/{note_id}` - Update note
-  - [ ] DELETE `/context/simplenote/notes/{note_id}` - Trash note
-
-## 4. Data Models & Validation
-
-- [ ] **Define Pydantic Models**
-  - [ ] NoteResource model (with id, content, creationDate, modificationDate, tags)
-  - [ ] NoteCreateRequest model
-  - [ ] NoteUpdateRequest model
-  - [ ] SearchResponse model
-
-- [ ] **Response Serialization**
-  - [ ] Implement FastAPI response models
-  - [ ] Set up JSON serialization with proper metadata
-
-## 5. Caching & Synchronization
+## 2. Caching Implementation
 
 - [ ] **In-Memory Cache**
   - [ ] Design note cache data structure
   - [ ] Implement cache manager class
+  - [ ] Add cache state logging and statistics
 
 - [ ] **Initial Data Loading**
-  - [ ] Implement FastAPI startup event for initial load
-  - [ ] Fetch all notes on server start
+  - [ ] Optimize initial note loading process
+  - [ ] Add progress reporting during initial load
+  - [ ] Handle large collections efficiently
 
 - [ ] **Background Synchronization**
-  - [ ] Create asyncio background task for sync
-  - [ ] Implement `index_since` mechanism
-  - [ ] Set up periodic sync with configurable interval
+  - [ ] Implement background task for periodic sync
+  - [ ] Use `index_since` mechanism for efficient updates
+  - [ ] Handle sync failures gracefully with retry logic
 
-- [ ] **Cache Operations**
-  - [ ] Immediate cache updates after API operations
-  - [ ] Efficient filtering and search within cache
+## 3. Resource Capabilities
+
+- [ ] **Enhanced Resource Listing**
+  - [ ] Add support for filtering by tags
+  - [ ] Include note tags in resource metadata 
+  - [ ] Support limiting the number of returned notes
+  - [ ] Add sorting options if possible
+
+- [ ] **Improved Resource Reading**
+  - [ ] Enhance error handling for note retrieval
+  - [ ] Add more robust metadata extraction
+  - [ ] Optimize for performance with caching
+
+## 4. Tool Capabilities
+
+- [ ] **Search Functionality**
+  - [ ] Enhance search tool to use the in-memory cache
+  - [ ] Implement case-insensitive keyword search
+  - [ ] Support combined content and title searching
+  - [ ] Return comprehensive metadata with search results
+
+- [ ] **Note Management Tools**
+  - [ ] Improve create_note with better tag handling
+  - [ ] Enhance update_note with validation
+  - [ ] Refine delete_note to use trash_note properly
+  - [ ] Add proper error handling for all operations
+
+## 5. Data Representation
+
+- [ ] **MCP Types Implementation**
+  - [ ] Ensure correct usage of mcp.types structures
+  - [ ] Standardize note representation format
+  - [ ] Add complete metadata to responses
 
 ## 6. Error Handling & Logging
 
-- [ ] **Exception Handlers**
-  - [ ] Create FastAPI exception handlers
-  - [ ] Map API errors to appropriate HTTP status codes
+- [ ] **Enhanced Error Handling**
+  - [ ] Improve error logging and categorization
+  - [ ] Add recoverable vs. non-recoverable error handling
+  - [ ] Create clearer error messages for users
 
-- [ ] **Logging**
-  - [ ] Set up structured logging
-  - [ ] Add debug/info/error level logging throughout the codebase
-  - [ ] Log API operations and synchronization events
+- [ ] **Logging System**
+  - [ ] Add structured logging throughout the code
+  - [ ] Create separate log files for different concerns
+  - [ ] Implement log rotation to prevent large files
 
 ## 7. Testing
 
 - [ ] **Unit Tests**
-  - [ ] Test each endpoint
   - [ ] Test cache operations
-  - [ ] Test authentication
+  - [ ] Test Simplenote API interaction
+  - [ ] Test error handling
 
 - [ ] **Integration Tests**
   - [ ] Test end-to-end flows with Simplenote API
   - [ ] Test caching and synchronization
+  - [ ] Test with Claude Desktop interaction
 
 ## 8. Documentation
 
 - [ ] **Update README.md**
   - [ ] Update installation instructions
   - [ ] Document environment variables
-  - [ ] Document API endpoints
+  - [ ] Explain the caching mechanism
+  - [ ] Add troubleshooting section
 
 - [ ] **Create Integration Guide**
   - [ ] Guide for Claude Desktop integration
-  - [ ] Authentication setup
   - [ ] Example usage patterns
+  - [ ] Best practices for using the server
 
 ## 9. Future Enhancements (V2.0+)
 
 - [ ] **Tag Management**
   - [ ] Add/remove tags from notes
-  - [ ] Create/delete tags
 
 - [ ] **Permanent Deletion**
-  - [ ] Implement permanent delete endpoint
+  - [ ] Implement permanent delete functionality
 
 - [ ] **Advanced Search**
   - [ ] Boolean logic in search
   - [ ] Tag-specific search
 
 - [ ] **Pagination**
-  - [ ] Add pagination to List/Search endpoints
+  - [ ] Add pagination for large note collections
 
 - [ ] **Performance Monitoring**
-  - [ ] Integrate Prometheus client for metrics
   - [ ] Track cache stats, response times, API calls
 
 - [ ] **Docker Packaging**
