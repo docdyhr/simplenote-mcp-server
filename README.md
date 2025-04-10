@@ -4,20 +4,22 @@ A simple MCP (Model Context Protocol) server that connects to Simplenote as a pr
 
 [![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
+[![Python Versions](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11-blue)](./setup.py)
+[![Tests](https://github.com/docdyhr/simplenote-mcp/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp/actions)
 
 ## Project Structure
 
 ```
-simplenote_mcp/
-├── logs/          # Log files directory
-├── scripts/       # Helper scripts for testing and management
-├── server/        # Main server code
-└── tests/         # Test utilities and client
+simplenote_mcp/            # Main package
+├── logs/                  # Log files directory
+├── scripts/               # Helper scripts for testing and management
+├── server/                # Main server code
+└── tests/                 # Test utilities and client
 ```
 
 ## Overview
 
-This project provides an MCP server that allows you to interact with your Simplenote account through Claude Desktop or any other MCP-compatible client. 
+This project provides an MCP server that allows you to interact with your Simplenote account through Claude Desktop or any other MCP-compatible client.
 
 Key features:
 - List all your Simplenote notes as resources
@@ -188,3 +190,11 @@ Open Claude Desktop and check if the Simplenote tools are available using:
 ```
 
 This script will open Claude Desktop and copy a test prompt to your clipboard that asks Claude to list available tools and specifically check for Simplenote tools.
+
+## Contributing
+
+Contributions are welcome! Please read our [Contributing Guide](./.github/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
+
+## Security
+
+For security vulnerabilities, please review our [Security Policy](./.github/SECURITY.md).
