@@ -37,31 +37,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed logging path issues by supporting both new and legacy locations
 - Corrected tool verification to work with the current log structure
 
-## [0.3.0] - Unreleased
+## [1.0.0] - 2025-04-10
 
 ### Added
-- In-memory cache implementation for faster note access
+- In-memory cache implementation for faster note access 
 - Background synchronization task for keeping notes up to date
-- Support for filtering notes by tags
-- Improved error handling and logging
-- More comprehensive metadata in note representations
-- Enhanced search capabilities with in-memory cache
+- Support for filtering notes by tags in resource listing
+- Comprehensive unit, integration, and performance tests
+- Complete documentation with detailed installation and usage instructions
+- Integration guide for Claude Desktop
+- Caching mechanism explanation
+- Advanced error recovery mechanisms
+- Performance optimization for all operations
+- Tag filtering for resource listing capability
+- Proper type annotations throughout the code
 
 ### Changed
 - Optimized resource listing for performance
-- Updated environment variable handling for better configuration options
-- Improved validation for note operations
-
-## [1.0.0] - Unreleased
-
-### Added
-- Complete test suite with unit and integration tests
-- Comprehensive documentation with installation and usage instructions
-- Integration guide for Claude Desktop
-- Advanced error recovery mechanisms
-- Performance optimizations for large note collections
-
-### Changed
-- Enhanced user experience with more informative messages
+- Enhanced error handling with better categorization and recovery
+- Updated environment variable handling with comprehensive configuration options
+- Improved logging with configurable levels (DEBUG, INFO, WARNING, ERROR)
+- Support for structured JSON logging format
 - Refined caching strategy for better memory usage
 - Improved synchronization logic for more reliable updates
+
+### Fixed
+- Server startup issues with logging directory
+- Circular import problem with version imports
+- API parameter issues in the cache module
+- Type errors in server implementation
