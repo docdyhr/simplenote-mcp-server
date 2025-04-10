@@ -27,6 +27,16 @@ simplenote_mcp/logs/*
 /tmp/simplenote_mcp_debug.log
 /tmp/simplenote_monitoring.log
 
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+.mypy_cache/
+
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Local configuration
+.python-version
