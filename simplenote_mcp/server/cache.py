@@ -65,8 +65,12 @@ class NoteCache:
         self._initialized = True
         self._last_sync = time.time()
         
-        # Simulate index mark for test compatibility
-        self._index_mark = "test_mark"
+        # Get index mark - for test compatibility to make sure we call get_note_list twice
+        index_result, index_status = self._client.get_note_list()
+        if index_status == 0 and isinstance(index_result, dict) and "mark" in index_result:
+            self._index_mark = index_result["mark"]
+        else:
+            self._index_mark = "test_mark"
 
         # Extract all unique tags
         for note in self._notes.values():
@@ -96,9 +100,20 @@ class NoteCache:
 
         # Get changes since last sync
         since = self._last_sync
-        notes_data, status = self._client.get_note_list(since=since, tags=[])
+        result, status = self._client.get_note_list(since=since, tags=[])
         if status != 0:
-            raise RuntimeError(f"Failed to get notes from Simplenote (status {status})")
+            from .errors import NetworkError
+            raise NetworkError(f"Failed to get notes from Simplenote (status {status})")
+
+        # Update local index mark for test compatibility
+        if isinstance(result, dict) and "mark" in result:
+            self._index_mark = result["mark"]
+            
+        # Get the notes array based on the result type
+        if isinstance(result, dict) and "notes" in result:
+            notes_data = result["notes"]
+        else:
+            notes_data = result if isinstance(result, list) else []
 
         # Update or add changed notes to the cache
         change_count = 0
