@@ -4,7 +4,7 @@ A simple MCP (Model Context Protocol) server that connects to Simplenote as a pr
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Python Versions](https://img.shields.io/badge/python-3.9%20%7C%203.10%20%7C%203.11%20%7C%203.13-blue)](./setup.py)
+[![Python Version](https://img.shields.io/badge/python-3.13-blue)](./setup.py)
 [![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
 [![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
 
@@ -32,7 +32,7 @@ Key features:
 
 ### Prerequisites
 
-- Python 3.9 or higher
+- Python 3.13
 - A Simplenote account
 - (Optional) [uv](https://github.com/astral-sh/uv) for faster dependency installation
 
