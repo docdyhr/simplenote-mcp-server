@@ -187,17 +187,17 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
             try:
                 note = note_cache.get_note(note_id)
                 logger.debug(f"Found note {note_id} in cache")
-                return types.ReadResourceResult(
-                    content=types.TextContent(
-                        type="text", text=note.get("content", "")
-                    ),
+                note_uri = f"simplenote://note/{note_id}"
+                text_contents = types.TextResourceContents(
+                    text=note.get("content", ""),
+                    uri=note_uri,
                     meta={
                         "tags": note.get("tags", []),
                         "modifydate": note.get("modifydate", ""),
                         "createdate": note.get("createdate", ""),
-                        "uri": f"simplenote://note/{note_id}",
-                    },
+                    }
                 )
+                return types.ReadResourceResult(contents=[text_contents])
             except ResourceNotFoundError:
                 # If not in cache, we'll try the API directly
                 logger.debug(f"Note {note_id} not found in cache, trying API")
@@ -212,17 +212,17 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
             if note_cache is not None and note_cache.is_initialized:
                 note_cache.update_cache_after_update(note)
 
-            return types.ReadResourceResult(
-                content=types.TextContent(
-                    type="text", text=note.get("content", "")
-                ),
+            note_uri = f"simplenote://note/{note_id}"
+            text_contents = types.TextResourceContents(
+                text=note.get("content", ""),
+                uri=note_uri,
                 meta={
                     "tags": note.get("tags", []),
                     "modifydate": note.get("modifydate", ""),
                     "createdate": note.get("createdate", ""),
-                    "uri": f"simplenote://note/{note_id}",
-                },
+                }
             )
+            return types.ReadResourceResult(contents=[text_contents])
         else:
             error_msg = f"Failed to get note with ID {note_id}"
             logger.error(error_msg)
