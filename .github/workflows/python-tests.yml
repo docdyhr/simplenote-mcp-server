@@ -46,8 +46,8 @@ jobs:
         . .venv/bin/activate
         pytest --cov=simplenote_mcp tests/
       env:
-        SIMPLENOTE_EMAIL: ${{ secrets.SIMPLENOTE_EMAIL }}
-        SIMPLENOTE_PASSWORD: ${{ secrets.SIMPLENOTE_PASSWORD }}
+        SIMPLENOTE_EMAIL: "test@example.com"
+        SIMPLENOTE_PASSWORD: "test_password"
         
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
