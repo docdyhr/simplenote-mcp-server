@@ -128,6 +128,6 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 
 - [ ] **Version 1.0 Release**
   - [x] Ensure all functional requirements met
-  - [ ] 👉 Performance testing (HIGHEST PRIORITY)
-  - [ ] Documentation finalized
+  - [x] Performance testing
+  - [ ] 👉 Documentation finalized (NEXT PRIORITY)
   - [x] Manual testing with Claude Desktop
