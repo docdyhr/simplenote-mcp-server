@@ -33,6 +33,8 @@ htmlcov/
 .pytest_cache/
 coverage.xml
 .mypy_cache/
+# Don't ignore pytest.ini since it's part of our standard configuration
+!pytest.ini
 
 # OS specific files
 .DS_Store
