@@ -5,6 +5,7 @@ import contextlib
 import json
 import os
 import sys
+import time
 from typing import Dict, List, Optional
 
 import mcp.server.stdio
@@ -841,7 +842,20 @@ async def run() -> None:
         global background_sync
         if background_sync is not None:
             logger.info("Stopping background sync")
-            asyncio.create_task(background_sync.stop())
+            try:
+                # Create a temporary event loop if necessary
+                if not asyncio.get_event_loop().is_running():
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                    loop.run_until_complete(background_sync.stop())
+                    loop.close()
+                else:
+                    # Use the existing event loop
+                    asyncio.get_event_loop().create_task(background_sync.stop())
+                    # Give it a moment to complete
+                    time.sleep(0.5)
+            except Exception as e:
+                logger.error(f"Error stopping background sync: {str(e)}", exc_info=True)
 
 
 def run_main() -> None:
