@@ -1,5 +1,6 @@
 """Configuration for pytest."""
 
+import asyncio
 import os
 from unittest.mock import MagicMock
 
@@ -65,3 +66,21 @@ def simplenote_env_vars():
         os.environ["SIMPLENOTE_PASSWORD"] = old_password
     else:
         del os.environ["SIMPLENOTE_PASSWORD"]
+
+
+@pytest.fixture(autouse=True)
+async def cleanup_asyncio_tasks():
+    """Clean up all pending tasks after each test."""
+    # Run the test
+    yield
+    
+    # After the test, find and cancel all pending tasks
+    tasks = [task for task in asyncio.all_tasks() 
+             if not task.done() and task != asyncio.current_task()]
+    
+    for task in tasks:
+        task.cancel()
+        try:
+            await asyncio.wait_for(task, timeout=0.5)
+        except (asyncio.CancelledError, asyncio.TimeoutError):
+            pass
