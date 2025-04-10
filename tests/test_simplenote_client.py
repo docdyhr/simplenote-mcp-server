@@ -19,10 +19,10 @@ def test_simplenote_client_creation(simplenote_env_vars):
 def test_missing_credentials():
     """Test that missing credentials raise an error."""
     # Reset the simplenote_client global variable first
-    from simplenote_mcp.server.server import simplenote_client as sc
     import sys
+    from simplenote_mcp.server.server import simplenote_client  # noqa: F401
     sys.modules['simplenote_mcp.server.server'].simplenote_client = None
-    
+
     # Make sure environment variables are cleared
     env_patch = {'SIMPLENOTE_EMAIL': '', 'SIMPLENOTE_USERNAME': '', 'SIMPLENOTE_PASSWORD': ''}
     with patch.dict('os.environ', env_patch, clear=False), patch('simplenote_mcp.server.server.Simplenote'):

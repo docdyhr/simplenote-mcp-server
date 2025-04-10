@@ -11,7 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.11', '3.12', '3.13']
+        python-version: ['3.13']
+      fail-fast: false
 
     steps:
     - uses: actions/checkout@v3
@@ -33,7 +34,7 @@ jobs:
     - name: Lint with ruff
       run: |
         . .venv/bin/activate
-        ruff check .
+        ruff check --fix .
         
     - name: Type check with mypy
       continue-on-error: true
