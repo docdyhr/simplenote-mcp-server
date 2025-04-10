@@ -1,0 +1,46 @@
+[project]
+name = "simplenote-mcp"
+version = "0.1.0"
+description = "A simple MCP Server that connects to Simplenote"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Thomas Juul Dyhr", email = "docdyhr@me.com" }]
+dependencies = ["mcp[cli]>=0.4.0", "simplenote>=2.1.4"]
+
+[project.scripts]
+simplenote-mcp = "simplenote_mcp.server:run_main"
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.black]
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+
+[tool.ruff]
+target-version = "py39"
+line-length = 88
+select = ["E", "F", "W", "I", "B", "C4", "ARG", "SIM"]
+ignore = ["E203", "E501"]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["ARG001", "ARG002"]

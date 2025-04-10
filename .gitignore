@@ -1,0 +1,32 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Logs
+simplenote_mcp/logs/*
+!simplenote_mcp/logs/.gitkeep
+/tmp/simplenote_mcp_debug.log
+/tmp/simplenote_monitoring.log
+
+# OS specific files
+.DS_Store
+Thumbs.db
