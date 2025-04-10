@@ -29,26 +29,89 @@ Key features:
 
 ## Installation
 
-### Using uv (recommended)
+### Prerequisites
+
+- Python 3.9 or higher
+- A Simplenote account
+- (Optional) [uv](https://github.com/astral-sh/uv) for faster dependency installation
+
+### Step 1: Clone the repository
+
+```bash
+git clone https://github.com/docdyhr/simplenote-mcp-server.git
+cd simplenote-mcp-server
+```
+
+### Step 2: Set up a virtual environment (recommended)
+
+It's recommended to create a virtual environment to isolate dependencies:
+
+```bash
+# Using venv
+python -m venv .venv
+source .venv/bin/activate  # On Unix/macOS
+# OR
+.venv\Scripts\activate     # On Windows
+```
+
+### Step 3: Install the package
+
+#### Using uv (recommended)
 
 ```bash
 uv pip install -e .
 ```
 
-### Using pip
+#### Using pip
 
 ```bash
 pip install -e .
 ```
 
+### Step 4: Verify installation
+
+```bash
+which simplenote-mcp-server  # On Unix/macOS
+# OR
+where simplenote-mcp-server  # On Windows
+```
+
 ## Configuration
 
-Set the following environment variables:
+### Environment Variables
+
+The Simplenote MCP Server uses the following environment variables for configuration:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SIMPLENOTE_EMAIL` | Yes | - | Your Simplenote account email |
+| `SIMPLENOTE_PASSWORD` | Yes | - | Your Simplenote account password |
+| `SYNC_INTERVAL_SECONDS` | No | 120 | Interval (in seconds) between background cache synchronizations |
+| `DEFAULT_RESOURCE_LIMIT` | No | 100 | Default maximum number of notes to return when listing resources |
+| `LOG_LEVEL` | No | INFO | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| `LOG_TO_FILE` | No | true | Whether to write logs to files |
+| `LOG_FORMAT` | No | standard | Log format (standard or json) |
+| `MCP_DEBUG` | No | false | Enable additional debug logging |
+
+### Setting Environment Variables
+
+You can set these variables in several ways:
+
+#### 1. In your terminal session
 
 ```bash
 export SIMPLENOTE_EMAIL=your.email@example.com
 export SIMPLENOTE_PASSWORD=your-password
+export LOG_LEVEL=DEBUG  # Optional
 ```
+
+#### 2. In your .bashrc, .zshrc, or equivalent
+
+Add the exports above to your shell configuration file to make them persistent.
+
+#### 3. In Claude Desktop configuration
+
+For Claude Desktop integration, add them to your `claude_desktop_config.json` file (see the "Claude Desktop Integration" section below).
 
 ## Usage
 
@@ -76,18 +139,101 @@ python simplenote_mcp/tests/test_mcp_client.py
 python simplenote_mcp_server.py
 ```
 
-## Connecting with Claude Desktop
+## Claude Desktop Integration
 
-1. Run the server as described above
-2. In Claude Desktop, connect to the server by selecting "Connect to Tool" and choosing "Connect to subprocess"
-3. Enter `simplenote-mcp-server`
+There are two ways to use Simplenote MCP Server with Claude Desktop:
 
-## Available Tools
+### Method 1: Manual Connection (Temporary)
 
-- `create_note` - Create a new note in Simplenote
-- `update_note` - Update an existing note in Simplenote
-- `delete_note` - Delete a note from Simplenote
-- `search_notes` - Search for notes in Simplenote
+1. Run the server in a terminal window:
+   ```bash
+   simplenote-mcp-server
+   ```
+
+2. In Claude Desktop:
+   - Click the "+" button in the sidebar
+   - Select "Connect to Tool"
+   - Choose "Connect to subprocess"
+   - Enter `simplenote-mcp-server`
+   - Click "Connect"
+
+This connection will persist until you close Claude Desktop or stop the server.
+
+### Method 2: Automatic Integration (Permanent)
+
+For a more seamless experience, configure Claude Desktop to automatically start the server:
+
+1. Locate your Claude Desktop configuration file:
+   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+   - Linux: `~/.config/Claude/claude_desktop_config.json`
+
+2. Add the following section to your configuration (adjust paths as needed):
+
+```json
+{
+  "tools": {
+    "simplenote": {
+      "description": "Access and manage your Simplenote notes",
+      "command": "/path/to/your/python",
+      "args": [
+        "/path/to/simplenote_mcp_server.py"
+      ],
+      "autostart": true,
+      "disabled": false,
+      "restartOnCrash": true,
+      "env": {
+        "SIMPLENOTE_EMAIL": "your.email@example.com",
+        "SIMPLENOTE_PASSWORD": "your-password",
+        "LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+3. Restart Claude Desktop using the provided script:
+   ```bash
+   ./simplenote_mcp/scripts/restart_claude.sh
+   ```
+
+4. Verify the connection using the included verification script:
+   ```bash
+   ./simplenote_mcp/scripts/verify_tools.sh
+   ```
+
+## Available Capabilities
+
+Simplenote MCP Server provides the following capabilities to Claude and other MCP clients:
+
+### Resources
+
+Simplenote notes are exposed as resources with the URI format `simplenote://note/{note_id}`:
+
+- **List Resources** - Browse your Simplenote notes
+  - Supports tag filtering (`tag` parameter)
+  - Supports limiting results (`limit` parameter)
+  - Returns notes sorted by modification date (newest first)
+
+- **Read Resource** - View the content and metadata of a specific note
+
+### Tools
+
+The server provides the following tools for Simplenote interaction:
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `create_note` | Create a new note | `content` (required): Note content<br>`tags` (optional): Comma-separated tags |
+| `update_note` | Update an existing note | `note_id` (required): The ID of the note<br>`content` (required): New content<br>`tags` (optional): Comma-separated tags |
+| `delete_note` | Move a note to trash | `note_id` (required): The ID of the note to delete |
+| `search_notes` | Search for notes by content | `query` (required): Search terms<br>`limit` (optional): Maximum results to return |
+
+### Prompts
+
+The server also provides prompt templates:
+
+- `create_note_prompt` - Template for creating notes
+- `search_notes_prompt` - Template for searching notes
 
 ## Versioning
 
@@ -114,82 +260,115 @@ Testing utilities in the `simplenote_mcp/tests` directory:
 1. **test_mcp_client.py** - Tests connectivity with the Simplenote MCP server
 2. **monitor_server.py** - Helps debug communications between Claude Desktop and the server
 
+## Caching Mechanism
+
+The Simplenote MCP Server uses a sophisticated in-memory caching system to provide fast access to your notes while minimizing API calls to Simplenote.
+
+### How Caching Works
+
+1. **Initial Cache Loading**
+   - When the server starts, it fetches all notes from Simplenote
+   - Notes are stored in memory for quick access
+   - The server records the current sync timestamp
+
+2. **Background Synchronization**
+   - The server periodically checks for changes using the Simplenote API
+   - Only changes since the last sync are fetched (using the `index_since` mechanism)
+   - New and updated notes are added to the cache
+   - Deleted notes are removed from the cache
+   - Default sync interval is 120 seconds (configurable)
+
+3. **Performance Benefits**
+   - Faster response times for all operations
+   - Reduced API calls to Simplenote's servers
+   - Support for efficient filtering and searching
+
 ## Troubleshooting
 
-If you're having trouble connecting Claude Desktop to the Simplenote MCP server:
+### Common Issues
 
-1. **Check environment variables**: Make sure `SIMPLENOTE_EMAIL` and `SIMPLENOTE_PASSWORD` are set in the environment where Claude Desktop is running.
+#### Authentication Problems
 
-2. **Restart Claude Desktop and the server**: Use the included restart script:
+**Symptoms**: Error messages about missing or invalid credentials.
+
+**Solutions**:
+- Verify that `SIMPLENOTE_EMAIL` and `SIMPLENOTE_PASSWORD` are correctly set
+- Check for typos in your email address and password
+- Make sure password contains no special characters that might need escaping
+
+#### Server Not Starting
+
+**Symptoms**: Server fails to start, Claude Desktop can't connect.
+
+**Solutions**:
+- Check log files: `cat simplenote_mcp/logs/server.log`
+- Look for Python errors in your terminal
+- Verify Python version is 3.9 or higher: `python --version`
+- Confirm the package is properly installed: `which simplenote-mcp-server`
+
+#### Claude Desktop Can't Find Tools
+
+**Symptoms**: Claude says it doesn't have access to Simplenote tools.
+
+**Solutions**:
+1. Verify the server is running:
+   ```bash
+   ps aux | grep simplenote-mcp
+   ```
+
+2. Check if tools are properly registered:
+   ```bash
+   ./simplenote_mcp/scripts/verify_tools.sh
+   ```
+
+3. Restart Claude Desktop and the server:
    ```bash
    ./simplenote_mcp/scripts/restart_claude.sh
    ```
 
-3. **Check logs**: View the debug logs:
-   ```bash
-   cat simplenote_mcp/logs/server.log
-   ```
-
-4. **Monitor logs in real-time**:
+4. Watch logs for communication errors:
    ```bash
    ./simplenote_mcp/scripts/watch_logs.sh
    ```
 
-5. **Kill all server instances**:
+5. Kill all server instances and start fresh:
    ```bash
    pkill -f "python.*simplenote_mcp.*server.py"
+   simplenote-mcp-server
    ```
 
-6. **Claude Desktop configuration**: In `~/Library/Application Support/Claude/claude_desktop_config.json`, ensure:
-   ```json
-   "simplenote": {
-     "description": "Access and manage your Simplenote notes",
-     "command": "/path/to/your/venv/bin/python",
-     "args": [
-       "/path/to/simplenote_mcp_server.py"
-     ],
-     "autostart": true,
-     "disabled": false,
-     "restartOnCrash": true,
-     "env": {
-       "SIMPLENOTE_EMAIL": "your.email@example.com",
-       "SIMPLENOTE_PASSWORD": "your-password",
-       "MCP_DEBUG": "true"
-     }
-   }
+### Log Files
+
+The server creates log files in the following locations:
+
+- Main log: `simplenote_mcp/logs/server.log`
+- Legacy log (for debugging): `/tmp/simplenote_mcp_debug.log`
+
+Set `LOG_LEVEL=DEBUG` for more detailed logs.
+
+### Diagnostic Tools
+
+The project includes several diagnostic tools:
+
+1. **verify_tools.sh** - Checks tool registration:
+   ```bash
+   ./simplenote_mcp/scripts/verify_tools.sh
    ```
-   Note the `env` section is important to pass environment variables to the server. Adding `"MCP_DEBUG": "true"` enables additional debug logging.
 
-### Verifying Tool Registration
+2. **test_tool_visibility.sh** - Tests if Claude sees the tools:
+   ```bash
+   ./simplenote_mcp/scripts/test_tool_visibility.sh
+   ```
 
-To verify that the Simplenote tools are properly registered with Claude Desktop:
-
-```bash
-./simplenote_mcp/scripts/verify_tools.sh
-```
-
-This script checks if:
-- The Simplenote MCP server is running
-- The tools are being properly registered
-- What specific tools are available
-
-If successful, you should see output like:
-
-```
-Checking if Simplenote MCP server is running...
-✓ Simplenote MCP server is running
-
-Checking Simplenote MCP server logs for tool registration...
-✓ Tools are being properly returned by the server
-✓ Registered tools: create_note, update_note, delete_note, search_notes
-
-Simplenote MCP server appears to be working correctly.
-Open Claude Desktop and check if the Simplenote tools are available using:
-
-./simplenote_mcp/scripts/test_tool_visibility.sh
-```
-
-This script will open Claude Desktop and copy a test prompt to your clipboard that asks Claude to list available tools and specifically check for Simplenote tools.
+3. **monitor_server.py** - Monitors MCP protocol messages:
+   ```bash
+   python simplenote_mcp/tests/monitor_server.py
+   ```
+   
+4. **test_mcp_client.py** - Tests basic connectivity:
+   ```bash
+   python simplenote_mcp/tests/test_mcp_client.py
+   ```
 
 ## Contributing
 
