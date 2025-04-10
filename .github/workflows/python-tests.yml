@@ -45,7 +45,7 @@ jobs:
     - name: Test with pytest
       run: |
         . .venv/bin/activate
-        pytest --cov=simplenote_mcp tests/
+        pytest --cov=simplenote_mcp --cov-report=xml tests/
       env:
         SIMPLENOTE_EMAIL: "test@example.com"
         SIMPLENOTE_PASSWORD: "test_password"
@@ -53,4 +53,6 @@ jobs:
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
       with:
+        file: ./coverage.xml
         fail_ci_if_error: false
+        verbose: true

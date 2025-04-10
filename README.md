@@ -6,7 +6,7 @@ A simple MCP (Model Context Protocol) server that connects to Simplenote as a pr
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.13-blue)](./setup.py)
 [![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
-[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
+[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
 
 ## Project Structure
 
