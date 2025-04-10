@@ -12,6 +12,16 @@ if [ ! -f "$LOG_FILE" ]; then
   touch "$LOG_FILE"
 fi
 
-echo "Watching Simplenote MCP server logs at $LOG_FILE (Ctrl+C to exit)..."
+echo "Watching Simplenote MCP server logs (Ctrl+C to exit)..."
+echo "New log file: $LOG_FILE"
+echo "Legacy log file: $LEGACY_LOG_FILE"
 echo "===================="
-tail -f "$LOG_FILE"
+
+# Check which log file has content
+if [ -s "$LOG_FILE" ]; then
+  echo "Displaying new log file..."
+  tail -f "$LOG_FILE"
+else
+  echo "New log file is empty, displaying legacy log file..."
+  tail -f "$LEGACY_LOG_FILE"
+fi
