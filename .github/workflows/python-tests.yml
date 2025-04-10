@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.13']
+        python-version: ['3.11']
       fail-fast: false
 
     steps:
@@ -29,7 +29,7 @@ jobs:
         uv venv
         . .venv/bin/activate
         uv pip install -e .
-        uv pip install pytest pytest-cov ruff mypy
+        uv pip install pytest pytest-cov pytest-asyncio ruff mypy
         
     - name: Lint with ruff
       run: |
@@ -45,10 +45,15 @@ jobs:
     - name: Test with pytest
       run: |
         . .venv/bin/activate
-        pytest --cov=simplenote_mcp --cov-report=xml tests/
+        pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term tests/
       env:
         SIMPLENOTE_EMAIL: "test@example.com"
         SIMPLENOTE_PASSWORD: "test_password"
+        
+    - name: List coverage files
+      run: |
+        ls -la
+        ls -la coverage.xml || echo "coverage.xml not found"
         
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
