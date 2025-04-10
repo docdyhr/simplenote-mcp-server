@@ -24,18 +24,26 @@ fi
 
 echo ""
 echo "Checking Simplenote MCP server logs for tool registration..."
-if grep -q "Returning .* tools: create_note" "$LOG_FILE"; then
+# Check both new and legacy log locations
+if grep -q "Returning .* tools: create_note" "$LOG_FILE" || grep -q "Returning .* tools: create_note" "$LEGACY_LOG_FILE"; then
     echo -e "${GREEN}✓ Tools are being properly returned by the server${NC}"
     
-    # Extract the list of tools
-    TOOLS=$(grep "Returning .* tools:" "$LOG_FILE" | tail -1 | sed 's/.*Returning .* tools: //')
+    # Extract the list of tools (check both log locations)
+    if grep -q "Returning .* tools:" "$LOG_FILE"; then
+        TOOLS=$(grep "Returning .* tools:" "$LOG_FILE" | tail -1 | sed 's/.*Returning .* tools: //')
+    else
+        TOOLS=$(grep "Returning .* tools:" "$LEGACY_LOG_FILE" | tail -1 | sed 's/.*Returning .* tools: //')
+    fi
     echo -e "${GREEN}✓ Registered tools: ${TOOLS}${NC}"
 else
     echo -e "${RED}✗ Tools are NOT being properly registered${NC}"
     
-    # Check for errors
+    # Check for errors (in both log locations)
     if grep -q "Error listing tools" "$LOG_FILE"; then
         ERROR=$(grep "Error listing tools" "$LOG_FILE" | tail -1)
+        echo -e "${RED}✗ Error found: ${ERROR}${NC}"
+    elif grep -q "Error listing tools" "$LEGACY_LOG_FILE"; then
+        ERROR=$(grep "Error listing tools" "$LEGACY_LOG_FILE" | tail -1)
         echo -e "${RED}✗ Error found: ${ERROR}${NC}"
     fi
     
