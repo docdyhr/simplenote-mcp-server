@@ -1,15 +1,22 @@
 codecov:
   require_ci_to_pass: yes
+  notify:
+    after_n_builds: 1
+    wait_for_ci: yes
 
 coverage:
   precision: 2
   round: down
   range: "70...100"
-
   status:
-    project: yes
-    patch: yes
-    changes: no
+    project:
+      default:
+        target: auto
+        threshold: 0%
+    patch:
+      default:
+        target: auto
+        threshold: 0%
 
 parsers:
   gcov:
