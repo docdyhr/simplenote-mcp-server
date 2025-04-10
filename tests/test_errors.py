@@ -1,6 +1,5 @@
 """Unit tests for error handling components."""
 
-import pytest
 from simplenote_mcp.server.errors import (
     AuthenticationError,
     ErrorCategory,
@@ -38,7 +37,7 @@ class TestServerError:
             details={"resource_id": "note123"},
         )
         error_dict = error.to_dict()
-        
+
         assert error_dict["success"] is False
         assert error_dict["error"]["message"] == "Resource not found"
         assert error_dict["error"]["category"] == "not_found"
@@ -90,7 +89,7 @@ class TestHandleException:
         """Test handling ServerError instances."""
         original = ValidationError("Original error")
         result = handle_exception(original, "testing")
-        
+
         # Should return the original error unchanged
         assert result is original
 
@@ -98,7 +97,7 @@ class TestHandleException:
         """Test handling ValueError."""
         original = ValueError("Missing value")
         result = handle_exception(original, "validating input")
-        
+
         assert isinstance(result, ValidationError)
         assert "validating input" in str(result)
         assert "Missing value" in str(result)
@@ -107,7 +106,7 @@ class TestHandleException:
         """Test handling KeyError."""
         original = KeyError("note_id")
         result = handle_exception(original, "accessing note")
-        
+
         assert isinstance(result, ValidationError)
         assert "accessing note" in str(result)
         assert "note_id" in str(result)
@@ -116,7 +115,7 @@ class TestHandleException:
         """Test handling ConnectionError."""
         original = ConnectionError("Failed to connect")
         result = handle_exception(original, "calling API")
-        
+
         assert isinstance(result, NetworkError)
         assert "calling API" in str(result)
         assert "Failed to connect" in str(result)
@@ -125,7 +124,7 @@ class TestHandleException:
         """Test handling unknown error types."""
         original = Exception("Unknown error")
         result = handle_exception(original, "processing request")
-        
+
         assert isinstance(result, ServerError)
         assert result.category == ErrorCategory.INTERNAL
         assert "processing request" in str(result)

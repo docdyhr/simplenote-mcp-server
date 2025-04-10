@@ -131,16 +131,16 @@ async def handle_list_resources(tag: Optional[str] = None, limit: Optional[int] 
 
         # Use the cache to get notes with filtering
         config = get_config()
-        
+
         # Use provided limit or fall back to default
         actual_limit = limit if limit is not None else config.default_resource_limit
-        
+
         # Apply tag filtering if specified
         notes = note_cache.get_all_notes(limit=actual_limit, tag_filter=tag)
-        
-        logger.debug(f"Listing resources, found {len(notes)} notes" + 
+
+        logger.debug(f"Listing resources, found {len(notes)} notes" +
                     (f" with tag '{tag}'" if tag else ""))
-                    
+
         return [
             types.Resource(
                 uri=f"simplenote://note/{note['key']}",
@@ -849,7 +849,7 @@ def run_main() -> None:
     try:
         # Import the version
         from simplenote_mcp import __version__
-        
+
         # Configure logging from environment variables
         config = get_config()
         logger.info(f"Starting Simplenote MCP Server v{__version__}")

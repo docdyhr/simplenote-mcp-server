@@ -23,7 +23,7 @@ class LogLevel(Enum):
 class Config:
     """Configuration for the Simplenote MCP server."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         # Simplenote credentials
         self.simplenote_email: Optional[str] = os.environ.get("SIMPLENOTE_EMAIL") or os.environ.get("SIMPLENOTE_USERNAME")
         self.simplenote_password: Optional[str] = os.environ.get("SIMPLENOTE_PASSWORD")

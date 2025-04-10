@@ -1,13 +1,13 @@
 """Unit tests for Simplenote API interaction and handlers."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import mcp.types as types
 import pytest
+
 from simplenote_mcp.server.errors import (
     AuthenticationError,
-    NetworkError,
     ResourceNotFoundError,
     ValidationError,
 )
@@ -29,12 +29,12 @@ class TestGetSimpleNoteClient:
             mock_config = MagicMock()
             mock_config.has_credentials = False
             mock_get_config.return_value = mock_config
-            
+
             # Reset the client
             with patch("simplenote_mcp.server.server.simplenote_client", None):
                 with pytest.raises(AuthenticationError) as exc_info:
                     get_simplenote_client()
-                    
+
                 assert "SIMPLENOTE_EMAIL" in str(exc_info.value)
                 assert "SIMPLENOTE_PASSWORD" in str(exc_info.value)
 
@@ -48,15 +48,15 @@ class TestGetSimpleNoteClient:
             mock_config.simplenote_email = "test@example.com"
             mock_config.simplenote_password = "password"
             mock_get_config.return_value = mock_config
-            
+
             # Configure Simplenote mock
             mock_client = MagicMock()
             mock_simplenote.return_value = mock_client
-            
+
             # Reset the client
             with patch("simplenote_mcp.server.server.simplenote_client", None):
                 client = get_simplenote_client()
-                
+
                 assert client == mock_client
                 mock_simplenote.assert_called_once_with("test@example.com", "password")
 
@@ -70,15 +70,15 @@ class TestGetSimpleNoteClient:
             mock_config.simplenote_email = "test@example.com"
             mock_config.simplenote_password = "password"
             mock_get_config.return_value = mock_config
-            
+
             # Configure Simplenote mock
             mock_client = MagicMock()
             mock_simplenote.return_value = mock_client
-            
+
             # Use an existing client
             with patch("simplenote_mcp.server.server.simplenote_client", mock_client):
                 client = get_simplenote_client()
-                
+
                 assert client == mock_client
                 # Should not create a new client
                 mock_simplenote.assert_not_called()
@@ -99,15 +99,15 @@ class TestHandleListResources:
                 {"key": "note2", "content": "Test note 2", "modifydate": "2025-04-10"}
             ]
             mock_cache.get_all_notes.return_value = mock_notes
-            
+
             # Configure mock config
             mock_config = MagicMock()
             mock_config.default_resource_limit = 100
             mock_get_config.return_value = mock_config
-            
+
             # Call handler
             resources = await handle_list_resources()
-            
+
             # Verify results
             assert len(resources) == 2
             # Pydantic models may not compare equal to strings directly
@@ -116,10 +116,10 @@ class TestHandleListResources:
             assert resources[0].meta["tags"] == ["test"]
             assert str(resources[1].uri) == "simplenote://note/note2"
             assert resources[1].description == "Note from 2025-04-10"
-            
+
             # Verify cache call
             mock_cache.get_all_notes.assert_called_with(limit=100, tag_filter=None)
-            
+
     async def test_list_resources_with_tag_filter(self):
         """Test listing resources with tag filter."""
         with patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
@@ -130,24 +130,24 @@ class TestHandleListResources:
                 {"key": "note1", "content": "Test note 1", "tags": ["test"]}
             ]
             mock_cache.get_all_notes.return_value = mock_filtered_notes
-            
+
             # Configure mock config
             mock_config = MagicMock()
             mock_config.default_resource_limit = 100
             mock_get_config.return_value = mock_config
-            
+
             # Call handler with tag filter
             resources = await handle_list_resources(tag="test")
-            
+
             # Verify results
             assert len(resources) == 1
             assert str(resources[0].uri) == "simplenote://note/note1"
             assert resources[0].name == "Test note 1"
             assert resources[0].meta["tags"] == ["test"]
-            
+
             # Verify cache call with tag filter
             mock_cache.get_all_notes.assert_called_with(limit=100, tag_filter="test")
-            
+
     async def test_list_resources_with_custom_limit(self):
         """Test listing resources with custom limit."""
         with patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
@@ -158,18 +158,18 @@ class TestHandleListResources:
                 {"key": "note1", "content": "Test note 1", "tags": ["test"]}
             ]
             mock_cache.get_all_notes.return_value = mock_notes
-            
+
             # Configure mock config
             mock_config = MagicMock()
             mock_config.default_resource_limit = 100
             mock_get_config.return_value = mock_config
-            
+
             # Call handler with custom limit
             resources = await handle_list_resources(limit=10)
-            
+
             # Verify results
             assert len(resources) == 1
-            
+
             # Verify cache call with custom limit
             mock_cache.get_all_notes.assert_called_with(limit=10, tag_filter=None)
 
@@ -182,15 +182,15 @@ class TestHandleListResources:
             mock_cache.is_initialized = False
             mock_notes = [{"key": "note1", "content": "Test note 1"}]
             mock_cache.get_all_notes.return_value = mock_notes
-            
+
             # Configure mock config
             mock_config = MagicMock()
             mock_config.default_resource_limit = 100
             mock_get_config.return_value = mock_config
-            
+
             # Call handler
             resources = await handle_list_resources()
-            
+
             # Verify initialization and results
             mock_initialize.assert_called_once()
             assert len(resources) == 1
@@ -204,15 +204,15 @@ class TestHandleListResources:
             # Configure cache to raise error
             mock_cache.is_initialized = True
             mock_cache.get_all_notes.side_effect = Exception("Test error")
-            
+
             # Configure mock config
             mock_config = MagicMock()
             mock_config.default_resource_limit = 100
             mock_get_config.return_value = mock_config
-            
+
             # Call handler
             resources = await handle_list_resources()
-            
+
             # Verify error handling
             assert resources == []  # Return empty list on error
 
@@ -235,10 +235,10 @@ class TestHandleReadResource:
                 "createdate": "2025-04-01"
             }
             mock_cache.get_note.return_value = mock_note
-            
+
             # Call handler
             result = await handle_read_resource("simplenote://note/note123")
-            
+
             # Verify results
             assert isinstance(result, types.ReadResourceResult)
             # Check the contents field
@@ -246,12 +246,12 @@ class TestHandleReadResource:
             content = result.contents[0]
             assert isinstance(content, types.TextResourceContents)
             assert content.text == "Note content"
-            
+
             # Verify metadata
             assert content.meta["tags"] == ["test"]
             assert content.meta["modifydate"] == "2025-04-10"
             assert str(content.uri) == "simplenote://note/note123"
-            
+
             # Verify cache was used
             mock_cache.get_note.assert_called_once_with("note123")
             mock_get_client.assert_not_called()
@@ -263,7 +263,7 @@ class TestHandleReadResource:
             # Configure cache miss
             mock_cache.is_initialized = True
             mock_cache.get_note.side_effect = ResourceNotFoundError("Not in cache")
-            
+
             # Configure API response
             mock_client = MagicMock()
             mock_client.get_note.return_value = (
@@ -275,10 +275,10 @@ class TestHandleReadResource:
                 0
             )
             mock_get_client.return_value = mock_client
-            
+
             # Call handler
             result = await handle_read_resource("simplenote://note/note123")
-            
+
             # Verify results
             assert len(result.contents) == 1
             content = result.contents[0]
@@ -286,7 +286,7 @@ class TestHandleReadResource:
             assert content.text == "API content"
             assert content.meta["tags"] == ["api"]
             assert str(content.uri) == "simplenote://note/note123"
-            
+
             # Verify API was called
             mock_cache.get_note.assert_called_once()
             mock_client.get_note.assert_called_once_with("note123")
@@ -295,7 +295,7 @@ class TestHandleReadResource:
         """Test error when URI is invalid."""
         with pytest.raises(ValidationError) as exc_info:
             await handle_read_resource("invalid://uri")
-        
+
         assert "Invalid Simplenote URI" in str(exc_info.value)
 
     async def test_read_resource_not_found(self):
@@ -305,16 +305,16 @@ class TestHandleReadResource:
             # Configure cache miss
             mock_cache.is_initialized = True
             mock_cache.get_note.side_effect = ResourceNotFoundError("Not in cache")
-            
+
             # Configure API miss
             mock_client = MagicMock()
             mock_client.get_note.return_value = (None, 1)  # Error status
             mock_get_client.return_value = mock_client
-            
+
             # Verify error
             with pytest.raises(ResourceNotFoundError) as exc_info:
                 await handle_read_resource("simplenote://note/missing")
-            
+
             assert "Failed to get note" in str(exc_info.value)
 
 
@@ -334,25 +334,25 @@ class TestHandleCallTool:
                 0
             )
             mock_get_client.return_value = mock_client
-            
+
             # Configure cache
             mock_cache.is_initialized = True
-            
+
             # Call handler
             result = await handle_call_tool("create_note", {"content": "New content", "tags": "test,important"})
-            
+
             # Verify results
             assert len(result) == 1
             response = json.loads(result[0].text)
             assert response["success"] is True
             assert response["note_id"] == "new_note"
             assert response["tags"] == ["test", "important"]
-            
+
             # Verify API calls
             mock_client.add_note.assert_called_once()
             assert mock_client.add_note.call_args[0][0]["content"] == "New content"
             assert mock_client.add_note.call_args[0][0]["tags"] == ["test", "important"]
-            
+
             # Verify cache update
             mock_cache.update_cache_after_create.assert_called_once()
 
@@ -360,7 +360,7 @@ class TestHandleCallTool:
         """Test validation error when creating a note."""
         # Call handler with missing content
         result = await handle_call_tool("create_note", {"tags": "test"})
-        
+
         # Verify error response
         response = json.loads(result[0].text)
         assert response["success"] is False
@@ -385,28 +385,28 @@ class TestHandleCallTool:
                 0
             )
             mock_get_client.return_value = mock_client
-            
+
             # Configure cache
             mock_cache.is_initialized = True
             mock_cache.get_note.side_effect = ResourceNotFoundError("Not in cache")
-            
+
             # Call handler
             result = await handle_call_tool("update_note", {
                 "note_id": "note123",
                 "content": "Updated content",
                 "tags": "test"
             })
-            
+
             # Verify results
             response = json.loads(result[0].text)
             assert response["success"] is True
             assert response["note_id"] == "note123"
             assert response["tags"] == ["test"]
-            
+
             # Verify API calls
             mock_client.get_note.assert_called_once_with("note123")
             mock_client.update_note.assert_called_once()
-            
+
             # Verify cache update
             mock_cache.update_cache_after_update.assert_called_once()
 
@@ -419,21 +419,21 @@ class TestHandleCallTool:
             mock_client = MagicMock()
             mock_client.trash_note.return_value = 0  # Success
             mock_get_client.return_value = mock_client
-            
+
             # Configure cache
             mock_cache.is_initialized = True
-            
+
             # Call handler
             result = await handle_call_tool("delete_note", {"note_id": "note123"})
-            
+
             # Verify results
             response = json.loads(result[0].text)
             assert response["success"] is True
             assert response["note_id"] == "note123"
-            
+
             # Verify API calls
             mock_client.trash_note.assert_called_once_with("note123")
-            
+
             # Verify cache update
             mock_cache.update_cache_after_delete.assert_called_once_with("note123")
 
@@ -448,10 +448,10 @@ class TestHandleCallTool:
                 {"key": "note1", "content": "Test result 1", "tags": ["test"]},
                 {"key": "note2", "content": "Test result 2", "tags": ["test"]}
             ]
-            
+
             # Call handler
             result = await handle_call_tool("search_notes", {"query": "test", "limit": "10"})
-            
+
             # Verify results
             response = json.loads(result[0].text)
             assert response["success"] is True
@@ -460,14 +460,14 @@ class TestHandleCallTool:
             assert len(response["results"]) == 2
             assert response["results"][0]["id"] == "note1"
             assert "snippet" in response["results"][0]
-            
+
             # Verify cache was used
             mock_cache.search_notes.assert_called_once_with("test", limit=10)
 
     async def test_unknown_tool(self):
         """Test error for unknown tool."""
         result = await handle_call_tool("unknown_tool", {})
-        
+
         # Verify error response
         response = json.loads(result[0].text)
         assert response["success"] is False

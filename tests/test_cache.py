@@ -1,10 +1,10 @@
 """Unit tests for the NoteCache and BackgroundSync classes."""
 
 import asyncio
-import time
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+
 from simplenote_mcp.server.cache import BackgroundSync, NoteCache
 from simplenote_mcp.server.errors import NetworkError, ResourceNotFoundError
 
@@ -20,8 +20,8 @@ def mock_note_data():
             "modifydate": "2025-01-01T12:00:00Z",
         },
         {
-            "key": "note2", 
-            "content": "Test note 2", 
+            "key": "note2",
+            "content": "Test note 2",
             "tags": ["test"],
             "modifydate": "2025-01-02T12:00:00Z",
         },
@@ -60,7 +60,7 @@ class TestNoteCache:
         assert cache.cache_size == 3
         assert sorted(cache.all_tags) == sorted(["test", "important", "archived"])
         assert cache._last_index_mark == "test_mark"
-        
+
         # Check that get_note_list was called twice
         assert mock_simplenote_client.get_note_list.call_count == 2
 
@@ -135,7 +135,7 @@ class TestNoteCache:
 
         # Get note from cache
         note = cache.get_note("note1")
-        
+
         # Verify note was retrieved from cache without API call
         assert note == mock_note_data[0]
         mock_simplenote_client.get_note.assert_not_called()
@@ -147,18 +147,18 @@ class TestNoteCache:
             {"key": "missing_note", "content": "Retrieved from API"},
             0
         )
-        
+
         # Create cache without the note
         cache = NoteCache(mock_simplenote_client)
         cache._initialized = True
 
         # Get note not in cache
         note = cache.get_note("missing_note")
-        
+
         # Verify API was called
         assert note["content"] == "Retrieved from API"
         mock_simplenote_client.get_note.assert_called_once_with("missing_note")
-        
+
         # Check the note was added to cache
         assert "missing_note" in cache._notes
 
@@ -166,7 +166,7 @@ class TestNoteCache:
         """Test get_note when note doesn't exist."""
         # Mock API with not found error
         mock_simplenote_client.get_note.return_value = (None, 1)  # Error status
-        
+
         # Create cache
         cache = NoteCache(mock_simplenote_client)
         cache._initialized = True
@@ -185,10 +185,10 @@ class TestNoteCache:
 
         # Search for notes
         results = cache.search_notes("test")
-        
+
         # Verify search results (all notes contain "test")
         assert len(results) == 3
-        
+
         # Search for a more specific term
         results = cache.search_notes("note 1")
         assert len(results) == 1
@@ -209,16 +209,16 @@ class TestNoteCache:
         # Get all notes
         notes = cache.get_all_notes()
         assert len(notes) == 3
-        
+
         # Get notes with tag filter
         notes = cache.get_all_notes(tag_filter="test")
         assert len(notes) == 2
         assert all("test" in note.get("tags", []) for note in notes)
-        
+
         # Get notes with limit
         notes = cache.get_all_notes(limit=1)
         assert len(notes) == 1
-        
+
         # Check sorting (newest first)
         notes = cache.get_all_notes()
         assert notes[0]["key"] == "note3"  # Most recent by modifydate
@@ -229,20 +229,20 @@ class TestNoteCache:
         # Create cache
         cache = NoteCache(mock_simplenote_client)
         cache._initialized = True
-        
+
         # Test create
         new_note = {"key": "new_note", "content": "New note", "tags": ["new"]}
         cache.update_cache_after_create(new_note)
         assert "new_note" in cache._notes
         assert "new" in cache.all_tags
-        
+
         # Test update
         updated_note = {"key": "new_note", "content": "Updated note", "tags": ["updated"]}
         cache.update_cache_after_update(updated_note)
         assert cache._notes["new_note"]["content"] == "Updated note"
         assert "updated" in cache.all_tags
         assert "new" not in cache.all_tags
-        
+
         # Test delete
         cache.update_cache_after_delete("new_note")
         assert "new_note" not in cache._notes
@@ -258,15 +258,15 @@ class TestBackgroundSync:
         # Create a mock cache
         mock_cache = MagicMock()
         mock_cache.sync = AsyncMock(return_value=0)
-        
+
         # Create background sync with the mock
         bg_sync = BackgroundSync(mock_cache)
-        
+
         # Test starting
         await bg_sync.start()
         assert bg_sync._running
         assert bg_sync._task is not None
-        
+
         # Test stopping
         await bg_sync.stop()
         assert not bg_sync._running
@@ -278,26 +278,26 @@ class TestBackgroundSync:
         # Create a mock cache
         mock_cache = MagicMock()
         mock_cache.sync = AsyncMock(return_value=5)
-        
+
         # Create background sync with the mock
         bg_sync = BackgroundSync(mock_cache)
-        
+
         # Override the sync_loop method to directly test it
         async def test_sync():
             await mock_cache.sync()
             return 5
-            
+
         bg_sync._sync_loop = test_sync
-        
+
         # Start and call sync once
         await bg_sync.start()
-        
+
         # Wait a moment
         await asyncio.sleep(0.1)
-        
+
         # Stop the task
         await bg_sync.stop()
-                
+
         # Verify sync was called
         mock_cache.sync.assert_called_once()
 
@@ -307,11 +307,11 @@ class TestBackgroundSync:
         # Create a mock cache that raises an exception
         mock_cache = MagicMock()
         mock_cache.sync = AsyncMock(side_effect=Exception("Sync error"))
-        
+
         # For error handling test, we'll manually call the method that would
         # handle errors, rather than testing the full loop
         bg_sync = BackgroundSync(mock_cache)
-        
+
         # Create a custom error-handling loop for testing
         async def error_test_loop():
             try:
@@ -320,18 +320,18 @@ class TestBackgroundSync:
                 # This should catch the error without crashing
                 pass
             return True
-            
+
         # Run the test loop
         bg_sync._sync_loop = error_test_loop
-        
+
         # Start the sync
         await bg_sync.start()
-        
-        # Wait a moment 
+
+        # Wait a moment
         await asyncio.sleep(0.1)
-        
+
         # Stop the task
         await bg_sync.stop()
-                
+
         # Verify sync was called despite the error
         mock_cache.sync.assert_called_once()

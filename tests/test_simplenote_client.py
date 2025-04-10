@@ -19,19 +19,19 @@ def test_simplenote_client_creation(simplenote_env_vars):
         mock_config.simplenote_email = "test@example.com"
         mock_config.simplenote_password = "testpass"
         mock_get_config.return_value = mock_config
-        
+
         # Setup mock client
         mock_client = MagicMock()
         mock_simplenote.return_value = mock_client
-        
+
         # Reset client
         import sys
         sys.modules['simplenote_mcp.server.server'].simplenote_client = None
-        
+
         # Get client
         client = get_simplenote_client()
         assert client == mock_client
-        
+
         # Verify client was created with credentials from environment
         mock_simplenote.assert_called_once_with("test@example.com", "testpass")
 
@@ -46,9 +46,9 @@ def test_missing_credentials():
         mock_config = MagicMock()
         mock_config.has_credentials = False
         mock_get_config.return_value = mock_config
-        
+
         with pytest.raises(AuthenticationError) as excinfo:
             get_simplenote_client()
-            
+
         assert "SIMPLENOTE_EMAIL" in str(excinfo.value)
         assert "SIMPLENOTE_PASSWORD" in str(excinfo.value)
