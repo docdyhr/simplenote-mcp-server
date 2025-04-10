@@ -5,6 +5,7 @@ import os
 from unittest.mock import MagicMock
 
 import pytest
+import pytest_asyncio
 
 
 @pytest.fixture
@@ -68,7 +69,7 @@ def simplenote_env_vars():
         del os.environ["SIMPLENOTE_PASSWORD"]
 
 
-@pytest.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True)
 async def cleanup_asyncio_tasks():
     """Clean up all pending tasks after each test."""
     # Run the test
