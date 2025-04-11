@@ -16,6 +16,9 @@ MONITORING_LOG_FILE="$LOG_DIR/monitoring.log"
 LEGACY_LOG_FILE="/tmp/simplenote_mcp_server_debug.log"
 LEGACY_MONITORING_LOG_FILE="/tmp/simplenote_mcp_server_monitoring.log"
 
+# Process management
+PID_FILE="/tmp/simplenote_mcp_server.pid"
+
 # Ensure log directory exists
 mkdir -p "$LOG_DIR"
 

@@ -17,6 +17,8 @@ simplenote_mcp/            # Main package
 - **Install**: `uv pip install -e .` or `pip install -e .`
 - **Run server**: `python simplenote_mcp_server.py` or `simplenote-mcp`
 - **Restart Claude and server**: `./simplenote_mcp/scripts/restart_claude.sh`
+- **Clean up server processes**: `./simplenote_mcp/scripts/cleanup_servers.sh`
+- **Check server status**: `./simplenote_mcp/scripts/check_server_pid.sh`
 - **Watch logs**: `./simplenote_mcp/scripts/watch_logs.sh`
 - **Verify tools**: `./simplenote_mcp/scripts/verify_tools.sh`
 - **Test tool visibility**: `./simplenote_mcp/scripts/test_tool_visibility.sh`
@@ -39,6 +41,7 @@ The Simplenote MCP server provides:
 1. **Tool registration issues**: Run `./simplenote_mcp/scripts/verify_tools.sh` and check logs with `./simplenote_mcp/scripts/watch_logs.sh`
 2. **Authentication issues**: Check environment variables or Claude Desktop config
 3. **API format issues**: The MCP library uses JSON Schema format with `inputSchema` property
+4. **Multiple server instances**: If multiple server instances are running and causing issues, use `./simplenote_mcp/scripts/cleanup_servers.sh` to terminate them gracefully
 
 ## Important Code Sections
 - **Tool definition** (in handle_list_tools): Defines tools using JSON Schema format

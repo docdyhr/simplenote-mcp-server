@@ -1,11 +1,15 @@
 # simplenote_mcp/server/server.py
 
 import asyncio
+import atexit
 import contextlib
 import json
 import os
+import signal
 import sys
+import tempfile
 import time
+from pathlib import Path
 from typing import Dict, List, Optional
 
 import mcp.server.stdio
@@ -77,9 +81,49 @@ def get_simplenote_client() -> Simplenote:
     return simplenote_client
 
 
+# PID file for process management
+PID_FILE_PATH = Path(tempfile.gettempdir()) / "simplenote_mcp_server.pid"
+
 # Initialize note cache and background sync
 note_cache: Optional[NoteCache] = None
 background_sync: Optional[BackgroundSync] = None
+
+
+def write_pid_file() -> None:
+    """Write PID to file for process management."""
+    try:
+        pid = os.getpid()
+        PID_FILE_PATH.write_text(str(pid))
+        logger.info(f"PID {pid} written to {PID_FILE_PATH}")
+    except Exception as e:
+        logger.error(f"Error writing PID file: {str(e)}", exc_info=True)
+
+
+def cleanup_pid_file() -> None:
+    """Remove PID file on exit."""
+    try:
+        if PID_FILE_PATH.exists():
+            PID_FILE_PATH.unlink()
+            logger.info(f"Removed PID file: {PID_FILE_PATH}")
+    except Exception as e:
+        logger.error(f"Error removing PID file: {str(e)}", exc_info=True)
+
+
+def setup_signal_handlers() -> None:
+    """Set up signal handlers for graceful shutdown."""
+    def signal_handler(sig: int, _: object) -> None:  # Frame argument is unused but required by signal API
+        """Handle termination signals."""
+        signal_name = signal.Signals(sig).name
+        logger.info(f"Received {signal_name} signal, shutting down...")
+        # Cleanup will be handled by atexit
+        sys.exit(0)
+    
+    # Register handlers for common termination signals
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    # Register cleanup function to run at exit
+    atexit.register(cleanup_pid_file)
 
 
 async def initialize_cache() -> None:
@@ -873,11 +917,17 @@ def run_main() -> None:
         logger.info(f"Sync interval: {config.sync_interval_seconds}s")
         logger.info(f"Log level: {config.log_level.value}")
 
+        # Set up process management
+        setup_signal_handlers()
+        write_pid_file()
+        logger.info("Process management initialized")
+
         # Run the async event loop
         asyncio.run(run())
 
     except Exception as e:
         logger.critical(f"Critical error in MCP server: {str(e)}", exc_info=True)
+        cleanup_pid_file()  # Ensure PID file is cleaned up even on error
         sys.exit(1)
 
 
