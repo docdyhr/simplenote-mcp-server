@@ -10,8 +10,9 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from simplenote_mcp.server.logging import logger
-from simplenote_mcp.server.server import handle_list_resources, initialize_cache
+# Now import the modules
+from simplenote_mcp.server.logging import logger  # noqa: E402
+from simplenote_mcp.server.server import handle_list_resources, initialize_cache  # noqa: E402
 
 
 async def main():

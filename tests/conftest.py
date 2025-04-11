@@ -1,6 +1,7 @@
 """Configuration for pytest."""
 
 import asyncio
+import contextlib
 import os
 from unittest.mock import MagicMock
 
@@ -81,7 +82,5 @@ async def cleanup_asyncio_tasks():
     
     for task in tasks:
         task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError, asyncio.TimeoutError):
             await asyncio.wait_for(task, timeout=0.5)
-        except (asyncio.CancelledError, asyncio.TimeoutError):
-            pass

@@ -1,6 +1,7 @@
 """Unit tests for the NoteCache and BackgroundSync classes."""
 
 import asyncio
+import contextlib
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -314,11 +315,8 @@ class TestBackgroundSync:
 
         # Create a custom error-handling loop for testing
         async def error_test_loop():
-            try:
+            with contextlib.suppress(Exception):
                 await mock_cache.sync()
-            except Exception:
-                # This should catch the error without crashing
-                pass
             return True
 
         # Run the test loop

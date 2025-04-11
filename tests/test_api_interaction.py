@@ -200,7 +200,7 @@ class TestHandleListResources:
         """Test error handling in list_resources."""
         with patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
              patch("simplenote_mcp.server.server.get_config") as mock_get_config, \
-             patch("simplenote_mcp.server.server.initialize_cache") as mock_initialize:
+             patch("simplenote_mcp.server.server.initialize_cache"):
             # Configure cache to raise error
             mock_cache.is_initialized = True
             mock_cache.get_all_notes.side_effect = Exception("Test error")
@@ -326,7 +326,7 @@ class TestHandleCallTool:
         """Test creating a note."""
         with patch("simplenote_mcp.server.server.get_simplenote_client") as mock_get_client, \
              patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
-             patch("simplenote_mcp.server.server.initialize_cache") as mock_initialize:
+             patch("simplenote_mcp.server.server.initialize_cache"):
             # Configure client mock
             mock_client = MagicMock()
             mock_client.add_note.return_value = (
@@ -371,7 +371,7 @@ class TestHandleCallTool:
         """Test updating a note."""
         with patch("simplenote_mcp.server.server.get_simplenote_client") as mock_get_client, \
              patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
-             patch("simplenote_mcp.server.server.initialize_cache") as mock_initialize:
+             patch("simplenote_mcp.server.server.initialize_cache"):
             # Configure client mock
             mock_client = MagicMock()
             # Mock getting existing note
@@ -414,7 +414,7 @@ class TestHandleCallTool:
         """Test deleting a note."""
         with patch("simplenote_mcp.server.server.get_simplenote_client") as mock_get_client, \
              patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
-             patch("simplenote_mcp.server.server.initialize_cache") as mock_initialize:
+             patch("simplenote_mcp.server.server.initialize_cache"):
             # Configure client mock
             mock_client = MagicMock()
             mock_client.trash_note.return_value = 0  # Success
@@ -439,9 +439,9 @@ class TestHandleCallTool:
 
     async def test_search_notes(self):
         """Test searching notes."""
-        with patch("simplenote_mcp.server.server.get_simplenote_client") as mock_get_client, \
+        with patch("simplenote_mcp.server.server.get_simplenote_client"), \
              patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
-             patch("simplenote_mcp.server.server.initialize_cache") as mock_initialize:
+             patch("simplenote_mcp.server.server.initialize_cache"):
             # Configure cache
             mock_cache.is_initialized = True
             mock_cache.search_notes.return_value = [
@@ -468,7 +468,7 @@ class TestHandleCallTool:
         """Test getting a note by ID."""
         with patch("simplenote_mcp.server.server.get_simplenote_client") as mock_get_client, \
              patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
-             patch("simplenote_mcp.server.server.initialize_cache") as mock_initialize:
+             patch("simplenote_mcp.server.server.initialize_cache"):
             # Configure client mock
             mock_client = MagicMock()
             mock_client.get_note.return_value = (
