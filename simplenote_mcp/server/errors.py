@@ -26,7 +26,7 @@ class ErrorSeverity(Enum):
 
 class ServerError(Exception):
     """Base exception class for Simplenote MCP server errors.
-    
+
     This provides consistent error handling with categories, severity levels,
     and enhanced logging.
     """
@@ -41,7 +41,7 @@ class ServerError(Exception):
         details: Optional[Dict[str, Any]] = None
     ):
         """Initialize a new ServerError.
-        
+
         Args:
             message: Human-readable error message
             category: Error category for classification
@@ -155,11 +155,11 @@ class InternalError(ServerError):
 
 def handle_exception(e: Exception, context: str = "") -> ServerError:
     """Convert standard exceptions to appropriate ServerError types.
-    
+
     Args:
         e: The exception to handle
         context: Optional context string to include in the error message
-    
+
     Returns:
         An appropriate ServerError instance
     """
@@ -181,7 +181,7 @@ def handle_exception(e: Exception, context: str = "") -> ServerError:
 
     for exc_type, error_class in error_mapping.items():
         if isinstance(e, exc_type):
-            if exc_type == PermissionError:
+            if exc_type is PermissionError:
                 return error_class(
                     f"Permission denied{context_str}: {str(e)}",
                     category=ErrorCategory.PERMISSION

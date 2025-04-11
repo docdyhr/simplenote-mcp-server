@@ -44,7 +44,7 @@ class NoteCache:
 
         Returns:
             Number of notes loaded into the cache.
-            
+
         Raises:
             NetworkError: If there's an error connecting to Simplenote.
         """
@@ -64,7 +64,7 @@ class NoteCache:
         self._notes = {note["key"]: note for note in notes_data}
         self._initialized = True
         self._last_sync = time.time()
-        
+
         # Get index mark - for test compatibility to make sure we call get_note_list twice
         index_result, index_status = self._client.get_note_list()
         if index_status == 0 and isinstance(index_result, dict) and "mark" in index_result:
@@ -108,7 +108,7 @@ class NoteCache:
         # Update local index mark for test compatibility
         if isinstance(result, dict) and "mark" in result:
             self._index_mark = result["mark"]
-            
+
         # Get the notes array based on the result type
         if isinstance(result, dict) and "notes" in result:
             notes_data = result["notes"]
@@ -117,11 +117,11 @@ class NoteCache:
 
         # Update or add changed notes to the cache
         change_count = 0
-        
+
         # Keep track of existing tags and new tags
         old_tags = set(self._tags)
         new_tags = set()
-        
+
         # First pass to remove deleted notes and collect tags being used
         for note in notes_data:
             note_id = note["key"]
@@ -131,7 +131,7 @@ class NoteCache:
                     # Keep track of tags being removed
                     if "tags" in self._notes[note_id]:
                         old_tags.update(self._notes[note_id].get("tags", []))
-                    
+
                     # Remove the note
                     del self._notes[note_id]
                     change_count += 1
@@ -143,16 +143,16 @@ class NoteCache:
                 # Collect new tags
                 if "tags" in note and note["tags"]:
                     new_tags.update(note["tags"])
-        
+
         # Calculate which tags are still in use by scanning all notes
         all_used_tags = set()
         for note in self._notes.values():
             if "tags" in note and note["tags"]:
                 all_used_tags.update(note["tags"])
-                
+
         # Reset tag set with only tags still in use
         self._tags = all_used_tags
-                
+
         # Special case for the test - explicitly handle "important" tag
         # This ensures compatibility with the test_sync method expectations
         if "important" in old_tags and "important" not in new_tags and "test_sync" in str(self._client):
@@ -177,35 +177,35 @@ class NoteCache:
 
         Returns:
             The note data, or None if the note is not in the cache.
-            
+
         Raises:
             ResourceNotFoundError: If the note doesn't exist.
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
-            
+
         # Check if note is in cache
         note = self._notes.get(note_id)
         if note is not None:
             return note
-            
+
         # If not in cache, try to get from API
         from .errors import ResourceNotFoundError
-        
+
         # Get from Simplenote API
         note_data, status = self._client.get_note(note_id)
-        
+
         # If note not found, raise error
         if status != 0 or note_data is None:
             raise ResourceNotFoundError(f"Note with ID {note_id} not found")
-            
+
         # Add note to cache
         self._notes[note_id] = note_data
-        
+
         # Update tags
         if "tags" in note_data and note_data["tags"]:
             self._tags.update(note_data["tags"])
-            
+
         return note_data
 
     def get_all_notes(self, limit: Optional[int] = None, tag_filter: Optional[str] = None) -> List[Dict]:
@@ -223,7 +223,7 @@ class NoteCache:
 
         # Filter by tag if specified
         if tag_filter:
-            filtered_notes = [note for note in self._notes.values() 
+            filtered_notes = [note for note in self._notes.values()
                              if "tags" in note and note["tags"] and tag_filter in note["tags"]]
         else:
             filtered_notes = list(self._notes.values())
@@ -270,11 +270,11 @@ class NoteCache:
         def sort_key(note):
             content = note.get("content", "").lower()
             title_line = content.split("\n", 1)[0].lower() if content else ""
-            
+
             # Calculate relevance score
             title_match = query_lower in title_line
             modify_date = note.get("modifydate", 0)
-            
+
             # Ensure modify_date is numeric for sorting
             if isinstance(modify_date, str):
                 # Simple string-based sorting for ISO format dates
@@ -283,77 +283,77 @@ class NoteCache:
                 # Return a tuple for sorting (title match, modify date)
                 # Title matches come first, then sorted by date
                 return (0 if title_match else 1, -modify_date)
-            
+
         results.sort(key=sort_key)
 
         # Apply limit if specified
         if limit is not None and limit > 0:
             return results[:limit]
         return results
-        
+
     def update_cache_after_create(self, note: Dict) -> None:
         """Update cache after creating a note.
-        
+
         Args:
             note: The created note data to add to cache.
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
-            
+
         note_id = note["key"]
         self._notes[note_id] = note
-        
+
         # Update tags
         if "tags" in note and note["tags"]:
             self._tags.update(note["tags"])
-            
+
     def update_cache_after_update(self, note: Dict) -> None:
         """Update cache after updating a note.
-        
+
         Args:
             note: The updated note data.
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
-            
+
         note_id = note["key"]
-        
+
         # Remove old tags if note was already in cache
         if note_id in self._notes and "tags" in self._notes[note_id]:
             old_tags = self._notes[note_id]["tags"]
             # Remove tags that are no longer used
             for tag in old_tags:
                 # Check if tag is used in any other note
-                if not any(tag in other_note.get("tags", []) for other_key, other_note in self._notes.items() 
+                if not any(tag in other_note.get("tags", []) for other_key, other_note in self._notes.items()
                           if other_key != note_id):
                     self._tags.discard(tag)
-        
+
         # Update note
         self._notes[note_id] = note
-        
+
         # Add new tags
         if "tags" in note and note["tags"]:
             self._tags.update(note["tags"])
-            
+
     def update_cache_after_delete(self, note_id: str) -> None:
         """Update cache after deleting a note.
-        
+
         Args:
             note_id: ID of the deleted note.
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
-            
+
         # Remove tags if this was the only note with those tags
         if note_id in self._notes and "tags" in self._notes[note_id]:
             old_tags = self._notes[note_id]["tags"]
             # Remove tags that are no longer used
             for tag in old_tags:
                 # Check if tag is used in any other note
-                if not any(tag in other_note.get("tags", []) for other_key, other_note in self._notes.items() 
+                if not any(tag in other_note.get("tags", []) for other_key, other_note in self._notes.items()
                           if other_key != note_id):
                     self._tags.discard(tag)
-        
+
         # Remove from cache
         if note_id in self._notes:
             del self._notes[note_id]
@@ -367,7 +367,7 @@ class NoteCache:
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
 
-        return sorted(list(self._tags))
+        return sorted(self._tags)
 
     @property
     def is_initialized(self) -> bool:
@@ -386,7 +386,7 @@ class NoteCache:
             Number of notes in the cache.
         """
         return len(self._notes)
-        
+
     @property
     def cache_size(self) -> int:
         """Get the number of notes in the cache.
@@ -404,7 +404,7 @@ class NoteCache:
             Number of unique tags in the cache.
         """
         return len(self._tags)
-        
+
     @property
     def all_tags(self) -> list:
         """Get all unique tags from the cache.
@@ -412,7 +412,7 @@ class NoteCache:
         Returns:
             List of unique tags.
         """
-        return sorted(list(self._tags))
+        return sorted(self._tags)
 
     @property
     def last_sync_time(self) -> float:
@@ -422,11 +422,11 @@ class NoteCache:
             Timestamp of the last synchronization.
         """
         return self._last_sync
-        
+
     @property
     def _last_index_mark(self) -> str:
         """Get the last index mark.
-        
+
         Returns:
             The last index mark or an empty string.
         """
@@ -468,7 +468,7 @@ class BackgroundSync:
 
         logger.debug("Setting running flag to False")
         self._running = False
-        
+
         if self._task:
             logger.debug(f"Cancelling task {self._task.get_name() if hasattr(self._task, 'get_name') else self._task}")
             self._task.cancel()
@@ -495,7 +495,7 @@ class BackgroundSync:
                     # Wait for the specified interval with cancellation check
                     logger.debug(f"Waiting {self._config.sync_interval_seconds}s before next sync")
                     await asyncio.sleep(self._config.sync_interval_seconds)
-                    
+
                     if not self._running:
                         logger.debug("Sync loop stopped during sleep")
                         break

@@ -46,10 +46,10 @@ simplenote_client = None
 
 def get_simplenote_client() -> Simplenote:
     """Get or create the Simplenote client.
-    
+
     Returns:
         The Simplenote client instance
-        
+
     Raises:
         AuthenticationError: If Simplenote credentials are not configured
     """
@@ -117,11 +117,11 @@ def setup_signal_handlers() -> None:
         logger.info(f"Received {signal_name} signal, shutting down...")
         # Cleanup will be handled by atexit
         sys.exit(0)
-    
+
     # Register handlers for common termination signals
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     # Register cleanup function to run at exit
     atexit.register(cleanup_pid_file)
 
@@ -154,11 +154,11 @@ async def initialize_cache() -> None:
 @server.list_resources()
 async def handle_list_resources(tag: Optional[str] = None, limit: Optional[int] = None) -> List[types.Resource]:
     """Handle the list_resources capability.
-    
+
     Args:
         tag: Optional tag to filter notes by
         limit: Optional limit for the number of notes to return
-        
+
     Returns:
         List of Simplenote note resources
     """
@@ -212,13 +212,13 @@ async def handle_list_resources(tag: Optional[str] = None, limit: Optional[int] 
 @server.read_resource()
 async def handle_read_resource(uri: str) -> types.ReadResourceResult:
     """Handle the read_resource capability.
-    
+
     Args:
         uri: The URI of the resource to read
-        
+
     Returns:
         The contents and metadata of the resource
-        
+
     Raises:
         ValidationError: If the URI is invalid
         ResourceNotFoundError: If the note is not found
@@ -295,7 +295,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
 @server.list_tools()
 async def handle_list_tools() -> List[types.Tool]:
     """Handle the list_tools capability.
-    
+
     Returns:
         List of available tools
     """
@@ -432,11 +432,11 @@ async def handle_call_tool(
     name: str, arguments: Dict
 ) -> List[types.TextContent]:
     """Handle the call_tool capability.
-    
+
     Args:
         name: The name of the tool to call
         arguments: The arguments to pass to the tool
-        
+
     Returns:
         The result of the tool call
     """
@@ -717,7 +717,7 @@ async def handle_call_tool(
                 logger.error(f"Error searching notes: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"searching notes for '{query}'")
                 return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
-        
+
         elif name == "get_note":
             note_id = arguments.get("note_id", "")
 
@@ -743,7 +743,7 @@ async def handle_call_tool(
                 # Prepare response
                 content = note.get("content", "")
                 first_line = content.splitlines()[0][:30] if content else ""
-                
+
                 return [
                     types.TextContent(
                         type="text",
@@ -761,7 +761,7 @@ async def handle_call_tool(
                         ),
                     )
                 ]
-            
+
             except Exception as e:
                 if isinstance(e, ServerError):
                     error_dict = e.to_dict()
@@ -793,7 +793,7 @@ async def handle_call_tool(
 @server.list_prompts()
 async def handle_list_prompts() -> List[types.Prompt]:
     """Handle the list_prompts capability.
-    
+
     Returns:
         List of available prompts
     """
@@ -833,14 +833,14 @@ async def handle_get_prompt(
     name: str, arguments: Optional[Dict[str, str]]
 ) -> types.GetPromptResult:
     """Handle the get_prompt capability.
-    
+
     Args:
         name: The name of the prompt to get
         arguments: The arguments to pass to the prompt
-        
+
     Returns:
         The prompt result
-        
+
     Raises:
         ValidationError: If the prompt name is unknown
     """

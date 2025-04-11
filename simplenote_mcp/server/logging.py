@@ -94,7 +94,7 @@ class JsonFormatter(logging.Formatter):
 # Legacy function for backward compatibility
 def log_debug(message: str) -> None:
     """Log debug messages in the legacy format.
-    
+
     This is kept for backward compatibility with existing code that uses
     this function directly.
     """
