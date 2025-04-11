@@ -12,7 +12,10 @@ sys.path.insert(0, str(project_root))
 
 # Now import the modules
 from simplenote_mcp.server.logging import logger  # noqa: E402
-from simplenote_mcp.server.server import handle_list_resources, initialize_cache  # noqa: E402
+from simplenote_mcp.server.server import (  # noqa: E402
+    handle_list_resources,
+    initialize_cache,
+)
 
 
 async def main():

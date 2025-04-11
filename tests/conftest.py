@@ -75,11 +75,11 @@ async def cleanup_asyncio_tasks():
     """Clean up all pending tasks after each test."""
     # Run the test
     yield
-    
+
     # After the test, find and cancel all pending tasks
-    tasks = [task for task in asyncio.all_tasks() 
+    tasks = [task for task in asyncio.all_tasks()
              if not task.done() and task != asyncio.current_task()]
-    
+
     for task in tasks:
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError, asyncio.TimeoutError):
