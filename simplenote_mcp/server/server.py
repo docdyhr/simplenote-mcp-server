@@ -919,11 +919,12 @@ async def run() -> None:
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},
                 )
-                logger.info(f"Server capabilities: {json.dumps({
+                capabilities_json = json.dumps({
                     'has_prompts': bool(capabilities.prompts),
                     'has_resources': bool(capabilities.resources),
                     'has_tools': bool(capabilities.tools)
-                })}")
+                })
+                logger.info(f"Server capabilities: {capabilities_json}")
 
                 # Get the server version
                 from simplenote_mcp import __version__ as version
