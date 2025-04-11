@@ -330,6 +330,20 @@ async def handle_list_tools() -> List[types.Tool]:
                     "required": ["query"]
                 }
             ),
+            types.Tool(
+                name="get_note",
+                description="Get a note by ID from Simplenote",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to retrieve"
+                        }
+                    },
+                    "required": ["note_id"]
+                }
+            ),
         ]
         logger.info(f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}")
         return tools
@@ -658,6 +672,59 @@ async def handle_call_tool(
 
                 logger.error(f"Error searching notes: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"searching notes for '{query}'")
+                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+        
+        elif name == "get_note":
+            note_id = arguments.get("note_id", "")
+
+            if not note_id:
+                raise ValidationError("Note ID is required")
+
+            try:
+                # Try to get from cache first
+                note = None
+                if note_cache is not None and note_cache.is_initialized:
+                    with contextlib.suppress(ResourceNotFoundError):
+                        note = note_cache.get_note(note_id)
+                        # If not found, the API will be used
+
+                # If not found in cache, get from API
+                if note is None:
+                    note, status = sn.get_note(note_id)
+                    if status != 0:
+                        error_msg = f"Failed to find note with ID {note_id}"
+                        logger.error(error_msg)
+                        raise ResourceNotFoundError(error_msg)
+
+                # Prepare response
+                content = note.get("content", "")
+                first_line = content.splitlines()[0][:30] if content else ""
+                
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "note_id": note.get("key"),
+                                "content": note.get("content", ""),
+                                "title": first_line,
+                                "tags": note.get("tags", []),
+                                "createdate": note.get("createdate", ""),
+                                "modifydate": note.get("modifydate", ""),
+                                "uri": f"simplenote://note/{note.get('key')}"
+                            }
+                        ),
+                    )
+                ]
+            
+            except Exception as e:
+                if isinstance(e, ServerError):
+                    error_dict = e.to_dict()
+                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
+
+                logger.error(f"Error getting note: {str(e)}", exc_info=True)
+                error = handle_exception(e, f"getting note {note_id}")
                 return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
 
         else:

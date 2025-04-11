@@ -464,6 +464,46 @@ class TestHandleCallTool:
             # Verify cache was used
             mock_cache.search_notes.assert_called_once_with("test", limit=10)
 
+    async def test_get_note(self):
+        """Test getting a note by ID."""
+        with patch("simplenote_mcp.server.server.get_simplenote_client") as mock_get_client, \
+             patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
+             patch("simplenote_mcp.server.server.initialize_cache") as mock_initialize:
+            # Configure client mock
+            mock_client = MagicMock()
+            mock_client.get_note.return_value = (
+                {
+                    "key": "note123",
+                    "content": "Note content here",
+                    "tags": ["test", "important"],
+                    "createdate": "2023-04-01",
+                    "modifydate": "2023-04-10"
+                },
+                0
+            )
+            mock_get_client.return_value = mock_client
+
+            # Configure cache miss
+            mock_cache.is_initialized = True
+            mock_cache.get_note.side_effect = ResourceNotFoundError("Not in cache")
+
+            # Call handler
+            result = await handle_call_tool("get_note", {"note_id": "note123"})
+
+            # Verify results
+            response = json.loads(result[0].text)
+            assert response["success"] is True
+            assert response["note_id"] == "note123"
+            assert response["content"] == "Note content here"
+            assert response["title"] == "Note content here"
+            assert response["tags"] == ["test", "important"]
+            assert response["createdate"] == "2023-04-01"
+            assert response["modifydate"] == "2023-04-10"
+            assert response["uri"] == "simplenote://note/note123"
+
+            # Verify API calls
+            mock_client.get_note.assert_called_once_with("note123")
+
     async def test_unknown_tool(self):
         """Test error for unknown tool."""
         result = await handle_call_tool("unknown_tool", {})
