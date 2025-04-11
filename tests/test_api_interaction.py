@@ -358,14 +358,20 @@ class TestHandleCallTool:
 
     async def test_create_note_validation_error(self):
         """Test validation error when creating a note."""
-        # Call handler with missing content
-        result = await handle_call_tool("create_note", {"tags": "test"})
+        with patch("simplenote_mcp.server.server.get_simplenote_client"), \
+             patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
+             patch("simplenote_mcp.server.server.initialize_cache"):
+            # Configure cache to be initialized to avoid API calls
+            mock_cache.is_initialized = True
 
-        # Verify error response
-        response = json.loads(result[0].text)
-        assert response["success"] is False
-        assert "Note content is required" in response["error"]["message"]
-        assert response["error"]["category"] == "validation"
+            # Call handler with missing content
+            result = await handle_call_tool("create_note", {"tags": "test"})
+
+            # Verify error response
+            response = json.loads(result[0].text)
+            assert response["success"] is False
+            assert "Note content is required" in response["error"]["message"]
+            assert response["error"]["category"] == "validation"
 
     async def test_update_note(self):
         """Test updating a note."""
@@ -506,10 +512,17 @@ class TestHandleCallTool:
 
     async def test_unknown_tool(self):
         """Test error for unknown tool."""
-        result = await handle_call_tool("unknown_tool", {})
+        with patch("simplenote_mcp.server.server.get_simplenote_client"), \
+             patch("simplenote_mcp.server.server.note_cache") as mock_cache, \
+             patch("simplenote_mcp.server.server.initialize_cache"):
+            # Configure cache to be initialized to avoid API calls
+            mock_cache.is_initialized = True
+          
+            # Call handler with unknown tool
+            result = await handle_call_tool("unknown_tool", {})
 
-        # Verify error response
-        response = json.loads(result[0].text)
-        assert response["success"] is False
-        assert "Unknown tool" in response["error"]["message"]
-        assert response["error"]["category"] == "validation"
+            # Verify error response
+            response = json.loads(result[0].text)
+            assert response["success"] is False
+            assert "Unknown tool" in response["error"]["message"]
+            assert response["error"]["category"] == "validation"
