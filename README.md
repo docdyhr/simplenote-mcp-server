@@ -227,6 +227,7 @@ The server provides the following tools for Simplenote interaction:
 | `create_note` | Create a new note | `content` (required): Note content<br>`tags` (optional): Comma-separated tags |
 | `update_note` | Update an existing note | `note_id` (required): The ID of the note<br>`content` (required): New content<br>`tags` (optional): Comma-separated tags |
 | `delete_note` | Move a note to trash | `note_id` (required): The ID of the note to delete |
+| `get_note` | Get a note by ID | `note_id` (required): The ID of the note to retrieve |
 | `search_notes` | Search for notes by content | `query` (required): Search terms<br>`limit` (optional): Maximum results to return |
 
 ### Prompts
@@ -251,10 +252,12 @@ To release a new version, use the release script:
 This project comes with several helper scripts in the `simplenote_mcp/scripts` directory:
 
 1. **restart_claude.sh** - Restarts Claude Desktop and the Simplenote MCP server
-2. **watch_logs.sh** - Monitors the Simplenote MCP server logs in real-time
-3. **verify_tools.sh** - Checks if Simplenote tools are properly registered
-4. **test_tool_visibility.sh** - Tests if tools are visible in Claude Desktop
-5. **release.sh** - Releases a new version with semantic versioning
+2. **cleanup_servers.sh** - Gracefully terminates all running server instances
+3. **check_server_pid.sh** - Checks the status of running server instances
+4. **watch_logs.sh** - Monitors the Simplenote MCP server logs in real-time
+5. **verify_tools.sh** - Checks if Simplenote tools are properly registered
+6. **test_tool_visibility.sh** - Tests if tools are visible in Claude Desktop
+7. **release.sh** - Releases a new version with semantic versioning
 
 Testing utilities in the `simplenote_mcp/tests` directory:
 
@@ -332,9 +335,9 @@ The Simplenote MCP Server uses a sophisticated in-memory caching system to provi
    ./simplenote_mcp/scripts/watch_logs.sh
    ```
 
-5. Kill all server instances and start fresh:
+5. Clean up all server instances and start fresh:
    ```bash
-   pkill -f "python.*simplenote_mcp.*server.py"
+   ./simplenote_mcp/scripts/cleanup_servers.sh
    simplenote-mcp-server
    ```
 
@@ -351,22 +354,27 @@ Set `LOG_LEVEL=DEBUG` for more detailed logs.
 
 The project includes several diagnostic tools:
 
-1. **verify_tools.sh** - Checks tool registration:
+1. **check_server_pid.sh** - Checks server process status:
+   ```bash
+   ./simplenote_mcp/scripts/check_server_pid.sh
+   ```
+
+2. **verify_tools.sh** - Checks tool registration:
    ```bash
    ./simplenote_mcp/scripts/verify_tools.sh
    ```
 
-2. **test_tool_visibility.sh** - Tests if Claude sees the tools:
+3. **test_tool_visibility.sh** - Tests if Claude sees the tools:
    ```bash
    ./simplenote_mcp/scripts/test_tool_visibility.sh
    ```
 
-3. **monitor_server.py** - Monitors MCP protocol messages:
+4. **monitor_server.py** - Monitors MCP protocol messages:
    ```bash
    python simplenote_mcp/tests/monitor_server.py
    ```
    
-4. **test_mcp_client.py** - Tests basic connectivity:
+5. **test_mcp_client.py** - Tests basic connectivity:
    ```bash
    python simplenote_mcp/tests/test_mcp_client.py
    ```

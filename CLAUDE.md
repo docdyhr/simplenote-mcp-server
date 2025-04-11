@@ -34,7 +34,7 @@ simplenote_mcp/            # Main package
 ## Server Structure
 The Simplenote MCP server provides:
 1. **Resources**: `list_resources()`, `read_resource()`
-2. **Tools**: `create_note`, `update_note`, `delete_note`, `search_notes`
+2. **Tools**: `create_note`, `update_note`, `delete_note`, `get_note`, `search_notes`
 3. **Prompts**: `create_note_prompt`, `search_notes_prompt`
 
 ## Common Issues and Solutions
