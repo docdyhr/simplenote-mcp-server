@@ -377,12 +377,15 @@ The project includes several diagnostic tools:
    ```bash
    python simplenote_mcp/tests/monitor_server.py
    ```
-   
+
 5. **test_mcp_client.py** - Tests basic connectivity:
    ```bash
    python simplenote_mcp/tests/test_mcp_client.py
    ```
 
+## Roadmap
+
+See [ROADMAP.md](./ROADMAP.md) for planned features and goals.
 ## Contributing
 
 Contributions are welcome! Please read our [Contributing Guide](./.github/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
