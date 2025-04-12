@@ -58,6 +58,7 @@ class NoteCache:
         notes_data, status = self._client.get_note_list(tags=[])
         if status != 0:
             from .errors import NetworkError
+
             raise NetworkError(f"Failed to get notes from Simplenote (status {status})")
 
         # Store notes in the cache
@@ -67,7 +68,11 @@ class NoteCache:
 
         # Get index mark - for test compatibility to make sure we call get_note_list twice
         index_result, index_status = self._client.get_note_list()
-        if index_status == 0 and isinstance(index_result, dict) and "mark" in index_result:
+        if (
+            index_status == 0
+            and isinstance(index_result, dict)
+            and "mark" in index_result
+        ):
             self._index_mark = index_result["mark"]
         else:
             self._index_mark = "test_mark"
@@ -103,6 +108,7 @@ class NoteCache:
         result, status = self._client.get_note_list(since=since, tags=[])
         if status != 0:
             from .errors import NetworkError
+
             raise NetworkError(f"Failed to get notes from Simplenote (status {status})")
 
         # Update local index mark for test compatibility
@@ -155,7 +161,11 @@ class NoteCache:
 
         # Special case for the test - explicitly handle "important" tag
         # This ensures compatibility with the test_sync method expectations
-        if "important" in old_tags and "important" not in new_tags and "test_sync" in str(self._client):
+        if (
+            "important" in old_tags
+            and "important" not in new_tags
+            and "test_sync" in str(self._client)
+        ):
             self._tags.discard("important")
 
         # Update last sync time
@@ -208,7 +218,9 @@ class NoteCache:
 
         return note_data
 
-    def get_all_notes(self, limit: Optional[int] = None, tag_filter: Optional[str] = None) -> List[Dict]:
+    def get_all_notes(
+        self, limit: Optional[int] = None, tag_filter: Optional[str] = None
+    ) -> List[Dict]:
         """Get all notes from the cache.
 
         Args:
@@ -223,8 +235,11 @@ class NoteCache:
 
         # Filter by tag if specified
         if tag_filter:
-            filtered_notes = [note for note in self._notes.values()
-                             if "tags" in note and note["tags"] and tag_filter in note["tags"]]
+            filtered_notes = [
+                note
+                for note in self._notes.values()
+                if "tags" in note and note["tags"] and tag_filter in note["tags"]
+            ]
         else:
             filtered_notes = list(self._notes.values())
 
@@ -324,8 +339,11 @@ class NoteCache:
             # Remove tags that are no longer used
             for tag in old_tags:
                 # Check if tag is used in any other note
-                if not any(tag in other_note.get("tags", []) for other_key, other_note in self._notes.items()
-                          if other_key != note_id):
+                if not any(
+                    tag in other_note.get("tags", [])
+                    for other_key, other_note in self._notes.items()
+                    if other_key != note_id
+                ):
                     self._tags.discard(tag)
 
         # Update note
@@ -350,8 +368,11 @@ class NoteCache:
             # Remove tags that are no longer used
             for tag in old_tags:
                 # Check if tag is used in any other note
-                if not any(tag in other_note.get("tags", []) for other_key, other_note in self._notes.items()
-                          if other_key != note_id):
+                if not any(
+                    tag in other_note.get("tags", [])
+                    for other_key, other_note in self._notes.items()
+                    if other_key != note_id
+                ):
                     self._tags.discard(tag)
 
         # Remove from cache
@@ -457,7 +478,9 @@ class BackgroundSync:
 
         self._running = True
         self._task = asyncio.create_task(self._sync_loop(), name="BackgroundSyncTask")
-        logger.info(f"Started background sync task (interval: {self._config.sync_interval_seconds}s)")
+        logger.info(
+            f"Started background sync task (interval: {self._config.sync_interval_seconds}s)"
+        )
 
     async def stop(self) -> None:
         """Stop the background sync task."""
@@ -470,7 +493,9 @@ class BackgroundSync:
         self._running = False
 
         if self._task:
-            logger.debug(f"Cancelling task {self._task.get_name() if hasattr(self._task, 'get_name') else self._task}")
+            logger.debug(
+                f"Cancelling task {self._task.get_name() if hasattr(self._task, 'get_name') else self._task}"
+            )
             self._task.cancel()
             try:
                 await asyncio.wait_for(self._task, timeout=2.0)
@@ -480,7 +505,10 @@ class BackgroundSync:
             except asyncio.TimeoutError:
                 logger.warning("Timed out waiting for background sync task to cancel")
             except Exception as e:
-                logger.error(f"Error while cancelling background sync task: {str(e)}", exc_info=True)
+                logger.error(
+                    f"Error while cancelling background sync task: {str(e)}",
+                    exc_info=True,
+                )
             finally:
                 self._task = None
 
@@ -493,7 +521,9 @@ class BackgroundSync:
             while self._running:
                 try:
                     # Wait for the specified interval with cancellation check
-                    logger.debug(f"Waiting {self._config.sync_interval_seconds}s before next sync")
+                    logger.debug(
+                        f"Waiting {self._config.sync_interval_seconds}s before next sync"
+                    )
                     await asyncio.sleep(self._config.sync_interval_seconds)
 
                     if not self._running:
@@ -507,9 +537,13 @@ class BackgroundSync:
                     elapsed = time.time() - start_time
 
                     if changes > 0:
-                        logger.info(f"Background sync updated {changes} notes in {elapsed:.2f}s")
+                        logger.info(
+                            f"Background sync updated {changes} notes in {elapsed:.2f}s"
+                        )
                     else:
-                        logger.debug(f"Background sync completed in {elapsed:.2f}s (no changes)")
+                        logger.debug(
+                            f"Background sync completed in {elapsed:.2f}s (no changes)"
+                        )
 
                 except asyncio.CancelledError:
                     # Normal cancellation

@@ -28,6 +28,7 @@ _LOG_LEVEL_MAP = {
     LogLevel.ERROR: logging.ERROR,
 }
 
+
 def initialize_logging() -> None:
     """Initialize the logging system based on configuration."""
     config = get_config()
@@ -65,6 +66,7 @@ def initialize_logging() -> None:
         )
         logger.addHandler(legacy_handler)
 
+
 class JsonFormatter(logging.Formatter):
     """JSON formatter for structured logging."""
 
@@ -91,6 +93,7 @@ class JsonFormatter(logging.Formatter):
 
         return json.dumps(log_entry)
 
+
 # Legacy function for backward compatibility
 def log_debug(message: str) -> None:
     """Log debug messages in the legacy format.
@@ -106,6 +109,7 @@ def log_debug(message: str) -> None:
 
     with open(LEGACY_LOG_FILE, "a") as f:
         f.write(f"{datetime.now().isoformat()}: {message}\n")
+
 
 # Initialize logging when this module is imported
 initialize_logging()

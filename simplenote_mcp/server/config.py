@@ -7,6 +7,7 @@ from typing import Optional
 
 class LogLevel(Enum):
     """Log level enumeration for the Simplenote MCP server."""
+
     DEBUG = "DEBUG"
     INFO = "INFO"
     WARNING = "WARNING"
@@ -20,27 +21,48 @@ class LogLevel(Enum):
         except ValueError:
             return LogLevel.INFO
 
+
 class Config:
     """Configuration for the Simplenote MCP server."""
 
     def __init__(self) -> None:
         # Simplenote credentials
-        self.simplenote_email: Optional[str] = os.environ.get("SIMPLENOTE_EMAIL") or os.environ.get("SIMPLENOTE_USERNAME")
+        self.simplenote_email: Optional[str] = os.environ.get(
+            "SIMPLENOTE_EMAIL"
+        ) or os.environ.get("SIMPLENOTE_USERNAME")
         self.simplenote_password: Optional[str] = os.environ.get("SIMPLENOTE_PASSWORD")
 
         # Sync configuration
-        self.sync_interval_seconds: int = int(os.environ.get("SYNC_INTERVAL_SECONDS", "120"))
+        self.sync_interval_seconds: int = int(
+            os.environ.get("SYNC_INTERVAL_SECONDS", "120")
+        )
 
         # Resource listing configuration
-        self.default_resource_limit: int = int(os.environ.get("DEFAULT_RESOURCE_LIMIT", "100"))
+        self.default_resource_limit: int = int(
+            os.environ.get("DEFAULT_RESOURCE_LIMIT", "100")
+        )
 
         # Logging configuration
-        self.log_level: LogLevel = LogLevel.from_string(os.environ.get("LOG_LEVEL", "INFO"))
-        self.log_to_file: bool = os.environ.get("LOG_TO_FILE", "true").lower() in ("true", "1", "t", "yes")
-        self.log_format: str = os.environ.get("LOG_FORMAT", "standard")  # "standard" or "json"
+        self.log_level: LogLevel = LogLevel.from_string(
+            os.environ.get("LOG_LEVEL", "INFO")
+        )
+        self.log_to_file: bool = os.environ.get("LOG_TO_FILE", "true").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+        self.log_format: str = os.environ.get(
+            "LOG_FORMAT", "standard"
+        )  # "standard" or "json"
 
         # Debug mode
-        self.debug_mode: bool = os.environ.get("MCP_DEBUG", "false").lower() in ("true", "1", "t", "yes")
+        self.debug_mode: bool = os.environ.get("MCP_DEBUG", "false").lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
 
     @property
     def has_credentials(self) -> bool:
@@ -64,8 +86,10 @@ class Config:
                 f"DEFAULT_RESOURCE_LIMIT must be at least 1 (got {self.default_resource_limit})"
             )
 
+
 # Global configuration singleton
 _config: Optional[Config] = None
+
 
 def get_config() -> Config:
     """Get the global configuration singleton."""

@@ -67,14 +67,20 @@ def get_simplenote_client() -> Simplenote:
                     "SIMPLENOTE_EMAIL (or SIMPLENOTE_USERNAME) and SIMPLENOTE_PASSWORD environment variables must be set"
                 )
 
-            logger.info(f"Creating Simplenote client with username: {config.simplenote_email[:3]}***")
-            simplenote_client = Simplenote(config.simplenote_email, config.simplenote_password)
+            logger.info(
+                f"Creating Simplenote client with username: {config.simplenote_email[:3]}***"
+            )
+            simplenote_client = Simplenote(
+                config.simplenote_email, config.simplenote_password
+            )
             logger.info("Simplenote client created successfully")
 
         except Exception as e:
             if isinstance(e, ServerError):
                 raise
-            logger.error(f"Error initializing Simplenote client: {str(e)}", exc_info=True)
+            logger.error(
+                f"Error initializing Simplenote client: {str(e)}", exc_info=True
+            )
             error = handle_exception(e, "initializing Simplenote client")
             raise error from e
 
@@ -111,7 +117,10 @@ def cleanup_pid_file() -> None:
 
 def setup_signal_handlers() -> None:
     """Set up signal handlers for graceful shutdown."""
-    def signal_handler(sig: int, _: object) -> None:  # Frame argument is unused but required by signal API
+
+    def signal_handler(
+        sig: int, _: object
+    ) -> None:  # Frame argument is unused but required by signal API
         """Handle termination signals."""
         signal_name = signal.Signals(sig).name
         logger.info(f"Received {signal_name} signal, shutting down...")
@@ -152,7 +161,9 @@ async def initialize_cache() -> None:
 
 
 @server.list_resources()
-async def handle_list_resources(tag: Optional[str] = None, limit: Optional[int] = None) -> List[types.Resource]:
+async def handle_list_resources(
+    tag: Optional[str] = None, limit: Optional[int] = None
+) -> List[types.Resource]:
     """Handle the list_resources capability.
 
     Args:
@@ -172,7 +183,9 @@ async def handle_list_resources(tag: Optional[str] = None, limit: Optional[int] 
             await initialize_cache()
 
         if note_cache is None:
-            raise ServerError("Note cache initialization failed", category=ErrorCategory.INTERNAL)
+            raise ServerError(
+                "Note cache initialization failed", category=ErrorCategory.INTERNAL
+            )
 
         # Use the cache to get notes with filtering
         config = get_config()
@@ -183,15 +196,19 @@ async def handle_list_resources(tag: Optional[str] = None, limit: Optional[int] 
         # Apply tag filtering if specified
         notes = note_cache.get_all_notes(limit=actual_limit, tag_filter=tag)
 
-        logger.debug(f"Listing resources, found {len(notes)} notes" +
-                    (f" with tag '{tag}'" if tag else ""))
+        logger.debug(
+            f"Listing resources, found {len(notes)} notes"
+            + (f" with tag '{tag}'" if tag else "")
+        )
 
         return [
             types.Resource(
                 uri=f"simplenote://note/{note['key']}",
-                name=note.get("content", "").splitlines()[0][:30]
-                if note.get("content")
-                else note["key"],
+                name=(
+                    note.get("content", "").splitlines()[0][:30]
+                    if note.get("content")
+                    else note["key"]
+                ),
                 description=f"Note from {note.get('modifydate', 'unknown date')}",
                 meta={"tags": note.get("tags", [])},
             )
@@ -248,7 +265,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
                         "tags": note.get("tags", []),
                         "modifydate": note.get("modifydate", ""),
                         "createdate": note.get("createdate", ""),
-                    }
+                    },
                 )
                 return types.ReadResourceResult(contents=[text_contents])
             except ResourceNotFoundError:
@@ -273,7 +290,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
                     "tags": note.get("tags", []),
                     "modifydate": note.get("modifydate", ""),
                     "createdate": note.get("createdate", ""),
-                }
+                },
             )
             return types.ReadResourceResult(contents=[text_contents])
         else:
@@ -310,15 +327,15 @@ async def handle_list_tools() -> List[types.Tool]:
                     "properties": {
                         "content": {
                             "type": "string",
-                            "description": "The content of the note"
+                            "description": "The content of the note",
                         },
                         "tags": {
                             "type": "string",
-                            "description": "Tags for the note (comma-separated)"
-                        }
+                            "description": "Tags for the note (comma-separated)",
+                        },
                     },
-                    "required": ["content"]
-                }
+                    "required": ["content"],
+                },
             ),
             types.Tool(
                 name="update_note",
@@ -328,19 +345,19 @@ async def handle_list_tools() -> List[types.Tool]:
                     "properties": {
                         "note_id": {
                             "type": "string",
-                            "description": "The ID of the note to update"
+                            "description": "The ID of the note to update",
                         },
                         "content": {
                             "type": "string",
-                            "description": "The new content of the note"
+                            "description": "The new content of the note",
                         },
                         "tags": {
                             "type": "string",
-                            "description": "Tags for the note (comma-separated)"
-                        }
+                            "description": "Tags for the note (comma-separated)",
+                        },
                     },
-                    "required": ["note_id", "content"]
-                }
+                    "required": ["note_id", "content"],
+                },
             ),
             types.Tool(
                 name="delete_note",
@@ -350,11 +367,11 @@ async def handle_list_tools() -> List[types.Tool]:
                     "properties": {
                         "note_id": {
                             "type": "string",
-                            "description": "The ID of the note to delete"
+                            "description": "The ID of the note to delete",
                         }
                     },
-                    "required": ["note_id"]
-                }
+                    "required": ["note_id"],
+                },
             ),
             types.Tool(
                 name="search_notes",
@@ -362,17 +379,14 @@ async def handle_list_tools() -> List[types.Tool]:
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The search query"
-                        },
+                        "query": {"type": "string", "description": "The search query"},
                         "limit": {
                             "type": "integer",
-                            "description": "Maximum number of results to return"
-                        }
+                            "description": "Maximum number of results to return",
+                        },
                     },
-                    "required": ["query"]
-                }
+                    "required": ["query"],
+                },
             ),
             types.Tool(
                 name="get_note",
@@ -382,14 +396,16 @@ async def handle_list_tools() -> List[types.Tool]:
                     "properties": {
                         "note_id": {
                             "type": "string",
-                            "description": "The ID of the note to retrieve"
+                            "description": "The ID of the note to retrieve",
                         }
                     },
-                    "required": ["note_id"]
-                }
+                    "required": ["note_id"],
+                },
             ),
         ]
-        logger.info(f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}")
+        logger.info(
+            f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"
+        )
         return tools
 
     except Exception as e:
@@ -404,11 +420,11 @@ async def handle_list_tools() -> List[types.Tool]:
                     "properties": {
                         "content": {
                             "type": "string",
-                            "description": "The content of the note"
+                            "description": "The content of the note",
                         }
                     },
-                    "required": ["content"]
-                }
+                    "required": ["content"],
+                },
             ),
             types.Tool(
                 name="search_notes",
@@ -416,21 +432,16 @@ async def handle_list_tools() -> List[types.Tool]:
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "The search query"
-                        }
+                        "query": {"type": "string", "description": "The search query"}
                     },
-                    "required": ["query"]
-                }
-            )
+                    "required": ["query"],
+                },
+            ),
         ]
 
 
 @server.call_tool()
-async def handle_call_tool(
-    name: str, arguments: Dict
-) -> List[types.TextContent]:
+async def handle_call_tool(name: str, arguments: Dict) -> List[types.TextContent]:
     """Handle the call_tool capability.
 
     Args:
@@ -479,9 +490,9 @@ async def handle_call_tool(
                                     "success": True,
                                     "message": "Note created successfully",
                                     "note_id": note.get("key"),
-                                    "first_line": content.splitlines()[0][:30]
-                                    if content
-                                    else "",
+                                    "first_line": (
+                                        content.splitlines()[0][:30] if content else ""
+                                    ),
                                     "tags": tags,
                                 }
                             ),
@@ -499,7 +510,9 @@ async def handle_call_tool(
 
                 logger.error(f"Error creating note: {str(e)}", exc_info=True)
                 error = handle_exception(e, "creating note")
-                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+                return [
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ]
 
         elif name == "update_note":
             note_id = arguments.get("note_id", "")
@@ -570,7 +583,9 @@ async def handle_call_tool(
 
                 logger.error(f"Error updating note: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"updating note {note_id}")
-                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+                return [
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ]
 
         elif name == "delete_note":
             note_id = arguments.get("note_id", "")
@@ -579,7 +594,9 @@ async def handle_call_tool(
                 raise ValidationError("Note ID is required")
 
             try:
-                status = sn.trash_note(note_id)  # Using trash_note as it's safer than delete_note
+                status = sn.trash_note(
+                    note_id
+                )  # Using trash_note as it's safer than delete_note
 
                 if status == 0:
                     # Update the cache if it's initialized
@@ -610,7 +627,9 @@ async def handle_call_tool(
 
                 logger.error(f"Error deleting note: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"deleting note {note_id}")
-                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+                return [
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ]
 
         elif name == "search_notes":
             query = arguments.get("query", "")
@@ -636,13 +655,23 @@ async def handle_call_tool(
                     results = []
                     for note in notes:
                         content = note.get("content", "")
-                        results.append({
-                            "id": note.get("key"),
-                            "title": content.splitlines()[0][:30] if content else note.get("key"),
-                            "snippet": content[:100] + "..." if len(content) > 100 else content,
-                            "tags": note.get("tags", []),
-                            "uri": f"simplenote://note/{note.get('key')}",
-                        })
+                        results.append(
+                            {
+                                "id": note.get("key"),
+                                "title": (
+                                    content.splitlines()[0][:30]
+                                    if content
+                                    else note.get("key")
+                                ),
+                                "snippet": (
+                                    content[:100] + "..."
+                                    if len(content) > 100
+                                    else content
+                                ),
+                                "tags": note.get("tags", []),
+                                "uri": f"simplenote://note/{note.get('key')}",
+                            }
+                        )
 
                     return [
                         types.TextContent(
@@ -676,16 +705,26 @@ async def handle_call_tool(
                     if query_lower in content:
                         # Calculate a crude relevance score (number of occurrences)
                         occurrences = content.count(query_lower)
-                        results.append((
-                            {
-                                "id": note.get("key"),
-                                "title": note.get("content", "").splitlines()[0][:30] if note.get("content") else note.get("key"),
-                                "snippet": content[:100] + "..." if len(content) > 100 else content,
-                                "tags": note.get("tags", []),
-                                "uri": f"simplenote://note/{note.get('key')}",
-                            },
-                            occurrences
-                        ))
+                        results.append(
+                            (
+                                {
+                                    "id": note.get("key"),
+                                    "title": (
+                                        note.get("content", "").splitlines()[0][:30]
+                                        if note.get("content")
+                                        else note.get("key")
+                                    ),
+                                    "snippet": (
+                                        content[:100] + "..."
+                                        if len(content) > 100
+                                        else content
+                                    ),
+                                    "tags": note.get("tags", []),
+                                    "uri": f"simplenote://note/{note.get('key')}",
+                                },
+                                occurrences,
+                            )
+                        )
 
                 # Sort by relevance (higher score first)
                 results.sort(key=lambda x: x[1], reverse=True)
@@ -716,7 +755,9 @@ async def handle_call_tool(
 
                 logger.error(f"Error searching notes: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"searching notes for '{query}'")
-                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+                return [
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ]
 
         elif name == "get_note":
             note_id = arguments.get("note_id", "")
@@ -756,7 +797,7 @@ async def handle_call_tool(
                                 "tags": note.get("tags", []),
                                 "createdate": note.get("createdate", ""),
                                 "modifydate": note.get("modifydate", ""),
-                                "uri": f"simplenote://note/{note.get('key')}"
+                                "uri": f"simplenote://note/{note.get('key')}",
                             }
                         ),
                     )
@@ -769,7 +810,9 @@ async def handle_call_tool(
 
                 logger.error(f"Error getting note: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"getting note {note_id}")
-                return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+                return [
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ]
 
         else:
             error_msg = f"Unknown tool: {name}"
@@ -919,11 +962,13 @@ async def run() -> None:
                     notification_options=NotificationOptions(),
                     experimental_capabilities={},
                 )
-                capabilities_json = json.dumps({
-                    'has_prompts': bool(capabilities.prompts),
-                    'has_resources': bool(capabilities.resources),
-                    'has_tools': bool(capabilities.tools)
-                })
+                capabilities_json = json.dumps(
+                    {
+                        "has_prompts": bool(capabilities.prompts),
+                        "has_resources": bool(capabilities.resources),
+                        "has_tools": bool(capabilities.tools),
+                    }
+                )
                 logger.info(f"Server capabilities: {capabilities_json}")
 
                 # Get the server version
@@ -980,7 +1025,9 @@ def run_main() -> None:
         config = get_config()
         logger.info(f"Starting Simplenote MCP Server v{__version__}")
         logger.info(f"Python version: {sys.version}")
-        logger.info(f"Environment: SIMPLENOTE_EMAIL={config.simplenote_email[:3]}*** (set: {config.simplenote_email is not None}), SIMPLENOTE_PASSWORD={'*****' if config.simplenote_password else 'Not set'}")
+        logger.info(
+            f"Environment: SIMPLENOTE_EMAIL={config.simplenote_email[:3]}*** (set: {config.simplenote_email is not None}), SIMPLENOTE_PASSWORD={'*****' if config.simplenote_password else 'Not set'}"
+        )
         logger.info(f"Running from: {os.path.dirname(os.path.abspath(__file__))}")
         logger.info(f"Sync interval: {config.sync_interval_seconds}s")
         logger.info(f"Log level: {config.log_level.value}")

@@ -45,7 +45,7 @@ class TestNoteCache:
         mock_simplenote_client.get_note_list.return_value = (mock_note_data, 0)
         mock_simplenote_client.get_note_list.side_effect = [
             (mock_note_data, 0),  # First call for initial note list
-            ({"notes": [], "mark": "test_mark"}, 0)  # Second call for index mark
+            ({"notes": [], "mark": "test_mark"}, 0),  # Second call for index mark
         ]
 
         # Create cache
@@ -94,12 +94,12 @@ class TestNoteCache:
                     "notes": [
                         {"key": "note4", "content": "New note", "tags": ["new"]},
                         {"key": "note1", "content": "Updated note 1", "tags": ["test"]},
-                        {"key": "note2", "deleted": True}
+                        {"key": "note2", "deleted": True},
                     ],
-                    "mark": "mark2"
+                    "mark": "mark2",
                 },
-                0
-            )  # Sync update
+                0,
+            ),  # Sync update
         ]
 
         # Create and initialize cache
@@ -146,7 +146,7 @@ class TestNoteCache:
         # Mock API return
         mock_simplenote_client.get_note.return_value = (
             {"key": "missing_note", "content": "Retrieved from API"},
-            0
+            0,
         )
 
         # Create cache without the note
@@ -238,7 +238,11 @@ class TestNoteCache:
         assert "new" in cache.all_tags
 
         # Test update
-        updated_note = {"key": "new_note", "content": "Updated note", "tags": ["updated"]}
+        updated_note = {
+            "key": "new_note",
+            "content": "Updated note",
+            "tags": ["updated"],
+        }
         cache.update_cache_after_update(updated_note)
         assert cache._notes["new_note"]["content"] == "Updated note"
         assert "updated" in cache.all_tags

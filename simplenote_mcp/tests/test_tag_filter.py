@@ -21,7 +21,9 @@ from simplenote_mcp.server.server import (  # noqa: E402
 async def main():
     """Run the tag filter test."""
     print("=== Testing Tag Filtering ===")
-    print(f"Using credentials for: {os.environ.get('SIMPLENOTE_EMAIL', 'Not set')[:3]}***")
+    print(
+        f"Using credentials for: {os.environ.get('SIMPLENOTE_EMAIL', 'Not set')[:3]}***"
+    )
 
     # Initialize the cache first
     print("Initializing cache...")
@@ -46,7 +48,9 @@ async def main():
         print("Sample tagged resource names:")
         for i, resource in enumerate(filtered_resources[:5]):
             print(f"  {i+1}. {resource.name}")
-            assert test_tag in resource.meta["tags"], f"Tag '{test_tag}' not found in resource tags!"
+            assert (
+                test_tag in resource.meta["tags"]
+            ), f"Tag '{test_tag}' not found in resource tags!"
 
         print("\nVerifying all returned resources have the requested tag...")
         all_have_tag = all(test_tag in r.meta["tags"] for r in filtered_resources)
@@ -62,15 +66,20 @@ async def main():
     print(f"\n3. Testing list_resources with limit {limit}:")
     limited_resources = await handle_list_resources(limit=limit)
     print(f"Requested {limit} resources, got {len(limited_resources)} resources")
-    assert len(limited_resources) <= limit, f"Got {len(limited_resources)} resources, expected at most {limit}"
+    assert (
+        len(limited_resources) <= limit
+    ), f"Got {len(limited_resources)} resources, expected at most {limit}"
 
     if len(limited_resources) == limit:
         print("✅ Success! Got exactly the requested number of resources.")
     else:
-        print(f"⚠️ Note: Got {len(limited_resources)} resources, which is less than the requested limit of {limit}.")
+        print(
+            f"⚠️ Note: Got {len(limited_resources)} resources, which is less than the requested limit of {limit}."
+        )
         print("   This is fine if you have fewer total notes than the requested limit.")
 
     print("\n=== Tag Filtering Test Complete ===")
+
 
 if __name__ == "__main__":
     # Configure logging

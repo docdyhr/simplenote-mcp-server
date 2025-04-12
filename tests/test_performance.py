@@ -23,7 +23,7 @@ def mock_large_note_list():
             "content": f"Test note {i}\n\nThis is a test note with content for performance testing.",
             "tags": ["test", "performance"] if i % 3 == 0 else ["test"],
             "modifydate": f"2025-04-{i % 30 + 1:02d}T12:00:00Z",
-            "createdate": "2025-01-01T00:00:00Z"
+            "createdate": "2025-01-01T00:00:00Z",
         }
         for i in range(1000)
     ]
@@ -60,8 +60,10 @@ class TestPerformance:
     @pytest.mark.asyncio
     async def test_list_resources_performance(self, setup_performance_cache):
         """Test the performance of listing resources."""
-        with patch("simplenote_mcp.server.server.note_cache", setup_performance_cache), \
-             patch("simplenote_mcp.server.server.get_config") as mock_get_config:
+        with (
+            patch("simplenote_mcp.server.server.note_cache", setup_performance_cache),
+            patch("simplenote_mcp.server.server.get_config") as mock_get_config,
+        ):
 
             # Configure mock config
             mock_config = MagicMock()
@@ -91,14 +93,20 @@ class TestPerformance:
             large_resources = await handle_list_resources(limit=500)
             large_listing_time = time.time() - start_time
             print(f"Listing 500 resources took {large_listing_time:.4f} seconds")
-            assert large_listing_time < 0.2, "Listing large number of resources should be reasonably fast"
+            assert (
+                large_listing_time < 0.2
+            ), "Listing large number of resources should be reasonably fast"
             assert len(large_resources) == 500
 
     @pytest.mark.asyncio
     async def test_read_resource_performance(self, setup_performance_cache):
         """Test the performance of reading a resource."""
-        with patch("simplenote_mcp.server.server.note_cache", setup_performance_cache), \
-             patch("simplenote_mcp.server.server.get_simplenote_client") as mock_get_client:
+        with (
+            patch("simplenote_mcp.server.server.note_cache", setup_performance_cache),
+            patch(
+                "simplenote_mcp.server.server.get_simplenote_client"
+            ) as mock_get_client,
+        ):
 
             # Create a large note for testing read performance
             large_note = {
@@ -106,7 +114,7 @@ class TestPerformance:
                 "content": "Large note content\n" + "x" * 100000,  # ~100KB of content
                 "tags": ["test", "large"],
                 "modifydate": "2025-04-10T12:00:00Z",
-                "createdate": "2025-01-01T00:00:00Z"
+                "createdate": "2025-01-01T00:00:00Z",
             }
 
             # Add large note to cache
@@ -136,8 +144,12 @@ class TestPerformance:
     @pytest.mark.asyncio
     async def test_search_performance(self, setup_performance_cache):
         """Test the performance of searching notes."""
-        with patch("simplenote_mcp.server.server.note_cache", setup_performance_cache), \
-             patch("simplenote_mcp.server.server.get_simplenote_client") as mock_get_client:
+        with (
+            patch("simplenote_mcp.server.server.note_cache", setup_performance_cache),
+            patch(
+                "simplenote_mcp.server.server.get_simplenote_client"
+            ) as mock_get_client,
+        ):
 
             # Set up mock client
             mock_client = MagicMock()
@@ -156,6 +168,7 @@ class TestPerformance:
             # Verify search results
             assert len(result) == 1
             import json
+
             response = json.loads(result[0].text)
             assert response["success"] is True
             assert response["query"] == "test"
@@ -171,7 +184,7 @@ class TestPerformance:
                 "content": f"Test note {i}\n\nThis is content for note {i}.",
                 "tags": ["test", "performance"] if i % 3 == 0 else ["test"],
                 "modifydate": f"2025-04-{i % 30 + 1:02d}T12:00:00Z",
-                "createdate": "2025-01-01T00:00:00Z"
+                "createdate": "2025-01-01T00:00:00Z",
             }
             for i in range(2000)
         ]
@@ -182,11 +195,16 @@ class TestPerformance:
         # For the second call returning the index mark
         mock_client.get_note_list.side_effect = [
             (large_note_list, 0),
-            ({"notes": [], "mark": "test_mark"}, 0)
+            ({"notes": [], "mark": "test_mark"}, 0),
         ]
 
-        with patch("simplenote_mcp.server.server.get_simplenote_client", return_value=mock_client), \
-             patch("simplenote_mcp.server.server.note_cache", None):
+        with (
+            patch(
+                "simplenote_mcp.server.server.get_simplenote_client",
+                return_value=mock_client,
+            ),
+            patch("simplenote_mcp.server.server.note_cache", None),
+        ):
 
             # Measure initialization performance
             start_time = time.time()

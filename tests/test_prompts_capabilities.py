@@ -1,7 +1,5 @@
 """Unit tests for the prompt capabilities of the MCP server."""
 
-import json
-from unittest.mock import MagicMock, patch
 
 import pytest
 

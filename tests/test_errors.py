@@ -74,7 +74,9 @@ class TestSpecificErrors:
 
     def test_resource_not_found_error(self):
         """Test ResourceNotFoundError."""
-        error = ResourceNotFoundError("Note not found", details={"resource_id": "note123"})
+        error = ResourceNotFoundError(
+            "Note not found", details={"resource_id": "note123"}
+        )
         assert error.category == ErrorCategory.NOT_FOUND
         assert error.severity == ErrorSeverity.ERROR
         assert error.recoverable is True

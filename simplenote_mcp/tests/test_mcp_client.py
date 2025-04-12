@@ -24,13 +24,18 @@ async def test_simplenote_connection():
         # Print the first few notes
         print("\nFirst 5 notes:")
         for i, note in enumerate(notes[:5]):
-            first_line = note.get("content", "").splitlines()[0][:50] if note.get("content") else "No content"
+            first_line = (
+                note.get("content", "").splitlines()[0][:50]
+                if note.get("content")
+                else "No content"
+            )
             print(f"{i+1}. {first_line}...")
 
         return True
     except Exception as e:
         print(f"Error connecting to Simplenote: {e}")
         return False
+
 
 async def test_read_note():
     """Test reading a specific note."""
@@ -49,7 +54,11 @@ async def test_read_note():
 
         note, status = client.get_note(note_id)
         if status == 0:
-            first_line = note.get("content", "").splitlines()[0][:50] if note.get("content") else "No content"
+            first_line = (
+                note.get("content", "").splitlines()[0][:50]
+                if note.get("content")
+                else "No content"
+            )
             print(f"Successfully retrieved note: {first_line}...")
             return True
         else:
@@ -58,6 +67,7 @@ async def test_read_note():
     except Exception as e:
         print(f"Error reading note: {e}")
         return False
+
 
 async def test_create_note():
     """Test creating a new note."""
@@ -79,6 +89,7 @@ async def test_create_note():
         print(f"Error creating note: {e}")
         return False
 
+
 async def main():
     """Run all tests."""
     print("=" * 50)
@@ -86,7 +97,9 @@ async def main():
     print("=" * 50)
 
     # Check environment variables
-    username = os.environ.get("SIMPLENOTE_EMAIL") or os.environ.get("SIMPLENOTE_USERNAME")
+    username = os.environ.get("SIMPLENOTE_EMAIL") or os.environ.get(
+        "SIMPLENOTE_USERNAME"
+    )
     password = os.environ.get("SIMPLENOTE_PASSWORD")
 
     if not username or not password:
@@ -100,7 +113,7 @@ async def main():
     tests = [
         ("Connection to Simplenote", await test_simplenote_connection()),
         ("Reading a note", await test_read_note()),
-        ("Creating a note", await test_create_note())
+        ("Creating a note", await test_create_note()),
     ]
 
     # Print summary
@@ -111,12 +124,15 @@ async def main():
     all_passed = True
     for name, result in tests:
         status = "PASSED" if result else "FAILED"
-        status_colored = f"\033[92m{status}\033[0m" if result else f"\033[91m{status}\033[0m"
+        status_colored = (
+            f"\033[92m{status}\033[0m" if result else f"\033[91m{status}\033[0m"
+        )
         print(f"{name}: {status_colored}")
         all_passed = all_passed and result
 
     print("\nOverall status:", "PASSED" if all_passed else "FAILED")
     return all_passed
+
 
 if __name__ == "__main__":
     result = asyncio.run(main())

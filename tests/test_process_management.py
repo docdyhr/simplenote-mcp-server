@@ -19,7 +19,10 @@ class TestProcessManagement:
         # Mock PID file path
         test_pid_path = Path("/tmp/test_server.pid")
 
-        with patch("simplenote_mcp.server.server.PID_FILE_PATH", test_pid_path), patch("os.getpid", return_value=12345):
+        with (
+            patch("simplenote_mcp.server.server.PID_FILE_PATH", test_pid_path),
+            patch("os.getpid", return_value=12345),
+        ):
             write_pid_file()
 
             # Verify the PID was written correctly
@@ -32,9 +35,14 @@ class TestProcessManagement:
 
     def test_write_pid_file_error(self):
         """Test error handling when writing the PID file."""
-        with patch("os.getpid", return_value=12345), \
-             patch("pathlib.Path.write_text", side_effect=PermissionError("Permission denied")), \
-             patch("simplenote_mcp.server.server.logger") as mock_logger:
+        with (
+            patch("os.getpid", return_value=12345),
+            patch(
+                "pathlib.Path.write_text",
+                side_effect=PermissionError("Permission denied"),
+            ),
+            patch("simplenote_mcp.server.server.logger") as mock_logger,
+        ):
             # Should not raise exception
             write_pid_file()
 
@@ -68,9 +76,13 @@ class TestProcessManagement:
 
     def test_cleanup_pid_file_error(self):
         """Test error handling when cleaning up the PID file."""
-        with patch("pathlib.Path.exists", return_value=True), \
-             patch("pathlib.Path.unlink", side_effect=PermissionError("Permission denied")), \
-             patch("simplenote_mcp.server.server.logger") as mock_logger:
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch(
+                "pathlib.Path.unlink", side_effect=PermissionError("Permission denied")
+            ),
+            patch("simplenote_mcp.server.server.logger") as mock_logger,
+        ):
             # Should not raise exception
             cleanup_pid_file()
 
@@ -80,24 +92,28 @@ class TestProcessManagement:
 
     def test_setup_signal_handlers(self):
         """Test setting up signal handlers."""
-        with patch("signal.signal") as mock_signal, \
-             patch("atexit.register") as mock_register:
-                setup_signal_handlers()
+        with (
+            patch("signal.signal") as mock_signal,
+            patch("atexit.register") as mock_register,
+        ):
+            setup_signal_handlers()
 
-                # Verify signal handlers were set up for SIGINT and SIGTERM
-                assert mock_signal.call_count == 2
-                mock_signal.assert_any_call(signal.SIGINT, mock_signal.call_args[0][1])
-                mock_signal.assert_any_call(signal.SIGTERM, mock_signal.call_args[0][1])
+            # Verify signal handlers were set up for SIGINT and SIGTERM
+            assert mock_signal.call_count == 2
+            mock_signal.assert_any_call(signal.SIGINT, mock_signal.call_args[0][1])
+            mock_signal.assert_any_call(signal.SIGTERM, mock_signal.call_args[0][1])
 
-                # Verify atexit handler was registered
-                mock_register.assert_called_once_with(cleanup_pid_file)
+            # Verify atexit handler was registered
+            mock_register.assert_called_once_with(cleanup_pid_file)
 
     def test_signal_handler(self):
         """Test the signal handler function."""
         # We need to get the signal_handler function from setup_signal_handlers
-        with patch("signal.signal") as mock_signal, \
-             patch("atexit.register"), \
-             patch("sys.exit") as mock_exit:
+        with (
+            patch("signal.signal") as mock_signal,
+            patch("atexit.register"),
+            patch("sys.exit") as mock_exit,
+        ):
             # Call setup_signal_handlers to capture the handler function
             setup_signal_handlers()
             signal_handler = mock_signal.call_args[0][1]
