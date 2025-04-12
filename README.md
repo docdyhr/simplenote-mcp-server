@@ -411,4 +411,4 @@ Contributions are welcome and pull requests are welcome! Please open an issue fi
 For security vulnerabilities, please review our [Security Policy](./.github/SECURITY.md).
 
 ## Related Projects
-	• [Model Context Protocol (MCP) - Example Servers](https://modelcontextprotocol.io/examples)
+	* https://modelcontextprotocol.io/examples
