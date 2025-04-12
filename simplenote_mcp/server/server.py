@@ -402,6 +402,60 @@ async def handle_list_tools() -> List[types.Tool]:
                     "required": ["note_id"],
                 },
             ),
+            types.Tool(
+                name="add_tags",
+                description="Add tags to an existing note",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to modify",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "Tags to add (comma-separated)",
+                        },
+                    },
+                    "required": ["note_id", "tags"],
+                },
+            ),
+            types.Tool(
+                name="remove_tags",
+                description="Remove tags from an existing note",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to modify",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "Tags to remove (comma-separated)",
+                        },
+                    },
+                    "required": ["note_id", "tags"],
+                },
+            ),
+            types.Tool(
+                name="replace_tags",
+                description="Replace all tags on an existing note",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to modify",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "New tags (comma-separated)",
+                        },
+                    },
+                    "required": ["note_id", "tags"],
+                },
+            ),
         ]
         logger.info(
             f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"
@@ -810,6 +864,297 @@ async def handle_call_tool(name: str, arguments: Dict) -> List[types.TextContent
 
                 logger.error(f"Error getting note: {str(e)}", exc_info=True)
                 error = handle_exception(e, f"getting note {note_id}")
+                return [
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ]
+
+        elif name == "add_tags":
+            note_id = arguments.get("note_id", "")
+            tags_str = arguments.get("tags", "")
+
+            if not note_id:
+                raise ValidationError("Note ID is required")
+
+            if not tags_str:
+                raise ValidationError("Tags are required")
+
+            try:
+                # Get the existing note first
+                existing_note = None
+
+                # Try to get from cache first
+                if note_cache is not None and note_cache.is_initialized:
+                    with contextlib.suppress(ResourceNotFoundError):
+                        existing_note = note_cache.get_note(note_id)
+                        # If not found, the API will be used
+
+                # If not found in cache, get from API
+                if existing_note is None:
+                    existing_note, status = sn.get_note(note_id)
+                    if status != 0:
+                        error_msg = f"Failed to find note with ID {note_id}"
+                        logger.error(error_msg)
+                        raise ResourceNotFoundError(error_msg)
+
+                # Parse the tags to add
+                tags_to_add = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+                
+                # Get current tags or initialize empty list
+                current_tags = existing_note.get("tags", [])
+                if current_tags is None:
+                    current_tags = []
+                
+                # Add new tags that aren't already present
+                added_tags = []
+                for tag in tags_to_add:
+                    if tag not in current_tags:
+                        current_tags.append(tag)
+                        added_tags.append(tag)
+                
+                # Only update if tags were actually added
+                if added_tags:
+                    # Update the note
+                    existing_note["tags"] = current_tags
+                    updated_note, status = sn.update_note(existing_note)
+
+                    if status == 0:
+                        # Update the cache if it's initialized
+                        if note_cache is not None and note_cache.is_initialized:
+                            note_cache.update_cache_after_update(updated_note)
+
+                        return [
+                            types.TextContent(
+                                type="text",
+                                text=json.dumps(
+                                    {
+                                        "success": True,
+                                        "message": f"Added tags: {', '.join(added_tags)}",
+                                        "note_id": updated_note.get("key"),
+                                        "tags": updated_note.get("tags", []),
+                                    }
+                                ),
+                            )
+                        ]
+                    else:
+                        error_msg = "Failed to update note tags"
+                        logger.error(error_msg)
+                        raise NetworkError(error_msg)
+                else:
+                    # No tags were added (all already present)
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "success": True,
+                                    "message": "No new tags to add (all tags already present)",
+                                    "note_id": note_id,
+                                    "tags": current_tags,
+                                }
+                            ),
+                        )
+                    ]
+
+            except Exception as e:
+                if isinstance(e, ServerError):
+                    error_dict = e.to_dict()
+                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
+
+                logger.error(f"Error adding tags: {str(e)}", exc_info=True)
+                error = handle_exception(e, f"adding tags to note {note_id}")
+                return [
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ]
+
+        elif name == "remove_tags":
+            note_id = arguments.get("note_id", "")
+            tags_str = arguments.get("tags", "")
+
+            if not note_id:
+                raise ValidationError("Note ID is required")
+
+            if not tags_str:
+                raise ValidationError("Tags are required")
+
+            try:
+                # Get the existing note first
+                existing_note = None
+
+                # Try to get from cache first
+                if note_cache is not None and note_cache.is_initialized:
+                    with contextlib.suppress(ResourceNotFoundError):
+                        existing_note = note_cache.get_note(note_id)
+                        # If not found, the API will be used
+
+                # If not found in cache, get from API
+                if existing_note is None:
+                    existing_note, status = sn.get_note(note_id)
+                    if status != 0:
+                        error_msg = f"Failed to find note with ID {note_id}"
+                        logger.error(error_msg)
+                        raise ResourceNotFoundError(error_msg)
+
+                # Parse the tags to remove
+                tags_to_remove = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+                
+                # Get current tags or initialize empty list
+                current_tags = existing_note.get("tags", [])
+                if current_tags is None:
+                    current_tags = []
+                
+                # If the note has no tags, nothing to do
+                if not current_tags:
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "success": True,
+                                    "message": "Note had no tags to remove",
+                                    "note_id": note_id,
+                                    "tags": [],
+                                }
+                            ),
+                        )
+                    ]
+                
+                # Remove specified tags that are present
+                removed_tags = []
+                new_tags = []
+                for tag in current_tags:
+                    if tag in tags_to_remove:
+                        removed_tags.append(tag)
+                    else:
+                        new_tags.append(tag)
+                
+                # Only update if tags were actually removed
+                if removed_tags:
+                    # Update the note
+                    existing_note["tags"] = new_tags
+                    updated_note, status = sn.update_note(existing_note)
+
+                    if status == 0:
+                        # Update the cache if it's initialized
+                        if note_cache is not None and note_cache.is_initialized:
+                            note_cache.update_cache_after_update(updated_note)
+
+                        return [
+                            types.TextContent(
+                                type="text",
+                                text=json.dumps(
+                                    {
+                                        "success": True,
+                                        "message": f"Removed tags: {', '.join(removed_tags)}",
+                                        "note_id": updated_note.get("key"),
+                                        "tags": updated_note.get("tags", []),
+                                    }
+                                ),
+                            )
+                        ]
+                    else:
+                        error_msg = "Failed to update note tags"
+                        logger.error(error_msg)
+                        raise NetworkError(error_msg)
+                else:
+                    # No tags were removed (none were present)
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "success": True,
+                                    "message": "No tags were removed (specified tags not present on note)",
+                                    "note_id": note_id,
+                                    "tags": current_tags,
+                                }
+                            ),
+                        )
+                    ]
+
+            except Exception as e:
+                if isinstance(e, ServerError):
+                    error_dict = e.to_dict()
+                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
+
+                logger.error(f"Error removing tags: {str(e)}", exc_info=True)
+                error = handle_exception(e, f"removing tags from note {note_id}")
+                return [
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ]
+
+        elif name == "replace_tags":
+            note_id = arguments.get("note_id", "")
+            tags_str = arguments.get("tags", "")
+
+            if not note_id:
+                raise ValidationError("Note ID is required")
+
+            try:
+                # Get the existing note first
+                existing_note = None
+
+                # Try to get from cache first
+                if note_cache is not None and note_cache.is_initialized:
+                    with contextlib.suppress(ResourceNotFoundError):
+                        existing_note = note_cache.get_note(note_id)
+                        # If not found, the API will be used
+
+                # If not found in cache, get from API
+                if existing_note is None:
+                    existing_note, status = sn.get_note(note_id)
+                    if status != 0:
+                        error_msg = f"Failed to find note with ID {note_id}"
+                        logger.error(error_msg)
+                        raise ResourceNotFoundError(error_msg)
+
+                # Parse the new tags
+                new_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
+                
+                # Get current tags
+                current_tags = existing_note.get("tags", [])
+                if current_tags is None:
+                    current_tags = []
+                
+                # Update the note with new tags
+                existing_note["tags"] = new_tags
+                updated_note, status = sn.update_note(existing_note)
+
+                if status == 0:
+                    # Update the cache if it's initialized
+                    if note_cache is not None and note_cache.is_initialized:
+                        note_cache.update_cache_after_update(updated_note)
+
+                    # Generate appropriate message based on whether tags were changed
+                    if set(current_tags) == set(new_tags):
+                        message = "Tags unchanged (new tags same as existing tags)"
+                    else:
+                        message = f"Replaced tags: {', '.join(current_tags)} → {', '.join(new_tags)}"
+
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "success": True,
+                                    "message": message,
+                                    "note_id": updated_note.get("key"),
+                                    "tags": updated_note.get("tags", []),
+                                }
+                            ),
+                        )
+                    ]
+                else:
+                    error_msg = "Failed to update note tags"
+                    logger.error(error_msg)
+                    raise NetworkError(error_msg)
+
+            except Exception as e:
+                if isinstance(e, ServerError):
+                    error_dict = e.to_dict()
+                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
+
+                logger.error(f"Error replacing tags: {str(e)}", exc_info=True)
+                error = handle_exception(e, f"replacing tags on note {note_id}")
                 return [
                     types.TextContent(type="text", text=json.dumps(error.to_dict()))
                 ]

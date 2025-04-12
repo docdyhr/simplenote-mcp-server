@@ -552,6 +552,163 @@ class TestHandleCallTool:
 
             # Verify API calls
             mock_client.get_note.assert_called_once_with("note123")
+            
+    async def test_add_tags(self):
+        """Test adding tags to a note."""
+        with (
+            patch(
+                "simplenote_mcp.server.server.get_simplenote_client"
+            ) as mock_get_client,
+            patch("simplenote_mcp.server.server.note_cache") as mock_cache,
+            patch("simplenote_mcp.server.server.initialize_cache"),
+        ):
+            # Configure client mock
+            mock_client = MagicMock()
+            mock_client.get_note.return_value = (
+                {
+                    "key": "note123",
+                    "content": "Note content here",
+                    "tags": ["existing-tag"],
+                },
+                0,
+            )
+            mock_client.update_note.return_value = (
+                {
+                    "key": "note123",
+                    "content": "Note content here",
+                    "tags": ["existing-tag", "new-tag1", "new-tag2"],
+                },
+                0,
+            )
+            mock_get_client.return_value = mock_client
+
+            # Configure cache miss
+            mock_cache.is_initialized = True
+            mock_cache.get_note.side_effect = ResourceNotFoundError("Not in cache")
+
+            # Call handler
+            result = await handle_call_tool(
+                "add_tags", {"note_id": "note123", "tags": "new-tag1, new-tag2"}
+            )
+
+            # Verify results
+            response = json.loads(result[0].text)
+            assert response["success"] is True
+            assert "Added tags" in response["message"]
+            assert "new-tag1" in response["message"]
+            assert "new-tag2" in response["message"]
+            assert set(response["tags"]) == {"existing-tag", "new-tag1", "new-tag2"}
+
+            # Verify API calls
+            mock_client.get_note.assert_called_once_with("note123")
+            mock_client.update_note.assert_called_once()
+
+            # Verify cache update
+            mock_cache.update_cache_after_update.assert_called_once()
+            
+    async def test_remove_tags(self):
+        """Test removing tags from a note."""
+        with (
+            patch(
+                "simplenote_mcp.server.server.get_simplenote_client"
+            ) as mock_get_client,
+            patch("simplenote_mcp.server.server.note_cache") as mock_cache,
+            patch("simplenote_mcp.server.server.initialize_cache"),
+        ):
+            # Configure client mock
+            mock_client = MagicMock()
+            mock_client.get_note.return_value = (
+                {
+                    "key": "note123",
+                    "content": "Note content here",
+                    "tags": ["tag1", "tag2", "tag3"],
+                },
+                0,
+            )
+            mock_client.update_note.return_value = (
+                {
+                    "key": "note123",
+                    "content": "Note content here",
+                    "tags": ["tag3"],
+                },
+                0,
+            )
+            mock_get_client.return_value = mock_client
+
+            # Configure cache miss
+            mock_cache.is_initialized = True
+            mock_cache.get_note.side_effect = ResourceNotFoundError("Not in cache")
+
+            # Call handler
+            result = await handle_call_tool(
+                "remove_tags", {"note_id": "note123", "tags": "tag1, tag2"}
+            )
+
+            # Verify results
+            response = json.loads(result[0].text)
+            assert response["success"] is True
+            assert "Removed tags" in response["message"]
+            assert "tag1" in response["message"]
+            assert "tag2" in response["message"]
+            assert response["tags"] == ["tag3"]
+
+            # Verify API calls
+            mock_client.get_note.assert_called_once_with("note123")
+            mock_client.update_note.assert_called_once()
+
+            # Verify cache update
+            mock_cache.update_cache_after_update.assert_called_once()
+            
+    async def test_replace_tags(self):
+        """Test replacing tags on a note."""
+        with (
+            patch(
+                "simplenote_mcp.server.server.get_simplenote_client"
+            ) as mock_get_client,
+            patch("simplenote_mcp.server.server.note_cache") as mock_cache,
+            patch("simplenote_mcp.server.server.initialize_cache"),
+        ):
+            # Configure client mock
+            mock_client = MagicMock()
+            mock_client.get_note.return_value = (
+                {
+                    "key": "note123",
+                    "content": "Note content here",
+                    "tags": ["old-tag1", "old-tag2"],
+                },
+                0,
+            )
+            mock_client.update_note.return_value = (
+                {
+                    "key": "note123",
+                    "content": "Note content here",
+                    "tags": ["new-tag1", "new-tag2"],
+                },
+                0,
+            )
+            mock_get_client.return_value = mock_client
+
+            # Configure cache miss
+            mock_cache.is_initialized = True
+            mock_cache.get_note.side_effect = ResourceNotFoundError("Not in cache")
+
+            # Call handler
+            result = await handle_call_tool(
+                "replace_tags", {"note_id": "note123", "tags": "new-tag1, new-tag2"}
+            )
+
+            # Verify results
+            response = json.loads(result[0].text)
+            assert response["success"] is True
+            assert "Replaced tags" in response["message"]
+            assert response["tags"] == ["new-tag1", "new-tag2"]
+
+            # Verify API calls
+            mock_client.get_note.assert_called_once_with("note123")
+            mock_client.update_note.assert_called_once()
+
+            # Verify cache update
+            mock_cache.update_cache_after_update.assert_called_once()
 
     async def test_unknown_tool(self):
         """Test error for unknown tool."""

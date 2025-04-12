@@ -104,8 +104,8 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 
 ## 9. Future Enhancements (V2.0+)
 
-- [ ] **Tag Management**
-  - [ ] Add/remove tags from notes
+- [x] **Tag Management**
+  - [x] Add/remove tags from notes
 
 - [ ] **Permanent Deletion**
   - [ ] Implement permanent delete functionality

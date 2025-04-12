@@ -1,6 +1,6 @@
 # Simplenote MCP Server
 
-A simple MCP (Model Context Protocol) server that connects to Simplenote as a proof of concept.
+A simple MCP (Model Context Protocol) server that connects to Simplenote.
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
@@ -218,7 +218,7 @@ Simplenote notes are exposed as resources with the URI format `simplenote://note
 
 - **Read Resource** - View the content and metadata of a specific note
 
-With a total of 7 implemented capabilities (5 tools and 2 prompts), the server provides a comprehensive interface for managing your Simplenote notes.
+With a total of 10 implemented capabilities (8 tools and 2 prompts), the server provides a comprehensive interface for managing your Simplenote notes.
 
 ### Tools
 
@@ -231,6 +231,9 @@ The server provides the following tools for Simplenote interaction:
 | `delete_note` | Move a note to trash | `note_id` (required): The ID of the note to delete |
 | `get_note` | Get a note by ID | `note_id` (required): The ID of the note to retrieve |
 | `search_notes` | Search for notes by content | `query` (required): Search terms<br>`limit` (optional): Maximum results to return |
+| `add_tags` | Add tags to an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated tags to add |
+| `remove_tags` | Remove tags from an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated tags to remove |
+| `replace_tags` | Replace all tags on an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated new tags |
 
 ### Prompts
 
