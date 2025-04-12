@@ -412,4 +412,4 @@ For security vulnerabilities, please review our [Security Policy](./.github/SECU
 
 ## Related Projects
 
-[Example Servers](https://modelcontextprotocol.io/examples)
+Model Context Protocol (MCP) [Example Servers](https://modelcontextprotocol.io/examples)
