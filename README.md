@@ -218,6 +218,8 @@ Simplenote notes are exposed as resources with the URI format `simplenote://note
 
 - **Read Resource** - View the content and metadata of a specific note
 
+With a total of 7 implemented capabilities (5 tools and 2 prompts), the server provides a comprehensive interface for managing your Simplenote notes.
+
 ### Tools
 
 The server provides the following tools for Simplenote interaction:
@@ -232,10 +234,12 @@ The server provides the following tools for Simplenote interaction:
 
 ### Prompts
 
-The server also provides prompt templates:
+The server provides prompt templates for more interactive experiences:
 
-- `create_note_prompt` - Template for creating notes
-- `search_notes_prompt` - Template for searching notes
+| Prompt | Description | Parameters |
+|--------|-------------|------------|
+| `create_note_prompt` | Create a new note with content | `content` (required): Note content<br>`tags` (optional): Comma-separated tags |
+| `search_notes_prompt` | Search for notes matching a query | `query` (required): Search terms |
 
 ## Versioning
 
