@@ -1,12 +1,25 @@
 # Simplenote MCP Server
 
-A simple MCP (Model Context Protocol) server that connects to Simplenote.
+A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://github.com/johnsmith9982/claude-desktop) using the [MCP Python SDK](https://github.com/johnsmith9982/mcp-python-sdk).
+
+This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
 
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.11-blue)](./setup.py)
 [![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
 [![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
+
+---
+
+## 🔧 Features
+
+- 📝 Read and list Simplenote notes
+- 🔐 Token-based authentication via `.env` or manual entry
+- ⚡ Local, fast, and easy to run
+- 🧩 Compatible with Claude Desktop and other MCP clients
+
+---
 
 ## Project Structure
 
@@ -391,8 +404,11 @@ The project includes several diagnostic tools:
 See [ROADMAP.md](./ROADMAP.md) for planned features and goals.
 ## Contributing
 
-Contributions are welcome! Please read our [Contributing Guide](./.github/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
+Contributions are welcome and pull requests are welcome! Please open an issue first to discuss any significant changes. Read our [Contributing Guide](./.github/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
 
 ## Security
 
 For security vulnerabilities, please review our [Security Policy](./.github/SECURITY.md).
+
+## Related Projects
+	• [Model Context Protocol (MCP) - Example Servers](https://modelcontextprotocol.io/examples)
