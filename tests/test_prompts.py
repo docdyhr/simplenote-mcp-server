@@ -1,6 +1,5 @@
 """Unit tests for the prompt capabilities of the MCP server."""
 
-import json
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -40,71 +39,83 @@ class TestPromptCapabilities:
 
     async def test_get_prompt_create_note(self):
         """Test getting the create_note_prompt."""
-        with patch("mcp.types.PromptMessage") as mock_prompt_message, \
-             patch("mcp.types.TextContent") as mock_text_content, \
-             patch("mcp.types.GetPromptResult") as mock_result:
+        with (
+            patch("mcp.types.PromptMessage") as mock_prompt_message,
+            patch("mcp.types.TextContent") as mock_text_content,
+            patch("mcp.types.GetPromptResult") as mock_result,
+        ):
             # Configure mocks
             mock_text_content.return_value = MagicMock()
             mock_prompt_message.return_value = MagicMock()
             mock_result.return_value = MagicMock()
-            
-            result = await handle_get_prompt("create_note_prompt", {
-                "content": "Test content",
-                "tags": "test,important"
-            })
-            
+
+            await handle_get_prompt(
+                "create_note_prompt",
+                {"content": "Test content", "tags": "test,important"},
+            )
+
             # Verify result was created
             mock_result.assert_called_once()
-            
+
             # Verify prompt message calls
             assert mock_prompt_message.call_count == 2
-            
+
             # Check description
-            assert mock_result.call_args[1]["description"] == "Create a new note in Simplenote"
+            assert (
+                mock_result.call_args[1]["description"]
+                == "Create a new note in Simplenote"
+            )
 
     async def test_get_prompt_search_notes(self):
         """Test getting the search_notes_prompt."""
-        with patch("mcp.types.PromptMessage") as mock_prompt_message, \
-             patch("mcp.types.TextContent") as mock_text_content, \
-             patch("mcp.types.GetPromptResult") as mock_result:
+        with (
+            patch("mcp.types.PromptMessage") as mock_prompt_message,
+            patch("mcp.types.TextContent") as mock_text_content,
+            patch("mcp.types.GetPromptResult") as mock_result,
+        ):
             # Configure mocks
             mock_text_content.return_value = MagicMock()
             mock_prompt_message.return_value = MagicMock()
             mock_result.return_value = MagicMock()
-            
-            result = await handle_get_prompt("search_notes_prompt", {
-                "query": "test query"
-            })
-            
+
+            await handle_get_prompt(
+                "search_notes_prompt", {"query": "test query"}
+            )
+
             # Verify result was created
             mock_result.assert_called_once()
-            
+
             # Verify prompt message calls
             assert mock_prompt_message.call_count == 2
-            
+
             # Check description
-            assert mock_result.call_args[1]["description"] == "Search for notes in Simplenote"
+            assert (
+                mock_result.call_args[1]["description"]
+                == "Search for notes in Simplenote"
+            )
 
     async def test_get_prompt_missing_arguments(self):
         """Test getting a prompt with missing arguments."""
-        with patch("mcp.types.PromptMessage") as mock_prompt_message, \
-             patch("mcp.types.TextContent") as mock_text_content, \
-             patch("mcp.types.GetPromptResult") as mock_result:
+        with (
+            patch("mcp.types.PromptMessage") as mock_prompt_message,
+            patch("mcp.types.TextContent") as mock_text_content,
+            patch("mcp.types.GetPromptResult") as mock_result,
+        ):
             # Configure mocks
             mock_text_content.return_value = MagicMock()
             mock_prompt_message.return_value = MagicMock()
             mock_result.return_value = MagicMock()
-            
+
             # Test with empty arguments
-            result = await handle_get_prompt("create_note_prompt", {})
+            await handle_get_prompt("create_note_prompt", {})
             assert mock_result.called
-            
+
             # Reset mocks
             mock_result.reset_mock()
             mock_prompt_message.reset_mock()
-            
+
             # Test with None arguments
-            result = await handle_get_prompt("search_notes_prompt", None)
+            await handle_get_prompt("search_notes_prompt", None)
             assert mock_result.called
 
     async def test_get_prompt_unknown_prompt(self):
