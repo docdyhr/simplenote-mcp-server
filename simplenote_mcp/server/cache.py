@@ -13,10 +13,14 @@ from .logging import logger
 _cache_instance: Optional["NoteCache"] = None
 
 
+# Error messages
+CACHE_NOT_INITIALIZED = "Note cache not initialized. Call initialize_cache() first."
+CACHE_NOT_LOADED = "Cache not initialized"
+
 def get_cache() -> "NoteCache":
     """Get the global note cache instance."""
     if _cache_instance is None:
-        raise RuntimeError("Note cache not initialized. Call initialize_cache() first.")
+        raise RuntimeError(CACHE_NOT_INITIALIZED)
     return _cache_instance
 
 
@@ -196,7 +200,7 @@ class NoteCache:
 
         """
         if not self._initialized:
-            raise RuntimeError("Cache not initialized")
+            raise RuntimeError(CACHE_NOT_LOADED)
 
         # Check if note is in cache
         note = self._notes.get(note_id)
@@ -236,7 +240,7 @@ class NoteCache:
 
         """
         if not self._initialized:
-            raise RuntimeError("Cache not initialized")
+            raise RuntimeError(CACHE_NOT_LOADED)
 
         # Filter by tag if specified
         if tag_filter:
@@ -272,7 +276,7 @@ class NoteCache:
 
         """
         if not self._initialized:
-            raise RuntimeError("Cache not initialized")
+            raise RuntimeError(CACHE_NOT_LOADED)
 
         # Simple case-insensitive search
         query_lower = query.lower()
@@ -320,7 +324,7 @@ class NoteCache:
 
         """
         if not self._initialized:
-            raise RuntimeError("Cache not initialized")
+            raise RuntimeError(CACHE_NOT_LOADED)
 
         note_id = note["key"]
         self._notes[note_id] = note
@@ -337,7 +341,7 @@ class NoteCache:
 
         """
         if not self._initialized:
-            raise RuntimeError("Cache not initialized")
+            raise RuntimeError(CACHE_NOT_LOADED)
 
         note_id = note["key"]
 
@@ -369,7 +373,7 @@ class NoteCache:
 
         """
         if not self._initialized:
-            raise RuntimeError("Cache not initialized")
+            raise RuntimeError(CACHE_NOT_LOADED)
 
         # Remove tags if this was the only note with those tags
         if note_id in self._notes and "tags" in self._notes[note_id]:
@@ -396,7 +400,7 @@ class NoteCache:
 
         """
         if not self._initialized:
-            raise RuntimeError("Cache not initialized")
+            raise RuntimeError(CACHE_NOT_LOADED)
 
         return sorted(self._tags)
 

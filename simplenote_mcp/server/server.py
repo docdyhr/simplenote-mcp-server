@@ -31,6 +31,20 @@ from .errors import (
 )
 from .logging import logger
 
+# Error messages for better maintainability and reusability
+AUTH_ERROR_MSG = "SIMPLENOTE_EMAIL (or SIMPLENOTE_USERNAME) and SIMPLENOTE_PASSWORD environment variables must be set"
+NOTE_CONTENT_REQUIRED = "Note content is required"
+NOTE_ID_REQUIRED = "Note ID is required"
+TAGS_REQUIRED = "Tags are required"
+QUERY_REQUIRED = "Search query is required"
+UNKNOWN_TOOL_ERROR = "Unknown tool: {name}"
+UNKNOWN_PROMPT_ERROR = "Unknown prompt: {name}"
+CACHE_INIT_FAILED = "Note cache initialization failed"
+FAILED_GET_NOTE = "Failed to find note with ID {note_id}"
+FAILED_UPDATE_TAGS = "Failed to update note tags"
+FAILED_TRASH_NOTE = "Failed to move note to trash"
+FAILED_RETRIEVE_NOTES = "Failed to retrieve notes for search"
+
 # Create a server instance
 try:
     logger.info("Creating MCP server instance")
@@ -64,9 +78,7 @@ def get_simplenote_client() -> Simplenote:
 
             if not config.has_credentials:
                 logger.error("Missing Simplenote credentials in environment variables")
-                raise AuthenticationError(
-                    "SIMPLENOTE_EMAIL (or SIMPLENOTE_USERNAME) and SIMPLENOTE_PASSWORD environment variables must be set"
-                )
+                raise AuthenticationError(AUTH_ERROR_MSG)
 
             logger.info(
                 f"Creating Simplenote client with username: {config.simplenote_email[:3]}***"
@@ -186,7 +198,7 @@ async def handle_list_resources(
 
         if note_cache is None:
             raise ServerError(
-                "Note cache initialization failed", category=ErrorCategory.INTERNAL
+                CACHE_INIT_FAILED, category=ErrorCategory.INTERNAL
             )
 
         # Use the cache to get notes with filtering
@@ -248,7 +260,8 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
     # Parse the URI to get the note ID
     if not uri.startswith("simplenote://note/"):
         logger.error(f"Invalid Simplenote URI: {uri}")
-        raise ValidationError(f"Invalid Simplenote URI: {uri}")
+        invalid_uri_msg = f"Invalid Simplenote URI: {uri}"
+        raise ValidationError(invalid_uri_msg)
 
     note_id = uri.replace("simplenote://note/", "")
 
@@ -527,7 +540,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             tags = [tag.strip() for tag in tags_str.split(",")] if tags_str else []
 
             if not content:
-                raise ValidationError("Note content is required")
+                raise ValidationError(NOTE_CONTENT_REQUIRED)
 
             try:
                 note = {"content": content}
@@ -579,10 +592,10 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             tags_str = arguments.get("tags", "")
 
             if not note_id:
-                raise ValidationError("Note ID is required")
+                raise ValidationError(NOTE_ID_REQUIRED)
 
             if not content:
-                raise ValidationError("Note content is required")
+                raise ValidationError(NOTE_CONTENT_REQUIRED)
 
             try:
                 # Get the existing note first
@@ -598,7 +611,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if existing_note is None:
                     existing_note, status = sn.get_note(note_id)
                     if status != 0:
-                        error_msg = f"Failed to find note with ID {note_id}"
+                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
                         logger.error(error_msg)
                         raise ResourceNotFoundError(error_msg)
 
@@ -650,7 +663,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             note_id = arguments.get("note_id", "")
 
             if not note_id:
-                raise ValidationError("Note ID is required")
+                raise ValidationError(NOTE_ID_REQUIRED)
 
             try:
                 status = sn.trash_note(
@@ -675,9 +688,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         )
                     ]
                 else:
-                    error_msg = "Failed to move note to trash"
-                    logger.error(error_msg)
-                    raise NetworkError(error_msg)
+                    logger.error(FAILED_TRASH_NOTE)
+                    raise NetworkError(FAILED_TRASH_NOTE)
 
             except Exception as e:
                 if isinstance(e, ServerError):
@@ -695,7 +707,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             limit = arguments.get("limit")
 
             if not query:
-                raise ValidationError("Search query is required")
+                raise ValidationError(QUERY_REQUIRED)
 
             if limit is not None:
                 try:
@@ -751,9 +763,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 notes, status = sn.get_note_list()
 
                 if status != 0:
-                    error_msg = "Failed to retrieve notes for search"
-                    logger.error(error_msg)
-                    raise NetworkError(error_msg)
+                    logger.error(FAILED_RETRIEVE_NOTES)
+                    raise NetworkError(FAILED_RETRIEVE_NOTES)
 
                 # Simple search in content
                 query_lower = query.lower()
@@ -822,7 +833,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             note_id = arguments.get("note_id", "")
 
             if not note_id:
-                raise ValidationError("Note ID is required")
+                raise ValidationError(NOTE_ID_REQUIRED)
 
             try:
                 # Try to get from cache first
@@ -836,7 +847,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if note is None:
                     note, status = sn.get_note(note_id)
                     if status != 0:
-                        error_msg = f"Failed to find note with ID {note_id}"
+                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
                         logger.error(error_msg)
                         raise ResourceNotFoundError(error_msg)
 
@@ -878,10 +889,10 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             tags_str = arguments.get("tags", "")
 
             if not note_id:
-                raise ValidationError("Note ID is required")
+                raise ValidationError(NOTE_ID_REQUIRED)
 
             if not tags_str:
-                raise ValidationError("Tags are required")
+                raise ValidationError(TAGS_REQUIRED)
 
             try:
                 # Get the existing note first
@@ -897,7 +908,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if existing_note is None:
                     existing_note, status = sn.get_note(note_id)
                     if status != 0:
-                        error_msg = f"Failed to find note with ID {note_id}"
+                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
                         logger.error(error_msg)
                         raise ResourceNotFoundError(error_msg)
 
@@ -941,9 +952,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                             )
                         ]
                     else:
-                        error_msg = "Failed to update note tags"
-                        logger.error(error_msg)
-                        raise NetworkError(error_msg)
+                        logger.error(FAILED_UPDATE_TAGS)
+                        raise NetworkError(FAILED_UPDATE_TAGS)
                 else:
                     # No tags were added (all already present)
                     return [
@@ -976,10 +986,10 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             tags_str = arguments.get("tags", "")
 
             if not note_id:
-                raise ValidationError("Note ID is required")
+                raise ValidationError(NOTE_ID_REQUIRED)
 
             if not tags_str:
-                raise ValidationError("Tags are required")
+                raise ValidationError(TAGS_REQUIRED)
 
             try:
                 # Get the existing note first
@@ -995,7 +1005,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if existing_note is None:
                     existing_note, status = sn.get_note(note_id)
                     if status != 0:
-                        error_msg = f"Failed to find note with ID {note_id}"
+                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
                         logger.error(error_msg)
                         raise ResourceNotFoundError(error_msg)
 
@@ -1057,9 +1067,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                             )
                         ]
                     else:
-                        error_msg = "Failed to update note tags"
-                        logger.error(error_msg)
-                        raise NetworkError(error_msg)
+                        logger.error(FAILED_UPDATE_TAGS)
+                        raise NetworkError(FAILED_UPDATE_TAGS)
                 else:
                     # No tags were removed (none were present)
                     return [
@@ -1092,7 +1101,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             tags_str = arguments.get("tags", "")
 
             if not note_id:
-                raise ValidationError("Note ID is required")
+                raise ValidationError(NOTE_ID_REQUIRED)
 
             try:
                 # Get the existing note first
@@ -1108,7 +1117,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if existing_note is None:
                     existing_note, status = sn.get_note(note_id)
                     if status != 0:
-                        error_msg = f"Failed to find note with ID {note_id}"
+                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
                         logger.error(error_msg)
                         raise ResourceNotFoundError(error_msg)
 
@@ -1165,7 +1174,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 ]
 
         else:
-            error_msg = f"Unknown tool: {name}"
+            error_msg = UNKNOWN_TOOL_ERROR.format(name=name)
             logger.error(error_msg)
             error = ValidationError(error_msg)
             return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
@@ -1292,7 +1301,7 @@ async def handle_get_prompt(
         )
 
     else:
-        error_msg = f"Unknown prompt: {name}"
+        error_msg = UNKNOWN_PROMPT_ERROR.format(name=name)
         logger.error(error_msg)
         raise ValidationError(error_msg)
 
