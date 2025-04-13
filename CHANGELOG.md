@@ -107,3 +107,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bug in email logging when credentials are not provided
 - Server crashes during background sync when network errors occur
 - Unstable behavior when Simplenote API is unreachable
+- Server crashes when MCP client times out during slow API operations
+- Initialization failure when Simplenote API is slow to respond
