@@ -54,6 +54,7 @@ class ServerError(Exception):
             recoverable: Whether the error is potentially recoverable
             original_error: Original exception that caused this error, if any
             details: Additional error details as a dictionary
+
         """
         self.message = message
         self.category = category
@@ -176,6 +177,7 @@ def handle_exception(e: Exception, context: str = "") -> ServerError:
 
     Returns:
         An appropriate ServerError instance
+
     """
     context_str = f" while {context}" if context else ""
 

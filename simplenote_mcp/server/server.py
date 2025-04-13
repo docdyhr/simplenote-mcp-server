@@ -52,6 +52,7 @@ def get_simplenote_client() -> Simplenote:
 
     Raises:
         AuthenticationError: If Simplenote credentials are not configured
+
     """
     global simplenote_client
     if simplenote_client is None:
@@ -172,6 +173,7 @@ async def handle_list_resources(
 
     Returns:
         List of Simplenote note resources
+
     """
     logger.debug(f"list_resources called with tag={tag}, limit={limit}")
 
@@ -239,6 +241,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
     Raises:
         ValidationError: If the URI is invalid
         ResourceNotFoundError: If the note is not found
+
     """
     logger.debug(f"read_resource called for URI: {uri}")
 
@@ -315,6 +318,7 @@ async def handle_list_tools() -> list[types.Tool]:
 
     Returns:
         List of available tools
+
     """
     try:
         logger.info("Listing available tools")
@@ -504,6 +508,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
     Returns:
         The result of the tool call
+
     """
     logger.info(f"Tool call: {name} with arguments: {json.dumps(arguments)}")
 
@@ -1184,6 +1189,7 @@ async def handle_list_prompts() -> list[types.Prompt]:
 
     Returns:
         List of available prompts
+
     """
     logger.debug("Listing available prompts")
 
@@ -1231,6 +1237,7 @@ async def handle_get_prompt(
 
     Raises:
         ValidationError: If the prompt name is unknown
+
     """
     logger.debug(f"Getting prompt: {name} with arguments: {arguments}")
 

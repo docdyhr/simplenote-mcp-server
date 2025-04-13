@@ -32,6 +32,7 @@ class NoteCache:
 
         Args:
             client: The Simplenote client instance.
+
         """
         self._client = client
         self._notes: dict[str, dict] = {}  # Map of note ID to note data
@@ -47,6 +48,7 @@ class NoteCache:
 
         Raises:
             NetworkError: If there's an error connecting to Simplenote.
+
         """
         if self._initialized:
             return len(self._notes)
@@ -95,6 +97,7 @@ class NoteCache:
 
         Returns:
             Number of notes that were updated in the cache.
+
         """
         if not self._initialized:
             # If not initialized, do a full load
@@ -190,6 +193,7 @@ class NoteCache:
 
         Raises:
             ResourceNotFoundError: If the note doesn't exist.
+
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
@@ -229,6 +233,7 @@ class NoteCache:
 
         Returns:
             List of note data.
+
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
@@ -264,6 +269,7 @@ class NoteCache:
 
         Returns:
             List of matching notes.
+
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
@@ -311,6 +317,7 @@ class NoteCache:
 
         Args:
             note: The created note data to add to cache.
+
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
@@ -327,6 +334,7 @@ class NoteCache:
 
         Args:
             note: The updated note data.
+
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
@@ -358,6 +366,7 @@ class NoteCache:
 
         Args:
             note_id: ID of the deleted note.
+
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
@@ -384,6 +393,7 @@ class NoteCache:
 
         Returns:
             List of unique tags.
+
         """
         if not self._initialized:
             raise RuntimeError("Cache not initialized")
@@ -396,6 +406,7 @@ class NoteCache:
 
         Returns:
             True if the cache is initialized, False otherwise.
+
         """
         return self._initialized
 
@@ -405,6 +416,7 @@ class NoteCache:
 
         Returns:
             Number of notes in the cache.
+
         """
         return len(self._notes)
 
@@ -414,6 +426,7 @@ class NoteCache:
 
         Returns:
             Number of notes in the cache.
+
         """
         return len(self._notes)
 
@@ -423,6 +436,7 @@ class NoteCache:
 
         Returns:
             Number of unique tags in the cache.
+
         """
         return len(self._tags)
 
@@ -432,6 +446,7 @@ class NoteCache:
 
         Returns:
             List of unique tags.
+
         """
         return sorted(self._tags)
 
@@ -441,6 +456,7 @@ class NoteCache:
 
         Returns:
             Timestamp of the last synchronization.
+
         """
         return self._last_sync
 
@@ -450,6 +466,7 @@ class NoteCache:
 
         Returns:
             The last index mark or an empty string.
+
         """
         return getattr(self, "_index_mark", "")
 
@@ -464,6 +481,7 @@ class BackgroundSync:
             cache: The note cache to synchronize.
             config: Optional configuration object. If not provided, the
                 global configuration will be used.
+
         """
         self._cache = cache
         self._config = config or get_config()
@@ -568,6 +586,7 @@ async def initialize_cache(client: Simplenote) -> NoteCache:
 
     Returns:
         The initialized note cache.
+
     """
     global _cache_instance
 
