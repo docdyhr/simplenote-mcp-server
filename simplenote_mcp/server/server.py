@@ -8,6 +8,7 @@ import os
 import signal
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Optional
@@ -128,6 +129,9 @@ def cleanup_pid_file() -> None:
         logger.error(f"Error removing PID file: {str(e)}", exc_info=True)
 
 
+# Global flag to indicate shutdown is in progress
+shutdown_requested = False
+
 def setup_signal_handlers() -> None:
     """Set up signal handlers for graceful shutdown."""
 
@@ -135,10 +139,23 @@ def setup_signal_handlers() -> None:
         sig: int, _: object
     ) -> None:  # Frame argument is unused but required by signal API
         """Handle termination signals."""
+        global shutdown_requested
         signal_name = signal.Signals(sig).name
         logger.info(f"Received {signal_name} signal, shutting down...")
-        # Cleanup will be handled by atexit
-        sys.exit(0)
+        
+        # Set the shutdown flag
+        shutdown_requested = True
+        
+        # If we're not in the main thread or inside an async function,
+        # we need to exit immediately
+        current_thread = threading.current_thread()
+        if current_thread != threading.main_thread():
+            logger.info("Signal received in non-main thread, exiting immediately")
+            # Cleanup will be handled by atexit
+            sys.exit(0)
+            
+        # In the main thread, we'll let the async loops check the flag
+        # and exit gracefully via the shutdown_requested flag
 
     # Register handlers for common termination signals
     signal.signal(signal.SIGINT, signal_handler)
@@ -150,18 +167,50 @@ def setup_signal_handlers() -> None:
 
 async def initialize_cache() -> None:
     """Initialize the note cache and start background sync."""
-    global note_cache, background_sync
+    global note_cache, background_sync, shutdown_requested
 
     try:
         logger.info("Initializing note cache")
-        sn = get_simplenote_client()
-        note_cache = NoteCache(sn)
-        await note_cache.initialize()
-
-        # Start background sync
-        background_sync = BackgroundSync(note_cache)
-        await background_sync.start()
-
+        
+        # Set a timeout for the entire initialization process - MCP client times out at 60s
+        # so we need to make sure we handle it appropriately
+        initialization_timeout = 45  # seconds
+        
+        # If an external timeout occurs during initialization, we'll detect it
+        # via the shutdown_requested flag
+        async def initialize_with_timeout():
+            nonlocal note_cache, background_sync
+            
+            # Start client first
+            sn = get_simplenote_client()
+            note_cache = NoteCache(sn)
+            
+            # Initialize with timeout
+            init_task = asyncio.create_task(note_cache.initialize())
+            try:
+                await asyncio.wait_for(init_task, timeout=initialization_timeout)
+                
+                # Only start background sync if initialization succeeded
+                if not shutdown_requested:
+                    background_sync = BackgroundSync(note_cache)
+                    await background_sync.start()
+                    
+            except asyncio.TimeoutError:
+                logger.warning(f"Note cache initialization timed out after {initialization_timeout}s")
+                # Initialize with empty data for now, sync will happen in background
+                note_cache._initialized = True
+                note_cache._notes = {}
+                note_cache._last_sync = time.time()
+                note_cache._tags = set()
+                
+                # Start background sync with empty cache - it will retry
+                if not shutdown_requested:
+                    background_sync = BackgroundSync(note_cache) 
+                    await background_sync.start()
+        
+        # Run the actual initialization
+        await initialize_with_timeout()
+        
     except Exception as e:
         if isinstance(e, ServerError):
             raise
@@ -1308,6 +1357,7 @@ async def handle_get_prompt(
 
 async def run() -> None:
     """Run the server using STDIO transport."""
+    global shutdown_requested
     logger.info("Starting MCP server STDIO transport")
 
     try:
@@ -1315,9 +1365,10 @@ async def run() -> None:
             logger.info("STDIO server created, initializing MCP server")
 
             try:
-                # Initialize the cache in the background
-                asyncio.create_task(initialize_cache())
-
+                # Initialize the cache in the background with a handle we can wait on
+                # This way we know if the initialization was cancelled
+                init_task = asyncio.create_task(initialize_cache())
+                
                 # Get capabilities and log them
                 capabilities = server.get_capabilities(
                     notification_options=NotificationOptions(),
@@ -1335,17 +1386,51 @@ async def run() -> None:
                 # Get the server version
                 from simplenote_mcp import __version__ as version
 
-                # Run the server
-                await server.run(
-                    read_stream,
-                    write_stream,
-                    InitializationOptions(
-                        server_name="simplenote-mcp-server",
-                        server_version=version,
-                        capabilities=capabilities,
-                    ),
+                # Create a done future that will be set when shutdown is requested
+                shutdown_future = asyncio.get_running_loop().create_future()
+                
+                # Create a background task to monitor the shutdown flag
+                async def monitor_shutdown():
+                    while not shutdown_requested:
+                        await asyncio.sleep(0.1)
+                    logger.info("Shutdown requested, stopping server gracefully")
+                    shutdown_future.set_result(None)
+                
+                shutdown_monitor = asyncio.create_task(monitor_shutdown())
+                
+                # Run the server with an option to cancel if shutdown is requested
+                server_task = asyncio.create_task(
+                    server.run(
+                        read_stream,
+                        write_stream,
+                        InitializationOptions(
+                            server_name="simplenote-mcp-server",
+                            server_version=version,
+                            capabilities=capabilities,
+                        ),
+                    )
                 )
-                logger.info("MCP server run completed")
+                
+                # Wait for either server completion or shutdown
+                done, pending = await asyncio.wait(
+                    [server_task, shutdown_future],
+                    return_when=asyncio.FIRST_COMPLETED
+                )
+                
+                # Cancel any pending tasks
+                for task in pending:
+                    task.cancel()
+                
+                # If the server task is done, check its result
+                if server_task in done:
+                    try:
+                        await server_task
+                        logger.info("MCP server run completed normally")
+                    except Exception as e:
+                        logger.error(f"MCP server run failed: {str(e)}", exc_info=True)
+                        raise
+                else:
+                    logger.info("MCP server run cancelled due to shutdown request")
 
             except Exception as e:
                 logger.error(f"Error running MCP server: {str(e)}", exc_info=True)
@@ -1404,13 +1489,25 @@ def run_main() -> None:
         write_pid_file()
         logger.info("Process management initialized")
 
-        # Run the async event loop
-        asyncio.run(run())
-
+        # Run the async event loop with graceful shutdown support
+        try:
+            asyncio.run(run())
+        except KeyboardInterrupt:
+            # Handle Ctrl+C gracefully - signal handler will set shutdown_requested flag
+            logger.info("KeyboardInterrupt received, shutting down gracefully")
+        except SystemExit:
+            # Normal system exit, handle it gracefully
+            logger.info("System exit requested, shutting down gracefully")
+    
     except Exception as e:
-        logger.critical(f"Critical error in MCP server: {str(e)}", exc_info=True)
-        cleanup_pid_file()  # Ensure PID file is cleaned up even on error
-        sys.exit(1)
+        if not isinstance(e, SystemExit):  # Don't log normal exits as errors
+            logger.critical(f"Critical error in MCP server: {str(e)}", exc_info=True)
+            cleanup_pid_file()  # Ensure PID file is cleaned up even on error
+            sys.exit(1)
+        else:
+            # Normal exit, just ensure PID file is cleaned up
+            cleanup_pid_file()
+            raise  # Re-raise to preserve exit code
 
 
 if __name__ == "__main__":
