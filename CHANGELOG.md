@@ -89,6 +89,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Smithery configuration for simplified cloud deployment
 - Installation instructions for Smithery platform
 - Smithery badge in README for enhanced visibility
+- Retry mechanisms with exponential backoff for API operations
+- Timeout handling for background sync to prevent hanging
 
 ### Improved
 - Code quality improvements:
@@ -97,6 +99,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Improved exception handling with centralized error messages
   - Added parameter and return type annotations
   - Alphabetically sorted __all__ lists
+- Enhanced cleanup script with better process termination
+- More resilient background sync with better recovery from failures
+- Graceful handling of network connectivity issues
 
 ### Fixed
 - Bug in email logging when credentials are not provided
+- Server crashes during background sync when network errors occur
+- Unstable behavior when Simplenote API is unreachable
