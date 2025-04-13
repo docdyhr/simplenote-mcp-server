@@ -1,0 +1,71 @@
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+
+startCommand:
+  type: stdio
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - simplenoteEmail
+      - simplenotePassword
+    properties:
+      simplenoteEmail:
+        type: string
+        description: Your Simplenote account email.
+      simplenotePassword:
+        type: string
+        description: Your Simplenote account password.
+      syncIntervalSeconds:
+        type: number
+        default: 120
+        description: Interval in seconds between background cache synchronizations.
+      defaultResourceLimit:
+        type: number
+        default: 100
+        description: Default maximum number of notes to return when listing resources.
+      logLevel:
+        type: string
+        default: INFO
+        description: Logging level (DEBUG, INFO, WARNING, ERROR).
+      logToFile:
+        type: boolean
+        default: true
+        description: Whether to write logs to files.
+      logFormat:
+        type: string
+        default: standard
+        description: Log format (standard or json).
+      mcpDebug:
+        type: boolean
+        default: false
+        description: Enable additional debug logging.
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => {
+      // Map the user config variables to environment variables expected by the server
+      const env = Object.assign({}, process.env, {
+        SIMPLENOTE_EMAIL: config.simplenoteEmail,
+        SIMPLENOTE_PASSWORD: config.simplenotePassword,
+        SYNC_INTERVAL_SECONDS: config.syncIntervalSeconds ? config.syncIntervalSeconds.toString() : '120',
+        DEFAULT_RESOURCE_LIMIT: config.defaultResourceLimit ? config.defaultResourceLimit.toString() : '100',
+        LOG_LEVEL: config.logLevel || 'INFO',
+        LOG_TO_FILE: (config.logToFile === undefined ? 'true' : config.logToFile.toString()),
+        LOG_FORMAT: config.logFormat || 'standard',
+        MCP_DEBUG: (config.mcpDebug === undefined ? 'false' : config.mcpDebug.toString())
+      });
+      return {
+        command: 'simplenote-mcp-server',
+        args: [],
+        env
+      };
+    }
+  exampleConfig:
+    simplenoteEmail: user@example.com
+    simplenotePassword: supersecretpassword
+    syncIntervalSeconds: 120
+    defaultResourceLimit: 100
+    logLevel: INFO
+    logToFile: true
+    logFormat: standard
+    mcpDebug: false
