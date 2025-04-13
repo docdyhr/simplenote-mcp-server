@@ -124,6 +124,74 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
   - [ ] Create Dockerfile
   - [ ] Document Docker deployment
 
+## 11. Code Quality Improvements
+
+### Immediate Improvements
+
+- [ ] **Modern Type Annotations**
+  - [ ] Replace `typing.Dict`, `typing.List`, `typing.Set` with built-in `dict`, `list`, `set`
+  - [ ] Run `ruff check --select=UP006 --fix .` to autofix
+
+- [ ] **Docstring Formatting**
+  - [ ] Add missing periods at end of docstrings
+  - [ ] Add blank lines after section headers (Args:, Returns:, etc.)
+  - [ ] Use consistent formatting across all docstrings
+  - [ ] Run `ruff check --select=D400,D415,D413 --fix .`
+
+- [ ] **Exception Handling**
+  - [ ] Store error messages in variables instead of using string literals
+  - [ ] Improve exception hierarchy and reusability
+
+### Medium-term Improvements
+
+- [ ] **Function Return Type Annotations**
+  - [ ] Add return type annotations to all public functions
+  - [ ] Use `-> None` for functions that don't return anything
+
+- [ ] **Sort `__all__` Lists**
+  - [ ] Keep `__all__` lists alphabetically sorted
+  - [ ] Run `ruff check --select=RUF022 --fix .`
+
+- [ ] **Upgrade Test Assertions**
+  - [ ] Use pytest-style assertions for better error messages
+  - [ ] Add more descriptive assertion messages
+
+- [ ] **Function Parameter Type Annotations**
+  - [ ] Add type annotations for function parameters
+  - [ ] Improve static type checking support
+
+### Longer-term Improvements
+
+- [ ] **Refactor Complex Functions**
+  - [ ] Break down `handle_call_tool` into smaller, focused functions
+  - [ ] Improve code organization and readability
+
+- [ ] **Reduce Code Duplication**
+  - [ ] Extract repeated tag management patterns into helper functions
+  - [ ] Create a `get_note_by_id` helper for cache/API lookups
+
+- [ ] **Structured Logging**
+  - [ ] Use structured logging more consistently
+  - [ ] Improve log organization and searchability
+
+- [ ] **Error Categorization**
+  - [ ] Refine error categorization system
+  - [ ] Make errors more specific and actionable
+
+### Infrastructure Improvements
+
+- [ ] **Configuration for Linting Rules**
+  - [ ] Add a `.ruff.toml` configuration file
+  - [ ] Define project-specific linting rules
+
+- [ ] **Pre-commit Hooks**
+  - [ ] Set up pre-commit hooks for automatic linting
+  - [ ] Include black, ruff, and mypy in the hooks
+
+- [ ] **CI Pipeline Enhancement**
+  - [ ] Add dedicated linting step to CI pipeline
+  - [ ] Generate code quality trend reports
+
 ## 10. Project Management
 
 - [x] **Version 1.0 Release**
