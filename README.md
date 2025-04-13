@@ -5,8 +5,8 @@ A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) w
 
 This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
 
-![](https://badge.mcpx.dev?type=server 'MCP Server')
-[![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://docs.anthropic.com/claude/docs/claude-code-sdk)
+
+[![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.11-blue)](./setup.py)
