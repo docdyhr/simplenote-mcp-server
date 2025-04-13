@@ -81,3 +81,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expanded README with detailed descriptions of the tag management tools
 - Updated TODO.md to reflect completion of tag management feature
 - Created and documented a strategic ROADMAP.md for future enhancements
+
+## [1.2.0] - 2025-04-13
+
+### Added
+- Docker support with a new Dockerfile for containerized deployment
+- Smithery configuration for simplified cloud deployment
+- Installation instructions for Smithery platform
+- Smithery badge in README for enhanced visibility
+
+### Improved
+- Code quality improvements:
+  - Modern type annotations (replaced typing.Dict, typing.List with built-in types)
+  - Better docstring formatting with consistent style
+  - Improved exception handling with centralized error messages
+  - Added parameter and return type annotations
+  - Alphabetically sorted __all__ lists
+
+### Fixed
+- Bug in email logging when credentials are not provided
