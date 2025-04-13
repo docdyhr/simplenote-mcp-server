@@ -10,7 +10,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 import mcp.server.stdio
 import mcp.types as types

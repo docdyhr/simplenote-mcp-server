@@ -2,7 +2,7 @@
 
 import asyncio
 import time
-from typing import Dict, List, Optional, Set
+from typing import Optional
 
 from simplenote import Simplenote
 

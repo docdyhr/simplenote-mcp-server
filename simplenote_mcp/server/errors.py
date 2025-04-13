@@ -2,7 +2,7 @@
 
 import logging
 from enum import Enum
-from typing import Any, Dict, Optional, Type
+from typing import Any, Optional
 
 logger = logging.getLogger("simplenote_mcp")
 

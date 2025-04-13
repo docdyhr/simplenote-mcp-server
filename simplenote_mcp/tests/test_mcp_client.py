@@ -13,7 +13,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 from simplenote_mcp.server import get_simplenote_client  # noqa: E402
 
 
-async def test_simplenote_connection():
+async def test_simplenote_connection() -> bool:
     """Test the connection to Simplenote."""
     print("Testing Simplenote connection...")
     try:
@@ -37,7 +37,7 @@ async def test_simplenote_connection():
         return False
 
 
-async def test_read_note():
+async def test_read_note() -> bool:
     """Test reading a specific note."""
     print("\nTesting note retrieval...")
     try:
@@ -69,7 +69,7 @@ async def test_read_note():
         return False
 
 
-async def test_create_note():
+async def test_create_note() -> bool:
     """Test creating a new note."""
     print("\nTesting note creation...")
     try:
@@ -105,7 +105,7 @@ async def main() -> bool:
     if not username or not password:
         print("ERROR: Missing environment variables.")
         print("Please set SIMPLENOTE_EMAIL and SIMPLENOTE_PASSWORD.")
-        return
+        return False
 
     print(f"Using credentials for: {username[:3]}***")
 
