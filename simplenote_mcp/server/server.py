@@ -163,7 +163,7 @@ async def initialize_cache() -> None:
 @server.list_resources()
 async def handle_list_resources(
     tag: Optional[str] = None, limit: Optional[int] = None
-) -> List[types.Resource]:
+) -> list[types.Resource]:
     """Handle the list_resources capability.
 
     Args:
@@ -310,7 +310,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
 
 
 @server.list_tools()
-async def handle_list_tools() -> List[types.Tool]:
+async def handle_list_tools() -> list[types.Tool]:
     """Handle the list_tools capability.
 
     Returns:
@@ -495,7 +495,7 @@ async def handle_list_tools() -> List[types.Tool]:
 
 
 @server.call_tool()
-async def handle_call_tool(name: str, arguments: Dict) -> List[types.TextContent]:
+async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
     """Handle the call_tool capability.
 
     Args:
@@ -1179,7 +1179,7 @@ async def handle_call_tool(name: str, arguments: Dict) -> List[types.TextContent
 
 
 @server.list_prompts()
-async def handle_list_prompts() -> List[types.Prompt]:
+async def handle_list_prompts() -> list[types.Prompt]:
     """Handle the list_prompts capability.
 
     Returns:
@@ -1218,7 +1218,7 @@ async def handle_list_prompts() -> List[types.Prompt]:
 
 @server.get_prompt()
 async def handle_get_prompt(
-    name: str, arguments: Optional[Dict[str, str]]
+    name: str, arguments: Optional[dict[str, str]]
 ) -> types.GetPromptResult:
     """Handle the get_prompt capability.
 

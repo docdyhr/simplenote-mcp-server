@@ -34,10 +34,10 @@ class NoteCache:
             client: The Simplenote client instance.
         """
         self._client = client
-        self._notes: Dict[str, Dict] = {}  # Map of note ID to note data
+        self._notes: dict[str, dict] = {}  # Map of note ID to note data
         self._last_sync: float = 0  # Timestamp of last sync
         self._initialized: bool = False
-        self._tags: Set[str] = set()  # Set of all unique tags
+        self._tags: set[str] = set()  # Set of all unique tags
 
     async def initialize(self) -> int:
         """Initialize the cache with all notes from Simplenote.
@@ -179,7 +179,7 @@ class NoteCache:
 
         return change_count
 
-    def get_note(self, note_id: str) -> Optional[Dict]:
+    def get_note(self, note_id: str) -> Optional[dict]:
         """Get a note from the cache by ID.
 
         Args:
@@ -220,7 +220,7 @@ class NoteCache:
 
     def get_all_notes(
         self, limit: Optional[int] = None, tag_filter: Optional[str] = None
-    ) -> List[Dict]:
+    ) -> list[dict]:
         """Get all notes from the cache.
 
         Args:
@@ -255,7 +255,7 @@ class NoteCache:
             return sorted_notes[:limit]
         return sorted_notes
 
-    def search_notes(self, query: str, limit: Optional[int] = None) -> List[Dict]:
+    def search_notes(self, query: str, limit: Optional[int] = None) -> list[dict]:
         """Search for notes in the cache.
 
         Args:
@@ -306,7 +306,7 @@ class NoteCache:
             return results[:limit]
         return results
 
-    def update_cache_after_create(self, note: Dict) -> None:
+    def update_cache_after_create(self, note: dict) -> None:
         """Update cache after creating a note.
 
         Args:
@@ -322,7 +322,7 @@ class NoteCache:
         if "tags" in note and note["tags"]:
             self._tags.update(note["tags"])
 
-    def update_cache_after_update(self, note: Dict) -> None:
+    def update_cache_after_update(self, note: dict) -> None:
         """Update cache after updating a note.
 
         Args:
@@ -379,7 +379,7 @@ class NoteCache:
         if note_id in self._notes:
             del self._notes[note_id]
 
-    def get_all_tags(self) -> List[str]:
+    def get_all_tags(self) -> list[str]:
         """Get all unique tags from the cache.
 
         Returns:

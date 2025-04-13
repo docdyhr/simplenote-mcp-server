@@ -43,7 +43,7 @@ class ServerError(Exception):
         severity: ErrorSeverity = ErrorSeverity.ERROR,
         recoverable: bool = True,
         original_error: Optional[Exception] = None,
-        details: Optional[Dict[str, Any]] = None,
+        details: Optional[dict[str, Any]] = None,
     ):
         """Initialize a new ServerError.
 
@@ -88,7 +88,7 @@ class ServerError(Exception):
         else:  # INFO
             logger.info(log_message, extra=extra, exc_info=self.original_error)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert the error to a dictionary for API responses."""
         result = {
             "success": False,
@@ -183,7 +183,7 @@ def handle_exception(e: Exception, context: str = "") -> ServerError:
         return e
 
     # Map common exception types to appropriate ServerError subclasses
-    error_mapping: Dict[Type[Exception], Type[ServerError]] = {
+    error_mapping: dict[type[Exception], type[ServerError]] = {
         ValueError: ValidationError,
         KeyError: ValidationError,
         TypeError: ValidationError,
