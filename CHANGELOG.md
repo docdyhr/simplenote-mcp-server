@@ -66,3 +66,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Circular import problem with version imports
 - API parameter issues in the cache module
 - Type errors in server implementation
+
+## [1.1.0] - 2025-04-12
+
+### Added
+- Dedicated tag management tools:
+  - `add_tags`: Add additional tags to a note without modifying content
+  - `remove_tags`: Remove specific tags from a note
+  - `replace_tags`: Replace all tags on a note with a new set
+- Comprehensive test suite for tag management functionality
+- Updated documentation to reflect new capabilities
+
+### Changed
+- Expanded README with detailed descriptions of the tag management tools
+- Updated TODO.md to reflect completion of tag management feature
+- Created and documented a strategic ROADMAP.md for future enhancements

@@ -232,7 +232,7 @@ Simplenote notes are exposed as resources with the URI format `simplenote://note
 
 - **Read Resource** - View the content and metadata of a specific note
 
-With a total of 10 implemented capabilities (8 tools and 2 prompts), the server provides a comprehensive interface for managing your Simplenote notes.
+With a total of 10 implemented capabilities (8 tools and 2 prompts) as of version 1.1.0, the server provides a comprehensive interface for managing your Simplenote notes.
 
 ### Tools
 

@@ -157,7 +157,7 @@ This server implements an **in-memory caching strategy** for performance and use
 
 ## 8. Open Questions / Future Considerations
 * **(Future) Content Type Hinting:** Explore using MCP resource metadata or prompt definitions to explicitly signal to the AI model that note content should be treated as Markdown.
-* **(Future) Tag Management:** Implement MCP tools/endpoints to add/remove tags from notes.
+* ~~**(Future) Tag Management:** Implement MCP tools/endpoints to add/remove tags from notes.~~ (Implemented in v1.1.0)
 * **(Future) Permanent Deletion:** Add an optional, explicit MCP tool/action for permanent note deletion (distinct from the default trash operation).
 * **(Future) Advanced Search:** Support more complex search queries if the Simplenote API allows (e.g., boolean logic, tag-specific search).
 * **(Future) Performance Monitoring:** Integrate metrics collection (e.g., Prometheus client) for cache stats, response times, API calls.
