@@ -12,7 +12,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Python Version](https://img.shields.io/badge/python-3.11-blue)](./setup.py)
 [![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
 [![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
-
+[![smithery badge](https://smithery.ai/badge/@docdyhr/simplenote-mcp-server)](https://smithery.ai/server/@docdyhr/simplenote-mcp-server)
 ---
 
 ## 🔧 Features
@@ -45,6 +45,14 @@ Key features:
 - Search notes by content
 
 ## Installation
+
+### Installing via Smithery
+
+To install Simplenote Integration Server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@docdyhr/simplenote-mcp-server):
+
+```bash
+npx -y @smithery/cli install @docdyhr/simplenote-mcp-server --client claude
+```
 
 ### Prerequisites
 
