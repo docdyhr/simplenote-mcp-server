@@ -197,7 +197,7 @@ For a more seamless experience, configure Claude Desktop to automatically start 
 
 ```json
 {
-  "tools": {
+  "mcpServers": {
     "simplenote": {
       "description": "Access and manage your Simplenote notes",
       "command": "/path/to/your/python",
