@@ -128,37 +128,37 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 
 ### Immediate Improvements
 
-- [ ] **Modern Type Annotations**
-  - [ ] Replace `typing.Dict`, `typing.List`, `typing.Set` with built-in `dict`, `list`, `set`
-  - [ ] Run `ruff check --select=UP006 --fix .` to autofix
+- [x] **Modern Type Annotations**
+  - [x] Replace `typing.Dict`, `typing.List`, `typing.Set` with built-in `dict`, `list`, `set`
+  - [x] Run `ruff check --select=UP006 --fix .` to autofix
 
-- [ ] **Docstring Formatting**
-  - [ ] Add missing periods at end of docstrings
-  - [ ] Add blank lines after section headers (Args:, Returns:, etc.)
-  - [ ] Use consistent formatting across all docstrings
-  - [ ] Run `ruff check --select=D400,D415,D413 --fix .`
+- [x] **Docstring Formatting**
+  - [x] Add missing periods at end of docstrings
+  - [x] Add blank lines after section headers (Args:, Returns:, etc.)
+  - [x] Use consistent formatting across all docstrings
+  - [x] Run `ruff check --select=D400,D415,D413 --fix .`
 
-- [ ] **Exception Handling**
-  - [ ] Store error messages in variables instead of using string literals
-  - [ ] Improve exception hierarchy and reusability
+- [x] **Exception Handling**
+  - [x] Store error messages in variables instead of using string literals
+  - [x] Improve exception hierarchy and reusability
 
 ### Medium-term Improvements
 
-- [ ] **Function Return Type Annotations**
-  - [ ] Add return type annotations to all public functions
-  - [ ] Use `-> None` for functions that don't return anything
+- [x] **Function Return Type Annotations**
+  - [x] Add return type annotations to all public functions
+  - [x] Use `-> None` for functions that don't return anything
 
-- [ ] **Sort `__all__` Lists**
-  - [ ] Keep `__all__` lists alphabetically sorted
-  - [ ] Run `ruff check --select=RUF022 --fix .`
+- [x] **Sort `__all__` Lists**
+  - [x] Keep `__all__` lists alphabetically sorted
+  - [x] Run `ruff check --select=RUF022 --fix .`
 
 - [ ] **Upgrade Test Assertions**
   - [ ] Use pytest-style assertions for better error messages
   - [ ] Add more descriptive assertion messages
 
-- [ ] **Function Parameter Type Annotations**
-  - [ ] Add type annotations for function parameters
-  - [ ] Improve static type checking support
+- [x] **Function Parameter Type Annotations**
+  - [x] Add type annotations for function parameters
+  - [x] Improve static type checking support
 
 ### Longer-term Improvements
 

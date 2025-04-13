@@ -292,7 +292,7 @@ class NoteCache:
 
         # Sort by relevance and recency
         # This is a simple heuristic - title matches are ranked higher
-        def sort_key(note):
+        def sort_key(note: dict) -> tuple:
             content = note.get("content", "").lower()
             title_line = content.split("\n", 1)[0].lower() if content else ""
 

@@ -111,7 +111,7 @@ class ServerError(Exception):
 class AuthenticationError(ServerError):
     """Authentication-related errors."""
 
-    def __init__(self, message: str, **kwargs):
+    def __init__(self, message: str, **kwargs: Any) -> None:
         kwargs.setdefault("category", ErrorCategory.AUTHENTICATION)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
         kwargs.setdefault("recoverable", False)
@@ -121,7 +121,7 @@ class AuthenticationError(ServerError):
 class ConfigurationError(ServerError):
     """Configuration-related errors."""
 
-    def __init__(self, message: str, **kwargs):
+    def __init__(self, message: str, **kwargs: Any) -> None:
         kwargs.setdefault("category", ErrorCategory.CONFIGURATION)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
         kwargs.setdefault("recoverable", False)
@@ -131,7 +131,7 @@ class ConfigurationError(ServerError):
 class NetworkError(ServerError):
     """Network/API connectivity errors."""
 
-    def __init__(self, message: str, **kwargs):
+    def __init__(self, message: str, **kwargs: Any) -> None:
         kwargs.setdefault("category", ErrorCategory.NETWORK)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
         kwargs.setdefault("recoverable", True)
@@ -141,7 +141,7 @@ class NetworkError(ServerError):
 class ResourceNotFoundError(ServerError):
     """Resource not found errors."""
 
-    def __init__(self, message: str, **kwargs):
+    def __init__(self, message: str, **kwargs: Any) -> None:
         kwargs.setdefault("category", ErrorCategory.NOT_FOUND)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
         kwargs.setdefault("recoverable", True)
@@ -151,7 +151,7 @@ class ResourceNotFoundError(ServerError):
 class ValidationError(ServerError):
     """Input validation errors."""
 
-    def __init__(self, message: str, **kwargs):
+    def __init__(self, message: str, **kwargs: Any) -> None:
         kwargs.setdefault("category", ErrorCategory.VALIDATION)
         kwargs.setdefault("severity", ErrorSeverity.WARNING)
         kwargs.setdefault("recoverable", True)
@@ -161,7 +161,7 @@ class ValidationError(ServerError):
 class InternalError(ServerError):
     """Internal server errors."""
 
-    def __init__(self, message: str, **kwargs):
+    def __init__(self, message: str, **kwargs: Any) -> None:
         kwargs.setdefault("category", ErrorCategory.INTERNAL)
         kwargs.setdefault("severity", ErrorSeverity.ERROR)
         kwargs.setdefault("recoverable", False)

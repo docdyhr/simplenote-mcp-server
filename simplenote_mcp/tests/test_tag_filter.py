@@ -18,7 +18,7 @@ from simplenote_mcp.server.server import (  # noqa: E402
 )
 
 
-async def main():
+async def main() -> None:
     """Run the tag filter test."""
     print("=== Testing Tag Filtering ===")
     print(

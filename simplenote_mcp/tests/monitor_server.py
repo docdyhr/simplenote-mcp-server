@@ -19,7 +19,7 @@ LEGACY_MONITORING_LOG_FILE = Path("/tmp/simplenote_monitoring.log")
 
 
 # Print both to console and to debug log
-def debug_print(message):
+def debug_print(message: str) -> None:
     timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
     print(f"{timestamp} - {message}")
 

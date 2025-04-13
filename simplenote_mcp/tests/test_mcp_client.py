@@ -90,7 +90,7 @@ async def test_create_note():
         return False
 
 
-async def main():
+async def main() -> bool:
     """Run all tests."""
     print("=" * 50)
     print("SIMPLENOTE MCP SERVER TEST CLIENT")
