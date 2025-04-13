@@ -184,27 +184,40 @@ class TestHandleListResources:
     async def test_list_resources_unintialized_cache(self):
         """Test listing resources when cache is not initialized."""
         with (
-            patch("simplenote_mcp.server.server.note_cache") as mock_cache,
+            patch("simplenote_mcp.server.server.note_cache", None),
             patch("simplenote_mcp.server.server.get_config") as mock_get_config,
-            patch("simplenote_mcp.server.server.initialize_cache") as mock_initialize,
+            patch("simplenote_mcp.server.server.get_simplenote_client"),
+            patch("simplenote_mcp.server.server.NoteCache") as mock_note_cache_class,
+            patch("asyncio.create_task") as mock_create_task,
         ):
-            # Configure uninitialized cache
-            mock_cache.is_initialized = False
-            mock_notes = [{"key": "note1", "content": "Test note 1"}]
-            mock_cache.get_all_notes.return_value = mock_notes
+            # Configure mocks
+            mock_note_cache_obj = MagicMock()
+            mock_note_cache_obj.get_all_notes.return_value = [{"key": "note1", "content": "Test note 1"}]
+            mock_note_cache_class.return_value = mock_note_cache_obj
 
             # Configure mock config
             mock_config = MagicMock()
             mock_config.default_resource_limit = 100
             mock_get_config.return_value = mock_config
 
-            # Call handler
-            resources = await handle_list_resources()
+            # Create a mock initialize_cache to pass to create_task
+            mock_coro = MagicMock()
 
-            # Verify initialization and results
-            mock_initialize.assert_called_once()
-            assert len(resources) == 1
-            assert str(resources[0].uri) == "simplenote://note/note1"
+            # Patch the initialize_cache function
+            with patch("simplenote_mcp.server.server.initialize_cache", return_value=mock_coro):
+                # Call handler
+                resources = await handle_list_resources()
+
+                # Verify task creation with mock coroutine
+                mock_create_task.assert_called()
+
+                # Verify empty cache was created
+                mock_note_cache_class.assert_called_once()
+                assert hasattr(mock_note_cache_obj, "_initialized")
+
+                # Verify the results
+                assert len(resources) == 1
+                assert str(resources[0].uri) == "simplenote://note/note1"
 
     async def test_list_resources_error_handling(self):
         """Test error handling in list_resources."""

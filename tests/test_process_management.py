@@ -1,6 +1,7 @@
 """Unit tests for process management functions."""
 
 import signal
+import threading
 from pathlib import Path
 from unittest.mock import patch
 
@@ -54,23 +55,35 @@ class TestProcessManagement:
         """Test cleaning up the PID file."""
         # Create a temporary PID file
         test_pid_path = Path("/tmp/test_server.pid")
+        test_alt_pid_path = Path("/tmp/test_server_alt.pid")
         test_pid_path.write_text("12345")
+        test_alt_pid_path.write_text("12345")
 
-        with patch("simplenote_mcp.server.server.PID_FILE_PATH", test_pid_path):
+        with (
+            patch("simplenote_mcp.server.server.PID_FILE_PATH", test_pid_path),
+            patch("simplenote_mcp.server.server.ALT_PID_FILE_PATH", test_alt_pid_path),
+        ):
             cleanup_pid_file()
 
-            # Verify the file was removed
+            # Verify both files were removed
             assert not test_pid_path.exists()
+            assert not test_alt_pid_path.exists()
 
     def test_cleanup_pid_file_nonexistent(self):
         """Test cleaning up a nonexistent PID file."""
         test_pid_path = Path("/tmp/nonexistent_pid_file.pid")
+        test_alt_pid_path = Path("/tmp/nonexistent_alt_pid_file.pid")
 
-        # Ensure the file doesn't exist
+        # Ensure the files don't exist
         if test_pid_path.exists():
             test_pid_path.unlink()
+        if test_alt_pid_path.exists():
+            test_alt_pid_path.unlink()
 
-        with patch("simplenote_mcp.server.server.PID_FILE_PATH", test_pid_path):
+        with (
+            patch("simplenote_mcp.server.server.PID_FILE_PATH", test_pid_path),
+            patch("simplenote_mcp.server.server.ALT_PID_FILE_PATH", test_alt_pid_path),
+        ):
             # Should not raise an exception
             cleanup_pid_file()
 
@@ -108,18 +121,38 @@ class TestProcessManagement:
 
     def test_signal_handler(self):
         """Test the signal handler function."""
-        # We need to get the signal_handler function from setup_signal_handlers
+        # Create proper thread mock objects
+        worker_thread_mock = type('MockThread', (), {'name': 'worker_thread'})()
+        main_thread_mock = type('MockThread', (), {'name': 'main_thread'})()
+
+        # Set up all patches
         with (
             patch("signal.signal") as mock_signal,
             patch("atexit.register"),
+            patch("threading.current_thread"),
+            patch("threading.main_thread"),
             patch("sys.exit") as mock_exit,
+            patch("simplenote_mcp.server.server.shutdown_requested", False),
+            patch("simplenote_mcp.server.server.logger.info")  # Prevent actual logging
         ):
             # Call setup_signal_handlers to capture the handler function
             setup_signal_handlers()
             signal_handler = mock_signal.call_args[0][1]
 
-            # Test the handler with a SIGTERM signal
+            # Test 1: Signal in non-main thread should exit immediately
+            threading.current_thread.return_value = worker_thread_mock
+            threading.main_thread.return_value = main_thread_mock
             signal_handler(signal.SIGTERM, None)
-
-            # Verify sys.exit was called
+            # Verify sys.exit was called when in non-main thread
             mock_exit.assert_called_once_with(0)
+
+            # Reset mocks
+            mock_exit.reset_mock()
+
+            # Test 2: Signal in main thread should set flag but not exit
+            threading.current_thread.return_value = main_thread_mock
+            threading.main_thread.return_value = main_thread_mock
+            with patch("simplenote_mcp.server.server.shutdown_requested", False):
+                signal_handler(signal.SIGTERM, None)
+                # Verify sys.exit was NOT called when in main thread
+                mock_exit.assert_not_called()

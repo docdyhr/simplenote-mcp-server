@@ -1,6 +1,7 @@
 # simplenote_mcp/server/config.py
 
 import os
+import sys
 from enum import Enum
 from typing import Optional
 
@@ -17,8 +18,20 @@ class LogLevel(Enum):
     def from_string(cls, level_str: str) -> "LogLevel":
         """Convert string to LogLevel enum, defaulting to INFO if invalid."""
         try:
-            return cls(level_str.upper())
+            upper_level = level_str.upper()
+            # Handle common variations
+            if upper_level in ["DEBUG", "DEBUGGING", "VERBOSE"]:
+                return LogLevel.DEBUG
+            elif upper_level in ["INFO", "INFORMATION"]:
+                return LogLevel.INFO
+            elif upper_level in ["WARN", "WARNING"]:
+                return LogLevel.WARNING
+            elif upper_level in ["ERROR", "ERR"]:
+                return LogLevel.ERROR
+            else:
+                return cls(upper_level)
         except ValueError:
+            # We'll log this later with proper logging
             return LogLevel.INFO
 
 
@@ -42,10 +55,18 @@ class Config:
             os.environ.get("DEFAULT_RESOURCE_LIMIT", "100")
         )
 
-        # Logging configuration
-        self.log_level: LogLevel = LogLevel.from_string(
-            os.environ.get("LOG_LEVEL", "INFO")
+        # Logging configuration - check multiple possible environment variable names
+        log_level_env = (
+            os.environ.get("LOG_LEVEL") or 
+            os.environ.get("SIMPLENOTE_LOG_LEVEL") or 
+            os.environ.get("MCP_LOG_LEVEL") or 
+            os.environ.get("LOGLEVEL") or 
+            os.environ.get("DEBUG") or 
+            "INFO"
         )
+        # We'll add debug info to our file - we'll implement this after importing logging
+        # to avoid circular imports
+        self.log_level: LogLevel = LogLevel.from_string(log_level_env)
         self.log_to_file: bool = os.environ.get("LOG_TO_FILE", "true").lower() in (
             "true",
             "1",
@@ -56,13 +77,18 @@ class Config:
             "LOG_FORMAT", "standard"
         )  # "standard" or "json"
 
-        # Debug mode
-        self.debug_mode: bool = os.environ.get("MCP_DEBUG", "false").lower() in (
+        # Debug mode - if true, we'll try to set DEBUG log level as well
+        debug_mode = os.environ.get("MCP_DEBUG", "false").lower() in (
             "true",
             "1",
             "t",
             "yes",
         )
+        self.debug_mode = debug_mode
+        
+        # If debug mode is enabled but log level isn't set to DEBUG, update it
+        if debug_mode and self.log_level != LogLevel.DEBUG:
+            self.log_level = LogLevel.DEBUG
 
     @property
     def has_credentials(self) -> bool:

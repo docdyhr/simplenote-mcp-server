@@ -13,6 +13,10 @@ from .config import LogLevel, get_config
 LOGS_DIR = Path(__file__).parent.parent / "logs"
 LOG_FILE = LOGS_DIR / "server.log"
 LEGACY_LOG_FILE = Path("/tmp/simplenote_mcp_debug.log")
+DEBUG_LOG_FILE = Path("/tmp/simplenote_mcp_debug_extra.log")
+
+# We'll initialize the debug log file in the initialize_logging function to avoid
+# breaking the protocol before the MCP server is fully initialized
 
 # Create logs directory if it doesn't exist
 LOGS_DIR.mkdir(parents=True, exist_ok=True)
@@ -32,10 +36,28 @@ _LOG_LEVEL_MAP = {
 def initialize_logging() -> None:
     """Initialize the logging system based on configuration."""
     config = get_config()
-    logger.setLevel(_LOG_LEVEL_MAP[config.log_level])
+    log_level = _LOG_LEVEL_MAP[config.log_level]
+    logger.setLevel(log_level)
+    
+    # Make sure we're not inheriting any log level settings
+    for handler in logger.handlers:
+        logger.removeHandler(handler)
+        
+    # Initialize debug log file
+    try:
+        DEBUG_LOG_FILE.write_text("=== Simplenote MCP Server Debug Log ===\n")
+        with open(DEBUG_LOG_FILE, "a") as f:
+            f.write(f"Started at: {datetime.now().isoformat()}\n")
+            f.write(f"Setting logger level to: {log_level} from config.log_level: {config.log_level}\n")
+            f.write(f"Loading log level from environment: {config.log_level.value}\n")
+    except Exception:
+        # If we can't write to the debug log, that's not critical
+        pass
 
     # Always add stderr handler for Claude Desktop logs
     stderr_handler = logging.StreamHandler(sys.stderr)
+    # Ensure we don't filter log levels at the handler level
+    stderr_handler.setLevel(logging.DEBUG)
 
     if config.log_format == "json":
         stderr_handler.setFormatter(JsonFormatter())
@@ -45,10 +67,16 @@ def initialize_logging() -> None:
         )
 
     logger.addHandler(stderr_handler)
+    
+    # Safe debug log
+    with open(DEBUG_LOG_FILE, "a") as f:
+        f.write(f"{datetime.now().isoformat()}: Added stderr handler with level: {stderr_handler.level}\n")
 
     # Add file handler if configured
     if config.log_to_file:
         file_handler = logging.FileHandler(LOG_FILE)
+        # Ensure file handler allows DEBUG logs
+        file_handler.setLevel(logging.DEBUG)
 
         if config.log_format == "json":
             file_handler.setFormatter(JsonFormatter())
@@ -58,13 +86,22 @@ def initialize_logging() -> None:
             )
 
         logger.addHandler(file_handler)
+        
+        # Safe debug log
+        with open(DEBUG_LOG_FILE, "a") as f:
+            f.write(f"{datetime.now().isoformat()}: Added file handler with level: {file_handler.level}\n")
 
         # Legacy log file support
         legacy_handler = logging.FileHandler(LEGACY_LOG_FILE)
+        legacy_handler.setLevel(logging.DEBUG)
         legacy_handler.setFormatter(
             logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         )
         logger.addHandler(legacy_handler)
+        
+        # Safe debug log
+        with open(DEBUG_LOG_FILE, "a") as f:
+            f.write(f"{datetime.now().isoformat()}: Added legacy handler with level: {legacy_handler.level}\n")
 
 
 class JsonFormatter(logging.Formatter):
@@ -94,6 +131,20 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(log_entry)
 
 
+# Safe debugging for MCP
+def debug_to_file(message: str) -> None:
+    """Write debug messages to the debug log file without breaking MCP protocol.
+
+    This function writes directly to the debug log file without using stderr or stdout,
+    ensuring it doesn't interfere with the MCP protocol's JSON communication.
+    """
+    try:
+        with open(DEBUG_LOG_FILE, "a") as f:
+            f.write(f"{datetime.now().isoformat()}: {message}\n")
+    except Exception:
+        # Fail silently to ensure we don't break the MCP protocol
+        pass
+
 # Legacy function for backward compatibility
 def log_debug(message: str) -> None:
     """Log debug messages in the legacy format.
@@ -102,6 +153,7 @@ def log_debug(message: str) -> None:
     this function directly.
     """
     logger.debug(message)
+    debug_to_file(message)
 
     # For really old code, also write directly to the legacy files
     with open(LOG_FILE, "a") as f:

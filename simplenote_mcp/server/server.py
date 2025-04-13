@@ -20,7 +20,7 @@ from mcp.server.models import InitializationOptions
 from simplenote import Simplenote
 
 from .cache import BackgroundSync, NoteCache
-from .config import get_config
+from .config import get_config, LogLevel
 from .errors import (
     AuthenticationError,
     ErrorCategory,
@@ -103,6 +103,7 @@ def get_simplenote_client() -> Simplenote:
 
 # PID file for process management
 PID_FILE_PATH = Path(tempfile.gettempdir()) / "simplenote_mcp_server.pid"
+ALT_PID_FILE_PATH = Path("/tmp/simplenote_mcp_server.pid")
 
 # Initialize note cache and background sync
 note_cache: Optional[NoteCache] = None
@@ -114,7 +115,13 @@ def write_pid_file() -> None:
     try:
         pid = os.getpid()
         PID_FILE_PATH.write_text(str(pid))
-        logger.info(f"PID {pid} written to {PID_FILE_PATH}")
+        
+        # Also write to the alternative location in /tmp for compatibility
+        try:
+            ALT_PID_FILE_PATH.write_text(str(pid))
+            logger.info(f"PID {pid} written to {PID_FILE_PATH} and {ALT_PID_FILE_PATH}")
+        except Exception:
+            logger.info(f"PID {pid} written to {PID_FILE_PATH}")
     except Exception as e:
         logger.error(f"Error writing PID file: {str(e)}", exc_info=True)
 
@@ -125,6 +132,11 @@ def cleanup_pid_file() -> None:
         if PID_FILE_PATH.exists():
             PID_FILE_PATH.unlink()
             logger.info(f"Removed PID file: {PID_FILE_PATH}")
+            
+        # Also remove the alternative PID file if it exists
+        if ALT_PID_FILE_PATH.exists():
+            ALT_PID_FILE_PATH.unlink()
+            logger.info(f"Removed PID file: {ALT_PID_FILE_PATH}")
     except Exception as e:
         logger.error(f"Error removing PID file: {str(e)}", exc_info=True)
 
@@ -172,44 +184,39 @@ async def initialize_cache() -> None:
     try:
         logger.info("Initializing note cache")
         
-        # Set a timeout for the entire initialization process - MCP client times out at 60s
-        # so we need to make sure we handle it appropriately
+        # Create a minimal cache immediately so we can respond to clients
+        sn = get_simplenote_client()
+        if note_cache is None:
+            note_cache = NoteCache(sn)
+            note_cache._initialized = True
+            note_cache._notes = {}
+            note_cache._last_sync = time.time()
+            note_cache._tags = set()
+        
+        # Start background sync immediately so data will start loading
+        if background_sync is None:
+            background_sync = BackgroundSync(note_cache)
+            await background_sync.start()
+        
+        # Now actually load the data in the background without blocking
+        # Initialize cache in the background with a timeout
         initialization_timeout = 45  # seconds
         
-        # If an external timeout occurs during initialization, we'll detect it
-        # via the shutdown_requested flag
-        async def initialize_with_timeout():
-            nonlocal note_cache, background_sync
-            
-            # Start client first
-            sn = get_simplenote_client()
-            note_cache = NoteCache(sn)
-            
-            # Initialize with timeout
-            init_task = asyncio.create_task(note_cache.initialize())
+        async def background_initialization():
             try:
-                await asyncio.wait_for(init_task, timeout=initialization_timeout)
+                # Start real initialization in background
+                init_task = asyncio.create_task(note_cache.initialize())
+                try:
+                    await asyncio.wait_for(init_task, timeout=initialization_timeout)
+                    logger.info("Note cache initialization completed successfully")
+                except asyncio.TimeoutError:
+                    logger.warning(f"Note cache initialization timed out after {initialization_timeout}s")
+                    # We already have an empty cache, so we're good to go
+            except Exception as e:
+                logger.error(f"Error during background initialization: {str(e)}", exc_info=True)
                 
-                # Only start background sync if initialization succeeded
-                if not shutdown_requested:
-                    background_sync = BackgroundSync(note_cache)
-                    await background_sync.start()
-                    
-            except asyncio.TimeoutError:
-                logger.warning(f"Note cache initialization timed out after {initialization_timeout}s")
-                # Initialize with empty data for now, sync will happen in background
-                note_cache._initialized = True
-                note_cache._notes = {}
-                note_cache._last_sync = time.time()
-                note_cache._tags = set()
-                
-                # Start background sync with empty cache - it will retry
-                if not shutdown_requested:
-                    background_sync = BackgroundSync(note_cache) 
-                    await background_sync.start()
-        
-        # Run the actual initialization
-        await initialize_with_timeout()
+        # Start background initialization but don't await it
+        asyncio.create_task(background_initialization())
         
     except Exception as e:
         if isinstance(e, ServerError):
@@ -239,16 +246,20 @@ async def handle_list_resources(
     logger.debug(f"list_resources called with tag={tag}, limit={limit}")
 
     try:
-        # Make sure the cache is initialized
+        # Check for cache initialization, but don't block waiting for it
         global note_cache
-        if note_cache is None or not note_cache.is_initialized:
-            logger.info("Cache not initialized, initializing now")
-            await initialize_cache()
-
         if note_cache is None:
-            raise ServerError(
-                CACHE_INIT_FAILED, category=ErrorCategory.INTERNAL
-            )
+            logger.info("Cache not initialized, creating empty cache")
+            # Create a minimal cache without waiting for initialization
+            simplenote_client = get_simplenote_client()
+            note_cache = NoteCache(simplenote_client)
+            note_cache._initialized = True
+            note_cache._notes = {}
+            note_cache._last_sync = time.time()
+            note_cache._tags = set()
+            
+            # Start initialization in the background
+            asyncio.create_task(initialize_cache())
 
         # Use the cache to get notes with filtering
         config = get_config()
@@ -315,9 +326,23 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
     note_id = uri.replace("simplenote://note/", "")
 
     try:
-        # Try to get the note from cache first
+        # Check for cache initialization, but don't block waiting for it
         global note_cache
-        if note_cache is not None and note_cache.is_initialized:
+        if note_cache is None:
+            logger.info("Cache not initialized, creating empty cache")
+            # Create a minimal cache without waiting for initialization
+            sn = get_simplenote_client()
+            note_cache = NoteCache(sn)
+            note_cache._initialized = True
+            note_cache._notes = {}
+            note_cache._last_sync = time.time()
+            note_cache._tags = set()
+            
+            # Start initialization in the background
+            asyncio.create_task(initialize_cache())
+            
+        # Try to get the note from cache first if cache is initialized
+        if note_cache is not None:
             logger.debug(f"Getting note {note_id} from cache")
             try:
                 note = note_cache.get_note(note_id)
@@ -577,11 +602,19 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
     try:
         sn = get_simplenote_client()
 
-        # Make sure the cache is initialized
+        # Check for cache initialization, but don't block waiting for it
         global note_cache
-        if note_cache is None or not note_cache.is_initialized:
-            logger.info("Cache not initialized, initializing now")
-            await initialize_cache()
+        if note_cache is None:
+            logger.info("Cache not initialized, creating empty cache")
+            # Create a minimal cache without waiting for initialization
+            note_cache = NoteCache(sn)
+            note_cache._initialized = True
+            note_cache._notes = {}
+            note_cache._last_sync = time.time()
+            note_cache._tags = set()
+            
+            # Start initialization in the background
+            asyncio.create_task(initialize_cache())
 
         if name == "create_note":
             content = arguments.get("content", "")
@@ -1365,9 +1398,11 @@ async def run() -> None:
             logger.info("STDIO server created, initializing MCP server")
 
             try:
-                # Initialize the cache in the background with a handle we can wait on
-                # This way we know if the initialization was cancelled
+                # Start cache initialization in background but don't wait
                 init_task = asyncio.create_task(initialize_cache())
+                
+                # Log that we're continuing without waiting
+                logger.info("Started cache initialization in background")
                 
                 # Get capabilities and log them
                 capabilities = server.get_capabilities(
@@ -1469,8 +1504,19 @@ def run_main() -> None:
 
         # Configure logging from environment variables
         config = get_config()
+        
+        # Add debug information for environment variables to a safe debug file
+        from .logging import debug_to_file
+        if config.log_level == LogLevel.DEBUG:
+            for key, value in os.environ.items():
+                if key.startswith("LOG_") or key.startswith("SIMPLENOTE_"):
+                    masked_value = value if not "PASSWORD" in key else "*****"
+                    debug_to_file(f"Environment variable found: {key}={masked_value}")
+                
         logger.info(f"Starting Simplenote MCP Server v{__version__}")
+        logger.debug(f"This is a DEBUG level message to test logging")
         logger.info(f"Python version: {sys.version}")
+        
         # Handle email masking safely
         email_display = "Not set"
         if config.simplenote_email:
@@ -1483,6 +1529,7 @@ def run_main() -> None:
         logger.info(f"Running from: {os.path.dirname(os.path.abspath(__file__))}")
         logger.info(f"Sync interval: {config.sync_interval_seconds}s")
         logger.info(f"Log level: {config.log_level.value}")
+        logger.debug(f"Debug logging is ENABLED - this message should appear if log level is DEBUG")
 
         # Set up process management
         setup_signal_handlers()
