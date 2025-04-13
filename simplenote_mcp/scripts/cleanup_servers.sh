@@ -69,17 +69,52 @@ else
         kill -TERM $PID 2>/dev/null
     done
     
-    # Give processes time to exit gracefully
-    sleep 2
-    
-    # Check if any processes are still running
-    REMAINING=$(ps -p $(echo $PIDS | tr ' ' ',') 2>/dev/null)
-    if [ ! -z "$REMAINING" ]; then
-        echo "Some processes did not exit gracefully. Forcing termination..."
+    # Give processes time to exit gracefully with more user feedback
+    MAX_WAIT=10  # Maximum wait time in seconds
+    for i in $(seq 1 $MAX_WAIT); do
+        # Check if any processes are still running
+        STILL_RUNNING=false
         for PID in $PIDS; do
             if ps -p $PID > /dev/null 2>&1; then
-                echo "Force killing process $PID..."
-                kill -9 $PID 2>/dev/null
+                STILL_RUNNING=true
+                break
+            fi
+        done
+        
+        if [ "$STILL_RUNNING" = false ]; then
+            echo "All processes exited gracefully."
+            break
+        fi
+        
+        echo "Waiting for processes to exit gracefully... ($i/$MAX_WAIT seconds)"
+        sleep 1
+        
+        # If we've reached the max wait time, proceed to force kill
+        if [ $i -eq $MAX_WAIT ]; then
+            echo "Timeout reached waiting for graceful exit."
+        fi
+    done
+    
+    # Check and force kill any remaining processes
+    REMAINING_PIDS=""
+    for PID in $PIDS; do
+        if ps -p $PID > /dev/null 2>&1; then
+            REMAINING_PIDS="$REMAINING_PIDS $PID"
+        fi
+    done
+    
+    if [ ! -z "$REMAINING_PIDS" ]; then
+        echo "Some processes did not exit gracefully. Forcing termination..."
+        for PID in $REMAINING_PIDS; do
+            echo "Force killing process $PID..."
+            kill -9 $PID 2>/dev/null
+            
+            # Verify the process is really gone
+            sleep 0.5
+            if ps -p $PID > /dev/null 2>&1; then
+                echo "WARNING: Process $PID still exists after SIGKILL! Manual intervention may be required."
+            else
+                echo "Process $PID terminated."
             fi
         done
     fi

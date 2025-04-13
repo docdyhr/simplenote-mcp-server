@@ -60,27 +60,65 @@ class NoteCache:
         start_time = time.time()
         logger.info("Initializing note cache...")
 
-        # Get all notes from Simplenote
-        notes_data, status = self._client.get_note_list(tags=[])
-        if status != 0:
-            from .errors import NetworkError
+        # Maximum retries for initial load
+        max_retries = 3
+        retry_count = 0
+        retry_delay = 2
 
-            raise NetworkError(f"Failed to get notes from Simplenote (status {status})")
+        while retry_count < max_retries:
+            try:
+                # Get all notes from Simplenote
+                notes_data, status = self._client.get_note_list(tags=[])
+                
+                if status != 0:
+                    # Log the error but don't raise exception yet if we have retries left
+                    if retry_count < max_retries - 1:
+                        logger.warning(f"Failed to get notes from Simplenote (status {status}), retrying {retry_count + 1}/{max_retries}...")
+                        retry_count += 1
+                        await asyncio.sleep(retry_delay)
+                        retry_delay *= 2  # Exponential backoff
+                        continue
+                    else:
+                        from .errors import NetworkError
+                        raise NetworkError(f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts")
+                
+                # If we got here, we succeeded
+                break
+                
+            except Exception as e:
+                # Handle other exceptions similarly
+                if retry_count < max_retries - 1:
+                    logger.warning(f"Error connecting to Simplenote: {str(e)}, retrying {retry_count + 1}/{max_retries}...")
+                    retry_count += 1
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                else:
+                    # Re-raise the exception after all retries
+                    from .errors import NetworkError
+                    if isinstance(e, NetworkError):
+                        raise
+                    raise NetworkError(f"Failed to initialize cache after {max_retries} attempts: {str(e)}")
 
         # Store notes in the cache
         self._notes = {note["key"]: note for note in notes_data}
         self._initialized = True
         self._last_sync = time.time()
 
-        # Get index mark - for test compatibility to make sure we call get_note_list twice
-        index_result, index_status = self._client.get_note_list()
-        if (
-            index_status == 0
-            and isinstance(index_result, dict)
-            and "mark" in index_result
-        ):
-            self._index_mark = index_result["mark"]
-        else:
+        # Get index mark - for test compatibility
+        # Wrap this in try/except to prevent it from failing initialization if this step fails
+        try:
+            index_result, index_status = self._client.get_note_list()
+            if (
+                index_status == 0
+                and isinstance(index_result, dict)
+                and "mark" in index_result
+            ):
+                self._index_mark = index_result["mark"]
+            else:
+                self._index_mark = "test_mark"
+        except Exception as e:
+            logger.warning(f"Failed to get index mark (non-critical): {str(e)}")
             self._index_mark = "test_mark"
 
         # Extract all unique tags
@@ -112,79 +150,123 @@ class NoteCache:
 
         # Get changes since last sync
         since = self._last_sync
-        result, status = self._client.get_note_list(since=since, tags=[])
-        if status != 0:
-            from .errors import NetworkError
+        
+        # Add retry logic for sync as well
+        max_retries = 2
+        retry_count = 0
+        retry_delay = 1
+        
+        while retry_count < max_retries:
+            try:
+                result, status = self._client.get_note_list(since=since, tags=[])
+                
+                if status != 0:
+                    # Handle non-zero status
+                    if retry_count < max_retries - 1:
+                        logger.warning(f"Sync failed with status {status}, retrying {retry_count + 1}/{max_retries}...")
+                        retry_count += 1
+                        await asyncio.sleep(retry_delay)
+                        retry_delay *= 2
+                        continue
+                    else:
+                        from .errors import NetworkError
+                        raise NetworkError(f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts")
+                
+                # Successful API call
+                break
+                
+            except Exception as e:
+                # Handle other exceptions
+                if retry_count < max_retries - 1:
+                    logger.warning(f"Error during sync: {str(e)}, retrying {retry_count + 1}/{max_retries}...")
+                    retry_count += 1
+                    await asyncio.sleep(retry_delay)
+                    retry_delay *= 2
+                    continue
+                else:
+                    # Re-raise after all retries
+                    from .errors import NetworkError
+                    if isinstance(e, NetworkError):
+                        raise
+                    raise NetworkError(f"Failed to sync after {max_retries} attempts: {str(e)}")
+        
+        try:
+            # Update local index mark for test compatibility
+            if isinstance(result, dict) and "mark" in result:
+                self._index_mark = result["mark"]
 
-            raise NetworkError(f"Failed to get notes from Simplenote (status {status})")
-
-        # Update local index mark for test compatibility
-        if isinstance(result, dict) and "mark" in result:
-            self._index_mark = result["mark"]
-
-        # Get the notes array based on the result type
-        if isinstance(result, dict) and "notes" in result:
-            notes_data = result["notes"]
-        else:
-            notes_data = result if isinstance(result, list) else []
-
-        # Update or add changed notes to the cache
-        change_count = 0
-
-        # Keep track of existing tags and new tags
-        old_tags = set(self._tags)
-        new_tags = set()
-
-        # First pass to remove deleted notes and collect tags being used
-        for note in notes_data:
-            note_id = note["key"]
-            if "deleted" in note and note["deleted"]:
-                # Note was deleted (moved to trash)
-                if note_id in self._notes:
-                    # Keep track of tags being removed
-                    if "tags" in self._notes[note_id]:
-                        old_tags.update(self._notes[note_id].get("tags", []))
-
-                    # Remove the note
-                    del self._notes[note_id]
-                    change_count += 1
+            # Get the notes array based on the result type
+            if isinstance(result, dict) and "notes" in result:
+                notes_data = result["notes"]
             else:
-                # Note was created or updated
-                self._notes[note_id] = note
-                change_count += 1
+                notes_data = result if isinstance(result, list) else []
 
-                # Collect new tags
+            # Update or add changed notes to the cache
+            change_count = 0
+
+            # Keep track of existing tags and new tags
+            old_tags = set(self._tags)
+            new_tags = set()
+
+            # First pass to remove deleted notes and collect tags being used
+            for note in notes_data:
+                note_id = note["key"]
+                if "deleted" in note and note["deleted"]:
+                    # Note was deleted (moved to trash)
+                    if note_id in self._notes:
+                        # Keep track of tags being removed
+                        if "tags" in self._notes[note_id]:
+                            old_tags.update(self._notes[note_id].get("tags", []))
+
+                        # Remove the note
+                        del self._notes[note_id]
+                        change_count += 1
+                else:
+                    # Note was created or updated
+                    self._notes[note_id] = note
+                    change_count += 1
+
+                    # Collect new tags
+                    if "tags" in note and note["tags"]:
+                        new_tags.update(note["tags"])
+
+            # Calculate which tags are still in use by scanning all notes
+            all_used_tags = set()
+            for note in self._notes.values():
                 if "tags" in note and note["tags"]:
-                    new_tags.update(note["tags"])
+                    all_used_tags.update(note["tags"])
 
-        # Calculate which tags are still in use by scanning all notes
-        all_used_tags = set()
-        for note in self._notes.values():
-            if "tags" in note and note["tags"]:
-                all_used_tags.update(note["tags"])
+            # Reset tag set with only tags still in use
+            self._tags = all_used_tags
 
-        # Reset tag set with only tags still in use
-        self._tags = all_used_tags
+            # Special case for the test - explicitly handle "important" tag
+            # This ensures compatibility with the test_sync method expectations
+            if (
+                "important" in old_tags
+                and "important" not in new_tags
+                and "test_sync" in str(self._client)
+            ):
+                self._tags.discard("important")
 
-        # Special case for the test - explicitly handle "important" tag
-        # This ensures compatibility with the test_sync method expectations
-        if (
-            "important" in old_tags
-            and "important" not in new_tags
-            and "test_sync" in str(self._client)
-        ):
-            self._tags.discard("important")
+            # Update last sync time
+            self._last_sync = time.time()
 
-        # Update last sync time
-        self._last_sync = time.time()
+            elapsed = time.time() - start_time
+            if change_count > 0:
+                logger.info(f"Updated {change_count} notes in cache in {elapsed:.2f}s")
+            else:
+                logger.debug(f"No changes found in {elapsed:.2f}s")
 
-        elapsed = time.time() - start_time
-        if change_count > 0:
-            logger.info(f"Updated {change_count} notes in cache in {elapsed:.2f}s")
-        else:
-            logger.debug(f"No changes found in {elapsed:.2f}s")
-
-        return change_count
+            return change_count
+            
+        except Exception as e:
+            # Handle processing errors
+            elapsed = time.time() - start_time
+            logger.error(f"Error processing sync results after {elapsed:.2f}s: {str(e)}")
+            
+            # Return 0 changes for non-critical errors during processing
+            # This allows the sync loop to continue rather than crashing
+            return 0
 
     def get_note(self, note_id: str) -> Optional[dict]:
         """Get a note from the cache by ID.
@@ -539,6 +621,13 @@ class BackgroundSync:
     async def _sync_loop(self) -> None:
         """Run the sync loop until stopped."""
         logger.debug("Starting background sync loop")
+        
+        # Exponential backoff parameters
+        base_retry_delay = 5  # Start with 5 seconds
+        max_retry_delay = 300  # Maximum 5 minutes
+        current_retry_delay = base_retry_delay
+        consecutive_failures = 0
+        
         try:
             while self._running:
                 try:
@@ -555,26 +644,57 @@ class BackgroundSync:
                     # Synchronize the cache
                     logger.debug("Starting sync operation")
                     start_time = time.time()
-                    changes = await self._cache.sync()
-                    elapsed = time.time() - start_time
-
-                    if changes > 0:
-                        logger.info(
-                            f"Background sync updated {changes} notes in {elapsed:.2f}s"
-                        )
-                    else:
-                        logger.debug(
-                            f"Background sync completed in {elapsed:.2f}s (no changes)"
-                        )
+                    
+                    # Add timeout to the sync operation to prevent hanging
+                    try:
+                        sync_task = asyncio.create_task(self._cache.sync())
+                        changes = await asyncio.wait_for(sync_task, timeout=30.0)  # 30 second timeout
+                        
+                        # Success - reset backoff parameters
+                        consecutive_failures = 0
+                        current_retry_delay = base_retry_delay
+                        
+                        elapsed = time.time() - start_time
+                        if changes > 0:
+                            logger.info(
+                                f"Background sync updated {changes} notes in {elapsed:.2f}s"
+                            )
+                        else:
+                            logger.debug(
+                                f"Background sync completed in {elapsed:.2f}s (no changes)"
+                            )
+                    
+                    except asyncio.TimeoutError:
+                        elapsed = time.time() - start_time
+                        logger.warning(f"Sync operation timed out after {elapsed:.2f}s")
+                        # Count as a failure for backoff purposes
+                        consecutive_failures += 1
 
                 except asyncio.CancelledError:
                     # Normal cancellation
                     logger.info("Background sync task cancelled")
                     raise  # Re-raise to exit the loop and function
+                    
                 except Exception as e:
                     logger.error(f"Error in background sync: {str(e)}", exc_info=True)
-                    # Sleep a bit before retrying to avoid rapid failure loops
-                    await asyncio.sleep(5)
+                    # Increment failure counter and adjust delay
+                    consecutive_failures += 1
+                    
+                    # Calculate backoff delay using exponential backoff with jitter
+                    import random
+                    jitter = random.uniform(0.8, 1.2)  # 20% jitter
+                    current_retry_delay = min(
+                        max_retry_delay, 
+                        base_retry_delay * (2 ** min(consecutive_failures - 1, 5)) * jitter
+                    )
+                    
+                    logger.warning(
+                        f"Backing off for {current_retry_delay:.1f}s after {consecutive_failures} consecutive failures"
+                    )
+                    
+                    # Sleep with backoff before retrying
+                    await asyncio.sleep(current_retry_delay)
+                    
         except asyncio.CancelledError:
             logger.info("Background sync loop cancelled")
             raise  # Re-raise so the calling code can handle it
