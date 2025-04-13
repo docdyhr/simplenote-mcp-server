@@ -120,9 +120,9 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 - [ ] **Performance Monitoring**
   - [ ] Track cache stats, response times, API calls
 
-- [ ] **Docker Packaging**
-  - [ ] Create Dockerfile
-  - [ ] Document Docker deployment
+- [x] **Docker Packaging**
+  - [x] Create Dockerfile
+  - [x] Document Docker deployment
 
 ## 11. Code Quality Improvements
 
