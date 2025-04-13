@@ -1386,8 +1386,14 @@ def run_main() -> None:
         config = get_config()
         logger.info(f"Starting Simplenote MCP Server v{__version__}")
         logger.info(f"Python version: {sys.version}")
+        # Handle email masking safely
+        email_display = "Not set"
+        if config.simplenote_email:
+            email_display = f"{config.simplenote_email[:3]}***"
+        
         logger.info(
-            f"Environment: SIMPLENOTE_EMAIL={config.simplenote_email[:3]}*** (set: {config.simplenote_email is not None}), SIMPLENOTE_PASSWORD={'*****' if config.simplenote_password else 'Not set'}"
+            f"Environment: SIMPLENOTE_EMAIL={email_display} (set: {config.simplenote_email is not None}), "
+            f"SIMPLENOTE_PASSWORD={'*****' if config.simplenote_password else 'Not set'}"
         )
         logger.info(f"Running from: {os.path.dirname(os.path.abspath(__file__))}")
         logger.info(f"Sync interval: {config.sync_interval_seconds}s")
