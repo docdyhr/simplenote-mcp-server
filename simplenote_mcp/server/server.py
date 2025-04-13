@@ -898,19 +898,19 @@ async def handle_call_tool(name: str, arguments: Dict) -> List[types.TextContent
 
                 # Parse the tags to add
                 tags_to_add = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
-                
+
                 # Get current tags or initialize empty list
                 current_tags = existing_note.get("tags", [])
                 if current_tags is None:
                     current_tags = []
-                
+
                 # Add new tags that aren't already present
                 added_tags = []
                 for tag in tags_to_add:
                     if tag not in current_tags:
                         current_tags.append(tag)
                         added_tags.append(tag)
-                
+
                 # Only update if tags were actually added
                 if added_tags:
                     # Update the note
@@ -996,12 +996,12 @@ async def handle_call_tool(name: str, arguments: Dict) -> List[types.TextContent
 
                 # Parse the tags to remove
                 tags_to_remove = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
-                
+
                 # Get current tags or initialize empty list
                 current_tags = existing_note.get("tags", [])
                 if current_tags is None:
                     current_tags = []
-                
+
                 # If the note has no tags, nothing to do
                 if not current_tags:
                     return [
@@ -1017,7 +1017,7 @@ async def handle_call_tool(name: str, arguments: Dict) -> List[types.TextContent
                             ),
                         )
                     ]
-                
+
                 # Remove specified tags that are present
                 removed_tags = []
                 new_tags = []
@@ -1026,7 +1026,7 @@ async def handle_call_tool(name: str, arguments: Dict) -> List[types.TextContent
                         removed_tags.append(tag)
                     else:
                         new_tags.append(tag)
-                
+
                 # Only update if tags were actually removed
                 if removed_tags:
                     # Update the note
@@ -1109,12 +1109,12 @@ async def handle_call_tool(name: str, arguments: Dict) -> List[types.TextContent
 
                 # Parse the new tags
                 new_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
-                
+
                 # Get current tags
                 current_tags = existing_note.get("tags", [])
                 if current_tags is None:
                     current_tags = []
-                
+
                 # Update the note with new tags
                 existing_note["tags"] = new_tags
                 updated_note, status = sn.update_note(existing_note)

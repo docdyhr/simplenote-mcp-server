@@ -552,7 +552,7 @@ class TestHandleCallTool:
 
             # Verify API calls
             mock_client.get_note.assert_called_once_with("note123")
-            
+
     async def test_add_tags(self):
         """Test adding tags to a note."""
         with (
@@ -605,7 +605,7 @@ class TestHandleCallTool:
 
             # Verify cache update
             mock_cache.update_cache_after_update.assert_called_once()
-            
+
     async def test_remove_tags(self):
         """Test removing tags from a note."""
         with (
@@ -658,7 +658,7 @@ class TestHandleCallTool:
 
             # Verify cache update
             mock_cache.update_cache_after_update.assert_called_once()
-            
+
     async def test_replace_tags(self):
         """Test replacing tags on a note."""
         with (
