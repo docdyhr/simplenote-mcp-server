@@ -102,7 +102,7 @@ class NoteCache:
                     from .errors import NetworkError
                     if isinstance(e, NetworkError):
                         raise
-                    raise NetworkError(f"Failed to initialize cache after {max_retries} attempts: {str(e)}")
+                    raise NetworkError(f"Failed to initialize cache after {max_retries} attempts: {str(e)}") from e
 
         # Store notes in the cache
         self._notes = {note["key"]: note for note in notes_data}
@@ -192,7 +192,7 @@ class NoteCache:
                     from .errors import NetworkError
                     if isinstance(e, NetworkError):
                         raise
-                    raise NetworkError(f"Failed to sync after {max_retries} attempts: {str(e)}")
+                    raise NetworkError(f"Failed to sync after {max_retries} attempts: {str(e)}") from e
 
         try:
             # Update local index mark for test compatibility
@@ -371,24 +371,24 @@ class NoteCache:
         Examples:
             Simple search:
             >>> search_notes("project meeting")
-            
+
             Boolean operators:
             >>> search_notes("project AND meeting AND NOT cancelled")
-            
+
             Quoted phrases:
             >>> search_notes('"action items" AND project')
-            
+
             Tag filters:
             >>> search_notes("meeting", tag_filters=["work", "important"])
             >>> search_notes("meeting tag:work tag:important")  # Equivalent
-            
+
             Date range:
             >>> from datetime import datetime
             >>> start_date = datetime(2023, 1, 1)
             >>> end_date = datetime(2023, 12, 31)
             >>> search_notes("meeting", date_range=(start_date, end_date))
             >>> search_notes("meeting from:2023-01-01 to:2023-12-31")  # Equivalent
-            
+
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)

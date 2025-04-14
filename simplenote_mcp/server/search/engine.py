@@ -11,7 +11,7 @@ from .parser import QueryParser, QueryToken, TokenType
 
 class SearchEngine:
     """Implementation of advanced search capabilities for Simplenote notes.
-    
+
     Supports:
     - Boolean operators (AND, OR, NOT)
     - Phrase matching
@@ -32,17 +32,17 @@ class SearchEngine:
         limit: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Search notes using advanced query capabilities.
-        
+
         Args:
             notes: Dictionary of notes to search through (key -> note)
             query: The search query (supports boolean operators)
             tag_filters: Optional list of tags to filter by
             date_range: Optional tuple of (from_date, to_date)
             limit: Optional maximum number of results to return
-            
+
         Returns:
             List of matching notes sorted by relevance
-            
+
         """
         logger.debug(f"Performing advanced search with query: '{query}'")
 
@@ -93,9 +93,8 @@ class SearchEngine:
                     continue
 
                 # Apply date range filters
-                if date_range[0] is not None or date_range[1] is not None:
-                    if not self._is_in_date_range(note, date_range):
-                        continue
+                if (date_range[0] is not None or date_range[1] is not None) and not self._is_in_date_range(note, date_range):
+                    continue
 
                 # Add matching note to results with a default score of 1
                 results.append((note, 1))
@@ -121,9 +120,8 @@ class SearchEngine:
                     continue
 
                 # Apply date range filters
-                if date_range[0] is not None or date_range[1] is not None:
-                    if not self._is_in_date_range(note, date_range):
-                        continue
+                if (date_range[0] is not None or date_range[1] is not None) and not self._is_in_date_range(note, date_range):
+                    continue
 
                 # Evaluate the boolean expression
                 if remaining_tokens and not self._evaluate_expression(note, remaining_tokens):
@@ -151,14 +149,14 @@ class SearchEngine:
 
     def _matches_tags(self, note: Dict[str, Any], tags: Set[str]) -> bool:
         """Check if a note matches the specified tags.
-        
+
         Args:
             note: The note to check
             tags: Set of tags to match
-            
+
         Returns:
             True if note has all the specified tags, False otherwise
-            
+
         """
         note_tags = set(note.get("tags", []))
         logger.debug(f"Checking if tags {tags} are in note tags {note_tags}")
@@ -170,14 +168,14 @@ class SearchEngine:
         date_range: Tuple[Optional[datetime], Optional[datetime]]
     ) -> bool:
         """Check if a note's modification date is within the specified range.
-        
+
         Args:
             note: The note to check
             date_range: Tuple of (from_date, to_date), either may be None
-            
+
         Returns:
             True if note is in the date range, False otherwise
-            
+
         """
         from_date, to_date = date_range
 
@@ -210,23 +208,20 @@ class SearchEngine:
         if from_date and note_date < from_date:
             return False
 
-        if to_date and note_date > to_date:
-            return False
-
-        return True
+        return not (to_date and note_date > to_date)
 
     def _evaluate_expression(self, note: Dict[str, Any], tokens: List[QueryToken]) -> bool:
         """Evaluate a boolean expression against a note.
-        
+
         Uses a simple recursive descent parser to evaluate the expression.
-        
+
         Args:
             note: The note to evaluate against
             tokens: List of query tokens
-            
+
         Returns:
             True if note matches the expression, False otherwise
-            
+
         """
         if not tokens:
             return True
@@ -243,15 +238,15 @@ class SearchEngine:
         self, note: Dict[str, Any], tokens: List[QueryToken], pos: List[int]
     ) -> bool:
         """Parse an OR expression (term OR term OR ...).
-        
+
         Args:
             note: The note to check
             tokens: List of query tokens
             pos: Current position in the token list
-            
+
         Returns:
             Result of evaluating the expression
-            
+
         """
         # Parse the first term
         result = self._parse_and_expression(note, tokens, pos)
@@ -273,15 +268,15 @@ class SearchEngine:
         self, note: Dict[str, Any], tokens: List[QueryToken], pos: List[int]
     ) -> bool:
         """Parse an AND expression (term AND term AND ...).
-        
+
         Args:
             note: The note to check
             tokens: List of query tokens
             pos: Current position in the token list
-            
+
         Returns:
             Result of evaluating the expression
-            
+
         """
         # Parse the first term
         result = self._parse_not_expression(note, tokens, pos)
@@ -303,15 +298,15 @@ class SearchEngine:
         self, note: Dict[str, Any], tokens: List[QueryToken], pos: List[int]
     ) -> bool:
         """Parse a NOT expression (NOT term).
-        
+
         Args:
             note: The note to check
             tokens: List of query tokens
             pos: Current position in the token list
-            
+
         Returns:
             Result of evaluating the expression
-            
+
         """
         # Check for NOT operator
         if pos[0] < len(tokens) and tokens[pos[0]].type == TokenType.NOT:
@@ -330,15 +325,15 @@ class SearchEngine:
         self, note: Dict[str, Any], tokens: List[QueryToken], pos: List[int]
     ) -> bool:
         """Parse a primary expression (term, phrase, or grouped expression).
-        
+
         Args:
             note: The note to check
             tokens: List of query tokens
             pos: Current position in the token list
-            
+
         Returns:
             Result of evaluating the expression
-            
+
         """
         if pos[0] >= len(tokens):
             # End of input
@@ -378,15 +373,15 @@ class SearchEngine:
 
     def _content_contains(self, note: Dict[str, Any], search_term: str, exact: bool = False) -> bool:
         """Check if note content contains the search term.
-        
+
         Args:
             note: The note to check
             search_term: The term to search for
             exact: Whether to perform exact matching (case sensitive)
-            
+
         Returns:
             True if note contains the term, False otherwise
-            
+
         """
         content = note.get("content", "")
 
@@ -423,14 +418,14 @@ class SearchEngine:
 
     def _get_modify_date(self, note: Dict[str, Any]) -> datetime:
         """Extract the modification date from a note.
-        
+
         Args:
             note: The note to extract date from
-            
+
         Returns:
             A datetime object representing the modification date,
             or epoch start if not available
-            
+
         """
         modify_date = note.get("modifydate", 0)
 
@@ -450,14 +445,14 @@ class SearchEngine:
 
     def _calculate_relevance(self, note: Dict[str, Any], query: str) -> int:
         """Calculate relevance score for a note.
-        
+
         Args:
             note: The note to score
             query: The original search query
-            
+
         Returns:
             Relevance score (higher is more relevant)
-            
+
         """
         content = note.get("content", "").lower()
         title_line = content.split("\n", 1)[0].lower() if content else ""

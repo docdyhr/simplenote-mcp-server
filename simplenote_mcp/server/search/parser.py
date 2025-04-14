@@ -25,11 +25,11 @@ class QueryToken:
 
     def __init__(self, token_type: TokenType, value: str):
         """Initialize a query token.
-        
+
         Args:
             token_type: The type of token
             value: The value of the token
-            
+
         """
         self.type = token_type
         self.value = value
@@ -41,7 +41,7 @@ class QueryToken:
 
 class QueryParser:
     """Parser for advanced search queries.
-    
+
     Supports:
     - Boolean operators: AND, OR, NOT
     - Quoted phrases: "exact match"
@@ -52,23 +52,23 @@ class QueryParser:
 
     def __init__(self, query_string: str):
         """Initialize a query parser.
-        
+
         Args:
             query_string: The search query to parse
-            
+
         """
         self.original_query = query_string
         self.tokens = self._tokenize(query_string)
 
     def _tokenize(self, query: str) -> List[QueryToken]:
         """Tokenize the query string into tokens.
-        
+
         Args:
             query: The query string to tokenize
-            
+
         Returns:
             List of QueryToken objects
-            
+
         """
         if not query or not query.strip():
             return []

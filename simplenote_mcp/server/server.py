@@ -1509,7 +1509,7 @@ async def run() -> None:
 
             try:
                 # Start cache initialization in background but don't wait
-                init_task = asyncio.create_task(initialize_cache())
+                asyncio.create_task(initialize_cache())
 
                 # Log that we're continuing without waiting
                 logger.info("Started cache initialization in background")
@@ -1541,7 +1541,7 @@ async def run() -> None:
                     logger.info("Shutdown requested, stopping server gracefully")
                     shutdown_future.set_result(None)
 
-                shutdown_monitor = asyncio.create_task(monitor_shutdown())
+                asyncio.create_task(monitor_shutdown())
 
                 # Run the server with an option to cancel if shutdown is requested
                 server_task = asyncio.create_task(
