@@ -11,6 +11,7 @@ repos:
     -   id: check-docstring-first
     -   id: detect-private-key
     -   id: detect-aws-credentials
+        args: ["--allow-missing-credentials"]
 
 -   repo: https://github.com/pycqa/isort
     rev: 5.13.0
