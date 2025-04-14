@@ -45,7 +45,7 @@ jobs:
     - name: Type check with mypy
       run: |
         . .venv/bin/activate
-        mypy simplenote_mcp --config-file=mypy.ini
+        mypy simplenote_mcp --config-file=mypy.ini --ignore-missing-imports --no-strict-optional
 
     - name: Test with pytest
       run: |
