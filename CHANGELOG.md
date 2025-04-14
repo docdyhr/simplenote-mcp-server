@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Comprehensive testing for advanced search functionality
+- Performance tests for search operations
+- Enhanced error handling in tests
+
+### Improved
+- Fixed type annotations throughout the codebase
+- Better test robustness with proper fixtures and mocks
+- Added pytest stubs for better type checking
+- Updated pytest.ini to ignore specific warnings
+- Improved integration tests to handle API response variations
+
 ## [0.1.0] - 2025-04-10
 
 ### Added
