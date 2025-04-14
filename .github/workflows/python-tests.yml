@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.11']
+        python-version: ['3.11', '3.13']
       fail-fast: false
 
     steps:
@@ -51,7 +51,7 @@ jobs:
     - name: Test with pytest
       run: |
         . .venv/bin/activate
-        pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term tests/
+        pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term tests/ -v
       env:
         SIMPLENOTE_EMAIL: "test@example.com"
         SIMPLENOTE_PASSWORD: "test_password"
