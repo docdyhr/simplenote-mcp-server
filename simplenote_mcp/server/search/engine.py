@@ -87,7 +87,7 @@ class SearchEngine:
             # Collect results with scores
             results = []
 
-            for note_id, note in notes.items():
+            for _, note in notes.items():
                 # Apply tag filters
                 if global_tag_filters and not self._matches_tags(note, global_tag_filters):
                     continue
@@ -115,7 +115,7 @@ class SearchEngine:
             # Collect results with scores
             results = []
 
-            for note_id, note in notes.items():
+            for _, note in notes.items():
                 # Apply tag filters
                 if global_tag_filters and not self._matches_tags(note, global_tag_filters):
                     continue
