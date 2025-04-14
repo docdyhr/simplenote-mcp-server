@@ -156,7 +156,8 @@ class TestNoteCache:
         # Get note not in cache
         note = cache.get_note("missing_note")
 
-        # Verify API was called
+        # Verify API was called and note is not None
+        assert note is not None
         assert note["content"] == "Retrieved from API"
         mock_simplenote_client.get_note.assert_called_once_with("missing_note")
 
@@ -292,7 +293,8 @@ class TestBackgroundSync:
             await mock_cache.sync()
             return 5
 
-        bg_sync._sync_loop = test_sync
+        # Use object.__setattr__ to avoid mypy complaints about method assignment
+        object.__setattr__(bg_sync, "_sync_loop", test_sync)
 
         # Start and call sync once
         await bg_sync.start()
@@ -324,7 +326,8 @@ class TestBackgroundSync:
             return True
 
         # Run the test loop
-        bg_sync._sync_loop = error_test_loop
+        # Use object.__setattr__ to avoid mypy complaints about method assignment
+        object.__setattr__(bg_sync, "_sync_loop", error_test_loop)
 
         # Start the sync
         await bg_sync.start()

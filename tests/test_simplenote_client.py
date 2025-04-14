@@ -27,9 +27,11 @@ def test_simplenote_client_creation(simplenote_env_vars):
         mock_simplenote.return_value = mock_client
 
         # Reset client
-        import sys
 
-        sys.modules["simplenote_mcp.server.server"].simplenote_client = None
+        from simplenote_mcp.server import server
+
+        # Directly reset the module attribute to avoid mypy complaints
+        server.simplenote_client = None
 
         # Get client
         client = get_simplenote_client()
@@ -42,9 +44,11 @@ def test_simplenote_client_creation(simplenote_env_vars):
 def test_missing_credentials():
     """Test that missing credentials raise an error."""
     # Reset the simplenote_client global variable
-    import sys
 
-    sys.modules["simplenote_mcp.server.server"].simplenote_client = None
+    from simplenote_mcp.server import server
+
+    # Directly reset the module attribute to avoid mypy complaints
+    server.simplenote_client = None
 
     # Mock config with missing credentials
     with patch("simplenote_mcp.server.server.get_config") as mock_get_config:

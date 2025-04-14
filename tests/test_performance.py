@@ -45,7 +45,7 @@ def setup_performance_cache(
     def init_cache():
         # Simulate API delay
         time.sleep(0.1)
-        cache._notes = {note["key"]: note for note in mock_large_note_list}
+        cache._notes = {str(note["key"]): note for note in mock_large_note_list}
         cache._tags = set()
         for note in mock_large_note_list:
             if "tags" in note:

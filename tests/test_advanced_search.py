@@ -163,7 +163,7 @@ class TestSearchEngine:
             },
         }
 
-    def test_basic_search(self, sample_notes) -> None:
+    def test_basic_search(self, sample_notes: dict) -> None:
         """Test basic search functionality."""
         engine = SearchEngine()
 
@@ -178,7 +178,7 @@ class TestSearchEngine:
         # First result should be the most relevant (with project in title)
         assert results[0]["key"] == "note1"
 
-    def test_boolean_operators(self, sample_notes) -> None:
+    def test_boolean_operators(self, sample_notes: dict) -> None:
         """Test boolean operators in search."""
         engine = SearchEngine()
 
