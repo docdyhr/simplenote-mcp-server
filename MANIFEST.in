@@ -3,4 +3,6 @@ include README.md
 include CHANGELOG.md
 include VERSION
 include pyproject.toml
+include simplenote_mcp/py.typed
 recursive-include simplenote_mcp/scripts *.sh
+recursive-include stubs *.pyi

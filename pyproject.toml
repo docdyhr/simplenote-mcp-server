@@ -8,6 +8,10 @@ license = { text = "MIT" }
 authors = [{ name = "Thomas Juul Dyhr", email = "docdyhr@me.com" }]
 dependencies = ["mcp[cli]>=0.4.0", "simplenote>=2.1.4"]
 
+[tool.setuptools.package-data]
+"simplenote_mcp" = ["py.typed"]
+"simplenote_mcp.server" = ["py.typed"]
+
 [project.optional-dependencies]
 dev = [
     "mypy>=1.5.1",
