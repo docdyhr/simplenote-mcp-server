@@ -1,0 +1,37 @@
+# .ruff.toml - Configuration for the ruff linter
+
+# Target Python version
+target-version = "py311"
+
+# Line length to match black configuration
+line-length = 88
+
+[lint]
+# Enable select rules
+select = [
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "W",  # pycodestyle warnings
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "ARG", # unused arguments
+    "SIM", # simplification
+]
+
+# Ignore specific rules
+ignore = [
+    "E203",  # Whitespace before ':' (black compatibility)
+    "E501",  # Line too long (handled by black)
+]
+
+# Per-file ignores
+[lint.per-file-ignores]
+"__init__.py" = ["F401"]  # Unused imports in __init__ files
+"tests/*" = ["ARG001", "ARG002"]  # Unused arguments in test functions
+
+[format]
+# Use double quotes for strings
+quote-style = "double"
+# Include trailing commas in multi-line sequences
+indent-style = "space"
