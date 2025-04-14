@@ -109,3 +109,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Unstable behavior when Simplenote API is unreachable
 - Server crashes when MCP client times out during slow API operations
 - Initialization failure when Simplenote API is slow to respond
+
+## [1.3.0] - 2025-04-14
+
+### Added
+- Debug logging configuration in pytest.ini for better test visibility
+- Detailed debug logging throughout the search operation
+- Thread-safe caching with proper lock implementation
+
+### Improved
+- Enhanced search algorithm with better relevance scoring
+- Prioritization of title matches in search results
+- More descriptive tool documentation for search functionality
+- More robust cache initialization with direct API fallback
+- Extended timeout for better handling of slow API responses
+
+### Fixed
+- Search functionality in Claude Desktop returning empty results
+- Thread safety issues with concurrent cache access
+- Cache initialization failures with Simplenote API
+- Empty search results when API responses are slow
