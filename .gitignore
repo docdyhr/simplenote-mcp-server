@@ -26,6 +26,12 @@ simplenote_mcp/logs/*
 !simplenote_mcp/logs/.gitkeep
 /tmp/simplenote_mcp_debug.log
 /tmp/simplenote_monitoring.log
+*.log
+error_logs.txt
+
+# Runtime files
+*.pid
+server.pid
 
 # Testing
 .coverage
