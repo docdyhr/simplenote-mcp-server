@@ -1,7 +1,7 @@
 """Performance tests for the Simplenote MCP server."""
 
 import time
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Dict, List, Union
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -31,7 +31,9 @@ def mock_large_note_list() -> List[Dict[str, Union[str, List[str]]]]:
 
 
 @pytest.fixture
-def setup_performance_cache(mock_large_note_list: List[Dict[str, Union[str, List[str]]]]) -> NoteCache:
+def setup_performance_cache(
+    mock_large_note_list: List[Dict[str, Union[str, List[str]]]],
+) -> NoteCache:
     """Set up a NoteCache with a large number of notes for performance testing."""
     mock_client = MagicMock()
     mock_client.get_note_list.return_value = (mock_large_note_list, 0)
@@ -59,7 +61,9 @@ class TestPerformance:
     """Performance tests for server operations."""
 
     @pytest.mark.asyncio
-    async def test_list_resources_performance(self, setup_performance_cache: NoteCache) -> None:
+    async def test_list_resources_performance(
+        self, setup_performance_cache: NoteCache
+    ) -> None:
         """Test the performance of listing resources."""
         with (
             patch("simplenote_mcp.server.server.note_cache", setup_performance_cache),
@@ -99,7 +103,9 @@ class TestPerformance:
             assert len(large_resources) == 500
 
     @pytest.mark.asyncio
-    async def test_read_resource_performance(self, setup_performance_cache: NoteCache) -> None:
+    async def test_read_resource_performance(
+        self, setup_performance_cache: NoteCache
+    ) -> None:
         """Test the performance of reading a resource."""
         with (
             patch("simplenote_mcp.server.server.note_cache", setup_performance_cache),

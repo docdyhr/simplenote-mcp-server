@@ -1,7 +1,7 @@
 """Tests for advanced search functionality."""
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union
+from typing import Dict, List, Union
 
 import pytest
 

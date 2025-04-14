@@ -1,6 +1,5 @@
 """Unit tests for the prompt capabilities of the MCP server."""
 
-
 import pytest
 
 from simplenote_mcp.server.errors import ValidationError
