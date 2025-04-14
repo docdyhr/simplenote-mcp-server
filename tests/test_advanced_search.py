@@ -1,6 +1,7 @@
 """Tests for advanced search functionality."""
 
 from datetime import datetime, timedelta
+from typing import Any, Dict, List, Optional, Union
 
 import pytest
 
@@ -11,7 +12,7 @@ from simplenote_mcp.server.search.parser import QueryParser, TokenType
 class TestQueryParser:
     """Tests for the QueryParser class."""
 
-    def test_simple_term_parsing(self):
+    def test_simple_term_parsing(self) -> None:
         """Test parsing simple search terms."""
         parser = QueryParser("hello world")
         tokens = parser.tokens
@@ -24,7 +25,7 @@ class TestQueryParser:
         assert tokens[2].type == TokenType.TERM
         assert tokens[2].value == "world"
 
-    def test_boolean_operators(self):
+    def test_boolean_operators(self) -> None:
         """Test parsing boolean operators."""
         parser = QueryParser("term1 AND term2 OR term3 NOT term4")
         tokens = parser.tokens
@@ -90,7 +91,7 @@ class TestQueryParser:
         assert tokens[term4_index].type == TokenType.TERM
         assert tokens[term4_index].value == "term4"
 
-    def test_quoted_phrases(self):
+    def test_quoted_phrases(self) -> None:
         """Test parsing quoted phrases."""
         parser = QueryParser('"hello world" AND test')
         tokens = parser.tokens
@@ -102,7 +103,7 @@ class TestQueryParser:
         assert tokens[2].type == TokenType.TERM
         assert tokens[2].value == "test"
 
-    def test_tag_filters(self):
+    def test_tag_filters(self) -> None:
         """Test parsing tag filters."""
         parser = QueryParser("work tag:important tag:project")
         tokens = parser.tokens
@@ -116,7 +117,7 @@ class TestQueryParser:
             token.type == TokenType.TAG and token.value == "project" for token in tokens
         )
 
-    def test_date_filters(self):
+    def test_date_filters(self) -> None:
         """Test parsing date filters."""
         parser = QueryParser("meeting from:2023-01-01 to:2023-12-31")
         tokens = parser.tokens
@@ -135,7 +136,7 @@ class TestSearchEngine:
     """Tests for the SearchEngine class."""
 
     @pytest.fixture
-    def sample_notes(self):
+    def sample_notes(self) -> Dict[str, Dict[str, Union[str, List[str], datetime]]]:
         """Sample notes for testing."""
         yesterday = datetime.now() - timedelta(days=1)
         last_week = datetime.now() - timedelta(days=7)
@@ -162,7 +163,7 @@ class TestSearchEngine:
             },
         }
 
-    def test_basic_search(self, sample_notes):
+    def test_basic_search(self, sample_notes) -> None:
         """Test basic search functionality."""
         engine = SearchEngine()
 
@@ -177,7 +178,7 @@ class TestSearchEngine:
         # First result should be the most relevant (with project in title)
         assert results[0]["key"] == "note1"
 
-    def test_boolean_operators(self, sample_notes):
+    def test_boolean_operators(self, sample_notes) -> None:
         """Test boolean operators in search."""
         engine = SearchEngine()
 
@@ -196,7 +197,7 @@ class TestSearchEngine:
         assert len(results) == 1
         assert results[0]["key"] == "note3"
 
-    def test_quoted_phrases(self):
+    def test_quoted_phrases(self) -> None:
         """Test quoted phrase matching."""
         engine = SearchEngine()
 
@@ -233,7 +234,7 @@ class TestSearchEngine:
             len(results) == 0
         ), "Should not match 'project report' when words are separated"
 
-    def test_tag_filters(self):
+    def test_tag_filters(self) -> None:
         """Test tag filtering."""
         engine = SearchEngine()
 
@@ -270,7 +271,7 @@ class TestSearchEngine:
         assert len(results) == 1, "Should find 1 note with both work and important tags"
         assert results[0]["key"] == "note1"
 
-    def test_date_filters(self):
+    def test_date_filters(self) -> None:
         """Test date range filtering."""
         engine = SearchEngine()
 

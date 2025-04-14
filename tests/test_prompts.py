@@ -12,7 +12,7 @@ from simplenote_mcp.server.server import handle_get_prompt, handle_list_prompts
 class TestPromptCapabilities:
     """Tests for prompt-related capabilities."""
 
-    async def test_list_prompts(self):
+    async def test_list_prompts(self) -> None:
         """Test listing available prompts."""
         prompts = await handle_list_prompts()
 
@@ -37,7 +37,7 @@ class TestPromptCapabilities:
         assert search_prompt.arguments[0].name == "query"
         assert search_prompt.arguments[0].required is True
 
-    async def test_get_prompt_create_note(self):
+    async def test_get_prompt_create_note(self) -> None:
         """Test getting the create_note_prompt."""
         with (
             patch("mcp.types.PromptMessage") as mock_prompt_message,
@@ -66,7 +66,7 @@ class TestPromptCapabilities:
                 == "Create a new note in Simplenote"
             )
 
-    async def test_get_prompt_search_notes(self):
+    async def test_get_prompt_search_notes(self) -> None:
         """Test getting the search_notes_prompt."""
         with (
             patch("mcp.types.PromptMessage") as mock_prompt_message,
@@ -92,7 +92,7 @@ class TestPromptCapabilities:
                 == "Search for notes in Simplenote"
             )
 
-    async def test_get_prompt_missing_arguments(self):
+    async def test_get_prompt_missing_arguments(self) -> None:
         """Test getting a prompt with missing arguments."""
         with (
             patch("mcp.types.PromptMessage") as mock_prompt_message,
@@ -116,7 +116,7 @@ class TestPromptCapabilities:
             await handle_get_prompt("search_notes_prompt", None)
             assert mock_result.called
 
-    async def test_get_prompt_unknown_prompt(self):
+    async def test_get_prompt_unknown_prompt(self) -> None:
         """Test error when getting an unknown prompt."""
         with pytest.raises(ValidationError) as exc_info:
             await handle_get_prompt("unknown_prompt", {})
