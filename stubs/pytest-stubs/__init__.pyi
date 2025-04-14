@@ -1,4 +1,4 @@
-from typing import Any, Callable, List, Optional, TypeVar, Union, overload
+from typing import Any, Callable, List, Optional, TypeVar, Union
 
 T = TypeVar("T")
 
@@ -6,21 +6,12 @@ class FixtureRequest:
     param: Any
     def getfixturevalue(self, name: str) -> Any: ...
 
-# For fixture decorator - must handle both str and callable as first args
-@overload
+# Simple version compatible with Python 3.11 and 3.13
 def fixture(
-    scope_or_func: Callable[..., T],
-    *args: Any,
-    **kwargs: Any,
-) -> Callable[..., T]: ...
-@overload
-def fixture(
-    scope_or_func: str = "function",
-    *,
+    scope: str = "function",
     params: Optional[List[Any]] = None,
     autouse: bool = False,
     ids: Optional[List[str]] = None,
-    **kwargs: Any,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]: ...
 def mark() -> "Mark": ...
 
