@@ -48,4 +48,8 @@ jobs:
         pip install mypy types-requests types-setuptools types-PyYAML
     
     - name: Run mypy type checking
-      run: mypy simplenote_mcp --config-file=mypy.ini
+      run: |
+        # Make sure we have all necessary dependencies
+        pip install -e .[dev,test]
+        pip install mypy types-requests types-setuptools types-PyYAML pytest pytest-asyncio
+        mypy simplenote_mcp --config-file=mypy.ini

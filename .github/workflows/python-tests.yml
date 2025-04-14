@@ -28,8 +28,7 @@ jobs:
         pip install uv
         uv venv
         . .venv/bin/activate
-        uv pip install -e .
-        uv pip install pytest pytest-cov pytest-asyncio ruff mypy
+        uv pip install -e .[dev,test]
 
     - name: Install pre-commit
       run: |
