@@ -232,7 +232,13 @@ class TestHandleListResources:
         ):
             # Configure cache to raise error
             mock_cache.is_initialized = True
-            mock_cache.get_all_notes.side_effect = Exception("Test error")
+
+            # Create a properly defined exception rather than a side effect
+            # to avoid asyncio RuntimeWarning in Python 3.13
+            def raise_error(*args, **kwargs):
+                raise Exception("Test error")
+
+            mock_cache.get_all_notes = raise_error
 
             # Configure mock config
             mock_config = MagicMock()
