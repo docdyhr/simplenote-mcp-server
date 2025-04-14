@@ -19,7 +19,9 @@ from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from simplenote import Simplenote
 
-from .cache import BackgroundSync, NoteCache
+from .cache import BackgroundSync, NoteCache 
+# Direct import from the Python package for additional API functions
+import simplenote
 from .config import get_config, LogLevel
 from .errors import (
     AuthenticationError,
@@ -184,14 +186,29 @@ async def initialize_cache() -> None:
     try:
         logger.info("Initializing note cache")
         
-        # Create a minimal cache immediately so we can respond to clients
+        # Test the Simplenote client to make sure it works
         sn = get_simplenote_client()
+        logger.debug("Testing Simplenote client connection...")
+        
+        # Try a simple API call to validate connection
+        try:
+            # Get note list to validate connection (no limit parameter in this API)
+            test_notes, status = sn.get_note_list()
+            if status == 0:
+                logger.debug(f"Simplenote API connection successful, received {len(test_notes) if isinstance(test_notes, list) else 'data'} items")
+            else:
+                logger.error(f"Simplenote API connection test failed with status {status}")
+        except Exception as e:
+            logger.error(f"Simplenote API connection test failed: {str(e)}", exc_info=True)
+        
+        # Create a minimal cache immediately so we can respond to clients
         if note_cache is None:
             note_cache = NoteCache(sn)
             note_cache._initialized = True
             note_cache._notes = {}
             note_cache._last_sync = time.time()
             note_cache._tags = set()
+            logger.debug(f"Created empty note cache with client: {sn}")
         
         # Start background sync immediately so data will start loading
         if background_sync is None:
@@ -200,18 +217,39 @@ async def initialize_cache() -> None:
         
         # Now actually load the data in the background without blocking
         # Initialize cache in the background with a timeout
-        initialization_timeout = 45  # seconds
+        initialization_timeout = 60  # seconds - increased from 45
         
         async def background_initialization():
             try:
+                # Try direct API call to get notes synchronously
+                try:
+                    logger.debug("Attempting direct API call to get notes...")
+                    all_notes, status = sn.get_note_list()
+                    if status == 0 and isinstance(all_notes, list) and all_notes:
+                        # Success! Update the cache directly
+                        # Using non-context lock (lock/unlock) since the lock might not be a context manager
+                        try:
+                            await note_cache._lock.acquire()
+                            for note in all_notes:
+                                note_id = note.get('key')
+                                if note_id:
+                                    note_cache._notes[note_id] = note
+                                    if "tags" in note and note["tags"]:
+                                        note_cache._tags.update(note["tags"])
+                        finally:
+                            note_cache._lock.release()
+                        logger.info(f"Direct API load successful, loaded {len(all_notes)} notes")
+                except Exception as e:
+                    logger.warning(f"Direct API load failed, falling back to cache initialize: {str(e)}")
+                    
                 # Start real initialization in background
                 init_task = asyncio.create_task(note_cache.initialize())
                 try:
                     await asyncio.wait_for(init_task, timeout=initialization_timeout)
-                    logger.info("Note cache initialization completed successfully")
+                    logger.info(f"Note cache initialization completed successfully with {len(note_cache._notes)} notes")
                 except asyncio.TimeoutError:
-                    logger.warning(f"Note cache initialization timed out after {initialization_timeout}s")
-                    # We already have an empty cache, so we're good to go
+                    logger.warning(f"Note cache initialization timed out after {initialization_timeout}s, cache has {len(note_cache._notes)} notes")
+                    # We already have some notes from direct API call hopefully
             except Exception as e:
                 logger.error(f"Error during background initialization: {str(e)}", exc_info=True)
                 
@@ -466,11 +504,11 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="search_notes",
-                description="Search for notes in Simplenote",
+                description="Search for notes in Simplenote by text content",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "The search query"},
+                        "query": {"type": "string", "description": "The search query (text to find in note content)"},
                         "limit": {
                             "type": "integer",
                             "description": "Maximum number of results to return",
@@ -573,11 +611,11 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="search_notes",
-                description="Search for notes in Simplenote",
+                description="Search for notes in Simplenote by text content",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "The search query"}
+                        "query": {"type": "string", "description": "The search query (text to find in note content)"}
                     },
                     "required": ["query"],
                 },
@@ -788,6 +826,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             query = arguments.get("query", "")
             limit = arguments.get("limit")
 
+            logger.debug(f"search_notes called with query='{query}', limit={limit}")
+
             if not query:
                 raise ValidationError(QUERY_REQUIRED)
 
@@ -800,8 +840,12 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     limit = None
 
             try:
+                # Check cache status
+                cache_initialized = note_cache is not None and note_cache.is_initialized
+                logger.debug(f"Cache status for search: available={note_cache is not None}, initialized={cache_initialized}")
+                
                 # Use the cache for search if available
-                if note_cache is not None and note_cache.is_initialized:
+                if cache_initialized:
                     logger.debug(f"Searching notes in cache for query: {query}")
                     notes = note_cache.search_notes(query, limit=limit)
 
@@ -826,17 +870,29 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                             }
                         )
 
+                    # Add debug logging for troubleshooting
+                    logger.debug(f"Search results: {len(results)} matches found for '{query}'")
+                    
+                    # Debug log the first few results if available
+                    if results:
+                        logger.debug(f"First result title: {results[0].get('title', 'No title')}")
+                        
+                    # Create response
+                    response = {
+                        "success": True,
+                        "results": results,
+                        "count": len(results),
+                        "query": query,
+                    }
+                    
+                    # Log the response size
+                    response_json = json.dumps(response)
+                    logger.debug(f"Response size: {len(response_json)} bytes")
+                    
                     return [
                         types.TextContent(
                             type="text",
-                            text=json.dumps(
-                                {
-                                    "success": True,
-                                    "results": results,
-                                    "count": len(results),
-                                    "query": query,
-                                }
-                            ),
+                            text=response_json,
                         )
                     ]
 
@@ -851,12 +907,29 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 # Simple search in content
                 query_lower = query.lower()
                 results = []
+                
+                # Log the number of notes being searched
+                logger.debug(f"API search: Searching through {len(notes)} notes for '{query_lower}'")
 
                 for note in notes:
-                    content = note.get("content", "").lower()
+                    content = note.get("content", "").lower() if note.get("content") else ""
+                    title_line = content.split("\n", 1)[0].lower() if content else ""
+                    
+                    # Log the first few characters of each note for debugging (limit to avoid huge logs)
+                    logger.debug(f"API search: Checking note {note.get('key')}: '{content[:50]}...'")
+                    
+                    # Check for match in content
                     if query_lower in content:
                         # Calculate a crude relevance score (number of occurrences)
                         occurrences = content.count(query_lower)
+                        
+                        # Add bonus for title matches
+                        if query_lower in title_line:
+                            occurrences += 10
+                        
+                        # Log that we found a match
+                        logger.debug(f"API search: Found match in note {note.get('key')} with score {occurrences}")
+                            
                         results.append(
                             (
                                 {
@@ -885,18 +958,31 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if limit is not None:
                     results = results[:limit]
 
-                # Return just the notes, not the scores
+                # Extract just the notes from the results
+                formatted_results = [r[0] for r in results]
+                
+                # Debug logging for troubleshooting
+                logger.debug(f"API search results: {len(formatted_results)} matches found for '{query}'")
+                if formatted_results:
+                    logger.debug(f"First API result title: {formatted_results[0].get('title', 'No title')}")
+                
+                # Create the response
+                response = {
+                    "success": True,
+                    "results": formatted_results,
+                    "count": len(formatted_results),
+                    "query": query,
+                }
+                
+                # Log the response size
+                response_json = json.dumps(response)
+                logger.debug(f"API response size: {len(response_json)} bytes")
+
+                # Return the results
                 return [
                     types.TextContent(
                         type="text",
-                        text=json.dumps(
-                            {
-                                "success": True,
-                                "results": [r[0] for r in results],
-                                "count": len(results),
-                                "query": query,
-                            }
-                        ),
+                        text=response_json,
                     )
                 ]
 

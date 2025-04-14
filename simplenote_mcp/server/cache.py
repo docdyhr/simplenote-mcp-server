@@ -43,6 +43,7 @@ class NoteCache:
         self._last_sync: float = 0  # Timestamp of last sync
         self._initialized: bool = False
         self._tags: set[str] = set()  # Set of all unique tags
+        self._lock = asyncio.Lock()  # Lock for thread-safe access
 
     async def initialize(self) -> int:
         """Initialize the cache with all notes from Simplenote.
@@ -363,35 +364,48 @@ class NoteCache:
         # Simple case-insensitive search
         query_lower = query.lower()
         results = []
+        
+        # Log search information
+        logger.debug(f"Cache search: Searching through {len(self._notes)} notes for '{query_lower}'")
 
         for note in self._notes.values():
-            content = note.get("content", "").lower()
+            content = note.get("content", "").lower() if note.get("content") else ""
             title_line = content.split("\n", 1)[0].lower() if content else ""
+            
+            # Log the note content for debugging (limited to avoid huge logs)
+            logger.debug(f"Cache search: Checking note {note.get('key', 'unknown')}: '{content[:50]}...'")
 
-            # Check for match in content or title
-            if query_lower in content or query_lower in title_line:
-                results.append(note)
+            # Check for match in content
+            if query_lower in content:
+                # Calculate occurrence count for relevance scoring
+                occurrences = content.count(query_lower)
+                
+                # Log that we found a match
+                title_match = query_lower in title_line
+                logger.debug(f"Cache search: Found match in note {note.get('key')} with score {occurrences}, title match: {title_match}")
+                
+                # Store note with its relevance score
+                note_with_score = (note, occurrences, title_match)
+                results.append(note_with_score)
 
-        # Sort by relevance and recency
-        # This is a simple heuristic - title matches are ranked higher
-        def sort_key(note: dict) -> tuple:
-            content = note.get("content", "").lower()
-            title_line = content.split("\n", 1)[0].lower() if content else ""
-
-            # Calculate relevance score
-            title_match = query_lower in title_line
+        # Sort by title match first, then by occurrences, then by recency
+        def sort_key(note_tuple: tuple) -> tuple:
+            note, occurrences, title_match = note_tuple
             modify_date = note.get("modifydate", 0)
-
-            # Ensure modify_date is numeric for sorting
+            
+            # Convert string dates to something sortable if needed
             if isinstance(modify_date, str):
                 # Simple string-based sorting for ISO format dates
-                return (0 if title_match else 1, modify_date)
+                return (0 if title_match else 1, occurrences, modify_date)
             else:
-                # Return a tuple for sorting (title match, modify date)
-                # Title matches come first, then sorted by date
-                return (0 if title_match else 1, -modify_date)
+                # Sort by title match (primary), occurrences (secondary), recency (tertiary)
+                return (0 if title_match else 1, occurrences, -modify_date)
 
-        results.sort(key=sort_key)
+        # Sort the results
+        results.sort(key=sort_key, reverse=True)
+        
+        # Extract just the notes from the sorted results
+        results = [note_tuple[0] for note_tuple in results]
 
         # Apply limit if specified
         if limit is not None and limit > 0:
@@ -494,6 +508,8 @@ class NoteCache:
             True if the cache is initialized, False otherwise.
 
         """
+        # For debugging search issues, log current cache state when checked
+        logger.debug(f"Cache initialization status: initialized={self._initialized}, note count={len(self._notes)}")
         return self._initialized
 
     @property
