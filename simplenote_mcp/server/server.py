@@ -15,17 +15,16 @@ from typing import Optional
 
 import mcp.server.stdio
 import mcp.types as types
+
+# Direct import from the Python package for additional API functions
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
 from simplenote import Simplenote
 
-from .cache import BackgroundSync, NoteCache 
-# Direct import from the Python package for additional API functions
-import simplenote
-from .config import get_config, LogLevel
+from .cache import BackgroundSync, NoteCache
+from .config import LogLevel, get_config
 from .errors import (
     AuthenticationError,
-    ErrorCategory,
     NetworkError,
     ResourceNotFoundError,
     ServerError,
@@ -117,7 +116,7 @@ def write_pid_file() -> None:
     try:
         pid = os.getpid()
         PID_FILE_PATH.write_text(str(pid))
-        
+
         # Also write to the alternative location in /tmp for compatibility
         try:
             ALT_PID_FILE_PATH.write_text(str(pid))
@@ -134,7 +133,7 @@ def cleanup_pid_file() -> None:
         if PID_FILE_PATH.exists():
             PID_FILE_PATH.unlink()
             logger.info(f"Removed PID file: {PID_FILE_PATH}")
-            
+
         # Also remove the alternative PID file if it exists
         if ALT_PID_FILE_PATH.exists():
             ALT_PID_FILE_PATH.unlink()
@@ -156,10 +155,10 @@ def setup_signal_handlers() -> None:
         global shutdown_requested
         signal_name = signal.Signals(sig).name
         logger.info(f"Received {signal_name} signal, shutting down...")
-        
+
         # Set the shutdown flag
         shutdown_requested = True
-        
+
         # If we're not in the main thread or inside an async function,
         # we need to exit immediately
         current_thread = threading.current_thread()
@@ -167,7 +166,7 @@ def setup_signal_handlers() -> None:
             logger.info("Signal received in non-main thread, exiting immediately")
             # Cleanup will be handled by atexit
             sys.exit(0)
-            
+
         # In the main thread, we'll let the async loops check the flag
         # and exit gracefully via the shutdown_requested flag
 
@@ -185,11 +184,11 @@ async def initialize_cache() -> None:
 
     try:
         logger.info("Initializing note cache")
-        
+
         # Test the Simplenote client to make sure it works
         sn = get_simplenote_client()
         logger.debug("Testing Simplenote client connection...")
-        
+
         # Try a simple API call to validate connection
         try:
             # Get note list to validate connection (no limit parameter in this API)
@@ -200,7 +199,7 @@ async def initialize_cache() -> None:
                 logger.error(f"Simplenote API connection test failed with status {status}")
         except Exception as e:
             logger.error(f"Simplenote API connection test failed: {str(e)}", exc_info=True)
-        
+
         # Create a minimal cache immediately so we can respond to clients
         if note_cache is None:
             note_cache = NoteCache(sn)
@@ -209,16 +208,16 @@ async def initialize_cache() -> None:
             note_cache._last_sync = time.time()
             note_cache._tags = set()
             logger.debug(f"Created empty note cache with client: {sn}")
-        
+
         # Start background sync immediately so data will start loading
         if background_sync is None:
             background_sync = BackgroundSync(note_cache)
             await background_sync.start()
-        
+
         # Now actually load the data in the background without blocking
         # Initialize cache in the background with a timeout
         initialization_timeout = 60  # seconds - increased from 45
-        
+
         async def background_initialization():
             try:
                 # Try direct API call to get notes synchronously
@@ -241,7 +240,7 @@ async def initialize_cache() -> None:
                         logger.info(f"Direct API load successful, loaded {len(all_notes)} notes")
                 except Exception as e:
                     logger.warning(f"Direct API load failed, falling back to cache initialize: {str(e)}")
-                    
+
                 # Start real initialization in background
                 init_task = asyncio.create_task(note_cache.initialize())
                 try:
@@ -252,10 +251,10 @@ async def initialize_cache() -> None:
                     # We already have some notes from direct API call hopefully
             except Exception as e:
                 logger.error(f"Error during background initialization: {str(e)}", exc_info=True)
-                
+
         # Start background initialization but don't await it
         asyncio.create_task(background_initialization())
-        
+
     except Exception as e:
         if isinstance(e, ServerError):
             raise
@@ -295,7 +294,7 @@ async def handle_list_resources(
             note_cache._notes = {}
             note_cache._last_sync = time.time()
             note_cache._tags = set()
-            
+
             # Start initialization in the background
             asyncio.create_task(initialize_cache())
 
@@ -375,10 +374,10 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
             note_cache._notes = {}
             note_cache._last_sync = time.time()
             note_cache._tags = set()
-            
+
             # Start initialization in the background
             asyncio.create_task(initialize_cache())
-            
+
         # Try to get the note from cache first if cache is initialized
         if note_cache is not None:
             logger.debug(f"Getting note {note_id} from cache")
@@ -509,7 +508,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "type": "object",
                     "properties": {
                         "query": {
-                            "type": "string", 
+                            "type": "string",
                             "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)"
                         },
                         "limit": {
@@ -631,7 +630,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "type": "object",
                     "properties": {
                         "query": {
-                            "type": "string", 
+                            "type": "string",
                             "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)"
                         },
                         "tags": {
@@ -672,7 +671,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             note_cache._notes = {}
             note_cache._last_sync = time.time()
             note_cache._tags = set()
-            
+
             # Start initialization in the background
             asyncio.create_task(initialize_cache())
 
@@ -867,18 +866,18 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         limit = None
                 except (ValueError, TypeError):
                     limit = None
-            
+
             # Process tag filters
             tag_filters = None
             if tags_str:
                 tag_filters = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
                 logger.debug(f"Tag filters: {tag_filters}")
-            
+
             # Process date range
             from_date = None
             to_date = None
             date_range = None
-            
+
             if from_date_str:
                 try:
                     from datetime import datetime
@@ -886,7 +885,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     logger.debug(f"From date: {from_date}")
                 except ValueError:
                     logger.warning(f"Invalid from_date format: {from_date_str}")
-            
+
             if to_date_str:
                 try:
                     from datetime import datetime
@@ -894,7 +893,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     logger.debug(f"To date: {to_date}")
                 except ValueError:
                     logger.warning(f"Invalid to_date format: {to_date_str}")
-            
+
             if from_date or to_date:
                 date_range = (from_date, to_date)
 
@@ -902,14 +901,14 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 # Check cache status
                 cache_initialized = note_cache is not None and note_cache.is_initialized
                 logger.debug(f"Cache status for search: available={note_cache is not None}, initialized={cache_initialized}")
-                
+
                 # Use the cache for search if available
                 if cache_initialized:
-                    logger.debug(f"Using advanced search with cache")
-                    
+                    logger.debug("Using advanced search with cache")
+
                     # Use the enhanced search implementation
                     notes = note_cache.search_notes(
-                        query=query, 
+                        query=query,
                         limit=limit,
                         tag_filters=tag_filters,
                         date_range=date_range
@@ -935,11 +934,11 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
                     # Add debug logging for troubleshooting
                     logger.debug(f"Search results: {len(results)} matches found for '{query}'")
-                    
+
                     # Debug log the first few results if available
                     if results:
                         logger.debug(f"First result title: {results[0].get('title', 'No title')}")
-                        
+
                     # Create response
                     response = {
                         "success": True,
@@ -947,30 +946,30 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         "count": len(results),
                         "query": query,
                     }
-                    
+
                     # Log the response size
                     response_json = json.dumps(response)
                     logger.debug(f"Response size: {len(response_json)} bytes")
-                    
+
                     return [types.TextContent(type="text", text=response_json)]
 
                 # Fall back to API if cache is not available - create a temporary search engine
-                logger.debug(f"Cache not available, using API with temporary search engine")
+                logger.debug("Cache not available, using API with temporary search engine")
                 from .search.engine import SearchEngine
                 api_search_engine = SearchEngine()
-                
+
                 # Get all notes from the API
                 all_notes, status = sn.get_note_list()
-                
+
                 if status != 0:
                     logger.error(FAILED_RETRIEVE_NOTES)
                     raise NetworkError(FAILED_RETRIEVE_NOTES)
-                
+
                 # Convert list to dictionary for search engine
                 notes_dict = {note.get("key"): note for note in all_notes if note.get("key")}
-                
+
                 logger.debug(f"API search: Got {len(notes_dict)} notes from API")
-                
+
                 # Use the search engine
                 matching_notes = api_search_engine.search(
                     notes=notes_dict,
@@ -979,7 +978,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     date_range=date_range,
                     limit=limit
                 )
-                
+
                 # Format results
                 results = []
                 for note in matching_notes:
@@ -991,12 +990,12 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         "tags": note.get("tags", []),
                         "uri": f"simplenote://note/{note.get('key')}",
                     })
-                
+
                 # Debug logging
                 logger.debug(f"API search results: {len(results)} matches found for '{query}'")
                 if results:
                     logger.debug(f"First API result title: {results[0].get('title', 'No title')}")
-                
+
                 # Create the response
                 response = {
                     "success": True,
@@ -1004,7 +1003,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     "count": len(results),
                     "query": query,
                 }
-                
+
                 # Log the response size
                 response_json = json.dumps(response)
                 logger.debug(f"API response size: {len(response_json)} bytes")
@@ -1511,10 +1510,10 @@ async def run() -> None:
             try:
                 # Start cache initialization in background but don't wait
                 init_task = asyncio.create_task(initialize_cache())
-                
+
                 # Log that we're continuing without waiting
                 logger.info("Started cache initialization in background")
-                
+
                 # Get capabilities and log them
                 capabilities = server.get_capabilities(
                     notification_options=NotificationOptions(),
@@ -1534,16 +1533,16 @@ async def run() -> None:
 
                 # Create a done future that will be set when shutdown is requested
                 shutdown_future = asyncio.get_running_loop().create_future()
-                
+
                 # Create a background task to monitor the shutdown flag
                 async def monitor_shutdown():
                     while not shutdown_requested:
                         await asyncio.sleep(0.1)
                     logger.info("Shutdown requested, stopping server gracefully")
                     shutdown_future.set_result(None)
-                
+
                 shutdown_monitor = asyncio.create_task(monitor_shutdown())
-                
+
                 # Run the server with an option to cancel if shutdown is requested
                 server_task = asyncio.create_task(
                     server.run(
@@ -1556,17 +1555,17 @@ async def run() -> None:
                         ),
                     )
                 )
-                
+
                 # Wait for either server completion or shutdown
                 done, pending = await asyncio.wait(
                     [server_task, shutdown_future],
                     return_when=asyncio.FIRST_COMPLETED
                 )
-                
+
                 # Cancel any pending tasks
                 for task in pending:
                     task.cancel()
-                
+
                 # If the server task is done, check its result
                 if server_task in done:
                     try:
@@ -1615,24 +1614,24 @@ def run_main() -> None:
 
         # Configure logging from environment variables
         config = get_config()
-        
+
         # Add debug information for environment variables to a safe debug file
         from .logging import debug_to_file
         if config.log_level == LogLevel.DEBUG:
             for key, value in os.environ.items():
                 if key.startswith("LOG_") or key.startswith("SIMPLENOTE_"):
-                    masked_value = value if not "PASSWORD" in key else "*****"
+                    masked_value = value if "PASSWORD" not in key else "*****"
                     debug_to_file(f"Environment variable found: {key}={masked_value}")
-                
+
         logger.info(f"Starting Simplenote MCP Server v{__version__}")
-        logger.debug(f"This is a DEBUG level message to test logging")
+        logger.debug("This is a DEBUG level message to test logging")
         logger.info(f"Python version: {sys.version}")
-        
+
         # Handle email masking safely
         email_display = "Not set"
         if config.simplenote_email:
             email_display = f"{config.simplenote_email[:3]}***"
-        
+
         logger.info(
             f"Environment: SIMPLENOTE_EMAIL={email_display} (set: {config.simplenote_email is not None}), "
             f"SIMPLENOTE_PASSWORD={'*****' if config.simplenote_password else 'Not set'}"
@@ -1640,7 +1639,7 @@ def run_main() -> None:
         logger.info(f"Running from: {os.path.dirname(os.path.abspath(__file__))}")
         logger.info(f"Sync interval: {config.sync_interval_seconds}s")
         logger.info(f"Log level: {config.log_level.value}")
-        logger.debug(f"Debug logging is ENABLED - this message should appear if log level is DEBUG")
+        logger.debug("Debug logging is ENABLED - this message should appear if log level is DEBUG")
 
         # Set up process management
         setup_signal_handlers()
@@ -1656,7 +1655,7 @@ def run_main() -> None:
         except SystemExit:
             # Normal system exit, handle it gracefully
             logger.info("System exit requested, shutting down gracefully")
-    
+
     except Exception as e:
         if not isinstance(e, SystemExit):  # Don't log normal exits as errors
             logger.critical(f"Critical error in MCP server: {str(e)}", exc_info=True)

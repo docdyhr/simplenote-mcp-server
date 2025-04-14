@@ -3,7 +3,7 @@
 import asyncio
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from simplenote import Simplenote
 
@@ -73,7 +73,7 @@ class NoteCache:
             try:
                 # Get all notes from Simplenote
                 notes_data, status = self._client.get_note_list(tags=[])
-                
+
                 if status != 0:
                     # Log the error but don't raise exception yet if we have retries left
                     if retry_count < max_retries - 1:
@@ -85,10 +85,10 @@ class NoteCache:
                     else:
                         from .errors import NetworkError
                         raise NetworkError(f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts")
-                
+
                 # If we got here, we succeeded
                 break
-                
+
             except Exception as e:
                 # Handle other exceptions similarly
                 if retry_count < max_retries - 1:
@@ -154,16 +154,16 @@ class NoteCache:
 
         # Get changes since last sync
         since = self._last_sync
-        
+
         # Add retry logic for sync as well
         max_retries = 2
         retry_count = 0
         retry_delay = 1
-        
+
         while retry_count < max_retries:
             try:
                 result, status = self._client.get_note_list(since=since, tags=[])
-                
+
                 if status != 0:
                     # Handle non-zero status
                     if retry_count < max_retries - 1:
@@ -175,10 +175,10 @@ class NoteCache:
                     else:
                         from .errors import NetworkError
                         raise NetworkError(f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts")
-                
+
                 # Successful API call
                 break
-                
+
             except Exception as e:
                 # Handle other exceptions
                 if retry_count < max_retries - 1:
@@ -193,7 +193,7 @@ class NoteCache:
                     if isinstance(e, NetworkError):
                         raise
                     raise NetworkError(f"Failed to sync after {max_retries} attempts: {str(e)}")
-        
+
         try:
             # Update local index mark for test compatibility
             if isinstance(result, dict) and "mark" in result:
@@ -262,12 +262,12 @@ class NoteCache:
                 logger.debug(f"No changes found in {elapsed:.2f}s")
 
             return change_count
-            
+
         except Exception as e:
             # Handle processing errors
             elapsed = time.time() - start_time
             logger.error(f"Error processing sync results after {elapsed:.2f}s: {str(e)}")
-            
+
             # Return 0 changes for non-critical errors during processing
             # This allows the sync loop to continue rather than crashing
             return 0
@@ -351,8 +351,8 @@ class NoteCache:
         return sorted_notes
 
     def search_notes(
-        self, 
-        query: str, 
+        self,
+        query: str,
         limit: Optional[int] = None,
         tag_filters: Optional[List[str]] = None,
         date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]] = None
@@ -392,7 +392,7 @@ class NoteCache:
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
-            
+
         # Log search operation
         logger.debug(
             f"Advanced search: query='{query}', "
@@ -401,7 +401,7 @@ class NoteCache:
             f"limit={limit}, "
             f"notes_count={len(self._notes)}"
         )
-        
+
         # Use the search engine to perform the search
         results = self._search_engine.search(
             notes=self._notes,
@@ -641,13 +641,13 @@ class BackgroundSync:
     async def _sync_loop(self) -> None:
         """Run the sync loop until stopped."""
         logger.debug("Starting background sync loop")
-        
+
         # Exponential backoff parameters
         base_retry_delay = 5  # Start with 5 seconds
         max_retry_delay = 300  # Maximum 5 minutes
         current_retry_delay = base_retry_delay
         consecutive_failures = 0
-        
+
         try:
             while self._running:
                 try:
@@ -664,16 +664,16 @@ class BackgroundSync:
                     # Synchronize the cache
                     logger.debug("Starting sync operation")
                     start_time = time.time()
-                    
+
                     # Add timeout to the sync operation to prevent hanging
                     try:
                         sync_task = asyncio.create_task(self._cache.sync())
                         changes = await asyncio.wait_for(sync_task, timeout=30.0)  # 30 second timeout
-                        
+
                         # Success - reset backoff parameters
                         consecutive_failures = 0
                         current_retry_delay = base_retry_delay
-                        
+
                         elapsed = time.time() - start_time
                         if changes > 0:
                             logger.info(
@@ -683,7 +683,7 @@ class BackgroundSync:
                             logger.debug(
                                 f"Background sync completed in {elapsed:.2f}s (no changes)"
                             )
-                    
+
                     except asyncio.TimeoutError:
                         elapsed = time.time() - start_time
                         logger.warning(f"Sync operation timed out after {elapsed:.2f}s")
@@ -694,27 +694,27 @@ class BackgroundSync:
                     # Normal cancellation
                     logger.info("Background sync task cancelled")
                     raise  # Re-raise to exit the loop and function
-                    
+
                 except Exception as e:
                     logger.error(f"Error in background sync: {str(e)}", exc_info=True)
                     # Increment failure counter and adjust delay
                     consecutive_failures += 1
-                    
+
                     # Calculate backoff delay using exponential backoff with jitter
                     import random
                     jitter = random.uniform(0.8, 1.2)  # 20% jitter
                     current_retry_delay = min(
-                        max_retry_delay, 
+                        max_retry_delay,
                         base_retry_delay * (2 ** min(consecutive_failures - 1, 5)) * jitter
                     )
-                    
+
                     logger.warning(
                         f"Backing off for {current_retry_delay:.1f}s after {consecutive_failures} consecutive failures"
                     )
-                    
+
                     # Sleep with backoff before retrying
                     await asyncio.sleep(current_retry_delay)
-                    
+
         except asyncio.CancelledError:
             logger.info("Background sync loop cancelled")
             raise  # Re-raise so the calling code can handle it

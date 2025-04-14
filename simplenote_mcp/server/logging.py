@@ -38,11 +38,11 @@ def initialize_logging() -> None:
     config = get_config()
     log_level = _LOG_LEVEL_MAP[config.log_level]
     logger.setLevel(log_level)
-    
+
     # Make sure we're not inheriting any log level settings
     for handler in logger.handlers:
         logger.removeHandler(handler)
-        
+
     # Initialize debug log file
     try:
         DEBUG_LOG_FILE.write_text("=== Simplenote MCP Server Debug Log ===\n")
@@ -67,7 +67,7 @@ def initialize_logging() -> None:
         )
 
     logger.addHandler(stderr_handler)
-    
+
     # Safe debug log
     with open(DEBUG_LOG_FILE, "a") as f:
         f.write(f"{datetime.now().isoformat()}: Added stderr handler with level: {stderr_handler.level}\n")
@@ -86,7 +86,7 @@ def initialize_logging() -> None:
             )
 
         logger.addHandler(file_handler)
-        
+
         # Safe debug log
         with open(DEBUG_LOG_FILE, "a") as f:
             f.write(f"{datetime.now().isoformat()}: Added file handler with level: {file_handler.level}\n")
@@ -98,7 +98,7 @@ def initialize_logging() -> None:
             logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         )
         logger.addHandler(legacy_handler)
-        
+
         # Safe debug log
         with open(DEBUG_LOG_FILE, "a") as f:
             f.write(f"{datetime.now().isoformat()}: Added legacy handler with level: {legacy_handler.level}\n")
