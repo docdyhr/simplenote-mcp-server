@@ -19,7 +19,7 @@ This document outlines the strategic direction and planned enhancements for the 
 - **Benefits**: Dramatically improves Claude's ability to find relevant information
 - **Effort**: Medium-High (3-4 weeks)
 
-### 3. Docker Support 
+### 3. Docker Support
 - **Implementation**: Create a Dockerfile and docker-compose configuration
 - **Benefits**: Makes deployment easier across platforms, addresses listed future enhancement
 - **Key Components**:

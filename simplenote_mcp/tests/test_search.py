@@ -15,7 +15,7 @@ from simplenote_mcp.server.cache import NoteCache  # noqa: E402
 from simplenote_mcp.server.search.engine import SearchEngine  # noqa: E402
 
 
-async def test_direct_search(query="markdown"):
+async def test_direct_search(query: str = "markdown") -> bool:
     """Test searching using the SearchEngine directly."""
     print(f"\nTesting direct search for '{query}'...")
     try:
@@ -34,7 +34,7 @@ async def test_direct_search(query="markdown"):
         print(f"Retrieved {len(notes)} notes from Simplenote API")
 
         # Convert to the format expected by SearchEngine
-        notes_dict = {note['key']: note for note in notes}
+        notes_dict = {note["key"]: note for note in notes}
 
         # Create search engine
         engine = SearchEngine()
@@ -45,8 +45,8 @@ async def test_direct_search(query="markdown"):
         # Print results
         print(f"Found {len(results)} notes containing '{query}'")
         for i, note in enumerate(results[:5]):  # Show first 5 results
-            title = note.get('content', '').splitlines()[0][:50]
-            note_id = note.get('key', 'unknown')
+            title = note.get("content", "").splitlines()[0][:50]
+            note_id = note.get("key", "unknown")
             print(f"{i+1}. {title}... (ID: {note_id})")
 
         return len(results) > 0
@@ -54,7 +54,8 @@ async def test_direct_search(query="markdown"):
         print(f"Error during search: {e}")
         return False
 
-async def test_cache_search(query="markdown"):
+
+async def test_cache_search(query: str = "markdown") -> bool:
     """Test searching using the NoteCache."""
     print(f"\nTesting cache-based search for '{query}'...")
     try:
@@ -77,8 +78,8 @@ async def test_cache_search(query="markdown"):
         # Print results
         print(f"Found {len(results)} notes containing '{query}'")
         for i, note in enumerate(results[:5]):  # Show first 5 results
-            title = note.get('content', '').splitlines()[0][:50]
-            note_id = note.get('key', 'unknown')
+            title = note.get("content", "").splitlines()[0][:50]
+            note_id = note.get("key", "unknown")
             print(f"{i+1}. {title}... (ID: {note_id})")
 
         return len(results) > 0
@@ -86,14 +87,17 @@ async def test_cache_search(query="markdown"):
         print(f"Error during cache search: {e}")
         return False
 
-async def main():
+
+async def main() -> bool:
     """Run the tests."""
     print("=" * 50)
     print("SIMPLENOTE MCP SERVER SEARCH TEST")
     print("=" * 50)
 
     # Check environment variables
-    username = os.environ.get("SIMPLENOTE_EMAIL") or os.environ.get("SIMPLENOTE_USERNAME")
+    username = os.environ.get("SIMPLENOTE_EMAIL") or os.environ.get(
+        "SIMPLENOTE_USERNAME"
+    )
     password = os.environ.get("SIMPLENOTE_PASSWORD")
 
     if not username or not password:
@@ -120,12 +124,15 @@ async def main():
     all_passed = True
     for name, result in tests:
         status = "PASSED" if result else "FAILED"
-        status_colored = f"\033[92m{status}\033[0m" if result else f"\033[91m{status}\033[0m"
+        status_colored = (
+            f"\033[92m{status}\033[0m" if result else f"\033[91m{status}\033[0m"
+        )
         print(f"{name}: {status_colored}")
         all_passed = all_passed and result
 
     print("\nOverall status:", "PASSED" if all_passed else "FAILED")
     return all_passed
+
 
 if __name__ == "__main__":
     result = asyncio.run(main())

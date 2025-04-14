@@ -11,7 +11,7 @@ echo "Opening Claude Desktop with a specific test prompt..."
 
 # Create a tempfile with the test prompt
 TEST_PROMPT=$(cat <<'EOF'
-What tools do you have available to me? 
+What tools do you have available to me?
 Please specifically check if you have access to Simplenote tools like create_note, update_note, delete_note, and search_notes.
 If you do, please explain what each of these tools can do.
 EOF

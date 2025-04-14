@@ -64,7 +64,6 @@ class TestPerformance:
             patch("simplenote_mcp.server.server.note_cache", setup_performance_cache),
             patch("simplenote_mcp.server.server.get_config") as mock_get_config,
         ):
-
             # Configure mock config
             mock_config = MagicMock()
             mock_config.default_resource_limit = 100
@@ -107,7 +106,6 @@ class TestPerformance:
                 "simplenote_mcp.server.server.get_simplenote_client"
             ) as mock_get_client,
         ):
-
             # Create a large note for testing read performance
             large_note = {
                 "key": "large_note",
@@ -150,7 +148,6 @@ class TestPerformance:
                 "simplenote_mcp.server.server.get_simplenote_client"
             ) as mock_get_client,
         ):
-
             # Set up mock client
             mock_client = MagicMock()
             mock_get_client.return_value = mock_client
@@ -205,7 +202,6 @@ class TestPerformance:
             ),
             patch("simplenote_mcp.server.server.note_cache", None),
         ):
-
             # Measure initialization performance
             start_time = time.time()
             await initialize_cache()

@@ -101,7 +101,7 @@ class ServerError(Exception):
             },
         }
 
-        if self.details:
+        if self.details and isinstance(result["error"], dict):
             result["error"]["details"] = self.details
 
         return result

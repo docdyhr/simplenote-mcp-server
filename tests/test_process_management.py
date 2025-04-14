@@ -122,8 +122,8 @@ class TestProcessManagement:
     def test_signal_handler(self):
         """Test the signal handler function."""
         # Create proper thread mock objects
-        worker_thread_mock = type('MockThread', (), {'name': 'worker_thread'})()
-        main_thread_mock = type('MockThread', (), {'name': 'main_thread'})()
+        worker_thread_mock = type("MockThread", (), {"name": "worker_thread"})()
+        main_thread_mock = type("MockThread", (), {"name": "main_thread"})()
 
         # Set up all patches
         with (
@@ -133,7 +133,7 @@ class TestProcessManagement:
             patch("threading.main_thread"),
             patch("sys.exit") as mock_exit,
             patch("simplenote_mcp.server.server.shutdown_requested", False),
-            patch("simplenote_mcp.server.server.logger.info")  # Prevent actual logging
+            patch("simplenote_mcp.server.server.logger.info"),  # Prevent actual logging
         ):
             # Call setup_signal_handlers to capture the handler function
             setup_signal_handlers()

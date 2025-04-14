@@ -450,6 +450,48 @@ The project includes several diagnostic tools:
 ## Roadmap
 
 See [ROADMAP.md](./ROADMAP.md) for planned features and goals.
+
+## Development
+
+### Pre-commit Hooks
+
+This project uses pre-commit hooks to ensure code quality and consistency. These hooks automatically check and fix issues before each commit.
+
+To get started with pre-commit:
+
+1. Install pre-commit:
+   ```bash
+   pip install pre-commit
+   ```
+
+2. Install the pre-commit hooks:
+   ```bash
+   pre-commit install
+   ```
+
+3. The hooks will now run automatically on every commit. They include:
+   - Code formatting with Black
+   - Import sorting with isort
+   - Linting with Ruff
+   - Type checking with MyPy
+   - Security checks for sensitive data
+   - Various file consistency checks
+
+4. You can run the hooks manually on all files:
+   ```bash
+   pre-commit run --all-files
+   ```
+
+### Code Style
+
+The project follows these code style guidelines:
+- Line length: 88 characters (Black default)
+- Python version: 3.11+
+- Type annotations required for all functions
+- Docstrings in Google style format
+- Imports sorted by: standard library, third-party, local
+- All modules should have appropriate `__all__` declarations
+
 ## Contributing
 
 Contributions are welcome and pull requests are welcome! Please open an issue first to discuss any significant changes. Read our [Contributing Guide](./.github/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.

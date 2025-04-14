@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-04-10
 
 ### Added
-- In-memory cache implementation for faster note access 
+- In-memory cache implementation for faster note access
 - Background synchronization task for keeping notes up to date
 - Support for filtering notes by tags in resource listing
 - Comprehensive unit, integration, and performance tests
@@ -143,6 +143,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Boolean expression evaluation engine
   - Relevance scoring based on content matches, title matches, and recency
 - Comprehensive test suite for advanced search capabilities
+- Pre-commit hooks for code quality assurance:
+  - Automatic code formatting with black
+  - Import sorting with isort
+  - Linting with ruff
+  - Type checking with mypy
+  - Security checks for sensitive data
 
 ### Improved
 - Enhanced search results with better scoring and ranking
@@ -150,6 +156,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Better handling of empty queries with tag or date filters
 - Better error reporting for invalid search queries
 - More descriptive search results including relevance information
+- Code quality consistency through automated tooling
 
 ### Fixed
 - Issues with empty search results when using tag filters

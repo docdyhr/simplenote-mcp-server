@@ -13,13 +13,13 @@ import time
 from pathlib import Path
 from typing import Optional
 
-import mcp.server.stdio
-import mcp.types as types
+import mcp.server.stdio  # type: ignore
+import mcp.types as types  # type: ignore
 
 # Direct import from the Python package for additional API functions
-from mcp.server import NotificationOptions, Server
-from mcp.server.models import InitializationOptions
-from simplenote import Simplenote
+from mcp.server import NotificationOptions, Server  # type: ignore # noqa
+from mcp.server.models import InitializationOptions  # type: ignore
+from simplenote import Simplenote  # type: ignore
 
 from .cache import BackgroundSync, NoteCache
 from .config import LogLevel, get_config
@@ -83,7 +83,7 @@ def get_simplenote_client() -> Simplenote:
                 raise AuthenticationError(AUTH_ERROR_MSG)
 
             logger.info(
-                f"Creating Simplenote client with username: {config.simplenote_email[:3]}***"
+                f"Creating Simplenote client with username: {config.simplenote_email[:3] if config.simplenote_email else ''}***"
             )
             simplenote_client = Simplenote(
                 config.simplenote_email, config.simplenote_password
@@ -145,6 +145,7 @@ def cleanup_pid_file() -> None:
 # Global flag to indicate shutdown is in progress
 shutdown_requested = False
 
+
 def setup_signal_handlers() -> None:
     """Set up signal handlers for graceful shutdown."""
 
@@ -194,11 +195,17 @@ async def initialize_cache() -> None:
             # Get note list to validate connection (no limit parameter in this API)
             test_notes, status = sn.get_note_list()
             if status == 0:
-                logger.debug(f"Simplenote API connection successful, received {len(test_notes) if isinstance(test_notes, list) else 'data'} items")
+                logger.debug(
+                    f"Simplenote API connection successful, received {len(test_notes) if isinstance(test_notes, list) else 'data'} items"
+                )
             else:
-                logger.error(f"Simplenote API connection test failed with status {status}")
+                logger.error(
+                    f"Simplenote API connection test failed with status {status}"
+                )
         except Exception as e:
-            logger.error(f"Simplenote API connection test failed: {str(e)}", exc_info=True)
+            logger.error(
+                f"Simplenote API connection test failed: {str(e)}", exc_info=True
+            )
 
         # Create a minimal cache immediately so we can respond to clients
         if note_cache is None:
@@ -218,7 +225,7 @@ async def initialize_cache() -> None:
         # Initialize cache in the background with a timeout
         initialization_timeout = 60  # seconds - increased from 45
 
-        async def background_initialization():
+        async def background_initialization() -> None:
             try:
                 # Try direct API call to get notes synchronously
                 try:
@@ -230,27 +237,37 @@ async def initialize_cache() -> None:
                         try:
                             await note_cache._lock.acquire()
                             for note in all_notes:
-                                note_id = note.get('key')
+                                note_id = note.get("key")
                                 if note_id:
                                     note_cache._notes[note_id] = note
                                     if "tags" in note and note["tags"]:
                                         note_cache._tags.update(note["tags"])
                         finally:
                             note_cache._lock.release()
-                        logger.info(f"Direct API load successful, loaded {len(all_notes)} notes")
+                        logger.info(
+                            f"Direct API load successful, loaded {len(all_notes)} notes"
+                        )
                 except Exception as e:
-                    logger.warning(f"Direct API load failed, falling back to cache initialize: {str(e)}")
+                    logger.warning(
+                        f"Direct API load failed, falling back to cache initialize: {str(e)}"
+                    )
 
                 # Start real initialization in background
                 init_task = asyncio.create_task(note_cache.initialize())
                 try:
                     await asyncio.wait_for(init_task, timeout=initialization_timeout)
-                    logger.info(f"Note cache initialization completed successfully with {len(note_cache._notes)} notes")
+                    logger.info(
+                        f"Note cache initialization completed successfully with {len(note_cache._notes)} notes"
+                    )
                 except asyncio.TimeoutError:
-                    logger.warning(f"Note cache initialization timed out after {initialization_timeout}s, cache has {len(note_cache._notes)} notes")
+                    logger.warning(
+                        f"Note cache initialization timed out after {initialization_timeout}s, cache has {len(note_cache._notes)} notes"
+                    )
                     # We already have some notes from direct API call hopefully
             except Exception as e:
-                logger.error(f"Error during background initialization: {str(e)}", exc_info=True)
+                logger.error(
+                    f"Error during background initialization: {str(e)}", exc_info=True
+                )
 
         # Start background initialization but don't await it
         asyncio.create_task(background_initialization())
@@ -385,13 +402,25 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
                 note = note_cache.get_note(note_id)
                 logger.debug(f"Found note {note_id} in cache")
                 note_uri = f"simplenote://note/{note_id}"
+                # Ensure we have a valid note object before accessing properties
+                if note is None:
+                    note_content = ""
+                    note_tags = []
+                    note_modifydate = ""
+                    note_createdate = ""
+                else:
+                    note_content = note.get("content", "")
+                    note_tags = note.get("tags", [])
+                    note_modifydate = note.get("modifydate", "")
+                    note_createdate = note.get("createdate", "")
+
                 text_contents = types.TextResourceContents(
-                    text=note.get("content", ""),
+                    text=note_content,
                     uri=note_uri,
                     meta={
-                        "tags": note.get("tags", []),
-                        "modifydate": note.get("modifydate", ""),
-                        "createdate": note.get("createdate", ""),
+                        "tags": note_tags,
+                        "modifydate": note_modifydate,
+                        "createdate": note_createdate,
                     },
                 )
                 return types.ReadResourceResult(contents=[text_contents])
@@ -406,17 +435,17 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
 
         if status == 0:
             # Update the cache if it's initialized
-            if note_cache is not None and note_cache.is_initialized:
+            if note_cache is not None and note_cache.is_initialized and note:
                 note_cache.update_cache_after_update(note)
 
             note_uri = f"simplenote://note/{note_id}"
             text_contents = types.TextResourceContents(
-                text=note.get("content", ""),
+                text=note.get("content", "") if note else "",
                 uri=note_uri,
                 meta={
-                    "tags": note.get("tags", []),
-                    "modifydate": note.get("modifydate", ""),
-                    "createdate": note.get("createdate", ""),
+                    "tags": note.get("tags", []) if note else [],
+                    "modifydate": note.get("modifydate", "") if note else "",
+                    "createdate": note.get("createdate", "") if note else "",
                 },
             )
             return types.ReadResourceResult(contents=[text_contents])
@@ -509,7 +538,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)"
+                            "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)",
                         },
                         "limit": {
                             "type": "integer",
@@ -631,7 +660,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)"
+                            "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)",
                         },
                         "tags": {
                             "type": "string",
@@ -851,8 +880,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             to_date_str = arguments.get("to_date")
 
             logger.debug(
-                f"Advanced search called with: query='{query}', limit={limit}, " +
-                f"tags='{tags_str}', from_date='{from_date_str}', to_date='{to_date_str}'"
+                f"Advanced search called with: query='{query}', limit={limit}, "
+                + f"tags='{tags_str}', from_date='{from_date_str}', to_date='{to_date_str}'"
             )
 
             if not query:
@@ -870,7 +899,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             # Process tag filters
             tag_filters = None
             if tags_str:
-                tag_filters = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+                tag_filters = [
+                    tag.strip() for tag in tags_str.split(",") if tag.strip()
+                ]
                 logger.debug(f"Tag filters: {tag_filters}")
 
             # Process date range
@@ -881,6 +912,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             if from_date_str:
                 try:
                     from datetime import datetime
+
                     from_date = datetime.fromisoformat(from_date_str)
                     logger.debug(f"From date: {from_date}")
                 except ValueError:
@@ -889,6 +921,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             if to_date_str:
                 try:
                     from datetime import datetime
+
                     to_date = datetime.fromisoformat(to_date_str)
                     logger.debug(f"To date: {to_date}")
                 except ValueError:
@@ -900,7 +933,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             try:
                 # Check cache status
                 cache_initialized = note_cache is not None and note_cache.is_initialized
-                logger.debug(f"Cache status for search: available={note_cache is not None}, initialized={cache_initialized}")
+                logger.debug(
+                    f"Cache status for search: available={note_cache is not None}, initialized={cache_initialized}"
+                )
 
                 # Use the cache for search if available
                 if cache_initialized:
@@ -911,7 +946,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         query=query,
                         limit=limit,
                         tag_filters=tag_filters,
-                        date_range=date_range
+                        date_range=date_range,
                     )
 
                     # Format results
@@ -922,10 +957,14 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                             {
                                 "id": note.get("key"),
                                 "title": (
-                                    content.splitlines()[0][:30] if content else note.get("key")
+                                    content.splitlines()[0][:30]
+                                    if content
+                                    else note.get("key")
                                 ),
                                 "snippet": (
-                                    content[:100] + "..." if len(content) > 100 else content
+                                    content[:100] + "..."
+                                    if len(content) > 100
+                                    else content
                                 ),
                                 "tags": note.get("tags", []),
                                 "uri": f"simplenote://note/{note.get('key')}",
@@ -933,11 +972,15 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         )
 
                     # Add debug logging for troubleshooting
-                    logger.debug(f"Search results: {len(results)} matches found for '{query}'")
+                    logger.debug(
+                        f"Search results: {len(results)} matches found for '{query}'"
+                    )
 
                     # Debug log the first few results if available
                     if results:
-                        logger.debug(f"First result title: {results[0].get('title', 'No title')}")
+                        logger.debug(
+                            f"First result title: {results[0].get('title', 'No title')}"
+                        )
 
                     # Create response
                     response = {
@@ -954,8 +997,11 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     return [types.TextContent(type="text", text=response_json)]
 
                 # Fall back to API if cache is not available - create a temporary search engine
-                logger.debug("Cache not available, using API with temporary search engine")
+                logger.debug(
+                    "Cache not available, using API with temporary search engine"
+                )
                 from .search.engine import SearchEngine
+
                 api_search_engine = SearchEngine()
 
                 # Get all notes from the API
@@ -966,7 +1012,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     raise NetworkError(FAILED_RETRIEVE_NOTES)
 
                 # Convert list to dictionary for search engine
-                notes_dict = {note.get("key"): note for note in all_notes if note.get("key")}
+                notes_dict = {
+                    note.get("key"): note for note in all_notes if note.get("key")
+                }
 
                 logger.debug(f"API search: Got {len(notes_dict)} notes from API")
 
@@ -976,25 +1024,35 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     query=query,
                     tag_filters=tag_filters,
                     date_range=date_range,
-                    limit=limit
+                    limit=limit,
                 )
 
                 # Format results
                 results = []
                 for note in matching_notes:
                     content = note.get("content", "")
-                    results.append({
-                        "id": note.get("key"),
-                        "title": content.splitlines()[0][:30] if content else note.get("key"),
-                        "snippet": content[:100] + "..." if len(content) > 100 else content,
-                        "tags": note.get("tags", []),
-                        "uri": f"simplenote://note/{note.get('key')}",
-                    })
+                    results.append(
+                        {
+                            "id": note.get("key"),
+                            "title": content.splitlines()[0][:30]
+                            if content
+                            else note.get("key"),
+                            "snippet": content[:100] + "..."
+                            if len(content) > 100
+                            else content,
+                            "tags": note.get("tags", []),
+                            "uri": f"simplenote://note/{note.get('key')}",
+                        }
+                    )
 
                 # Debug logging
-                logger.debug(f"API search results: {len(results)} matches found for '{query}'")
+                logger.debug(
+                    f"API search results: {len(results)} matches found for '{query}'"
+                )
                 if results:
-                    logger.debug(f"First API result title: {results[0].get('title', 'No title')}")
+                    logger.debug(
+                        f"First API result title: {results[0].get('title', 'No title')}"
+                    )
 
                 # Create the response
                 response = {
@@ -1105,7 +1163,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         raise ResourceNotFoundError(error_msg)
 
                 # Parse the tags to add
-                tags_to_add = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+                tags_to_add = [
+                    tag.strip() for tag in tags_str.split(",") if tag.strip()
+                ]
 
                 # Get current tags or initialize empty list
                 current_tags = existing_note.get("tags", [])
@@ -1202,7 +1262,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         raise ResourceNotFoundError(error_msg)
 
                 # Parse the tags to remove
-                tags_to_remove = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+                tags_to_remove = [
+                    tag.strip() for tag in tags_str.split(",") if tag.strip()
+                ]
 
                 # Get current tags or initialize empty list
                 current_tags = existing_note.get("tags", [])
@@ -1314,7 +1376,11 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         raise ResourceNotFoundError(error_msg)
 
                 # Parse the new tags
-                new_tags = [tag.strip() for tag in tags_str.split(",") if tag.strip()] if tags_str else []
+                new_tags = (
+                    [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+                    if tags_str
+                    else []
+                )
 
                 # Get current tags
                 current_tags = existing_note.get("tags", [])
@@ -1535,7 +1601,7 @@ async def run() -> None:
                 shutdown_future = asyncio.get_running_loop().create_future()
 
                 # Create a background task to monitor the shutdown flag
-                async def monitor_shutdown():
+                async def monitor_shutdown() -> None:
                     while not shutdown_requested:
                         await asyncio.sleep(0.1)
                     logger.info("Shutdown requested, stopping server gracefully")
@@ -1558,8 +1624,7 @@ async def run() -> None:
 
                 # Wait for either server completion or shutdown
                 done, pending = await asyncio.wait(
-                    [server_task, shutdown_future],
-                    return_when=asyncio.FIRST_COMPLETED
+                    [server_task, shutdown_future], return_when=asyncio.FIRST_COMPLETED
                 )
 
                 # Cancel any pending tasks
@@ -1617,6 +1682,7 @@ def run_main() -> None:
 
         # Add debug information for environment variables to a safe debug file
         from .logging import debug_to_file
+
         if config.log_level == LogLevel.DEBUG:
             for key, value in os.environ.items():
                 if key.startswith("LOG_") or key.startswith("SIMPLENOTE_"):
@@ -1639,7 +1705,9 @@ def run_main() -> None:
         logger.info(f"Running from: {os.path.dirname(os.path.abspath(__file__))}")
         logger.info(f"Sync interval: {config.sync_interval_seconds}s")
         logger.info(f"Log level: {config.log_level.value}")
-        logger.debug("Debug logging is ENABLED - this message should appear if log level is DEBUG")
+        logger.debug(
+            "Debug logging is ENABLED - this message should appear if log level is DEBUG"
+        )
 
         # Set up process management
         setup_signal_handlers()

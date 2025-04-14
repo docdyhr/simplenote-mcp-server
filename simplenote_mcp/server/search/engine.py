@@ -19,7 +19,7 @@ class SearchEngine:
     - Date range filtering
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the search engine."""
         self._lock = asyncio.Lock()
 
@@ -81,19 +81,27 @@ class SearchEngine:
         date_range = (global_from_date, global_to_date)
 
         # If no query text and we have filters, we should still return filtered results
-        if not query and (global_tag_filters or date_range[0] is not None or date_range[1] is not None):
-            logger.debug(f"Processing empty query with filters: tags={global_tag_filters}, date_range={date_range}")
+        if not query and (
+            global_tag_filters or date_range[0] is not None or date_range[1] is not None
+        ):
+            logger.debug(
+                f"Processing empty query with filters: tags={global_tag_filters}, date_range={date_range}"
+            )
 
             # Collect results with scores
             results = []
 
             for _, note in notes.items():
                 # Apply tag filters
-                if global_tag_filters and not self._matches_tags(note, global_tag_filters):
+                if global_tag_filters and not self._matches_tags(
+                    note, global_tag_filters
+                ):
                     continue
 
                 # Apply date range filters
-                if (date_range[0] is not None or date_range[1] is not None) and not self._is_in_date_range(note, date_range):
+                if (
+                    date_range[0] is not None or date_range[1] is not None
+                ) and not self._is_in_date_range(note, date_range):
                     continue
 
                 # Add matching note to results with a default score of 1
@@ -116,15 +124,21 @@ class SearchEngine:
 
             for _, note in notes.items():
                 # Apply tag filters
-                if global_tag_filters and not self._matches_tags(note, global_tag_filters):
+                if global_tag_filters and not self._matches_tags(
+                    note, global_tag_filters
+                ):
                     continue
 
                 # Apply date range filters
-                if (date_range[0] is not None or date_range[1] is not None) and not self._is_in_date_range(note, date_range):
+                if (
+                    date_range[0] is not None or date_range[1] is not None
+                ) and not self._is_in_date_range(note, date_range):
                     continue
 
                 # Evaluate the boolean expression
-                if remaining_tokens and not self._evaluate_expression(note, remaining_tokens):
+                if remaining_tokens and not self._evaluate_expression(
+                    note, remaining_tokens
+                ):
                     continue
 
                 # Calculate relevance score
@@ -165,7 +179,7 @@ class SearchEngine:
     def _is_in_date_range(
         self,
         note: Dict[str, Any],
-        date_range: Tuple[Optional[datetime], Optional[datetime]]
+        date_range: Tuple[Optional[datetime], Optional[datetime]],
     ) -> bool:
         """Check if a note's modification date is within the specified range.
 
@@ -210,7 +224,9 @@ class SearchEngine:
 
         return not (to_date and note_date > to_date)
 
-    def _evaluate_expression(self, note: Dict[str, Any], tokens: List[QueryToken]) -> bool:
+    def _evaluate_expression(
+        self, note: Dict[str, Any], tokens: List[QueryToken]
+    ) -> bool:
         """Evaluate a boolean expression against a note.
 
         Uses a simple recursive descent parser to evaluate the expression.
@@ -371,7 +387,9 @@ class SearchEngine:
             pos[0] += 1
             return False
 
-    def _content_contains(self, note: Dict[str, Any], search_term: str, exact: bool = False) -> bool:
+    def _content_contains(
+        self, note: Dict[str, Any], search_term: str, exact: bool = False
+    ) -> bool:
         """Check if note content contains the search term.
 
         Args:
@@ -405,10 +423,11 @@ class SearchEngine:
             # For multiple words, use a regex pattern that matches the exact sequence
             # with word boundaries
             import re
+
             # Escape regex special characters
             escaped_words = [re.escape(word) for word in search_words]
             # Join with whitespace pattern
-            pattern = r'\b' + r'\s+'.join(escaped_words) + r'\b'
+            pattern = r"\b" + r"\s+".join(escaped_words) + r"\b"
 
             # Check if the pattern matches
             return bool(re.search(pattern, content_lower))
@@ -458,8 +477,10 @@ class SearchEngine:
         title_line = content.split("\n", 1)[0].lower() if content else ""
 
         # Get all search terms (excluding operators)
-        search_terms = re.findall(r'\b\w+\b', query.lower())
-        search_terms = [term for term in search_terms if term not in ('and', 'or', 'not')]
+        search_terms = re.findall(r"\b\w+\b", query.lower())
+        search_terms = [
+            term for term in search_terms if term not in ("and", "or", "not")
+        ]
 
         if not search_terms:
             return 0

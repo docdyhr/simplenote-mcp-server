@@ -27,7 +27,7 @@ echo "Checking Simplenote MCP server logs for tool registration..."
 # Check both new and legacy log locations
 if grep -q "Returning .* tools: create_note" "$LOG_FILE" || grep -q "Returning .* tools: create_note" "$LEGACY_LOG_FILE"; then
     echo -e "${GREEN}✓ Tools are being properly returned by the server${NC}"
-    
+
     # Extract the list of tools (check both log locations)
     if grep -q "Returning .* tools:" "$LOG_FILE"; then
         TOOLS=$(grep "Returning .* tools:" "$LOG_FILE" | tail -1 | sed 's/.*Returning .* tools: //')
@@ -37,7 +37,7 @@ if grep -q "Returning .* tools: create_note" "$LOG_FILE" || grep -q "Returning .
     echo -e "${GREEN}✓ Registered tools: ${TOOLS}${NC}"
 else
     echo -e "${RED}✗ Tools are NOT being properly registered${NC}"
-    
+
     # Check for errors (in both log locations)
     if grep -q "Error listing tools" "$LOG_FILE"; then
         ERROR=$(grep "Error listing tools" "$LOG_FILE" | tail -1)
@@ -46,7 +46,7 @@ else
         ERROR=$(grep "Error listing tools" "$LEGACY_LOG_FILE" | tail -1)
         echo -e "${RED}✗ Error found: ${ERROR}${NC}"
     fi
-    
+
     echo -e "${YELLOW}Check the logs for more details: $SCRIPT_DIR/watch_logs.sh${NC}"
     exit 1
 fi

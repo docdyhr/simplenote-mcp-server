@@ -35,7 +35,7 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 
 - [x] **Enhanced Resource Listing**
   - [x] Add support for filtering by tags
-  - [x] Include note tags in resource metadata 
+  - [x] Include note tags in resource metadata
   - [x] Support limiting the number of returned notes
   - [x] Add sorting options if possible
 
@@ -182,13 +182,13 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 
 ### Infrastructure Improvements
 
-- [ ] **Configuration for Linting Rules**
-  - [ ] Add a `.ruff.toml` configuration file
-  - [ ] Define project-specific linting rules
+- [x] **Configuration for Linting Rules**
+  - [x] Add a `.ruff.toml` configuration file
+  - [x] Define project-specific linting rules
 
-- [ ] **Pre-commit Hooks**
-  - [ ] Set up pre-commit hooks for automatic linting
-  - [ ] Include black, ruff, and mypy in the hooks
+- [x] **Pre-commit Hooks**
+  - [x] Set up pre-commit hooks for automatic linting
+  - [x] Include black, ruff, isort, and mypy in the hooks
 
 - [ ] **CI Pipeline Enhancement**
   - [ ] Add dedicated linting step to CI pipeline

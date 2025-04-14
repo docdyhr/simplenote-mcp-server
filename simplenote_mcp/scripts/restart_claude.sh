@@ -26,7 +26,7 @@ if [ -f "$PID_FILE" ]; then
             echo "Waiting for server to stop... ($i/5)"
             sleep 1
         done
-        
+
         # Force kill if still running
         if ps -p $SERVER_PID > /dev/null 2>&1; then
             echo "Server did not stop gracefully, forcing termination..."

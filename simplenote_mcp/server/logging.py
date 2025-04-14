@@ -48,7 +48,9 @@ def initialize_logging() -> None:
         DEBUG_LOG_FILE.write_text("=== Simplenote MCP Server Debug Log ===\n")
         with open(DEBUG_LOG_FILE, "a") as f:
             f.write(f"Started at: {datetime.now().isoformat()}\n")
-            f.write(f"Setting logger level to: {log_level} from config.log_level: {config.log_level}\n")
+            f.write(
+                f"Setting logger level to: {log_level} from config.log_level: {config.log_level}\n"
+            )
             f.write(f"Loading log level from environment: {config.log_level.value}\n")
     except Exception:
         # If we can't write to the debug log, that's not critical
@@ -70,7 +72,9 @@ def initialize_logging() -> None:
 
     # Safe debug log
     with open(DEBUG_LOG_FILE, "a") as f:
-        f.write(f"{datetime.now().isoformat()}: Added stderr handler with level: {stderr_handler.level}\n")
+        f.write(
+            f"{datetime.now().isoformat()}: Added stderr handler with level: {stderr_handler.level}\n"
+        )
 
     # Add file handler if configured
     if config.log_to_file:
@@ -89,7 +93,9 @@ def initialize_logging() -> None:
 
         # Safe debug log
         with open(DEBUG_LOG_FILE, "a") as f:
-            f.write(f"{datetime.now().isoformat()}: Added file handler with level: {file_handler.level}\n")
+            f.write(
+                f"{datetime.now().isoformat()}: Added file handler with level: {file_handler.level}\n"
+            )
 
         # Legacy log file support
         legacy_handler = logging.FileHandler(LEGACY_LOG_FILE)
@@ -101,7 +107,9 @@ def initialize_logging() -> None:
 
         # Safe debug log
         with open(DEBUG_LOG_FILE, "a") as f:
-            f.write(f"{datetime.now().isoformat()}: Added legacy handler with level: {legacy_handler.level}\n")
+            f.write(
+                f"{datetime.now().isoformat()}: Added legacy handler with level: {legacy_handler.level}\n"
+            )
 
 
 class JsonFormatter(logging.Formatter):
@@ -119,7 +127,9 @@ class JsonFormatter(logging.Formatter):
         # Add exception info if present
         if record.exc_info:
             log_entry["exception"] = {
-                "type": record.exc_info[0].__name__,
+                "type": record.exc_info[0].__name__
+                if record.exc_info[0]
+                else "Unknown",
                 "message": str(record.exc_info[1]),
                 "traceback": logging.Formatter().formatException(record.exc_info),
             }
@@ -144,6 +154,7 @@ def debug_to_file(message: str) -> None:
     except Exception:
         # Fail silently to ensure we don't break the MCP protocol
         pass
+
 
 # Legacy function for backward compatibility
 def log_debug(message: str) -> None:

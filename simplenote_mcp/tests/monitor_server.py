@@ -45,7 +45,8 @@ buffer = ""
 while True:
     try:
         # Read a chunk from stdin
-        chunk = sys.stdin.buffer.read1(1024).decode("utf-8")
+        # Use read instead of read1 for better type compatibility
+        chunk = sys.stdin.buffer.read(1024).decode("utf-8")
         if not chunk:
             debug_print("No more input, exiting")
             break
