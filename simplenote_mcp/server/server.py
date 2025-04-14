@@ -504,14 +504,29 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="search_notes",
-                description="Search for notes in Simplenote by text content",
+                description="Search for notes in Simplenote with advanced capabilities",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "The search query (text to find in note content)"},
+                        "query": {
+                            "type": "string", 
+                            "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)"
+                        },
                         "limit": {
                             "type": "integer",
                             "description": "Maximum number of results to return",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "Tags to filter by (comma-separated list of tags that must all be present)",
+                        },
+                        "from_date": {
+                            "type": "string",
+                            "description": "Filter notes modified after this date (ISO format, e.g., 2023-01-01)",
+                        },
+                        "to_date": {
+                            "type": "string",
+                            "description": "Filter notes modified before this date (ISO format, e.g., 2023-12-31)",
                         },
                     },
                     "required": ["query"],
@@ -611,11 +626,18 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="search_notes",
-                description="Search for notes in Simplenote by text content",
+                description="Search for notes in Simplenote with advanced capabilities",
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "The search query (text to find in note content)"}
+                        "query": {
+                            "type": "string", 
+                            "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)"
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "Tags to filter by (comma-separated list of tags that must all be present)",
+                        },
                     },
                     "required": ["query"],
                 },
@@ -825,12 +847,19 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         elif name == "search_notes":
             query = arguments.get("query", "")
             limit = arguments.get("limit")
+            tags_str = arguments.get("tags", "")
+            from_date_str = arguments.get("from_date")
+            to_date_str = arguments.get("to_date")
 
-            logger.debug(f"search_notes called with query='{query}', limit={limit}")
+            logger.debug(
+                f"Advanced search called with: query='{query}', limit={limit}, " +
+                f"tags='{tags_str}', from_date='{from_date_str}', to_date='{to_date_str}'"
+            )
 
             if not query:
                 raise ValidationError(QUERY_REQUIRED)
 
+            # Process limit parameter
             if limit is not None:
                 try:
                     limit = int(limit)
@@ -838,6 +867,36 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         limit = None
                 except (ValueError, TypeError):
                     limit = None
+            
+            # Process tag filters
+            tag_filters = None
+            if tags_str:
+                tag_filters = [tag.strip() for tag in tags_str.split(",") if tag.strip()]
+                logger.debug(f"Tag filters: {tag_filters}")
+            
+            # Process date range
+            from_date = None
+            to_date = None
+            date_range = None
+            
+            if from_date_str:
+                try:
+                    from datetime import datetime
+                    from_date = datetime.fromisoformat(from_date_str)
+                    logger.debug(f"From date: {from_date}")
+                except ValueError:
+                    logger.warning(f"Invalid from_date format: {from_date_str}")
+            
+            if to_date_str:
+                try:
+                    from datetime import datetime
+                    to_date = datetime.fromisoformat(to_date_str)
+                    logger.debug(f"To date: {to_date}")
+                except ValueError:
+                    logger.warning(f"Invalid to_date format: {to_date_str}")
+            
+            if from_date or to_date:
+                date_range = (from_date, to_date)
 
             try:
                 # Check cache status
@@ -846,9 +905,17 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 
                 # Use the cache for search if available
                 if cache_initialized:
-                    logger.debug(f"Searching notes in cache for query: {query}")
-                    notes = note_cache.search_notes(query, limit=limit)
+                    logger.debug(f"Using advanced search with cache")
+                    
+                    # Use the enhanced search implementation
+                    notes = note_cache.search_notes(
+                        query=query, 
+                        limit=limit,
+                        tag_filters=tag_filters,
+                        date_range=date_range
+                    )
 
+                    # Format results
                     results = []
                     for note in notes:
                         content = note.get("content", "")
@@ -856,14 +923,10 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                             {
                                 "id": note.get("key"),
                                 "title": (
-                                    content.splitlines()[0][:30]
-                                    if content
-                                    else note.get("key")
+                                    content.splitlines()[0][:30] if content else note.get("key")
                                 ),
                                 "snippet": (
-                                    content[:100] + "..."
-                                    if len(content) > 100
-                                    else content
+                                    content[:100] + "..." if len(content) > 100 else content
                                 ),
                                 "tags": note.get("tags", []),
                                 "uri": f"simplenote://note/{note.get('key')}",
@@ -889,88 +952,56 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     response_json = json.dumps(response)
                     logger.debug(f"Response size: {len(response_json)} bytes")
                     
-                    return [
-                        types.TextContent(
-                            type="text",
-                            text=response_json,
-                        )
-                    ]
+                    return [types.TextContent(type="text", text=response_json)]
 
-                # Fall back to API if cache is not available
-                logger.debug(f"Cache not available, using API for search: {query}")
-                notes, status = sn.get_note_list()
-
+                # Fall back to API if cache is not available - create a temporary search engine
+                logger.debug(f"Cache not available, using API with temporary search engine")
+                from .search.engine import SearchEngine
+                api_search_engine = SearchEngine()
+                
+                # Get all notes from the API
+                all_notes, status = sn.get_note_list()
+                
                 if status != 0:
                     logger.error(FAILED_RETRIEVE_NOTES)
                     raise NetworkError(FAILED_RETRIEVE_NOTES)
-
-                # Simple search in content
-                query_lower = query.lower()
+                
+                # Convert list to dictionary for search engine
+                notes_dict = {note.get("key"): note for note in all_notes if note.get("key")}
+                
+                logger.debug(f"API search: Got {len(notes_dict)} notes from API")
+                
+                # Use the search engine
+                matching_notes = api_search_engine.search(
+                    notes=notes_dict,
+                    query=query,
+                    tag_filters=tag_filters,
+                    date_range=date_range,
+                    limit=limit
+                )
+                
+                # Format results
                 results = []
+                for note in matching_notes:
+                    content = note.get("content", "")
+                    results.append({
+                        "id": note.get("key"),
+                        "title": content.splitlines()[0][:30] if content else note.get("key"),
+                        "snippet": content[:100] + "..." if len(content) > 100 else content,
+                        "tags": note.get("tags", []),
+                        "uri": f"simplenote://note/{note.get('key')}",
+                    })
                 
-                # Log the number of notes being searched
-                logger.debug(f"API search: Searching through {len(notes)} notes for '{query_lower}'")
-
-                for note in notes:
-                    content = note.get("content", "").lower() if note.get("content") else ""
-                    title_line = content.split("\n", 1)[0].lower() if content else ""
-                    
-                    # Log the first few characters of each note for debugging (limit to avoid huge logs)
-                    logger.debug(f"API search: Checking note {note.get('key')}: '{content[:50]}...'")
-                    
-                    # Check for match in content
-                    if query_lower in content:
-                        # Calculate a crude relevance score (number of occurrences)
-                        occurrences = content.count(query_lower)
-                        
-                        # Add bonus for title matches
-                        if query_lower in title_line:
-                            occurrences += 10
-                        
-                        # Log that we found a match
-                        logger.debug(f"API search: Found match in note {note.get('key')} with score {occurrences}")
-                            
-                        results.append(
-                            (
-                                {
-                                    "id": note.get("key"),
-                                    "title": (
-                                        note.get("content", "").splitlines()[0][:30]
-                                        if note.get("content")
-                                        else note.get("key")
-                                    ),
-                                    "snippet": (
-                                        content[:100] + "..."
-                                        if len(content) > 100
-                                        else content
-                                    ),
-                                    "tags": note.get("tags", []),
-                                    "uri": f"simplenote://note/{note.get('key')}",
-                                },
-                                occurrences,
-                            )
-                        )
-
-                # Sort by relevance (higher score first)
-                results.sort(key=lambda x: x[1], reverse=True)
-
-                # Apply limit if specified
-                if limit is not None:
-                    results = results[:limit]
-
-                # Extract just the notes from the results
-                formatted_results = [r[0] for r in results]
-                
-                # Debug logging for troubleshooting
-                logger.debug(f"API search results: {len(formatted_results)} matches found for '{query}'")
-                if formatted_results:
-                    logger.debug(f"First API result title: {formatted_results[0].get('title', 'No title')}")
+                # Debug logging
+                logger.debug(f"API search results: {len(results)} matches found for '{query}'")
+                if results:
+                    logger.debug(f"First API result title: {results[0].get('title', 'No title')}")
                 
                 # Create the response
                 response = {
                     "success": True,
-                    "results": formatted_results,
-                    "count": len(formatted_results),
+                    "results": results,
+                    "count": len(results),
                     "query": query,
                 }
                 
@@ -978,13 +1009,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 response_json = json.dumps(response)
                 logger.debug(f"API response size: {len(response_json)} bytes")
 
-                # Return the results
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=response_json,
-                    )
-                ]
+                return [types.TextContent(type="text", text=response_json)]
 
             except Exception as e:
                 if isinstance(e, ServerError):

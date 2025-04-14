@@ -7,7 +7,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 
 [![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Python Version](https://img.shields.io/badge/python-3.11-blue)](./setup.py)
 [![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
@@ -18,6 +18,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 ## 🔧 Features
 
 - 📝 Read and list Simplenote notes
+- 🔍 Advanced search with boolean operators, phrase matching, and filters
 - 🔐 Token-based authentication via `.env` or manual entry
 - ⚡ Local, fast, and easy to run
 - 🧩 Compatible with Claude Desktop and other MCP clients
@@ -42,7 +43,8 @@ Key features:
 - List all your Simplenote notes as resources
 - View note contents
 - Create, update, and delete notes
-- Search notes by content
+- Search notes by content with advanced search capabilities
+- Filter with boolean operators, tags, dates, and phrase matching
 
 ## Installation
 
@@ -242,7 +244,42 @@ Simplenote notes are exposed as resources with the URI format `simplenote://note
 
 - **Read Resource** - View the content and metadata of a specific note
 
-With a total of 10 implemented capabilities (8 tools and 2 prompts) as of version 1.1.0, the server provides a comprehensive interface for managing your Simplenote notes.
+With a total of 10 implemented capabilities (8 tools and 2 prompts) as of version 1.4.0, the server provides a comprehensive interface for managing your Simplenote notes.
+
+### Advanced Search Capabilities
+
+The server supports powerful search functionality with the following features:
+
+- **Boolean Logic**: Combine search terms with `AND`, `OR`, and `NOT` operators
+  ```
+  project AND meeting AND NOT cancelled
+  ```
+
+- **Phrase Matching**: Search for exact phrases using quotes
+  ```
+  "action items" AND project
+  ```
+
+- **Tag Filtering**: Filter by tags directly in the query or via parameters
+  ```
+  meeting tag:work tag:important
+  ```
+
+- **Date Range Filtering**: Limit results by modification date
+  ```
+  project from:2023-01-01 to:2023-12-31
+  ```
+
+- **Combining Methods**: Mix and match all of the above in a single query
+  ```
+  "status update" AND project tag:work from:2023-01-01 NOT cancelled
+  ```
+
+The search engine uses a sophisticated query parser and boolean expression evaluator to process complex search expressions. Results are ranked by relevance, with higher scores given to:
+- Title matches (when the search term appears in the first line)
+- Tag matches (when the search term matches a note tag)
+- Recent notes (with a recency bonus for newer notes)
+- Multiple term occurrences (more mentions = higher score)
 
 ### Tools
 
@@ -254,7 +291,7 @@ The server provides the following tools for Simplenote interaction:
 | `update_note` | Update an existing note | `note_id` (required): The ID of the note<br>`content` (required): New content<br>`tags` (optional): Comma-separated tags |
 | `delete_note` | Move a note to trash | `note_id` (required): The ID of the note to delete |
 | `get_note` | Get a note by ID | `note_id` (required): The ID of the note to retrieve |
-| `search_notes` | Search for notes by content | `query` (required): Search terms<br>`limit` (optional): Maximum results to return |
+| `search_notes` | Search for notes with advanced capabilities | `query` (required): Search terms with boolean operators & filters<br>`limit` (optional): Maximum results to return<br>`tags` (optional): Tags to filter by (alternative to tag: syntax)<br>`from_date` (optional): Start date filter (alternative to from: syntax)<br>`to_date` (optional): End date filter (alternative to to: syntax) |
 | `add_tags` | Add tags to an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated tags to add |
 | `remove_tags` | Remove tags from an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated tags to remove |
 | `replace_tags` | Replace all tags on an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated new tags |

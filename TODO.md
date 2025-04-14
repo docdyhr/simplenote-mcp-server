@@ -110,9 +110,11 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 - [ ] **Permanent Deletion**
   - [ ] Implement permanent delete functionality
 
-- [ ] **Advanced Search**
-  - [ ] Boolean logic in search
-  - [ ] Tag-specific search
+- [x] **Advanced Search** (Completed in v1.4.0)
+  - [x] Boolean logic in search (AND, OR, NOT operators)
+  - [x] Tag-specific search with tag: syntax
+  - [x] Date range filtering with date: syntax
+  - [x] Phrase matching with quoted phrases
 
 - [ ] **Pagination**
   - [ ] Add pagination for large note collections

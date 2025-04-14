@@ -520,7 +520,7 @@ class TestHandleCallTool:
             assert "snippet" in response["results"][0]
 
             # Verify cache was used
-            mock_cache.search_notes.assert_called_once_with("test", limit=10)
+            mock_cache.search_notes.assert_called_once_with(query="test", limit=10, tag_filters=None, date_range=None)
 
     async def test_get_note(self):
         """Test getting a note by ID."""

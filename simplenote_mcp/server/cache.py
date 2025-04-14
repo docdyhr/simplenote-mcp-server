@@ -2,12 +2,14 @@
 
 import asyncio
 import time
-from typing import Optional
+from datetime import datetime
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from simplenote import Simplenote
 
 from .config import Config, get_config
 from .logging import logger
+from .search.engine import SearchEngine
 
 # Global cache instance
 _cache_instance: Optional["NoteCache"] = None
@@ -39,11 +41,12 @@ class NoteCache:
 
         """
         self._client = client
-        self._notes: dict[str, dict] = {}  # Map of note ID to note data
+        self._notes: Dict[str, Dict[str, Any]] = {}  # Map of note ID to note data
         self._last_sync: float = 0  # Timestamp of last sync
         self._initialized: bool = False
-        self._tags: set[str] = set()  # Set of all unique tags
+        self._tags: Set[str] = set()  # Set of all unique tags
         self._lock = asyncio.Lock()  # Lock for thread-safe access
+        self._search_engine = SearchEngine()  # Search engine for advanced search
 
     async def initialize(self) -> int:
         """Initialize the cache with all notes from Simplenote.
@@ -347,65 +350,66 @@ class NoteCache:
             return sorted_notes[:limit]
         return sorted_notes
 
-    def search_notes(self, query: str, limit: Optional[int] = None) -> list[dict]:
-        """Search for notes in the cache.
+    def search_notes(
+        self, 
+        query: str, 
+        limit: Optional[int] = None,
+        tag_filters: Optional[List[str]] = None,
+        date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]] = None
+    ) -> List[Dict[str, Any]]:
+        """Search for notes in the cache using advanced search capabilities.
 
         Args:
-            query: The search query.
+            query: The search query (supports boolean operators and special filters).
             limit: Optional maximum number of results to return.
+            tag_filters: Optional list of tags to filter by.
+            date_range: Optional tuple of (from_date, to_date) for date filtering.
 
         Returns:
-            List of matching notes.
+            List of matching notes sorted by relevance.
 
+        Examples:
+            Simple search:
+            >>> search_notes("project meeting")
+            
+            Boolean operators:
+            >>> search_notes("project AND meeting AND NOT cancelled")
+            
+            Quoted phrases:
+            >>> search_notes('"action items" AND project')
+            
+            Tag filters:
+            >>> search_notes("meeting", tag_filters=["work", "important"])
+            >>> search_notes("meeting tag:work tag:important")  # Equivalent
+            
+            Date range:
+            >>> from datetime import datetime
+            >>> start_date = datetime(2023, 1, 1)
+            >>> end_date = datetime(2023, 12, 31)
+            >>> search_notes("meeting", date_range=(start_date, end_date))
+            >>> search_notes("meeting from:2023-01-01 to:2023-12-31")  # Equivalent
+            
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
-
-        # Simple case-insensitive search
-        query_lower = query.lower()
-        results = []
-        
-        # Log search information
-        logger.debug(f"Cache search: Searching through {len(self._notes)} notes for '{query_lower}'")
-
-        for note in self._notes.values():
-            content = note.get("content", "").lower() if note.get("content") else ""
-            title_line = content.split("\n", 1)[0].lower() if content else ""
             
-            # Log the note content for debugging (limited to avoid huge logs)
-            logger.debug(f"Cache search: Checking note {note.get('key', 'unknown')}: '{content[:50]}...'")
-
-            # Check for match in content
-            if query_lower in content:
-                # Calculate occurrence count for relevance scoring
-                occurrences = content.count(query_lower)
-                
-                # Log that we found a match
-                title_match = query_lower in title_line
-                logger.debug(f"Cache search: Found match in note {note.get('key')} with score {occurrences}, title match: {title_match}")
-                
-                # Store note with its relevance score
-                note_with_score = (note, occurrences, title_match)
-                results.append(note_with_score)
-
-        # Sort by title match first, then by occurrences, then by recency
-        def sort_key(note_tuple: tuple) -> tuple:
-            note, occurrences, title_match = note_tuple
-            modify_date = note.get("modifydate", 0)
-            
-            # Convert string dates to something sortable if needed
-            if isinstance(modify_date, str):
-                # Simple string-based sorting for ISO format dates
-                return (0 if title_match else 1, occurrences, modify_date)
-            else:
-                # Sort by title match (primary), occurrences (secondary), recency (tertiary)
-                return (0 if title_match else 1, occurrences, -modify_date)
-
-        # Sort the results
-        results.sort(key=sort_key, reverse=True)
+        # Log search operation
+        logger.debug(
+            f"Advanced search: query='{query}', "
+            f"tags={tag_filters}, "
+            f"date_range={date_range}, "
+            f"limit={limit}, "
+            f"notes_count={len(self._notes)}"
+        )
         
-        # Extract just the notes from the sorted results
-        results = [note_tuple[0] for note_tuple in results]
+        # Use the search engine to perform the search
+        results = self._search_engine.search(
+            notes=self._notes,
+            query=query,
+            tag_filters=tag_filters,
+            date_range=date_range,
+            limit=limit
+        )
 
         # Apply limit if specified
         if limit is not None and limit > 0:

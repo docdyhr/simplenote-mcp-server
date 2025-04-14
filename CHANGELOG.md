@@ -129,3 +129,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Thread safety issues with concurrent cache access
 - Cache initialization failures with Simplenote API
 - Empty search results when API responses are slow
+
+## [1.4.0] - 2025-04-14
+
+### Added
+- Advanced search functionality with:
+  - Boolean operators (AND, OR, NOT)
+  - Phrase matching with quotes
+  - Tag filtering with `tag:` syntax
+  - Date range filtering
+- New search engine architecture:
+  - Query parser for tokenizing search expressions
+  - Boolean expression evaluation engine
+  - Relevance scoring based on content matches, title matches, and recency
+- Comprehensive test suite for advanced search capabilities
+
+### Improved
+- Enhanced search results with better scoring and ranking
+- More flexible search syntax allowing complex queries
+- Better handling of empty queries with tag or date filters
+- Better error reporting for invalid search queries
+- More descriptive search results including relevance information
+
+### Fixed
+- Issues with empty search results when using tag filters
+- Date range filtering not working correctly
+- Thread safety issues in search operations
