@@ -46,3 +46,8 @@ ignore = ["E203", "E501"]
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/*" = ["ARG001", "ARG002"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "venv", ".venv", ".git", "__pycache__"]
+skips = ["B101", "B104"]
+targets = ["simplenote_mcp"]

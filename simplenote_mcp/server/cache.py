@@ -731,7 +731,8 @@ class BackgroundSync:
                     # Calculate backoff delay using exponential backoff with jitter
                     import random
 
-                    jitter = random.uniform(0.8, 1.2)  # 20% jitter
+                    # Using random for jitter is not security critical
+                    jitter = random.uniform(0.8, 1.2)  # 20% jitter  # nosec B311
                     current_retry_delay = min(
                         max_retry_delay,
                         base_retry_delay

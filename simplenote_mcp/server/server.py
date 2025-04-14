@@ -104,7 +104,8 @@ def get_simplenote_client() -> Simplenote:
 
 # PID file for process management
 PID_FILE_PATH = Path(tempfile.gettempdir()) / "simplenote_mcp_server.pid"
-ALT_PID_FILE_PATH = Path("/tmp/simplenote_mcp_server.pid")
+# Use same temp directory for consistency
+ALT_PID_FILE_PATH = Path(tempfile.gettempdir()) / "simplenote_mcp_server_alt.pid"
 
 # Initialize note cache and background sync
 note_cache: Optional[NoteCache] = None
@@ -1034,12 +1035,14 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     results.append(
                         {
                             "id": note.get("key"),
-                            "title": content.splitlines()[0][:30]
-                            if content
-                            else note.get("key"),
-                            "snippet": content[:100] + "..."
-                            if len(content) > 100
-                            else content,
+                            "title": (
+                                content.splitlines()[0][:30]
+                                if content
+                                else note.get("key")
+                            ),
+                            "snippet": (
+                                content[:100] + "..." if len(content) > 100 else content
+                            ),
                             "tags": note.get("tags", []),
                             "uri": f"simplenote://note/{note.get('key')}",
                         }

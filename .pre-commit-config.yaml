@@ -1,12 +1,16 @@
+exclude: '.git|.venv|venv|__pycache__|.pytest_cache'
+
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v5.0.0
     hooks:
     -   id: trailing-whitespace
+        exclude: '\.md$'
     -   id: end-of-file-fixer
     -   id: check-yaml
     -   id: check-toml
     -   id: check-added-large-files
+        args: ['--maxkb=500']
     -   id: debug-statements
     -   id: check-docstring-first
     -   id: detect-private-key
@@ -14,25 +18,39 @@ repos:
         args: ["--allow-missing-credentials"]
 
 -   repo: https://github.com/pycqa/isort
-    rev: 5.13.0
+    rev: 6.0.1
     hooks:
     -   id: isort
         args: ["--profile", "black"]
 
 -   repo: https://github.com/psf/black
-    rev: 23.11.0
+    rev: 25.1.0
     hooks:
     -   id: black
         args: ["--line-length", "88"]
+        exclude: migrations
 
 -   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.5
+    rev: v0.11.5
     hooks:
     -   id: ruff
-        args: ["--fix"]
+        args: ["--fix", "--config=.ruff.toml"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.7.0
+    rev: v1.15.0
     hooks:
     -   id: mypy
-        additional_dependencies: [types-requests]
+        args: ["--config-file=mypy.ini"]
+        additional_dependencies: [
+            "types-requests",
+            "types-setuptools",
+            "types-PyYAML",
+            "pytest",
+        ]
+
+-   repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+    -   id: bandit
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]

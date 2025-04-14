@@ -3,6 +3,7 @@
 import json
 import logging
 import sys
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -12,8 +13,9 @@ from .config import LogLevel, get_config
 # Set the log file path in the logs directory
 LOGS_DIR = Path(__file__).parent.parent / "logs"
 LOG_FILE = LOGS_DIR / "server.log"
-LEGACY_LOG_FILE = Path("/tmp/simplenote_mcp_debug.log")
-DEBUG_LOG_FILE = Path("/tmp/simplenote_mcp_debug_extra.log")
+# Use secure temp directory instead of hardcoded /tmp
+LEGACY_LOG_FILE = Path(tempfile.gettempdir()) / "simplenote_mcp_debug.log"
+DEBUG_LOG_FILE = Path(tempfile.gettempdir()) / "simplenote_mcp_debug_extra.log"
 
 # We'll initialize the debug log file in the initialize_logging function to avoid
 # breaking the protocol before the MCP server is fully initialized
@@ -54,7 +56,8 @@ def initialize_logging() -> None:
             f.write(f"Loading log level from environment: {config.log_level.value}\n")
     except Exception:
         # If we can't write to the debug log, that's not critical
-        pass
+        # Log initialization should never break the application
+        pass  # nosec B110
 
     # Always add stderr handler for Claude Desktop logs
     stderr_handler = logging.StreamHandler(sys.stderr)
@@ -127,9 +130,9 @@ class JsonFormatter(logging.Formatter):
         # Add exception info if present
         if record.exc_info:
             log_entry["exception"] = {
-                "type": record.exc_info[0].__name__
-                if record.exc_info[0]
-                else "Unknown",
+                "type": (
+                    record.exc_info[0].__name__ if record.exc_info[0] else "Unknown"
+                ),
                 "message": str(record.exc_info[1]),
                 "traceback": logging.Formatter().formatException(record.exc_info),
             }
@@ -153,7 +156,8 @@ def debug_to_file(message: str) -> None:
             f.write(f"{datetime.now().isoformat()}: {message}\n")
     except Exception:
         # Fail silently to ensure we don't break the MCP protocol
-        pass
+        # Debug logging should never interfere with protocol communication
+        pass  # nosec B110
 
 
 # Legacy function for backward compatibility
