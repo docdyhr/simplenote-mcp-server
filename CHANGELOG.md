@@ -138,6 +138,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Phrase matching with quotes
   - Tag filtering with `tag:` syntax
   - Date range filtering
+- Pre-commit hooks for code quality assurance
+- Comprehensive type checking with mypy:
+  - Type annotations for all functions
+  - Proper null checking for optional parameters
+  - Custom mypy configuration for the codebase
 - New search engine architecture:
   - Query parser for tokenizing search expressions
   - Boolean expression evaluation engine

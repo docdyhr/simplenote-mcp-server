@@ -32,7 +32,37 @@ simplenote_mcp/            # Main package
 ├── logs/                  # Log files directory
 ├── scripts/               # Helper scripts for testing and management
 ├── server/                # Main server code
+│   ├── search/            # Advanced search capabilities
+│   │   ├── engine.py      # Search engine with boolean logic
+│   │   └── parser.py      # Query tokenization and parsing
+│   └── server.py          # Server implementation 
 └── tests/                 # Test utilities and client
+```
+
+## Development Tools
+
+The project uses several tools to ensure code quality:
+
+- **Type Checking**: Comprehensive static type annotations with mypy
+- **Code Formatting**: Black for consistent code style
+- **Import Sorting**: isort for organizing imports
+- **Linting**: Ruff for fast Python linting
+- **Pre-commit Hooks**: Automated checks before each commit
+- **Testing**: pytest for unit and integration tests
+
+Run type checking:
+```bash
+mypy simplenote_mcp
+```
+
+Run tests:
+```bash
+pytest
+```
+
+Run linting:
+```bash
+ruff check .
 ```
 
 ## Overview
