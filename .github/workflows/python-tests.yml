@@ -51,8 +51,8 @@ jobs:
     - name: Test with pytest
       run: |
         . .venv/bin/activate
-        # Skip type checks and just run the tests 
-        pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term tests/ -v --no-mypy
+        # Run tests without type checking
+        pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term tests/ -v
       env:
         SIMPLENOTE_EMAIL: "test@example.com"
         SIMPLENOTE_PASSWORD: "test_password"
