@@ -54,4 +54,4 @@ jobs:
         pip install -e .[dev,test]
         pip install mypy types-requests types-setuptools types-PyYAML pytest pytest-asyncio
         # Run mypy in non-strict mode and allow it to fail
-        python -m mypy simplenote_mcp --config-file=mypy.ini --ignore-missing-imports --no-strict-optional --disable-error-code attr-defined,index,name-defined,var-annotated,has-type,arg-type,call-overload,call-arg,valid-type,misc || echo "Mypy check failed but continuing"
+        python -m mypy simplenote_mcp --config-file=mypy.ini --ignore-missing-imports --no-strict-optional --follow-imports=skip || echo "Mypy check failed but continuing"

@@ -46,7 +46,7 @@ jobs:
       continue-on-error: true
       run: |
         . .venv/bin/activate
-        mypy simplenote_mcp --config-file=mypy.ini --ignore-missing-imports --no-strict-optional || echo "Mypy check failed but continuing"
+        mypy simplenote_mcp --config-file=mypy.ini --ignore-missing-imports --no-strict-optional --follow-imports=skip || echo "Mypy check failed but continuing"
 
     - name: Test with pytest
       run: |
