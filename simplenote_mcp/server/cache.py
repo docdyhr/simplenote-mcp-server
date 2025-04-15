@@ -122,6 +122,7 @@ class NoteCache:
 
         # Get index mark - for test compatibility
         # Wrap this in try/except to prevent it from failing initialization if this step fails
+        self._index_mark: str = "test_mark"  # Initialize with default value
         try:
             index_result, index_status = self._client.get_note_list()
             if (
@@ -130,11 +131,8 @@ class NoteCache:
                 and "mark" in index_result
             ):
                 self._index_mark = index_result["mark"]
-            else:
-                self._index_mark = "test_mark"
         except Exception as e:
             logger.warning(f"Failed to get index mark (non-critical): {str(e)}")
-            self._index_mark = "test_mark"
 
         # Extract all unique tags
         for note in self._notes.values():
