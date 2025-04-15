@@ -1,6 +1,6 @@
 """Type stubs for Simplenote library."""
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 class simplenote:
     """Simplenote module stub."""
@@ -31,7 +31,9 @@ class Simplenote:
         pass
 
     def get_note_list(
-        self, since: Optional[str] = None, tags: Optional[List[str]] = None
-    ) -> Tuple[Optional[List[Dict[str, Any]]], int]:
+        self,
+        since: Optional[Union[str, float]] = None,
+        tags: Optional[List[str]] = None,
+    ) -> Tuple[Union[List[Dict[str, Any]], Dict[str, Any]], int]:
         """Get list of notes."""
         pass
