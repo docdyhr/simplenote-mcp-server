@@ -17,24 +17,12 @@ repos:
     -   id: detect-aws-credentials
         args: ["--allow-missing-credentials"]
 
--   repo: https://github.com/pycqa/isort
-    rev: 6.0.1
-    hooks:
-    -   id: isort
-        args: ["--profile", "black"]
-
--   repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-    -   id: black
-        args: ["--line-length", "88"]
-        exclude: migrations
-
 -   repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.5
     hooks:
     -   id: ruff
-        args: ["--fix", "--config=.ruff.toml"]
+        args: ["--fix"]
+    -   id: ruff-format
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.15.0

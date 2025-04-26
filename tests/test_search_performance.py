@@ -256,9 +256,9 @@ class TestSearchStress:
         print(f"Search across 1000 small notes took {elapsed_time:.4f} seconds")
 
         # Assert the search completes in a reasonable time
-        assert (
-            elapsed_time < 1.0
-        ), "Search across many notes should complete in reasonable time"
+        assert elapsed_time < 1.0, (
+            "Search across many notes should complete in reasonable time"
+        )
 
     def test_complex_query_on_many_notes(self, many_small_notes):
         """Test complex query performance on many notes."""
@@ -277,9 +277,9 @@ class TestSearchStress:
         print(f"Complex search across 1000 notes took {elapsed_time:.4f} seconds")
 
         # Assert the search completes in a reasonable time
-        assert (
-            elapsed_time < 1.5
-        ), "Complex search on many notes should complete in reasonable time"
+        assert elapsed_time < 1.5, (
+            "Complex search on many notes should complete in reasonable time"
+        )
 
     @pytest.mark.asyncio
     async def test_concurrent_searches(self, many_small_notes):
@@ -330,15 +330,15 @@ class TestSearchStress:
         print(f"Search throughput: {throughput:.2f} searches/second")
 
         # Check that concurrent searches don't take too long
-        assert (
-            overall_end - overall_start
-        ) < 3.0, "Concurrent searches should complete in a reasonable time"
+        assert (overall_end - overall_start) < 3.0, (
+            "Concurrent searches should complete in a reasonable time"
+        )
 
         # Individual searches should still be reasonably fast
         for _, _, elapsed in results:
-            assert (
-                elapsed < 1.5
-            ), "Individual concurrent searches should complete in a reasonable time"
+            assert elapsed < 1.5, (
+                "Individual concurrent searches should complete in a reasonable time"
+            )
 
     @pytest.mark.skip(reason="Only run manually for benchmark purposes")
     def test_search_benchmark(self, many_small_notes: dict) -> None:

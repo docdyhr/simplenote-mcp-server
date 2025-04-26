@@ -168,9 +168,9 @@ async def test_empty_search_with_filters(mock_simplenote_client):
             # If we got results, verify they have the work tag
             for note in result_data["results"]:
                 if "tags" in note:
-                    assert (
-                        "work" in note["tags"]
-                    ), f"Note {note.get('id')} doesn't have work tag"
+                    assert "work" in note["tags"], (
+                        f"Note {note.get('id')} doesn't have work tag"
+                    )
 
         # Query with multiple tag filters
         result_multi = await handle_call_tool(
@@ -187,12 +187,12 @@ async def test_empty_search_with_filters(mock_simplenote_client):
         if result_multi_data["results"]:
             for note in result_multi_data["results"]:
                 if "tags" in note:
-                    assert (
-                        "work" in note["tags"]
-                    ), f"Note {note.get('id')} doesn't have work tag"
-                    assert (
-                        "important" in note["tags"]
-                    ), f"Note {note.get('id')} doesn't have important tag"
+                    assert "work" in note["tags"], (
+                        f"Note {note.get('id')} doesn't have work tag"
+                    )
+                    assert "important" in note["tags"], (
+                        f"Note {note.get('id')} doesn't have important tag"
+                    )
 
 
 @pytest.mark.asyncio
@@ -236,17 +236,17 @@ async def test_search_with_limit(mock_simplenote_client):
         expected_count = min(total_possible, limit_requested)
 
         # We should get either the requested limit or all available results if fewer
-        assert (
-            len(result_limited_data["results"]) <= expected_count
-        ), f"Got more results ({len(result_limited_data['results'])}) than expected ({expected_count})"
+        assert len(result_limited_data["results"]) <= expected_count, (
+            f"Got more results ({len(result_limited_data['results'])}) than expected ({expected_count})"
+        )
 
         # If we have results, check that they all have the work tag
         if result_limited_data["results"]:
             for note in result_limited_data["results"]:
                 if "tags" in note:
-                    assert (
-                        "work" in note["tags"]
-                    ), f"Note {note.get('id')} doesn't have work tag"
+                    assert "work" in note["tags"], (
+                        f"Note {note.get('id')} doesn't have work tag"
+                    )
 
         # Test specific query with limit
         result_project = await handle_call_tool(
@@ -259,9 +259,9 @@ async def test_search_with_limit(mock_simplenote_client):
         assert "results" in result_project_data, "Results key missing in response"
 
         # Should get exactly one result
-        assert (
-            len(result_project_data["results"]) <= 1
-        ), f"Got more results ({len(result_project_data['results'])}) than requested (1)"
+        assert len(result_project_data["results"]) <= 1, (
+            f"Got more results ({len(result_project_data['results'])}) than requested (1)"
+        )
 
         # If we have a result, it should contain the search term
         if result_project_data["results"]:
@@ -280,7 +280,9 @@ async def test_search_with_limit(mock_simplenote_client):
                 "note1",
                 "note2",
                 "note4",
-            ], f"Got unexpected note {note.get('id')}, expected one of the project notes"
+            ], (
+                f"Got unexpected note {note.get('id')}, expected one of the project notes"
+            )
 
 
 @pytest.mark.asyncio
@@ -347,10 +349,10 @@ async def test_case_insensitive_search(mock_simplenote_client):
 
             # Only compare if we have IDs
             if lower_ids and upper_ids and mixed_ids:
-                assert (
-                    lower_ids == upper_ids
-                ), f"Lower case IDs {lower_ids} don't match upper case IDs {upper_ids}"
-                assert (
-                    lower_ids == mixed_ids
-                ), f"Lower case IDs {lower_ids} don't match mixed case IDs {mixed_ids}"
+                assert lower_ids == upper_ids, (
+                    f"Lower case IDs {lower_ids} don't match upper case IDs {upper_ids}"
+                )
+                assert lower_ids == mixed_ids, (
+                    f"Lower case IDs {lower_ids} don't match mixed case IDs {mixed_ids}"
+                )
                 print("Case insensitivity test passed with IDs:", lower_ids)

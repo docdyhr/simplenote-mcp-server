@@ -97,9 +97,9 @@ class TestPerformance:
             large_resources = await handle_list_resources(limit=500)
             large_listing_time = time.time() - start_time
             print(f"Listing 500 resources took {large_listing_time:.4f} seconds")
-            assert (
-                large_listing_time < 0.2
-            ), "Listing large number of resources should be reasonably fast"
+            assert large_listing_time < 0.2, (
+                "Listing large number of resources should be reasonably fast"
+            )
             assert len(large_resources) == 500
 
     @pytest.mark.asyncio

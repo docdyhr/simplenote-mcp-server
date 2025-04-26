@@ -86,7 +86,7 @@ class QueryParser:
 
         def replace_phrase(match: re.Match) -> str:
             phrases.append(match.group(1))
-            return f" __PHRASE_{len(phrases)-1}__ "
+            return f" __PHRASE_{len(phrases) - 1}__ "
 
         query = re.sub(r'"([^"]+)"', replace_phrase, query)
 
@@ -96,11 +96,11 @@ class QueryParser:
 
         def replace_from_date(match: re.Match) -> str:
             from_dates.append(match.group(1))
-            return f" __FROM_{len(from_dates)-1}__ "
+            return f" __FROM_{len(from_dates) - 1}__ "
 
         def replace_to_date(match: re.Match) -> str:
             to_dates.append(match.group(1))
-            return f" __TO_{len(to_dates)-1}__ "
+            return f" __TO_{len(to_dates) - 1}__ "
 
         query = re.sub(r"from:(\S+)", replace_from_date, query, flags=re.IGNORECASE)
         query = re.sub(r"to:(\S+)", replace_to_date, query, flags=re.IGNORECASE)
@@ -110,7 +110,7 @@ class QueryParser:
 
         def replace_tag(match: re.Match) -> str:
             tags.append(match.group(1))
-            return f" __TAG_{len(tags)-1}__ "
+            return f" __TAG_{len(tags) - 1}__ "
 
         query = re.sub(r"tag:(\S+)", replace_tag, query, flags=re.IGNORECASE)
 

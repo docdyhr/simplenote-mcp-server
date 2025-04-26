@@ -47,7 +47,7 @@ async def test_direct_search(query: str = "markdown") -> bool:
         for i, note in enumerate(results[:5]):  # Show first 5 results
             title = note.get("content", "").splitlines()[0][:50]
             note_id = note.get("key", "unknown")
-            print(f"{i+1}. {title}... (ID: {note_id})")
+            print(f"{i + 1}. {title}... (ID: {note_id})")
 
         return len(results) > 0
     except Exception as e:
@@ -80,7 +80,7 @@ async def test_cache_search(query: str = "markdown") -> bool:
         for i, note in enumerate(results[:5]):  # Show first 5 results
             title = note.get("content", "").splitlines()[0][:50]
             note_id = note.get("key", "unknown")
-            print(f"{i+1}. {title}... (ID: {note_id})")
+            print(f"{i + 1}. {title}... (ID: {note_id})")
 
         return len(results) > 0
     except Exception as e:

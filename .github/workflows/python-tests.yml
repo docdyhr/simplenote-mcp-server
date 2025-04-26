@@ -30,37 +30,28 @@ jobs:
         . .venv/bin/activate
         uv pip install -e .[dev,test]
 
-    - name: Install pre-commit
+    - name: Run Ruff format check
       run: |
         . .venv/bin/activate
-        uv pip install pre-commit
-        pre-commit install
-        
-    - name: Run pre-commit
-      continue-on-error: true
-      run: |
-        . .venv/bin/activate
-        pre-commit run --all-files
+        ruff format --check .
 
-    - name: Type check with mypy
-      continue-on-error: true
+    - name: Run Ruff lint
       run: |
         . .venv/bin/activate
-        mypy simplenote_mcp --config-file=mypy.ini --ignore-missing-imports --no-strict-optional --follow-imports=skip || echo "Mypy check failed but continuing"
+        ruff check .
+
+    - name: Run type check
+      run: |
+        . .venv/bin/activate
+        mypy simplenote_mcp --config-file=mypy.ini
 
     - name: Test with pytest
       run: |
         . .venv/bin/activate
-        # Run tests without type checking
         pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term tests/ -v
       env:
         SIMPLENOTE_EMAIL: "test@example.com"
         SIMPLENOTE_PASSWORD: "test_password"
-
-    - name: List coverage files
-      run: |
-        ls -la
-        ls -la coverage.xml || echo "coverage.xml not found"
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5

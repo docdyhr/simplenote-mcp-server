@@ -230,9 +230,9 @@ class TestSearchEngine:
 
         # Should not match when words are separated
         results = engine.search(test_notes, '"project report"')
-        assert (
-            len(results) == 0
-        ), "Should not match 'project report' when words are separated"
+        assert len(results) == 0, (
+            "Should not match 'project report' when words are separated"
+        )
 
     def test_tag_filters(self) -> None:
         """Test tag filtering."""
