@@ -9,9 +9,10 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
 [![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.13-blue)](./pyproject.toml)
-[![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
-[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
+[![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](./pyproject.toml)
+[![Tests](https://github.com/docdyhr/simplenote-mcp-server/workflows/Python%20Tests%20%26%20Coverage/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
+[![Code Quality](https://github.com/docdyhr/simplenote-mcp-server/workflows/Code%20Quality/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
+[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
 [![smithery badge](https://smithery.ai/badge/@docdyhr/simplenote-mcp-server)](https://smithery.ai/server/@docdyhr/simplenote-mcp-server)
 ---
 
