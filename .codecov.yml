@@ -18,15 +18,9 @@ coverage:
         target: auto
         threshold: 0%
 
-parsers:
-  gcov:
-    branch_detection:
-      conditional: yes
-      loop: yes
-      method: no
-      macro: no
+# Removed gcov parser section as it's not typically needed for Python
 
 comment:
   layout: "reach,diff,flags,files,footer"
   behavior: default
-  require_changes: no
+  require_changes: false
