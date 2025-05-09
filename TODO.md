@@ -154,9 +154,9 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
   - [x] Keep `__all__` lists alphabetically sorted
   - [x] Run `ruff check --select=RUF022 --fix .`
 
-- [ ] **Upgrade Test Assertions**
-  - [ ] Use pytest-style assertions for better error messages
-  - [ ] Add more descriptive assertion messages
+- [x] **Upgrade Test Assertions**
+  - [x] Use pytest-style assertions for better error messages
+  - [x] Add more descriptive assertion messages
 
 - [x] **Function Parameter Type Annotations**
   - [x] Add type annotations for function parameters
@@ -209,9 +209,9 @@ All requirements for version 1.0 have been completed! 🎉
 Now that the Simplenote MCP Server is fully compatible with Python 3.13.x, here are some recommendations for continued improvement:
 
 1. **Comprehensive Testing**
-   - [ ] Conduct further testing with the Claude Desktop application to ensure full compatibility
-   - [ ] Test the server under heavy loads to identify any performance bottlenecks
-   - [ ] Consider setting up automated integration tests with the actual Simplenote API
+   - [x] Conduct further testing with the Claude Desktop application to ensure full compatibility
+   - [x] Test the server under heavy loads to identify any performance bottlenecks
+   - [x] Consider setting up automated integration tests with the actual Simplenote API
 
 2. **Further CI/CD Improvements**
    - [ ] Add automated version bumping during the release process
