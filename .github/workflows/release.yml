@@ -1,0 +1,238 @@
+name: Release Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Type of version bump to perform'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      pre_release:
+        description: 'Pre-release label (optional)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run (no changes will be committed)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  prepare-release:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      current_version: ${{ steps.get_version.outputs.current_version }}
+      new_version: ${{ steps.bump_version.outputs.new_version }}
+      release_created: ${{ steps.create_release.outputs.release_created }}
+      
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install toml semver pyyaml
+
+      - name: Get current version
+        id: get_version
+        run: |
+          VERSION=$(python -c "import toml; print(toml.load('pyproject.toml')['project']['version'])")
+          echo "Current version: $VERSION"
+          echo "current_version=$VERSION" >> $GITHUB_OUTPUT
+          
+      - name: Bump version
+        id: bump_version
+        run: |
+          CURRENT_VERSION="${{ steps.get_version.outputs.current_version }}"
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
+          PRE_RELEASE="${{ github.event.inputs.pre_release }}"
+          
+          echo "Bumping $BUMP_TYPE version from $CURRENT_VERSION"
+          
+          # Use semver to calculate new version
+          if [ -n "$PRE_RELEASE" ]; then
+            NEW_VERSION=$(python -c "import semver; print(str(semver.VersionInfo.parse('$CURRENT_VERSION').bump_$BUMP_TYPE().replace(prerelease='$PRE_RELEASE')))")
+          else
+            NEW_VERSION=$(python -c "import semver; print(str(semver.VersionInfo.parse('$CURRENT_VERSION').bump_$BUMP_TYPE()))")
+          fi
+          
+          echo "New version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+            # Update version in pyproject.toml
+            python -c "
+          import toml, pathlib
+          data = toml.load('pyproject.toml')
+          data['project']['version'] = '$NEW_VERSION'
+          path = pathlib.Path('pyproject.toml')
+          path.write_text(toml.dumps(data))
+          "
+            
+            # Update version in __init__.py
+            if [ -f "simplenote_mcp/__init__.py" ]; then
+              sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/g" simplenote_mcp/__init__.py
+            fi
+          fi
+
+      - name: Generate changelog
+        id: changelog
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          # Get commits since last release tag
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          
+          if [ -z "$LAST_TAG" ]; then
+            # No tags exist, get all commits
+            COMMITS=$(git log --pretty=format:"- %s" --no-merges)
+          else
+            # Get commits since last tag
+            COMMITS=$(git log --pretty=format:"- %s" --no-merges $LAST_TAG..HEAD)
+          fi
+          
+          # Categorize commits
+          FEATURES=$(echo "$COMMITS" | grep -i "\(feat\|feature\|add\)" || echo "")
+          FIXES=$(echo "$COMMITS" | grep -i "\(fix\|bug\)" || echo "")
+          DOCS=$(echo "$COMMITS" | grep -i "\(doc\|docs\|documentation\)" || echo "")
+          OTHER=$(echo "$COMMITS" | grep -v -i "\(feat\|feature\|add\|fix\|bug\|doc\|docs\|documentation\)" || echo "")
+          
+          # Create changelog file
+          echo "# Changes in version ${{ steps.bump_version.outputs.new_version }}" > changelog.md
+          echo "" >> changelog.md
+          
+          if [ -n "$FEATURES" ]; then
+            echo "## Features" >> changelog.md
+            echo "$FEATURES" >> changelog.md
+            echo "" >> changelog.md
+          fi
+          
+          if [ -n "$FIXES" ]; then
+            echo "## Fixes" >> changelog.md
+            echo "$FIXES" >> changelog.md
+            echo "" >> changelog.md
+          fi
+          
+          if [ -n "$DOCS" ]; then
+            echo "## Documentation" >> changelog.md
+            echo "$DOCS" >> changelog.md
+            echo "" >> changelog.md
+          fi
+          
+          if [ -n "$OTHER" ]; then
+            echo "## Other Changes" >> changelog.md
+            echo "$OTHER" >> changelog.md
+            echo "" >> changelog.md
+          fi
+          
+          cat changelog.md
+          
+          # Format changelog for GitHub release
+          CHANGELOG_CONTENT=$(cat changelog.md)
+          CHANGELOG_CONTENT="${CHANGELOG_CONTENT//'%'/'%25'}"
+          CHANGELOG_CONTENT="${CHANGELOG_CONTENT//$'\n'/'%0A'}"
+          CHANGELOG_CONTENT="${CHANGELOG_CONTENT//$'\r'/'%0D'}"
+          echo "changelog=$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
+
+      - name: Commit version bump
+        id: commit
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add pyproject.toml simplenote_mcp/__init__.py || true
+          git commit -m "Bump version to ${{ steps.bump_version.outputs.new_version }}" || echo "No changes to commit"
+          git tag -a v${{ steps.bump_version.outputs.new_version }} -m "Version ${{ steps.bump_version.outputs.new_version }}"
+          echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Push changes
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          git push origin main
+          git push origin v${{ steps.bump_version.outputs.new_version }}
+
+      - name: Create GitHub Release
+        id: create_release
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        uses: softprops/action-gh-release@v1
+        with:
+          name: "v${{ steps.bump_version.outputs.new_version }}"
+          tag_name: "v${{ steps.bump_version.outputs.new_version }}"
+          body: ${{ steps.changelog.outputs.changelog }}
+          prerelease: ${{ github.event.inputs.pre_release != '' }}
+          draft: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+      - name: Set release creation output
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: echo "release_created=true" >> $GITHUB_OUTPUT
+
+  build-and-publish:
+    name: Build and Publish Package
+    needs: prepare-release
+    if: ${{ needs.prepare-release.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          ref: v${{ needs.prepare-release.outputs.new_version }}
+          
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+          
+      - name: Build package
+        run: python -m build
+        
+      - name: Check package
+        run: twine check dist/*
+        
+      - name: Publish to PyPI
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: __token__
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          skip_existing: false
+
+  notify:
+    name: Notification
+    needs: [prepare-release, build-and-publish]
+    if: ${{ always() && needs.prepare-release.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Send success notification
+        if: ${{ needs.build-and-publish.result == 'success' }}
+        run: |
+          echo "Version ${{ needs.prepare-release.outputs.new_version }} was successfully released!"
+          # Add notification mechanism here if needed (Slack, email, etc.)
+          
+      - name: Send failure notification
+        if: ${{ needs.build-and-publish.result != 'success' }}
+        run: |
+          echo "Release process failed at the build/publish stage."
+          # Add notification mechanism here if needed (Slack, email, etc.)

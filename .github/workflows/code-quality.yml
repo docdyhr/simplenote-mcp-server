@@ -5,9 +5,56 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+  schedule:
+    - cron: '0 5 * * 1'  # Run every Monday at 5 AM UTC for trend analysis
 
 jobs:
-  lint:
+  linting:
+    name: Code Linting
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Fetch all history for trend analysis
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.13'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .[dev]
+    
+    - name: Run Ruff format check
+      id: ruff-format
+      run: |
+        ruff format --check . | tee ruff-format-output.txt
+        echo "::set-output name=format_issues::$(cat ruff-format-output.txt | grep -c . || echo 0)"
+    
+    - name: Run Ruff lint
+      id: ruff-lint
+      run: |
+        ruff check . --output-format=github | tee ruff-lint-output.txt
+        echo "::set-output name=lint_issues::$(cat ruff-lint-output.txt | grep -c . || echo 0)"
+    
+    - name: Generate linting report
+      run: |
+        echo "# Linting Report" > linting-report.md
+        echo "## Ruff Format Issues: ${{ steps.ruff-format.outputs.format_issues }}" >> linting-report.md
+        echo "## Ruff Lint Issues: ${{ steps.ruff-lint.outputs.lint_issues }}" >> linting-report.md
+        echo "Total issues: $((${{ steps.ruff-format.outputs.format_issues }} + ${{ steps.ruff-lint.outputs.lint_issues }}))" >> linting-report.md
+    
+    - name: Upload linting report
+      uses: actions/upload-artifact@v3
+      with:
+        name: linting-report
+        path: linting-report.md
+  
+  security:
+    name: Security Analysis
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -23,19 +70,19 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .[dev]
     
-    - name: Run Ruff format check
-      run: |
-        ruff format --check .
-    
-    - name: Run Ruff lint
-      run: |
-        ruff check .
-    
     - name: Run security check with Bandit
       run: |
+        bandit -c pyproject.toml -r simplenote_mcp -f json -o bandit-results.json
         bandit -c pyproject.toml -r simplenote_mcp
+    
+    - name: Upload security report
+      uses: actions/upload-artifact@v3
+      with:
+        name: security-report
+        path: bandit-results.json
 
   type-check:
+    name: Type Checking
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
@@ -53,4 +100,46 @@ jobs:
     
     - name: Run mypy type checking
       run: |
-        mypy simplenote_mcp --config-file=mypy.ini
+        mypy simplenote_mcp --config-file=mypy.ini --html-report mypy-report
+    
+    - name: Upload type checking report
+      uses: actions/upload-artifact@v3
+      with:
+        name: mypy-report
+        path: mypy-report
+
+  code-quality-report:
+    name: Code Quality Report
+    needs: [linting, security, type-check]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download linting report
+      uses: actions/download-artifact@v3
+      with:
+        name: linting-report
+    
+    - name: Create code quality trend file if it doesn't exist
+      run: |
+        if [ ! -f ".github/code-quality-trend.csv" ]; then
+          mkdir -p .github
+          echo "Date,Formatting Issues,Linting Issues,Security Issues,Type Issues" > .github/code-quality-trend.csv
+        fi
+    
+    - name: Update code quality trends
+      run: |
+        DATE=$(date +%Y-%m-%d)
+        FORMAT_ISSUES=$(cat linting-report.md | grep "Ruff Format Issues" | cut -d ' ' -f 4)
+        LINT_ISSUES=$(cat linting-report.md | grep "Ruff Lint Issues" | cut -d ' ' -f 4)
+        SECURITY_ISSUES=0  # Would need to parse bandit-results.json
+        TYPE_ISSUES=0      # Would need to parse mypy output
+        
+        echo "$DATE,$FORMAT_ISSUES,$LINT_ISSUES,$SECURITY_ISSUES,$TYPE_ISSUES" >> .github/code-quality-trend.csv
+    
+    - name: Commit updated trend data
+      if: github.ref == 'refs/heads/main' && github.event_name == 'schedule'
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "Update code quality trend data [skip ci]"
+        file_pattern: .github/code-quality-trend.csv

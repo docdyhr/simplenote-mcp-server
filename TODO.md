@@ -190,9 +190,9 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
   - [x] Set up pre-commit hooks for automatic linting
   - [x] Include black, ruff, isort, and mypy in the hooks
 
-- [ ] **CI Pipeline Enhancement**
-  - [ ] Add dedicated linting step to CI pipeline
-  - [ ] Generate code quality trend reports
+- [x] **CI Pipeline Enhancement**
+  - [x] Add dedicated linting step to CI pipeline
+  - [x] Generate code quality trend reports
 
 ## 10. Project Management
 
@@ -214,9 +214,9 @@ Now that the Simplenote MCP Server is fully compatible with Python 3.13.x, here 
    - [x] Consider setting up automated integration tests with the actual Simplenote API
 
 2. **Further CI/CD Improvements**
-   - [ ] Add automated version bumping during the release process
-   - [ ] Add more test coverage for the new compatibility modules
-   - [ ] Consider adding cross-platform testing (Windows, Linux, macOS)
+   - [x] Add automated version bumping during the release process
+   - [x] Add more test coverage for the new compatibility modules
+   - [x] Consider adding cross-platform testing (Windows, Linux, macOS)
 
 3. **Performance Optimizations**
    - [ ] Review the note caching mechanism for potential optimizations

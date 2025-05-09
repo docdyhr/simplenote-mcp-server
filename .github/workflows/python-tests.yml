@@ -7,10 +7,12 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
+  tests:
+    name: Tests on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
         python-version: ['3.13']
       fail-fast: false
 
@@ -21,44 +23,112 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: |
+          **/pyproject.toml
+          **/requirements*.txt
 
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install uv
-        uv venv
-        . .venv/bin/activate
-        uv pip install -e .[dev,test]
-
-    - name: Run Ruff format check
-      run: |
-        . .venv/bin/activate
-        ruff format --check .
-
-    - name: Run Ruff lint
-      run: |
-        . .venv/bin/activate
-        ruff check .
-
-    - name: Run type check
-      run: |
-        . .venv/bin/activate
-        mypy simplenote_mcp --config-file=mypy.ini
+        pip install -e .[dev,test]
 
     - name: Test with pytest
       run: |
-        . .venv/bin/activate
-        pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term tests/ -v
+        python -m pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term simplenote_mcp/tests/ -v
       env:
-        SIMPLENOTE_EMAIL: "test@example.com"
-        SIMPLENOTE_PASSWORD: "test_password"
+        SIMPLENOTE_EMAIL: ${{ secrets.SIMPLENOTE_EMAIL || 'test@example.com' }}
+        SIMPLENOTE_PASSWORD: ${{ secrets.SIMPLENOTE_PASSWORD || 'test_password' }}
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
       with:
         files: ./coverage.xml
         flags: unittests
-        name: codecov-umbrella
+        name: codecov-umbrella-${{ matrix.os }}-py${{ matrix.python-version }}
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
         verbose: true
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v3
+      with:
+        name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+        path: |
+          .coverage
+          coverage.xml
+
+  coverage-report:
+    name: Generate Coverage Report
+    needs: tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          
+      - name: Install coverage dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install coverage
+
+      - name: Download all coverage data
+        uses: actions/download-artifact@v3
+
+      - name: Combine coverage data
+        run: |
+          python -m coverage combine test-results-*/.coverage
+          python -m coverage report
+          python -m coverage html
+          python -m coverage xml
+          
+      - name: Upload combined coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: combined-coverage-report
+          path: |
+            htmlcov/
+            coverage.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          flags: combined
+          name: codecov-combined
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          
+  compat-tests:
+    name: Compatibility Module Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,test]
+          
+      - name: Run compat module tests
+        run: |
+          python -m pytest --cov=simplenote_mcp.server.compat --cov-report=xml --cov-report=term simplenote_mcp/tests/test_compat.py -v
+        env:
+          SIMPLENOTE_EMAIL: ${{ secrets.SIMPLENOTE_EMAIL || 'test@example.com' }}
+          SIMPLENOTE_PASSWORD: ${{ secrets.SIMPLENOTE_PASSWORD || 'test_password' }}
+          
+      - name: Upload compat coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: compat-coverage-report
+          path: |
+            coverage.xml
