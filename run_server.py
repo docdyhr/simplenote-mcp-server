@@ -40,6 +40,7 @@ os.chdir(script_dir)
 
 # Import the pathlib patch first to ensure compatibility with Python 3.13+
 import contextlib
+
 sys.path.insert(0, script_dir)
 try:
     import pathlib_patch  # noqa: F401
