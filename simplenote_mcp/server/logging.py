@@ -5,9 +5,10 @@ import logging
 import sys
 import tempfile
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
+# Use our compatibility module for cross-version support
+from .compat import Path
 from .config import LogLevel, get_config
 
 # Set the log file path in the logs directory

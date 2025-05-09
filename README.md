@@ -3,13 +3,13 @@
 
 A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://github.com/johnsmith9982/claude-desktop) using the [MCP Python SDK](https://github.com/johnsmith9982/mcp-python-sdk).
 
-This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
+This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source. Fully compatible with Python 3.13.x through built-in compatibility layer.
 
 
 [![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
 [![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](./pyproject.toml)
+[![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13+-blue)](./pyproject.toml)
 [![Tests](https://github.com/docdyhr/simplenote-mcp-server/workflows/Python%20Tests%20%26%20Coverage/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
 [![Code Quality](https://github.com/docdyhr/simplenote-mcp-server/workflows/Code%20Quality/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
 [![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
@@ -26,13 +26,26 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 ---
 
+## Python 3.13+ Compatibility
+
+This project includes a compatibility layer for Python 3.13+, which addresses the breaking change where `Path` was moved from `pathlib` to `pathlib._local`. The compatibility is handled transparently via:
+
+- An automatic pathlib patch that resolves imports on Python 3.13+
+- A compatibility module at `simplenote_mcp.server.compat` that works across all Python versions
+- Improved error handling for path-related operations
+
+When running on Python 3.13+, the pathlib patch is automatically applied at startup.
+
 ## Project Structure
 
 ```
 simplenote_mcp/            # Main package
 ├── logs/                  # Log files directory
 ├── scripts/               # Helper scripts for testing and management
+│   ├── analyze_logs.py    # Log analysis tool
+│   └── diagnose_api.py    # API diagnostics tool
 ├── server/                # Main server code
+│   ├── compat/            # Cross-version compatibility layer
 │   ├── search/            # Advanced search capabilities
 │   │   ├── engine.py      # Search engine with boolean logic
 │   │   └── parser.py      # Query tokenization and parsing
@@ -48,6 +61,7 @@ The project uses several tools to ensure code quality:
 - **Code Formatting**: Black for consistent code style
 - **Import Sorting**: isort for organizing imports
 - **Linting**: Ruff for fast Python linting
+- **Diagnostics**: Built-in API diagnostics and log analysis tools
 - **Pre-commit Hooks**: Automated checks before each commit
 - **Testing**: pytest for unit and integration tests
 

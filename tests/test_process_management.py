@@ -2,8 +2,15 @@
 
 import signal
 import threading
-from pathlib import Path
+import sys
+import os
 from unittest.mock import patch
+
+# Add the project root to the Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
+
+# Import from our compatibility module
+from simplenote_mcp.server.compat import Path
 
 import pytest
 

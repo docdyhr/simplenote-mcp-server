@@ -8,11 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Python 3.13.x compatibility layer with automatic pathlib patch
+- Compatibility module at `simplenote_mcp.server.compat` for cross-version support
+- Diagnostic tools for API connectivity troubleshooting
+- Improved server launcher with better error handling
 - Comprehensive testing for advanced search functionality
 - Performance tests for search operations
 - Enhanced error handling in tests
 
 ### Improved
+- Fixed compatibility with Python 3.13.x by addressing `pathlib.Path` import changes
+- Enhanced error handling for path-related operations
+- Better network connectivity with more robust reconnection logic
 - Fixed type annotations throughout the codebase
 - Better test robustness with proper fixtures and mocks
 - Added pytest stubs for better type checking

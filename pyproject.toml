@@ -66,6 +66,9 @@ ignore = ["E203", "E501"]  # Maintain compatibility with Black style
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
 "tests/*" = ["ARG001", "ARG002"]
+"simplenote_mcp/scripts/*.py" = ["E402"]
+"simplenote_mcp/tests/*.py" = ["E402"]
+"simplenote_mcp_server.py" = ["E402"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

@@ -4,7 +4,14 @@
 import asyncio
 import os
 import sys
-from pathlib import Path
+
+# Add the parent directory to the Python path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
+sys.path.insert(0, PROJECT_ROOT)
+
+# Now we can import from our compatibility module
+from simplenote_mcp.server.compat import Path
 
 # Add project root to sys.path
 project_root = Path(__file__).parent.parent.parent

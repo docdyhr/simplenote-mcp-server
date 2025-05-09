@@ -4,11 +4,18 @@
 import asyncio
 import os
 import sys
-from pathlib import Path
 
 # Add the parent directory to the Python path so we can import the server module
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+script_dir = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
+sys.path.insert(0, PROJECT_ROOT)
+
+# Now we can import from our compatibility module
+from simplenote_mcp.server.compat import Path
+
+# Set project root path as a string for system path
+PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT_PATH))
 
 from simplenote_mcp.server import get_simplenote_client  # noqa: E402
 from simplenote_mcp.server.cache import NoteCache  # noqa: E402

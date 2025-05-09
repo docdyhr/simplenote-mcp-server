@@ -10,18 +10,19 @@ import sys
 import tempfile
 import threading
 import time
-from pathlib import Path
 from typing import Optional
 
+# External imports
 import mcp.server.stdio  # type: ignore
 import mcp.types as types  # type: ignore
-
-# Direct import from the Python package for additional API functions
 from mcp.server import NotificationOptions, Server  # type: ignore # noqa
 from mcp.server.models import InitializationOptions  # type: ignore
 from simplenote import Simplenote  # type: ignore
 
 from .cache import BackgroundSync, NoteCache
+
+# Use our compatibility module for cross-version support
+from .compat import Path
 from .config import LogLevel, get_config
 from .errors import (
     AuthenticationError,

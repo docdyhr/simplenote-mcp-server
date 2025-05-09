@@ -2,9 +2,17 @@
 # monitor_server.py - Monitor communication with Claude Desktop
 
 import json
+import os
 import sys
 import time
-from pathlib import Path
+
+# Add the parent directory to the Python path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(script_dir, "../../"))
+sys.path.insert(0, project_root)
+
+# Now we can import from our compatibility module
+from simplenote_mcp.server.compat import Path
 
 # Get the project root directory
 PROJECT_ROOT = Path(__file__).parent.parent.parent
