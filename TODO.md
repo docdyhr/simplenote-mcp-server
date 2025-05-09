@@ -172,13 +172,13 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
   - [ ] Extract repeated tag management patterns into helper functions
   - [ ] Create a `get_note_by_id` helper for cache/API lookups
 
-- [ ] **Structured Logging**
-  - [ ] Use structured logging more consistently
-  - [ ] Improve log organization and searchability
+- [x] **Structured Logging**
+  - [x] Use structured logging more consistently
+  - [x] Improve log organization and searchability
 
-- [ ] **Error Categorization**
-  - [ ] Refine error categorization system
-  - [ ] Make errors more specific and actionable
+- [x] **Error Categorization**
+  - [x] Refine error categorization system
+  - [x] Make errors more specific and actionable
 
 ### Infrastructure Improvements
 
