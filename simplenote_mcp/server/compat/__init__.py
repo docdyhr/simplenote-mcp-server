@@ -22,7 +22,9 @@ except ImportError:
         # Last resort: try to use the pathlib_patch if available
         try:
             # Try to import the patch from project root
-            sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../")))
+            sys.path.insert(
+                0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
+            )
             import pathlib_patch  # noqa
             from pathlib import Path, PurePath  # type: ignore # noqa
         except ImportError as err:
@@ -51,7 +53,7 @@ def is_module_available(module_name: str) -> bool:
         return False
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def get_optional_module(module_name: str, default: Any = None) -> Optional[Any]:

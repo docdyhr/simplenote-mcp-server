@@ -38,6 +38,7 @@ ERROR_PATTERNS = [
     r"cannot import name '([^']+)' from '([^']+)'",
 ]
 
+
 class LogAnalyzer:
     """Analyzer for Simplenote MCP server logs."""
 
@@ -119,23 +120,32 @@ class LogAnalyzer:
                 self.status_codes[status_match.group(1)] += 1
 
             # Check for import errors
-            import_match = re.search(r"ImportError: cannot import name '([^']+)' from '([^']+)'", line)
+            import_match = re.search(
+                r"ImportError: cannot import name '([^']+)' from '([^']+)'", line
+            )
             if import_match:
-                self.import_errors.append({
-                    "line": line.strip(),
-                    "module": import_match.group(2),
-                    "name": import_match.group(1)
-                })
+                self.import_errors.append(
+                    {
+                        "line": line.strip(),
+                        "module": import_match.group(2),
+                        "name": import_match.group(1),
+                    }
+                )
 
             # Check for errors
-            if "ERROR" in line or "Error" in line or "Failed" in line or "failed" in line:
+            if (
+                "ERROR" in line
+                or "Error" in line
+                or "Failed" in line
+                or "failed" in line
+            ):
                 self.errors.append(line.strip())
 
                 # Check each error pattern
                 for pattern in ERROR_PATTERNS:
                     match = re.search(pattern, line)
                     if match:
-                        error_type = pattern.split('\\')[0].replace('(', '').strip()
+                        error_type = pattern.split("\\")[0].replace("(", "").strip()
                         self.error_counts[error_type] += 1
 
                         # Extract timestamp
@@ -149,7 +159,9 @@ class LogAnalyzer:
                             self.sync_stats["failures"] += 1
 
                         # Track consecutive failures
-                        consecutive_match = re.search(r"after (\d+) consecutive failures", line)
+                        consecutive_match = re.search(
+                            r"after (\d+) consecutive failures", line
+                        )
                         if consecutive_match:
                             failures = int(consecutive_match.group(1))
                             if failures > self.sync_stats["consecutive_failures"]:
@@ -181,7 +193,9 @@ class LogAnalyzer:
             report.append(f"Server stopped {len(self.server_stops)} times")
             report.append(f"Last stop: {self.server_stops[-1]}")
         elif self.server_stops:
-            report.append(f"Server stopped {len(self.server_stops)} times (incomplete session data)")
+            report.append(
+                f"Server stopped {len(self.server_stops)} times (incomplete session data)"
+            )
 
         report.append("")
 
@@ -190,7 +204,9 @@ class LogAnalyzer:
             report.append("=== Import Errors ===")
             report.append(f"Found {len(self.import_errors)} import errors")
             for i, error in enumerate(self.import_errors):
-                report.append(f"{i+1}. Cannot import '{error['name']}' from '{error['module']}'")
+                report.append(
+                    f"{i + 1}. Cannot import '{error['name']}' from '{error['module']}'"
+                )
             report.append("")
 
         # Error summary
@@ -212,7 +228,9 @@ class LogAnalyzer:
                         status_meaning = "(Network Error)"
                     elif code == "401":
                         status_meaning = "(Unauthorized)"
-                    report.append(f"  - Status {code} {status_meaning}: {count} occurrences")
+                    report.append(
+                        f"  - Status {code} {status_meaning}: {count} occurrences"
+                    )
         else:
             report.append("No errors found in logs")
 
@@ -239,11 +257,15 @@ class LogAnalyzer:
         report.append(f"Failed syncs: {self.sync_stats['failures']}")
 
         if self.sync_stats["attempts"] > 0:
-            success_rate = (self.sync_stats["successes"] / self.sync_stats["attempts"]) * 100
+            success_rate = (
+                self.sync_stats["successes"] / self.sync_stats["attempts"]
+            ) * 100
             report.append(f"Sync success rate: {success_rate:.1f}%")
 
         if self.sync_stats["consecutive_failures"] > 0:
-            report.append(f"Maximum consecutive failures: {self.sync_stats['consecutive_failures']}")
+            report.append(
+                f"Maximum consecutive failures: {self.sync_stats['consecutive_failures']}"
+            )
 
         report.append("")
 
@@ -275,8 +297,12 @@ class LogAnalyzer:
 
                     if len(datetime_objects) >= 2:
                         # Calculate time differences
-                        diffs = [(datetime_objects[i+1] - datetime_objects[i]).total_seconds()
-                                for i in range(len(datetime_objects)-1)]
+                        diffs = [
+                            (
+                                datetime_objects[i + 1] - datetime_objects[i]
+                            ).total_seconds()
+                            for i in range(len(datetime_objects) - 1)
+                        ]
 
                         if diffs:
                             avg_interval = sum(diffs) / len(diffs)
@@ -303,40 +329,75 @@ class LogAnalyzer:
         if self.import_errors:
             for error in self.import_errors:
                 if error["module"] == "pathlib" and error["name"] == "Path":
-                    report.append("🔧 Python 3.13 pathlib compatibility issue detected:")
-                    report.append("  - Update your code to handle the pathlib module changes in Python 3.13")
-                    report.append("  - Try adding a fallback import: from pathlib._local import Path")
-                    report.append("  - Consider downgrading to Python 3.12 until libraries are updated")
+                    report.append(
+                        "🔧 Python 3.13 pathlib compatibility issue detected:"
+                    )
+                    report.append(
+                        "  - Update your code to handle the pathlib module changes in Python 3.13"
+                    )
+                    report.append(
+                        "  - Try adding a fallback import: from pathlib._local import Path"
+                    )
+                    report.append(
+                        "  - Consider downgrading to Python 3.12 until libraries are updated"
+                    )
 
         # Network error recommendations
         if len(self.network_errors) > 10:
             report.append("🔧 Persistent network connectivity issues detected:")
             report.append("  - Check your internet connection")
-            report.append("  - Verify Simplenote API status at https://status.simplenote.com/")
-            report.append("  - Check for firewalls or proxy settings that might be blocking the connection")
-            report.append("  - Run the diagnose_api.py script for detailed connectivity diagnostics")
+            report.append(
+                "  - Verify Simplenote API status at https://status.simplenote.com/"
+            )
+            report.append(
+                "  - Check for firewalls or proxy settings that might be blocking the connection"
+            )
+            report.append(
+                "  - Run the diagnose_api.py script for detailed connectivity diagnostics"
+            )
 
         # Authentication recommendations
         if self.auth_errors:
             report.append("🔧 Authentication issues detected:")
-            report.append("  - Verify your SIMPLENOTE_EMAIL and SIMPLENOTE_PASSWORD environment variables")
-            report.append("  - Try logging in to the Simplenote website with the same credentials")
-            report.append("  - Check if your account has been locked due to too many failed attempts")
+            report.append(
+                "  - Verify your SIMPLENOTE_EMAIL and SIMPLENOTE_PASSWORD environment variables"
+            )
+            report.append(
+                "  - Try logging in to the Simplenote website with the same credentials"
+            )
+            report.append(
+                "  - Check if your account has been locked due to too many failed attempts"
+            )
 
         # Frequent restarts
-        if len(self.server_starts) > 3 and len(self.server_starts) / (len(self.errors) or 1) > 0.1:
+        if (
+            len(self.server_starts) > 3
+            and len(self.server_starts) / (len(self.errors) or 1) > 0.1
+        ):
             report.append("🔧 Frequent server restarts detected:")
-            report.append("  - Use the server scripts to ensure clean process management")
+            report.append(
+                "  - Use the server scripts to ensure clean process management"
+            )
             report.append("  - Check for memory leaks or resource exhaustion")
-            report.append("  - Consider increasing logging to identify the cause of crashes")
+            report.append(
+                "  - Consider increasing logging to identify the cause of crashes"
+            )
 
         # General recommendations
         report.append("\n🔧 General recommendations:")
-        report.append("  1. Run ./simplenote_mcp/scripts/diagnose_api.py for detailed API diagnostics")
-        report.append("  2. Check environment variables (SIMPLENOTE_EMAIL, SIMPLENOTE_PASSWORD)")
+        report.append(
+            "  1. Run ./simplenote_mcp/scripts/diagnose_api.py for detailed API diagnostics"
+        )
+        report.append(
+            "  2. Check environment variables (SIMPLENOTE_EMAIL, SIMPLENOTE_PASSWORD)"
+        )
         report.append("  3. Set LOG_LEVEL=DEBUG for more detailed logging")
-        report.append("  4. Consider increasing SYNC_INTERVAL_SECONDS if API rate limiting is suspected")
-        report.append("  5. Run ./simplenote_mcp/scripts/restart_claude.sh to restart the server cleanly")
+        report.append(
+            "  4. Consider increasing SYNC_INTERVAL_SECONDS if API rate limiting is suspected"
+        )
+        report.append(
+            "  5. Run ./simplenote_mcp/scripts/restart_claude.sh to restart the server cleanly"
+        )
         report.append("  6. Set MCP_DEBUG=true for additional diagnostic information")
 
         return "\n".join(report)
@@ -361,8 +422,12 @@ class LogAnalyzer:
 def main():
     """Main function."""
     parser = argparse.ArgumentParser(description="Analyze Simplenote MCP server logs")
-    parser.add_argument("--log", "-l", default=DEFAULT_LOG_PATH,
-                        help=f"Path to log file (default: {DEFAULT_LOG_PATH})")
+    parser.add_argument(
+        "--log",
+        "-l",
+        default=DEFAULT_LOG_PATH,
+        help=f"Path to log file (default: {DEFAULT_LOG_PATH})",
+    )
     args = parser.parse_args()
 
     analyzer = LogAnalyzer(args.log)

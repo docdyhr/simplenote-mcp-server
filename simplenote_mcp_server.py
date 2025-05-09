@@ -10,16 +10,17 @@ Claude Desktop and other MCP clients.
 
 # Import the pathlib patch first
 # This must be the absolute first import to fix Python 3.13+ compatibility
-import sys
 import os
+import sys
 
 # Apply the patch early to handle Python 3.13+ pathlib changes
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, script_dir)
-try:
-    import pathlib_patch  # noqa: E402
-except ImportError:
-    pass  # Continue even if patch isn't available - might not be needed
+import contextlib
+
+# Use contextlib.suppress to silence the ImportError
+with contextlib.suppress(ImportError):
+    import pathlib_patch  # noqa: E402, F401
 
 # Now we can safely import from our compatibility module
 from simplenote_mcp.server.compat import Path  # This will work with all Python versions

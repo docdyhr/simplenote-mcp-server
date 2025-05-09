@@ -1,19 +1,18 @@
 """Unit tests for process management functions."""
 
-import signal
-import threading
-import sys
 import os
+import signal
+import sys
+import threading
 from unittest.mock import patch
 
 # Add the project root to the Python path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
 
 # Import from our compatibility module
-from simplenote_mcp.server.compat import Path
-
 import pytest
 
+from simplenote_mcp.server.compat import Path
 from simplenote_mcp.server.server import (
     cleanup_pid_file,
     setup_signal_handlers,
