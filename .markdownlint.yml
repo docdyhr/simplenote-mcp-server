@@ -1,0 +1,24 @@
+{
+  "default": true,
+  "MD013": false,
+  "MD033": {
+    "allowed_elements": ["br", "img", "details", "summary", "sup", "sub", "kbd"]
+  },
+  "MD024": {
+    "siblings_only": true
+  },
+  "MD025": {
+    "front_matter_title": ""
+  },
+  "MD026": {
+    "punctuation": ".,;:!。，；：！"
+  },
+  "MD029": {
+    "style": "ordered"
+  },
+  "MD036": false,
+  "MD041": false,
+  "MD046": {
+    "style": "fenced"
+  }
+}
