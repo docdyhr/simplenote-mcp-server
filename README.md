@@ -271,13 +271,13 @@ For a more seamless experience, configure Claude Desktop to automatically start 
 }
 ```
 
-3. Restart Claude Desktop using the provided script:
+1. Restart Claude Desktop using the provided script:
 
    ```bash
    ./simplenote_mcp/scripts/restart_claude.sh
    ```
 
-4. Verify the connection using the included verification script:
+2. Verify the connection using the included verification script:
 
    ```bash
    ./simplenote_mcp/scripts/verify_tools.sh

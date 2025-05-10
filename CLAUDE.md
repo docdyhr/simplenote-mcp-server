@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Structure
 
-```
+```plaintext
 simplenote_mcp/            # Main package
 ├── logs/                  # Log files directory
 ├── scripts/               # Helper scripts for testing and management
