@@ -22,7 +22,8 @@ simplenote_mcp/            # Main package
 - **Watch logs**: `./simplenote_mcp/scripts/watch_logs.sh`
 - **Verify tools**: `./simplenote_mcp/scripts/verify_tools.sh`
 - **Test tool visibility**: `./simplenote_mcp/scripts/test_tool_visibility.sh`
-- **Test client**: `python simplenote_mcp/tests/test_mcp_client.py`
+- **Test Simplenote client library integration**: `pytest simplenote_mcp/tests/test_mcp_client.py`
+- **Run all tests**: `pytest`
 - **Lint**: `ruff check .`
 - **Format**: `black .`
 - **Type check**: `mypy simplenote_mcp`

@@ -118,11 +118,13 @@ def apply_pathlib_patch():
 
 
 # Apply the patch when this module is imported
-success = apply_pathlib_patch()
+# success = apply_pathlib_patch() # No longer auto-apply on import
 
 # For command-line usage
 if __name__ == "__main__":
-    if success:
+    # Call the patch function only when script is run directly
+    success_on_run = apply_pathlib_patch()
+    if success_on_run:
         print("Successfully patched pathlib for Python 3.13+ compatibility")
         sys.exit(0)
     else:

@@ -156,7 +156,12 @@ def patch_pathlib():
 
 
 # Apply the patch when this module is imported
-success = patch_pathlib()
+# success = patch_pathlib() # Patches will not run on import for pre-commit hook compatibility.
+# To enable patches if needed, the main application should explicitly call patch_pathlib()
+# and potentially patch_dependencies() from this module.
+# Default 'success' to False so that if patch_dependencies() were to be called without
+# patch_pathlib() having run, it would know no patch was attempted/succeeded.
+success = False
 
 
 # Patch affected dependencies
@@ -218,31 +223,32 @@ def patch_dependencies():
 
 
 # Monkey patch anyio._core._fileio.Path to use our patched pathlib.Path
-try:
-    import pathlib
-
-    import anyio._core._fileio
-
-    if hasattr(pathlib, "Path") and hasattr(anyio._core._fileio, "Path"):
-        # Store the original anyio Path implementation
-        if not hasattr(anyio._core._fileio, "_original_Path"):
-            anyio._core._fileio._original_Path = anyio._core._fileio.Path
-
-        # Replace Path in anyio
-        anyio._core._fileio.Path = pathlib.Path
-
-        # Replace parser property access in anyio's Path
-        if hasattr(pathlib.Path, "parser"):
-            anyio._core._fileio.pathlib.Path = pathlib.Path
-
-        logger.debug("Successfully patched anyio._core._fileio.Path")
-except ImportError:
-    logger.debug("anyio module not found, no patching needed")
-except Exception as e:
-    logger.debug(f"Error patching anyio: {type(e).__name__}: {e}")
+# The following block is commented out to prevent execution on import for pre-commit hooks.
+# try:
+#     import pathlib
+#
+#     import anyio._core._fileio
+#
+#     if hasattr(pathlib, "Path") and hasattr(anyio._core._fileio, "Path"):
+#         # Store the original anyio Path implementation
+#         if not hasattr(anyio._core._fileio, "_original_Path"):
+#             anyio._core._fileio._original_Path = anyio._core._fileio.Path
+#
+#         # Replace Path in anyio
+#         anyio._core._fileio.Path = pathlib.Path
+#
+#         # Replace parser property access in anyio\'s Path
+#         if hasattr(pathlib.Path, "parser"):
+#             anyio._core._fileio.pathlib.Path = pathlib.Path
+#
+#         logger.debug("Successfully patched anyio._core._fileio.Path")
+# except ImportError:
+#     logger.debug("anyio module not found, no patching needed")
+# except Exception as e:
+#     logger.debug(f"Error patching anyio: {type(e).__name__}: {e}")
 
 # Patch other modules that might use pathlib
-patch_dependencies()
+# patch_dependencies() # Patches will not run on import for pre-commit hook compatibility.
 
 # For direct execution
 if __name__ == "__main__":

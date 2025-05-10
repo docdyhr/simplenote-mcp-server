@@ -187,14 +187,27 @@ simplenote-mcp-server
 
 ### Testing the server
 
-The server can be tested by running:
+The project uses `pytest` for testing.
+
+**Run all tests:**
 
 ```bash
-# Test Simplenote connectivity
-python simplenote_mcp/tests/test_mcp_client.py
+pytest
+```
 
+**Run specific tests:**
+
+For example, to test the direct Simplenote client library integration (authentication, basic CRUD):
+```bash
+pytest simplenote_mcp/tests/test_mcp_client.py
+```
+
+**Start the server for manual or integration testing:**
+```bash
 # Start the server in the foreground
 python simplenote_mcp_server.py
+# or
+simplenote-mcp
 ```
 
 ## Claude Desktop Integration
