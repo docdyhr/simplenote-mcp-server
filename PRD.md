@@ -48,82 +48,98 @@ This server implements an **in-memory caching strategy** for performance and use
 
 ### FR1: Server Setup & Configuration
 
-    * MUST be implemented using the MCP library (`mcp` package).
-    * MUST maintain the current stdio-based MCP server implementation.
-    * MUST support configuration via environment variables.
-    * Configuration MUST be via environment variables:
-        * `SIMPLENOTE_EMAIL`
-        * `SIMPLENOTE_PASSWORD`
-        * `SYNC_INTERVAL_SECONDS` (Optional: frequency for background sync, e.g., 120)
-    * Maintain existing scripts to start and manage the server.
+```markdown
+* MUST be implemented using the MCP library (`mcp` package).
+* MUST maintain the current stdio-based MCP server implementation.
+* MUST support configuration via environment variables.
+* Configuration MUST be via environment variables:
+    * `SIMPLENOTE_EMAIL`
+    * `SIMPLENOTE_PASSWORD`
+    * `SYNC_INTERVAL_SECONDS` (Optional: frequency for background sync, e.g., 120)
+* Maintain existing scripts to start and manage the server.
+```
 
 ### FR2: Simplenote Authentication
 
-    * MUST authenticate with the Simplenote API using `SIMPLENOTE_EMAIL` and `SIMPLENOTE_PASSWORD`.
-    * MUST handle Simplenote auth failures gracefully (e.g., log error, fail startup or sync).
+```markdown
+* MUST authenticate with the Simplenote API using `SIMPLENOTE_EMAIL` and `SIMPLENOTE_PASSWORD`.
+* MUST handle Simplenote auth failures gracefully (e.g., log error, fail startup or sync).
+```
 
 ### FR3: MCP Compliance & Features
 
-    * MUST implement MCP using the `mcp` library conventions.
-    * MUST properly advertise its capabilities (Simplenote resources/tools) according to MCP specification.
-    * MUST maintain the existing MCP structure for resources and tools.
+```markdown
+* MUST implement MCP using the `mcp` library conventions.
+* MUST properly advertise its capabilities (Simplenote resources/tools) according to MCP specification.
+* MUST maintain the existing MCP structure for resources and tools.
+```
 
 ### FR4: Core Note Operations
 
-    * MCP capabilities MUST be defined using `mcp.types` structures (e.g., Tool, Resource).
-    * All operations MUST be implemented using the existing MCP server handlers.
-    * **Resource Capabilities**
-        * **List Resources**:
-            * Retrieve notes from the in-memory cache.
-            * MUST include note `tags` (list of strings) in the resource metadata.
-            * Support filtering by tags if possible within the current framework.
-            * Support limiting the number of notes returned.
-        * **Read Resource**:
-            * Retrieve full raw `content` and metadata (including `tags`) of a specific note by its URI.
-            * Handle "Note Not Found" gracefully.
-        * **Search Notes**:
-            * Implement as a Tool capability for searching within note contents.
-            * Perform case-insensitive keyword search across note content and titles.
-            * Return matching notes with relevant metadata.
-    * **Tool Capabilities**
-        * **Create Note**:
-            * Accept note content and optional tags.
-            * Create the new note via the Simplenote API.
-            * Return success confirmation with the new note ID.
-        * **Update Note**:
-            * Accept note ID, updated content, and optional tags.
-            * Update the specified note via the Simplenote API.
-            * Handle "Note Not Found" gracefully.
-            * Return success confirmation.
-        * **Delete Note**:
-            * Accept note ID to be deleted.
-            * Move the specified note to the Simplenote trash via the API (using `trash_note`).
-            * Handle "Note Not Found" gracefully.
-            * Return success confirmation.
+```markdown
+* MCP capabilities MUST be defined using `mcp.types` structures (e.g., Tool, Resource).
+* All operations MUST be implemented using the existing MCP server handlers.
+* **Resource Capabilities**
+    * **List Resources**:
+        * Retrieve notes from the in-memory cache.
+        * MUST include note `tags` (list of strings) in the resource metadata.
+        * Support filtering by tags if possible within the current framework.
+        * Support limiting the number of notes returned.
+    * **Read Resource**:
+        * Retrieve full raw `content` and metadata (including `tags`) of a specific note by its URI.
+        * Handle "Note Not Found" gracefully.
+    * **Search Notes**:
+        * Implement as a Tool capability for searching within note contents.
+        * Perform case-insensitive keyword search across note content and titles.
+        * Return matching notes with relevant metadata.
+* **Tool Capabilities**
+    * **Create Note**:
+        * Accept note content and optional tags.
+        * Create the new note via the Simplenote API.
+        * Return success confirmation with the new note ID.
+    * **Update Note**:
+        * Accept note ID, updated content, and optional tags.
+        * Update the specified note via the Simplenote API.
+        * Handle "Note Not Found" gracefully.
+        * Return success confirmation.
+    * **Delete Note**:
+        * Accept note ID to be deleted.
+        * Move the specified note to the Simplenote trash via the API (using `trash_note`).
+        * Handle "Note Not Found" gracefully.
+        * Return success confirmation.
+```
 
 ### FR5: Data Representation
 
-    * A consistent data structure MUST represent Simplenote notes in MCP responses, including fields like `id`, `content` (as raw string), `creationDate`, `modificationDate`, `tags: List[str]`.
-    * Use the existing `mcp.types` classes for data representation.
+```markdown
+* A consistent data structure MUST represent Simplenote notes in MCP responses, including fields like `id`, `content` (as raw string), `creationDate`, `modificationDate`, `tags: List[str]`.
+* Use the existing `mcp.types` classes for data representation.
+```
 
 ### FR6: Error Handling
 
-    * MUST gracefully handle common errors (Simplenote API errors, network issues, invalid requests, auth failures).
-    * Implement appropriate error logging and reporting through the MCP protocol.
+```markdown
+* MUST gracefully handle common errors (Simplenote API errors, network issues, invalid requests, auth failures).
+* Implement appropriate error logging and reporting through the MCP protocol.
+```
 
 ### FR7: Client Security
 
-    * MUST use the existing Claude Desktop MCP security model.
-    * Leverage environment variables for credentials management.
-    * Follow security best practices for handling authentication credentials.
+```markdown
+* MUST use the existing Claude Desktop MCP security model.
+* Leverage environment variables for credentials management.
+* Follow security best practices for handling authentication credentials.
+```
 
 ### FR8: Caching & Synchronization
 
-    * MUST load all notes into an in-memory cache on server startup.
-    * MUST implement a background task for periodic synchronization.
-    * The sync task SHOULD use the Simplenote API's `index_since` mechanism to fetch only changes since the last sync marker.
-    * The sync task MUST update the in-memory cache with creates, updates, and deletes detected from the API.
-    * The sync interval SHOULD be configurable (env var `SYNC_INTERVAL_SECONDS`).
+```markdown
+* MUST load all notes into an in-memory cache on server startup.
+* MUST implement a background task for periodic synchronization.
+* The sync task SHOULD use the Simplenote API's `index_since` mechanism to fetch only changes since the last sync marker.
+* The sync task MUST update the in-memory cache with creates, updates, and deletes detected from the API.
+* The sync interval SHOULD be configurable (env var `SYNC_INTERVAL_SECONDS`).
+```
 
 ## 6. Non-Functional Requirements
 

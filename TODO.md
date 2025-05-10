@@ -105,6 +105,7 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
 ## 9. Future Enhancements
 
 ### Q2 2025 (Near-term priorities)
+
 - [x] **Tag Management** ✅
   - [x] Add/remove tags from notes
 
@@ -119,6 +120,7 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
   - [x] Document Docker deployment
 
 ### Q3 2025 (Mid-term priorities)
+
 - [ ] **Pagination**
   - [ ] Add pagination for large note collections
   - [ ] Page size and offset parameters
@@ -136,6 +138,7 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
   - [ ] Rendering hints for Claude
 
 ### Q4 2025 (Long-term priorities)
+
 - [ ] **Permanent Deletion**
   - [ ] Implement permanent delete functionality
   - [ ] Clear distinction from regular trash operation
