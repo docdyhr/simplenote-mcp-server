@@ -134,7 +134,7 @@ def cleanup_pid_file() -> None:
     try:
         if PID_FILE_PATH.exists():
             PID_FILE_PATH.unlink()
-            logger.info(f"Removed PID file: {PID_FILE_PATH}")
+            logger.info("Removed PID file: %s", PID_FILE_PATH)
 
         # Also remove the alternative PID file if it exists
         if ALT_PID_FILE_PATH.exists():

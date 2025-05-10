@@ -5,28 +5,33 @@ Thank you for considering contributing to the Simplenote MCP Server! This docume
 ## Development Environment
 
 1. **Clone the repository**:
+
    ```bash
    git clone https://github.com/yourusername/simplenote-mcp-server.git
    cd simplenote-mcp-server
    ```
 
 2. **Set up a virtual environment**:
+
    ```bash
    python -m venv venv
    source venv/bin/activate  # On Windows: venv\Scripts\activate
    ```
 
 3. **Install in development mode**:
+
    ```bash
    pip install -e .
    ```
 
 4. **Install development dependencies**:
+
    ```bash
    pip install pre-commit pytest mypy ruff black
    ```
 
 5. **Set up pre-commit hooks**:
+
    ```bash
    pre-commit install
    ```
