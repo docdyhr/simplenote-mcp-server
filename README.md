@@ -296,9 +296,22 @@ Simplenote notes are exposed as resources with the URI format `simplenote://note
   - Supports limiting results (`limit` parameter)
   - Returns notes sorted by modification date (newest first)
 
-- **Read Resource** - View the content and metadata of a specific note
+- **Read Resource** - View the content and metadata of a specific note, including content type hints
 
-With a total of 10 implemented capabilities (8 tools and 2 prompts) as of version 1.4.0, the server provides a comprehensive interface for managing your Simplenote notes.
+With a total of 10 implemented capabilities (8 tools and 2 prompts) as of version 1.4.0, the server provides a comprehensive interface for managing your Simplenote notes. Additionally, the server includes content type hinting to help Claude better understand and render your note content.
+
+### Content Type Hinting
+
+The server automatically analyzes note content and provides content type hints in the metadata, helping Claude better understand and render your notes. Content types detected include:
+
+- **Markdown**: Notes with headings, lists, links, code blocks, and other Markdown formatting
+- **Code**: Notes containing code snippets, function definitions, imports, etc.
+- **JSON**: Notes with properly formatted JSON data
+- **YAML**: Notes with YAML-formatted data
+- **HTML**: Notes containing HTML markup
+- **Plain Text**: Default for notes without specialized formatting
+
+These hints are included in both resource listings and when reading individual notes, allowing Claude to render content appropriately without you having to specify the format.
 
 ### Advanced Search Capabilities
 

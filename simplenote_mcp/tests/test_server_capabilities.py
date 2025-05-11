@@ -7,6 +7,7 @@ resource reading, and tool calls using improved pytest-style assertions.
 """
 
 import asyncio
+import json
 import os
 import sys
 import time

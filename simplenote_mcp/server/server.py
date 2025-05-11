@@ -33,6 +33,7 @@ from .errors import (
     handle_exception,
 )
 from .logging import logger
+from .utils import get_content_type_hint
 
 # Error messages for better maintainability and reusability
 AUTH_ERROR_MSG = "SIMPLENOTE_EMAIL (or SIMPLENOTE_USERNAME) and SIMPLENOTE_PASSWORD environment variables must be set"
@@ -340,7 +341,10 @@ async def handle_list_resources(
                     else note["key"]
                 ),
                 description=f"Note from {note.get('modifydate', 'unknown date')}",
-                meta={"tags": note.get("tags", [])},
+                meta={
+                    "tags": note.get("tags", []),
+                    **get_content_type_hint(note.get("content", "")),
+                },
             )
             for note in notes
         ]
@@ -423,6 +427,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
                         "tags": note_tags,
                         "modifydate": note_modifydate,
                         "createdate": note_createdate,
+                        **get_content_type_hint(note_content),
                     },
                 )
                 return types.ReadResourceResult(contents=[text_contents])
@@ -448,6 +453,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
                     "tags": note.get("tags", []) if note else [],
                     "modifydate": note.get("modifydate", "") if note else "",
                     "createdate": note.get("createdate", "") if note else "",
+                    **get_content_type_hint(note.get("content", "") if note else ""),
                 },
             )
             return types.ReadResourceResult(contents=[text_contents])
@@ -708,8 +714,15 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
         if name == "create_note":
             content = arguments.get("content", "")
-            tags_str = arguments.get("tags", "")
-            tags = [tag.strip() for tag in tags_str.split(",")] if tags_str else []
+            tags_input = arguments.get("tags", "")
+            
+            # Handle tags which can be either a string or a list
+            if isinstance(tags_input, list):
+                tags = [tag.strip() for tag in tags_input]
+            elif isinstance(tags_input, str):
+                tags = [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+            else:
+                tags = []
 
             if not content:
                 raise ValidationError(NOTE_CONTENT_REQUIRED)
@@ -734,6 +747,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                                     "success": True,
                                     "message": "Note created successfully",
                                     "note_id": note.get("key"),
+                                    "key": note.get("key"),  # For backward compatibility
                                     "first_line": (
                                         content.splitlines()[0][:30] if content else ""
                                     ),
@@ -761,7 +775,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         elif name == "update_note":
             note_id = arguments.get("note_id", "")
             content = arguments.get("content", "")
-            tags_str = arguments.get("tags", "")
+            tags_input = arguments.get("tags", "")
 
             if not note_id:
                 raise ValidationError(NOTE_ID_REQUIRED)
@@ -791,8 +805,14 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 existing_note["content"] = content
 
                 # Update tags if provided
-                if tags_str:
-                    tags = [tag.strip() for tag in tags_str.split(",")]
+                if tags_input:
+                    # Handle tags which can be either a string or a list
+                    if isinstance(tags_input, list):
+                        tags = [tag.strip() for tag in tags_input]
+                    elif isinstance(tags_input, str):
+                        tags = [tag.strip() for tag in tags_input.split(",")]
+                    else:
+                        tags = []
                     existing_note["tags"] = tags
 
                 updated_note, status = sn.update_note(existing_note)
@@ -877,13 +897,13 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         elif name == "search_notes":
             query = arguments.get("query", "")
             limit = arguments.get("limit")
-            tags_str = arguments.get("tags", "")
+            tags_input = arguments.get("tags", "")
             from_date_str = arguments.get("from_date")
             to_date_str = arguments.get("to_date")
 
             logger.debug(
                 f"Advanced search called with: query='{query}', limit={limit}, "
-                + f"tags='{tags_str}', from_date='{from_date_str}', to_date='{to_date_str}'"
+                + f"tags='{tags_input}', from_date='{from_date_str}', to_date='{to_date_str}'"
             )
 
             if not query:
@@ -900,10 +920,14 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
             # Process tag filters
             tag_filters = None
-            if tags_str:
-                tag_filters = [
-                    tag.strip() for tag in tags_str.split(",") if tag.strip()
-                ]
+            if tags_input:
+                # Handle tags which can be either a string or a list
+                if isinstance(tags_input, list):
+                    tag_filters = [tag.strip() for tag in tags_input if tag.strip()]
+                elif isinstance(tags_input, str):
+                    tag_filters = [tag.strip() for tag in tags_input.split(",") if tag.strip()]
+                else:
+                    tag_filters = None
                 logger.debug(f"Tag filters: {tag_filters}")
 
             # Process date range
@@ -1140,14 +1164,21 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
         elif name == "add_tags":
             note_id = arguments.get("note_id", "")
-            tags_str = arguments.get("tags", "")
+            tags_input = arguments.get("tags", "")
 
             if not note_id:
                 raise ValidationError(NOTE_ID_REQUIRED)
 
-            if not tags_str:
+            if not tags_input:
                 raise ValidationError(TAGS_REQUIRED)
 
+            # Handle tags which can be either a string or a list
+            if isinstance(tags_input, list):
+                tags = [tag.strip() for tag in tags_input]
+            elif isinstance(tags_input, str):
+                tags = [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+            else:
+                tags = []
             try:
                 # Get the existing note first
                 existing_note = None
@@ -1239,14 +1270,21 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
         elif name == "remove_tags":
             note_id = arguments.get("note_id", "")
-            tags_str = arguments.get("tags", "")
+            tags_input = arguments.get("tags", "")
 
             if not note_id:
                 raise ValidationError(NOTE_ID_REQUIRED)
 
-            if not tags_str:
+            if not tags_input:
                 raise ValidationError(TAGS_REQUIRED)
 
+            # Handle tags which can be either a string or a list
+            if isinstance(tags_input, list):
+                tags = [tag.strip() for tag in tags_input]
+            elif isinstance(tags_input, str):
+                tags = [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+            else:
+                tags = []
             try:
                 # Get the existing note first
                 existing_note = None
@@ -1356,7 +1394,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
         elif name == "replace_tags":
             note_id = arguments.get("note_id", "")
-            tags_str = arguments.get("tags", "")
+            tags_input = arguments.get("tags", "")
 
             if not note_id:
                 raise ValidationError(NOTE_ID_REQUIRED)
@@ -1380,11 +1418,12 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         raise ResourceNotFoundError(error_msg)
 
                 # Parse the new tags
-                new_tags = (
-                    [tag.strip() for tag in tags_str.split(",") if tag.strip()]
-                    if tags_str
-                    else []
-                )
+                if isinstance(tags_input, list):
+                    new_tags = [tag.strip() for tag in tags_input if tag.strip()]
+                elif isinstance(tags_input, str):
+                    new_tags = [tag.strip() for tag in tags_input.split(",") if tag.strip()] if tags_input else []
+                else:
+                    new_tags = []
 
                 # Get current tags
                 current_tags = existing_note.get("tags", [])

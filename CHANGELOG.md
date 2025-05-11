@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Content type hinting for notes based on content analysis
+  - Detects Markdown, code snippets, JSON, YAML, and HTML formatting
+  - Includes content type in resource metadata to improve AI rendering
+  - Helps Claude better understand and process note content
 - Python 3.13.x compatibility layer with automatic pathlib patch
 - Compatibility module at `simplenote_mcp.server.compat` for cross-version support
 - Diagnostic tools for API connectivity troubleshooting

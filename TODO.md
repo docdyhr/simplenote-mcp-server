@@ -132,10 +132,10 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
   - [ ] Response time percentiles
   - [ ] API call counts and latencies
 
-- [ ] **Content Type Hinting**
-  - [ ] Add metadata to indicate content formatting type
-  - [ ] Format detection (plain text, Markdown, code snippets)
-  - [ ] Rendering hints for Claude
+- [x] **Content Type Hinting** ✅
+  - [x] Add metadata to indicate content formatting type
+  - [x] Format detection (plain text, Markdown, code snippets)
+  - [x] Rendering hints for Claude
 
 ### Q4 2025 (Long-term priorities)
 
