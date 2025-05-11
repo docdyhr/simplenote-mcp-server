@@ -134,7 +134,9 @@ class StructuredLogAdapter(logging.LoggerAdapter):
         super().__init__(logger, extra or {})
         self.trace_id: Optional[str] = None
 
-    def process(self, msg: str, kwargs: MutableMapping[str, Any]) -> tuple[str, MutableMapping[str, Any]]:
+    def process(
+        self, msg: str, kwargs: MutableMapping[str, Any]
+    ) -> tuple[str, MutableMapping[str, Any]]:
         """Process the log message by adding structured context.
 
         Args:

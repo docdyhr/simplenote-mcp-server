@@ -11,9 +11,7 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-
 
 # Define report categories
 REPORT_CATEGORIES = {
@@ -184,18 +182,18 @@ def run_bandit(project_dir: str) -> Dict[str, Any]:
         try:
             with open(results_file, "r") as f:
                 bandit_result = json.load(f)
-                
+
             result_data["status"] = "fail" if bandit_result.get("results") else "pass"
-            
+
             # Count issues by severity
             issues = bandit_result.get("results", [])
             result_data["issues_count"] = len(issues)
-            
+
             severity_counts = {"LOW": 0, "MEDIUM": 0, "HIGH": 0}
             for issue in issues:
                 severity = issue.get("issue_severity", "UNKNOWN")
                 severity_counts[severity] = severity_counts.get(severity, 0) + 1
-                
+
             result_data["issues_by_severity"] = severity_counts
             result_data["metrics"] = bandit_result.get("metrics", {})
         except Exception as e:
@@ -216,7 +214,7 @@ def run_coverage_report(project_dir: str) -> Dict[str, Any]:
         Dictionary with coverage results
     """
     print("Running coverage analysis...")
-    
+
     # First run pytest with coverage
     pytest_cmd = [
         "python", "-m", "pytest",
@@ -225,10 +223,10 @@ def run_coverage_report(project_dir: str) -> Dict[str, Any]:
         "--cov-report=term",
         "simplenote_mcp/tests/",
     ]
-    
+
     # Run pytest with coverage
     run_command(pytest_cmd, cwd=project_dir)
-    
+
     # Read coverage report
     coverage_file = os.path.join(project_dir, "coverage.xml")
     if not os.path.exists(coverage_file):
@@ -236,20 +234,20 @@ def run_coverage_report(project_dir: str) -> Dict[str, Any]:
             "status": "error",
             "error": "No coverage report generated",
         }
-    
+
     # Run coverage report to get summary
     stdout, stderr, return_code = run_command(
         ["coverage", "report"],
         cwd=project_dir,
     )
-    
+
     # Parse the coverage report
     coverage_data = {
         "status": "pass" if return_code == 0 else "fail",
         "modules": {},
         "total_coverage": 0,
     }
-    
+
     # Extract total coverage percentage
     for line in stdout.splitlines():
         if line.startswith("TOTAL"):
@@ -259,7 +257,7 @@ def run_coverage_report(project_dir: str) -> Dict[str, Any]:
                     coverage_data["total_coverage"] = float(parts[-1].strip("%"))
                 except (ValueError, IndexError):
                     pass
-    
+
     return coverage_data
 
 
@@ -276,22 +274,22 @@ def run_docstring_coverage(project_dir: str) -> Dict[str, Any]:
     # Check if docstr-coverage is installed
     check_cmd = ["docstr-coverage", "--version"]
     stdout, stderr, return_code = run_command(check_cmd)
-    
+
     if return_code != 0:
         # Try to install docstr-coverage
         install_cmd = ["pip", "install", "docstr-coverage"]
         run_command(install_cmd)
-    
+
     # Run docstr-coverage
     stdout, stderr, return_code = run_command(
         ["docstr-coverage", "simplenote_mcp", "--skipmagic", "--skipinit", "--verbose=2"],
         cwd=project_dir,
     )
-    
+
     # Parse the output
     coverage_percent = 0
     missing_count = 0
-    
+
     for line in stdout.splitlines():
         if "Total docstring coverage:" in line:
             try:
@@ -303,7 +301,7 @@ def run_docstring_coverage(project_dir: str) -> Dict[str, Any]:
                 missing_count = int(line.split(":")[1].strip())
             except (ValueError, IndexError):
                 pass
-    
+
     return {
         "status": "pass" if coverage_percent >= 80 else "fail",
         "docstring_coverage": coverage_percent,
@@ -323,15 +321,15 @@ def save_report(report: Dict[str, Any], output_dir: str) -> str:
         Path to the saved report
     """
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Generate filename with timestamp
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"code_quality_report_{timestamp}.json"
     filepath = os.path.join(output_dir, filename)
-    
+
     with open(filepath, "w") as f:
         json.dump(report, f, indent=2)
-    
+
     print(f"Report saved to {filepath}")
     return filepath
 
@@ -353,7 +351,7 @@ def update_trend_data(report: Dict[str, Any], trend_file: str) -> None:
         "test_coverage": report["coverage"]["total_coverage"],
         "docstring_coverage": report["docstring_coverage"]["docstring_coverage"],
     }
-    
+
     # Load existing trend data if available
     trend_data = []
     if os.path.exists(trend_file):
@@ -362,10 +360,10 @@ def update_trend_data(report: Dict[str, Any], trend_file: str) -> None:
                 trend_data = json.load(f)
         except json.JSONDecodeError:
             trend_data = []
-    
+
     # Append new metrics
     trend_data.append(metrics)
-    
+
     # Save updated trend data
     with open(trend_file, "w") as f:
         json.dump(trend_data, f, indent=2)
@@ -386,12 +384,12 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
             report = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         return ""
-    
+
     # Generate HTML filename
     report_basename = os.path.basename(report_file)
     html_filename = report_basename.replace(".json", ".html")
     html_path = os.path.join(output_dir, html_filename)
-    
+
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -556,10 +554,10 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
 </body>
 </html>
 """
-    
+
     with open(html_path, "w") as f:
         f.write(html_content)
-    
+
     return html_path
 
 
@@ -604,18 +602,18 @@ def main() -> int:
         help="Generate HTML report"
     )
     args = parser.parse_args()
-    
+
     # Ensure project_dir is absolute
     project_dir = os.path.abspath(args.project_dir)
     output_dir = os.path.join(project_dir, args.output_dir)
     trend_file = os.path.join(project_dir, args.trend_file)
-    
+
     # Create the report directory
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # Generate the report components
     timestamp = datetime.datetime.now().isoformat()
-    
+
     report = {
         "timestamp": timestamp,
         "formatting": check_formatting(project_dir),
@@ -625,19 +623,19 @@ def main() -> int:
         "coverage": run_coverage_report(project_dir),
         "docstring_coverage": run_docstring_coverage(project_dir),
     }
-    
+
     # Save the report
     report_file = save_report(report, output_dir)
-    
+
     # Update trend data
     update_trend_data(report, trend_file)
-    
+
     # Generate HTML report if requested
     if args.html:
         html_path = generate_html_report(report_file, output_dir)
         if html_path:
             print(f"HTML report saved to {html_path}")
-    
+
     # Determine overall success
     success = (
         report["formatting"]["status"] == "pass"
@@ -645,7 +643,7 @@ def main() -> int:
         and report["type_checking"]["status"] == "pass"
         and report["security"]["status"] == "pass"
     )
-    
+
     return 0 if success else 1
 
 

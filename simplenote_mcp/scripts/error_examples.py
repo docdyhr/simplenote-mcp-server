@@ -6,8 +6,7 @@ import json
 import os
 import sys
 import time
-import uuid
-from typing import Dict, Any
+from typing import Any, Dict
 
 # Add parent directory to path for running the script directly
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -16,8 +15,6 @@ from simplenote_mcp.server.errors import (
     AuthenticationError,
     ConfigurationError,
     DataError,
-    ErrorCategory,
-    ErrorSeverity,
     InternalError,
     NetworkError,
     PermissionError,

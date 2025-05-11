@@ -2,13 +2,11 @@
 # simplenote_mcp/scripts/log_format_test.py
 """Test script for structured logging formats in the Simplenote MCP server."""
 
+import argparse
+import json
 import os
 import sys
 import time
-import json
-import logging
-import argparse
-from datetime import datetime
 import uuid
 
 # Add parent directory to path for running the script directly
@@ -16,9 +14,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../.
 
 from simplenote_mcp.server import get_logger, get_request_logger, logger
 from simplenote_mcp.server.logging import (
-    initialize_logging,
-    LOG_FILE,
     DEBUG_LOG_FILE,
+    LOG_FILE,
+    initialize_logging,
 )
 
 

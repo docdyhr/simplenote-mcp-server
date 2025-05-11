@@ -9,12 +9,11 @@ It handles test discovery, running specific test modules, and generating reports
 import argparse
 import asyncio
 import os
-import subprocess
 import sys
 import time
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Tuple
 
 # Add the parent directory to the Python path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,7 +22,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 # Import server compatibility module
 from simplenote_mcp.server.compat import Path
-from simplenote_mcp.server.logging import initialize_logging, get_logger
+from simplenote_mcp.server.logging import get_logger, initialize_logging
 
 # Create a logger for this script
 logger = get_logger("tests.runner")
@@ -44,14 +43,14 @@ def check_environment() -> bool:
     """
     required_vars = ["SIMPLENOTE_EMAIL", "SIMPLENOTE_PASSWORD"]
     missing_vars = [var for var in required_vars if not os.environ.get(var)]
-    
+
     if missing_vars:
         print("ERROR: Missing required environment variables:")
         for var in missing_vars:
             print(f"  - {var}")
         print("\nPlease set these variables before running tests.")
         return False
-    
+
     return True
 
 
@@ -65,28 +64,28 @@ def discover_tests(category: TestCategory = TestCategory.ALL) -> List[str]:
         List of discovered test module paths
     """
     tests_dir = Path(__file__).parent
-    
+
     # Patterns for different test categories
     patterns = {
         TestCategory.UNIT: ["test_*py"],
         TestCategory.INTEGRATION: ["test_integration_*py"],
         TestCategory.ALL: ["test_*py"]
     }
-    
+
     # Special handling for specific categories
     if category == TestCategory.UNIT:
         # Exclude integration tests
         exclude = {str(p) for p in tests_dir.glob("test_integration_*.py")}
     else:
         exclude = set()
-    
+
     # Find all test files matching the pattern
     test_files = []
     for pattern in patterns[category]:
         for test_file in tests_dir.glob(pattern):
             if str(test_file) not in exclude:
                 test_files.append(str(test_file))
-    
+
     return sorted(test_files)
 
 
@@ -101,10 +100,10 @@ async def run_single_test_async(test_path: str, verbose: bool = False) -> Tuple[
         Tuple of (success, output)
     """
     cmd = [sys.executable, test_path]
-    
+
     if verbose:
         print(f"Running: {' '.join(cmd)}")
-    
+
     # Run the test process and capture output
     try:
         process = await asyncio.create_subprocess_exec(
@@ -112,14 +111,14 @@ async def run_single_test_async(test_path: str, verbose: bool = False) -> Tuple[
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE
         )
-        
+
         stdout, stderr = await process.communicate()
         output = stdout.decode("utf-8") + stderr.decode("utf-8")
         success = process.returncode == 0
-        
+
         if verbose or not success:
             print(output)
-            
+
         return success, output
     except Exception as e:
         error_message = f"Error running test {test_path}: {str(e)}"
@@ -140,27 +139,27 @@ async def run_tests_async(test_paths: List[str], verbose: bool = False) -> bool:
     if not test_paths:
         print("No tests found to run.")
         return True
-    
+
     print(f"Running {len(test_paths)} test modules...")
-    
+
     start_time = time.time()
     results = []
-    
+
     # Run tests with limited concurrency to avoid resource contention
     semaphore = asyncio.Semaphore(3)  # Max 3 concurrent tests
-    
+
     async def run_with_semaphore(test_path):
         async with semaphore:
             return await run_single_test_async(test_path, verbose)
-    
+
     tasks = [run_with_semaphore(path) for path in test_paths]
     test_results = await asyncio.gather(*tasks)
-    
+
     # Process results
     passed = 0
     failed = 0
     failures = []
-    
+
     for i, (success, output) in enumerate(test_results):
         test_name = os.path.basename(test_paths[i])
         if success:
@@ -170,26 +169,26 @@ async def run_tests_async(test_paths: List[str], verbose: bool = False) -> bool:
             status = "FAILED"
             failed += 1
             failures.append((test_name, output))
-        
+
         if verbose:
             print(f"{test_name}: {status}")
         else:
             print(f"{test_name}: {status}")
-    
+
     elapsed = time.time() - start_time
-    
+
     # Print summary
     print("\n" + "=" * 60)
     print(f"Test Summary: {passed} passed, {failed} failed, {len(test_paths)} total")
     print(f"Time elapsed: {elapsed:.2f} seconds")
-    
+
     if failures:
         print("\nFailures:")
         for name, _ in failures:
             print(f"  - {name}")
-    
+
     print("=" * 60)
-    
+
     return failed == 0
 
 
@@ -207,21 +206,21 @@ def run_pytest(test_paths: Optional[List[str]] = None, verbose: bool = False,
         True if all tests passed
     """
     pytest_args = ["-xvs"] if verbose else ["-xs"]
-    
+
     if coverage:
         pytest_args.extend(["--cov=simplenote_mcp", "--cov-report=term", "--cov-report=html"])
-    
+
     if junit:
         pytest_args.extend(["--junitxml=test-results.xml"])
-    
+
     if test_paths:
         pytest_args.extend(test_paths)
     else:
         # Discover and run all tests
         pytest_args.append(os.path.dirname(__file__))
-    
+
     print(f"Running pytest with args: {' '.join(pytest_args)}")
-    
+
     # Import pytest here to avoid unnecessary dependency if not used
     try:
         import pytest
@@ -273,20 +272,20 @@ def main():
         action="store_true",
         help="Skip environment variable check"
     )
-    
+
     args = parser.parse_args()
-    
+
     # Check environment unless explicitly skipped
     if not args.no_env_check and not check_environment():
         return 1
-    
+
     # Set up log level
     os.environ["LOG_LEVEL"] = "DEBUG" if args.verbose else "INFO"
     initialize_logging()
-    
+
     # Determine which tests to run
     test_paths = args.tests if args.tests else discover_tests(TestCategory(args.category))
-    
+
     if args.mode == "pytest":
         success = run_pytest(test_paths, args.verbose, args.coverage, args.junit)
     else:  # direct mode
@@ -297,7 +296,7 @@ def main():
             print("Direct mode is not supported on Windows. Please use --mode=pytest")
         else:
             success = asyncio.run(run_tests_async(test_paths, args.verbose))
-    
+
     return 0 if success else 1
 
 

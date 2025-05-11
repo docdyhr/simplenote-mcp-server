@@ -9,8 +9,7 @@ using improved pytest assertions with detailed error messages.
 import asyncio
 import os
 import sys
-import time
-from typing import Dict, Any, List
+from typing import Any, Dict, List
 
 import pytest
 
@@ -27,7 +26,6 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from simplenote_mcp.server import get_logger, get_simplenote_client
-from simplenote_mcp.server.errors import ResourceNotFoundError, ValidationError
 
 # Logger for this test module
 logger = get_logger("tests.note_operations")
@@ -286,7 +284,6 @@ async def test_note_with_special_characters(simplenote_client):
 async def test_tag_operations(simplenote_client, test_note: Dict[str, Any]):
     """Test tag operations with improved assertions."""
     # Arrange
-    note_id = test_note["key"]
     original_tags = set(test_note.get("tags", []))
 
     # Add tags

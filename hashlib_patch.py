@@ -74,10 +74,12 @@ class FallbackBlake2Hash:
         """Update the hash object with data"""
         if isinstance(data, (str, bytes, bytearray, memoryview)):
             if isinstance(data, str):
-                data = data.encode('utf-8')
+                data = data.encode("utf-8")
             self._data.extend(data)
         else:
-            raise TypeError(f"object supporting the buffer API required, not {type(data).__name__}")
+            raise TypeError(
+                f"object supporting the buffer API required, not {type(data).__name__}"
+            )
 
     def digest(self) -> bytes:
         """Return the digest of the data passed to the update() method"""
@@ -93,13 +95,13 @@ class FallbackBlake2Hash:
             result = result * (self.digest_size // len(result) + 1)
 
         # Truncate to the requested digest size
-        return result[:self.digest_size]
+        return result[: self.digest_size]
 
     def hexdigest(self) -> str:
         """Return the digest as a string of hexadecimal digits"""
         return self.digest().hex()
 
-    def copy(self) -> 'FallbackBlake2Hash':
+    def copy(self) -> "FallbackBlake2Hash":
         """Return a copy of the hash object"""
         copy_obj = FallbackBlake2Hash(digest_size=self.digest_size, **self._kwargs)
         copy_obj._data = self._data.copy()
@@ -137,7 +139,9 @@ def patch_hashlib() -> bool:
 
     # Check if blake2b and blake2s are already available
     if hasattr(hashlib, "blake2b") and hasattr(hashlib, "blake2s"):
-        logger.debug("blake2b and blake2s are already available in hashlib, no patching needed")
+        logger.debug(
+            "blake2b and blake2s are already available in hashlib, no patching needed"
+        )
         return True
 
     # Apply patches for missing functions
@@ -208,7 +212,9 @@ if __name__ == "__main__":
         print("\n❌ Failed to patch hashlib.blake2s")
 
     if patched_algorithms:
-        print(f"\n✅ Hashlib patch diagnostic complete - patched: {', '.join(patched_algorithms)}")
+        print(
+            f"\n✅ Hashlib patch diagnostic complete - patched: {', '.join(patched_algorithms)}"
+        )
         sys.exit(0)
     else:
         print("\n❌ No algorithms were patched")

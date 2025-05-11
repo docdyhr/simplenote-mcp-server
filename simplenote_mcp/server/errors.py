@@ -163,6 +163,7 @@ class ServerError(Exception):
     This provides consistent error handling with categories, severity levels,
     and enhanced logging.
     """
+
     details: Dict[str, Any]
 
     def __init__(

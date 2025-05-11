@@ -6,12 +6,8 @@ This file contains tests for the cross-version compatibility
 modules to ensure they work correctly across Python versions.
 """
 
-import importlib
 import os
 import sys
-import unittest
-from pathlib import Path as StdPath
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import pytest
 
@@ -65,7 +61,7 @@ class TestPathCompat:
         test_file = os.path.join(os.path.dirname(__file__), "test_file.tmp")
         with open(test_file, "w") as f:
             f.write("test")
-        
+
         try:
             path = Path(test_file)
             resolved = path.resolve()
@@ -74,29 +70,29 @@ class TestPathCompat:
         finally:
             # Clean up
             os.unlink(test_file)
-    
+
     def test_path_mkdir(self):
         """Test path mkdir method."""
         # Create a test directory
         test_dir = os.path.join(os.path.dirname(__file__), "test_dir")
         path = Path(test_dir)
-        
+
         try:
             # Remove if exists
             if os.path.exists(test_dir):
                 os.rmdir(test_dir)
-                
+
             # Test mkdir
             path.mkdir()
             assert os.path.exists(test_dir), "Directory should be created"
             assert os.path.isdir(test_dir), "Should be a directory"
-            
+
             # Test parents parameter
             nested_dir = os.path.join(test_dir, "nested", "dir")
             nested_path = Path(nested_dir)
             nested_path.mkdir(parents=True)
             assert os.path.exists(nested_dir), "Nested directory should be created"
-            
+
             # Test exist_ok parameter
             path.mkdir(exist_ok=True)  # Should not raise
         finally:
@@ -109,37 +105,37 @@ class TestPathCompat:
                 os.rmdir(nested_parent)
             if os.path.exists(test_dir):
                 os.rmdir(test_dir)
-    
+
     def test_path_unlink(self):
         """Test path unlink method."""
         # Create a test file
         test_file = os.path.join(os.path.dirname(__file__), "test_file.tmp")
         with open(test_file, "w") as f:
             f.write("test")
-        
+
         path = Path(test_file)
         path.unlink()
         assert not os.path.exists(test_file), "File should be removed"
-    
+
     def test_path_glob(self):
         """Test path glob method."""
         # Create test directory structure
         test_dir = os.path.join(os.path.dirname(__file__), "test_glob")
         os.makedirs(test_dir, exist_ok=True)
-        
+
         try:
             # Create test files
             for name in ["file1.txt", "file2.txt", "other.py"]:
                 with open(os.path.join(test_dir, name), "w") as f:
                     f.write("test")
-            
+
             path = Path(test_dir)
-            
+
             # Test *.txt pattern
             txt_files = list(path.glob("*.txt"))
             assert len(txt_files) == 2, "Should find 2 txt files"
             assert all(file.suffix == ".txt" for file in txt_files), "All files should have .txt suffix"
-            
+
             # Test *.py pattern
             py_files = list(path.glob("*.py"))
             assert len(py_files) == 1, "Should find 1 py file"
@@ -159,7 +155,7 @@ class TestPathCompat:
 
 class TestOtherCompat:
     """Test other compatibility features."""
-    
+
     def test_path_module_functionality(self):
         """Test that the correct Path implementation is used based on Python version."""
         # This just verifies that the Path class has the expected functionality

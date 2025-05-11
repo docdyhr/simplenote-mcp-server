@@ -9,14 +9,8 @@ including context propagation, trace IDs, and JSON formatting.
 import asyncio
 import json
 import os
-import re
 import sys
-import tempfile
-import uuid
-from io import StringIO
-from pathlib import Path
-from typing import Dict, Any, List, Optional
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -27,11 +21,10 @@ sys.path.insert(0, PROJECT_ROOT)
 
 # Now we can import from our server module
 from simplenote_mcp.server.logging import (
-    get_logger,
-    get_request_logger,
     JsonFormatter,
     StructuredLogAdapter,
-    logger as base_logger,
+    get_logger,
+    get_request_logger,
 )
 
 # Create a test logger
@@ -45,7 +38,7 @@ class TestStructuredLogging:
         """Test that loggers are created correctly."""
         # Create a basic logger
         logger = get_logger("test")
-        
+
         # Assert logger properties
         assert isinstance(logger, StructuredLogAdapter), "Logger should be a StructuredLogAdapter"
         assert logger.logger.name == "simplenote_mcp.test", "Logger name should be prefixed with simplenote_mcp"
@@ -56,13 +49,13 @@ class TestStructuredLogging:
         # Create a logger with context
         context = {"component": "test", "operation": "logging_test"}
         logger = get_logger("context_test", **context)
-        
+
         # Verify the context was added
         assert "component" in logger.extra, "Context item 'component' should be in logger.extra"
         assert logger.extra["component"] == "test", "Context value for 'component' is incorrect"
         assert "operation" in logger.extra, "Context item 'operation' should be in logger.extra"
         assert logger.extra["operation"] == "logging_test", "Context value for 'operation' is incorrect"
-        
+
         # Test adding more context with with_context
         enhanced_logger = logger.with_context(user_id="123", action="read")
         assert "user_id" in enhanced_logger.extra, "Context item 'user_id' should be added"
@@ -74,12 +67,12 @@ class TestStructuredLogging:
         """Test that trace IDs are generated and propagated correctly."""
         # Create a logger with trace ID
         trace_logger = get_logger("trace_test").trace()
-        
+
         # Verify trace ID was generated
         assert trace_logger.trace_id is not None, "Trace ID should be generated"
         assert isinstance(trace_logger.trace_id, str), "Trace ID should be a string"
         assert len(trace_logger.trace_id) > 0, "Trace ID should not be empty"
-        
+
         # Test explicit trace ID
         explicit_trace_id = "test-trace-123"
         trace_logger2 = get_logger("trace_test").trace(explicit_trace_id)
@@ -90,7 +83,7 @@ class TestStructuredLogging:
         # Create request logger
         request_id = "req-123"
         req_logger = get_request_logger(request_id, user="testuser", action="search")
-        
+
         # Verify request ID and context
         assert req_logger.trace_id is not None, "Request logger should have trace ID"
         assert "request_id" in req_logger.extra, "Request logger should have request_id in context"
@@ -102,7 +95,7 @@ class TestStructuredLogging:
     async def test_log_context_in_async(self):
         """Test that logging context is maintained in async functions."""
         results = []
-        
+
         async def task_with_logger(task_id):
             # Create a logger with task-specific context
             task_logger = get_logger("async_test").with_context(
@@ -114,13 +107,13 @@ class TestStructuredLogging:
                 # Get the kwargs from the call
                 call_kwargs = mock_info.call_args.kwargs
                 results.append(call_kwargs.get('extra', {}))
-            
+
             return task_id
-        
+
         # Run multiple tasks concurrently
         task_ids = ["task1", "task2", "task3"]
         await asyncio.gather(*(task_with_logger(tid) for tid in task_ids))
-        
+
         # Verify each task had its own context
         assert len(results) == 3, "Should have results from 3 tasks"
         for i, res in enumerate(results):
@@ -130,7 +123,7 @@ class TestStructuredLogging:
     def test_json_formatter(self):
         """Test the JSON formatter correctly formats log records."""
         formatter = JsonFormatter()
-        
+
         # Create a mock log record
         record = MagicMock()
         record.levelname = "INFO"
@@ -145,13 +138,13 @@ class TestStructuredLogging:
             "component": "test",
             "user_id": "789"
         }
-        
+
         # Format the record
         formatted = formatter.format(record)
-        
+
         # Parse the JSON
         parsed = json.loads(formatted)
-        
+
         # Verify the JSON structure
         assert "timestamp" in parsed, "JSON should include timestamp"
         assert parsed["level"] == "INFO", "JSON should include level"
@@ -163,14 +156,14 @@ class TestStructuredLogging:
     def test_exception_logging(self):
         """Test that exceptions are properly logged with context."""
         logger = get_logger("exception_test").with_context(operation="test_op")
-        
+
         # Capture the log output
         with patch.object(logger, 'error') as mock_error:
             try:
                 raise ValueError("Test error")
-            except ValueError as e:
+            except ValueError:
                 logger.error("An error occurred", exc_info=True)
-            
+
             # Verify exception was logged with context
             mock_error.assert_called_once()
             args, kwargs = mock_error.call_args
@@ -183,12 +176,12 @@ class TestStructuredLogging:
     def test_log_levels(self, log_level):
         """Test that different log levels work correctly."""
         logger = get_logger("level_test")
-        
+
         # Capture the log call
         with patch.object(logger.logger, log_level.lower()) as mock_log:
             # Call the appropriate log method
             getattr(logger, log_level.lower())("Test message")
-            
+
             # Verify the log was called
             mock_log.assert_called_once()
             args, _ = mock_log.call_args
@@ -197,11 +190,11 @@ class TestStructuredLogging:
     def test_caller_information(self):
         """Test that caller information is correctly captured."""
         logger = get_logger("caller_test")
-        
+
         # Capture the log to inspect context
         with patch.object(logger, 'info') as mock_info:
             logger.info("Test message")
-            
+
             # Verify caller information is included
             _, kwargs = mock_info.call_args
             assert "caller" in kwargs.get('extra', {}), "Caller information should be included"

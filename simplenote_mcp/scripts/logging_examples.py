@@ -3,18 +3,17 @@
 """Examples of how to use structured logging in the Simplenote MCP Server."""
 
 import asyncio
+
+# Add parent directory to path for running the script directly
+import os
 import random
 import sys
 import time
 import uuid
 
-# Add parent directory to path for running the script directly
-import os
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 
 from simplenote_mcp.server import get_logger, get_request_logger, logger
-from simplenote_mcp.server.config import LogLevel, get_config
 
 # Configure logging for the examples
 os.environ["LOG_LEVEL"] = "DEBUG"
@@ -34,7 +33,7 @@ def example_basic_logging():
     # Using logger with exception information
     try:
         1 / 0
-    except Exception as e:
+    except Exception:
         logger.error("An error occurred", exc_info=True)
 
     # Using logger with extra fields

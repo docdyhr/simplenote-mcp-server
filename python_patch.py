@@ -27,6 +27,7 @@ PATCH_LOG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "python_patch.log"
 )
 
+
 def setup_logging():
     """Setup logging for the patch"""
     logger = logging.getLogger("python_patch")
@@ -55,10 +56,12 @@ def setup_logging():
 
     return logger
 
+
 # Initialize logger
 logger = setup_logging()
 
 # ====== PATHLIB PATCH ======
+
 
 def patch_pathlib():
     """Patch pathlib module to expose Path class from pathlib._local in Python 3.13+"""
@@ -157,7 +160,9 @@ def patch_pathlib():
         logger.error(f"Error patching pathlib: {type(e).__name__}: {e}")
         return False
 
+
 # ====== HASHLIB PATCH ======
+
 
 class FallbackBlake2Hash:
     """Fallback implementation for blake2 hash functions"""
@@ -175,36 +180,39 @@ class FallbackBlake2Hash:
         """Update the hash object with data"""
         if isinstance(data, (str, bytes, bytearray, memoryview)):
             if isinstance(data, str):
-                data = data.encode('utf-8')
+                data = data.encode("utf-8")
             self._data.extend(data)
         else:
-            raise TypeError(f"object supporting the buffer API required, not {type(data).__name__}")
+            raise TypeError(
+                f"object supporting the buffer API required, not {type(data).__name__}"
+            )
 
     def digest(self) -> bytes:
         """Return the digest of the data passed to the update() method"""
         import hashlib
-        
+
         # Use SHA3-256 as a fallback
         h = hashlib.sha3_256(self._data)
-        
+
         # Make it the right length
         result = h.digest()
         if len(result) < self.digest_size:
             # Repeat the hash if needed to reach the requested digest size
             result = result * (self.digest_size // len(result) + 1)
-        
+
         # Truncate to the requested digest size
-        return result[:self.digest_size]
-    
+        return result[: self.digest_size]
+
     def hexdigest(self) -> str:
         """Return the digest as a string of hexadecimal digits"""
         return self.digest().hex()
-    
-    def copy(self) -> 'FallbackBlake2Hash':
+
+    def copy(self) -> "FallbackBlake2Hash":
         """Return a copy of the hash object"""
         copy_obj = FallbackBlake2Hash(digest_size=self.digest_size, **self._kwargs)
         copy_obj._data = self._data.copy()
         return copy_obj
+
 
 def blake2b_fallback(*args: Any, **kwargs: Any) -> FallbackBlake2Hash:
     """Fallback implementation for blake2b"""
@@ -212,11 +220,13 @@ def blake2b_fallback(*args: Any, **kwargs: Any) -> FallbackBlake2Hash:
     new_kwargs["digest_size"] = 64
     return FallbackBlake2Hash(*args, **new_kwargs)
 
+
 def blake2s_fallback(*args: Any, **kwargs: Any) -> FallbackBlake2Hash:
     """Fallback implementation for blake2s"""
     new_kwargs = kwargs.copy()
     new_kwargs["digest_size"] = 32
     return FallbackBlake2Hash(*args, **new_kwargs)
+
 
 def patch_hashlib() -> bool:
     """
@@ -229,40 +239,44 @@ def patch_hashlib() -> bool:
         sys.version_info.minor,
         sys.version_info.micro,
     )
-    
+
     # Import hashlib
     import hashlib
-    
+
     # Check if blake2b and blake2s are already available
     if hasattr(hashlib, "blake2b") and hasattr(hashlib, "blake2s"):
-        logger.debug("blake2b and blake2s are already available in hashlib, no patching needed")
+        logger.debug(
+            "blake2b and blake2s are already available in hashlib, no patching needed"
+        )
         return True
-    
+
     # Apply patches for missing functions
     patched = False
-    
+
     if not hasattr(hashlib, "blake2b"):
         logger.info(f"Patching hashlib.blake2b for Python {major}.{minor}.{micro}")
         hashlib.blake2b = blake2b_fallback
         patched = True
-    
+
     if not hasattr(hashlib, "blake2s"):
         logger.info(f"Patching hashlib.blake2s for Python {major}.{minor}.{micro}")
         hashlib.blake2s = blake2s_fallback
         patched = True
-    
+
     # Suppress the error messages from hashlib about missing algorithms
     with contextlib.suppress(Exception):
         logging.getLogger("root").setLevel(logging.CRITICAL)
-    
+
     return patched
 
+
 # ====== PATCH DEPENDENCIES ======
+
 
 def patch_dependencies():
     """Patch dependencies that rely on pathlib.Path"""
     import pathlib
-    
+
     if not hasattr(pathlib, "Path"):
         logger.debug("pathlib.Path not available, skipping dependency patching")
         return False
@@ -289,25 +303,28 @@ def patch_dependencies():
         logger.debug("anyio module not found, no patching needed")
     except Exception as e:
         logger.debug(f"Error patching anyio: {type(e).__name__}: {e}")
-    
+
     return False
 
+
 # ====== MAIN FUNCTIONALITY ======
+
 
 def apply_all_patches():
     """Apply all patches for Python 3.13+ compatibility"""
     results = {}
-    
+
     # Apply pathlib patch
     results["pathlib"] = patch_pathlib()
-    
+
     # Apply hashlib patch
     results["hashlib"] = patch_hashlib()
-    
+
     # Patch dependencies that might be affected
     results["dependencies"] = patch_dependencies()
-    
+
     return results
+
 
 # Apply patches when this module is imported
 patch_results = apply_all_patches()
@@ -327,20 +344,21 @@ if __name__ == "__main__":
 
     # Apply all patches
     results = apply_all_patches()
-    
+
     # Report results
     success = all(results.values())
-    
+
     print("\nPatch Results:")
     for patch_name, result in results.items():
         status = "✅ Success" if result else "❌ Failed"
         print(f"  {patch_name}: {status}")
-    
+
     print("\nTesting patched functionality:")
-    
+
     # Test pathlib.Path
     try:
         import pathlib
+
         if hasattr(pathlib, "Path"):
             test_path = pathlib.Path(".")
             print(f"  pathlib.Path: ✅ Available and working ({test_path.absolute()})")
@@ -348,29 +366,35 @@ if __name__ == "__main__":
             print("  pathlib.Path: ❌ Not available")
     except Exception as e:
         print(f"  pathlib.Path: ❌ Error - {type(e).__name__}: {e}")
-    
+
     # Test hashlib.blake2b
     try:
         import hashlib
+
         if hasattr(hashlib, "blake2b"):
             test_hash = hashlib.blake2b(b"test").hexdigest()[:16]
-            print(f"  hashlib.blake2b: ✅ Available and working (test hash: {test_hash}...)")
+            print(
+                f"  hashlib.blake2b: ✅ Available and working (test hash: {test_hash}...)"
+            )
         else:
             print("  hashlib.blake2b: ❌ Not available")
     except Exception as e:
         print(f"  hashlib.blake2b: ❌ Error - {type(e).__name__}: {e}")
-    
+
     # Test hashlib.blake2s
     try:
         import hashlib
+
         if hasattr(hashlib, "blake2s"):
             test_hash = hashlib.blake2s(b"test").hexdigest()[:16]
-            print(f"  hashlib.blake2s: ✅ Available and working (test hash: {test_hash}...)")
+            print(
+                f"  hashlib.blake2s: ✅ Available and working (test hash: {test_hash}...)"
+            )
         else:
             print("  hashlib.blake2s: ❌ Not available")
     except Exception as e:
         print(f"  hashlib.blake2s: ❌ Error - {type(e).__name__}: {e}")
-    
+
     # Overall result
     if success:
         print("\n✅ All patches applied successfully!")
