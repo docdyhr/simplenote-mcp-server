@@ -2,7 +2,7 @@ exclude: '.git|.venv|venv|__pycache__|.pytest_cache'
 
 # Custom CI-specific environment variables
 ci:
-  # Skip mypy and bandit hooks in CI due to Python 3.13 pathlib compatibility issues
+  # Skip mypy and bandit hooks in CI due to Python 3.13 compatibility issues
   skip: [mypy, bandit]
   # For pre-commit.ci autofix, we can safely run these hooks
   autofix_commit_msg: |
@@ -47,8 +47,8 @@ repos:
     hooks:
     -   id: mypy
         args: ["--config-file=mypy.ini"]
-        # Apply pathlib patch before running mypy to ensure it works with Python 3.13+
-        entry: bash -c 'python simplenote-mcp-server/patch_pathlib.py >/dev/null 2>&1 || true; mypy'
+        # Apply Python 3.13+ compatibility patches before running mypy
+        entry: bash -c 'python simplenote-mcp-server/python_patch.py >/dev/null 2>&1 || true; mypy'
         additional_dependencies: [
             "types-requests",
             "types-setuptools",
@@ -60,7 +60,7 @@ repos:
     rev: 1.8.3
     hooks:
     -   id: bandit
-        # Apply pathlib patch before running bandit to ensure it works with Python 3.13+
-        entry: bash -c 'python simplenote-mcp-server/patch_pathlib.py >/dev/null 2>&1 || true; bandit'
+        # Apply Python 3.13+ compatibility patches before running bandit
+        entry: bash -c 'python simplenote-mcp-server/python_patch.py >/dev/null 2>&1 || true; bandit'
         args: ["-c", "pyproject.toml"]
         additional_dependencies: ["bandit[toml]"]
