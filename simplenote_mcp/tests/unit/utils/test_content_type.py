@@ -2,17 +2,15 @@
 Unit tests for content type detection utilities.
 """
 
-import pytest
-
 from simplenote_mcp.server.utils.content_type import (
     ContentType,
+    _is_likely_code,
+    _is_likely_html,
+    _is_likely_json,
+    _is_likely_markdown,
+    _is_likely_yaml,
     detect_content_type,
     get_content_type_hint,
-    _is_likely_markdown,
-    _is_likely_code,
-    _is_likely_json,
-    _is_likely_yaml,
-    _is_likely_html,
 )
 
 
@@ -36,14 +34,14 @@ class TestContentTypeDetection:
         """Test Markdown detection."""
         content = """
         # Heading 1
-        
+
         This is a paragraph with **bold** and *italic* text.
-        
+
         - List item 1
         - List item 2
-        
+
         [Link text](https://example.com)
-        
+
         > Blockquote text
         """
         assert detect_content_type(content) == ContentType.MARKDOWN
@@ -55,7 +53,7 @@ class TestContentTypeDetection:
         def calculate_sum(a, b):
             \"\"\"Calculate sum of two numbers.\"\"\"
             return a + b
-            
+
         # Call the function
         result = calculate_sum(5, 10)
         print(f"The sum is {result}")
@@ -67,9 +65,9 @@ class TestContentTypeDetection:
         """Test code block within Markdown."""
         content = """
         # Code Example
-        
+
         Here's a Python code snippet:
-        
+
         ```python
         def hello_world():
             print("Hello, world!")
@@ -138,7 +136,7 @@ class TestContentTypeDetection:
         """Test getting content type hint dictionary."""
         markdown_content = "# Heading\n\n- List item"
         hint = get_content_type_hint(markdown_content)
-        
+
         assert isinstance(hint, dict)
         assert "content_type" in hint
         assert hint["content_type"] == ContentType.MARKDOWN

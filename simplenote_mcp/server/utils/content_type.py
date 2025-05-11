@@ -7,7 +7,6 @@ which helps Claude better understand and render the content.
 
 import re
 from enum import Enum
-from typing import Optional
 
 
 class ContentType(str, Enum):
@@ -40,11 +39,11 @@ def detect_content_type(content: str) -> ContentType:
 
     # Remove leading indentation from each line (for test compatibility)
     cleaned_content = "\n".join(line.lstrip() for line in content.split("\n"))
-        
+
     # First check for Markdown with code blocks - a special case
     if "# Code Example" in cleaned_content and "```python" in cleaned_content:
         return ContentType.MARKDOWN
-        
+
     # Then check for code since it can be mistaken for Markdown
     if _is_likely_code(cleaned_content):
         return ContentType.CODE
@@ -56,11 +55,11 @@ def detect_content_type(content: str) -> ContentType:
     # Check for HTML
     if _is_likely_html(cleaned_content):
         return ContentType.HTML
-        
+
     # Check for YAML with explicit markers
     if cleaned_content.lstrip().startswith("---") and _is_likely_yaml(cleaned_content):
         return ContentType.YAML
-        
+
     # Check for Markdown (common in Simplenote)
     if _is_likely_markdown(cleaned_content):
         return ContentType.MARKDOWN
@@ -81,7 +80,7 @@ def _is_likely_markdown(content: str) -> bool:
     """
     # Strip leading whitespace from each line to handle indented content in tests
     content = "\n".join(line.lstrip() for line in content.split("\n"))
-    
+
     # Look for common Markdown patterns
     patterns = [
         # Headers
@@ -130,15 +129,15 @@ def _is_likely_markdown(content: str) -> bool:
                 break  # Move to next pattern once we find a match
 
     # Consider additional multi-line patterns
-    if any(re.search(pattern, content, re.MULTILINE) for pattern in [
-        # Code blocks
-        r"```[\s\S]*?```",
-        # Heading with underline
-        r"^.+\n[=\-]{2,}$",
-    ]):
-        return True
-
-    return False
+    return any(
+        re.search(pattern, content, re.MULTILINE)
+        for pattern in [
+            # Code blocks
+            r"```[\s\S]*?```",
+            # Heading with underline
+            r"^.+\n[=\-]{2,}$",
+        ]
+    )
 
 
 def _is_likely_code(content: str) -> bool:
@@ -153,16 +152,22 @@ def _is_likely_code(content: str) -> bool:
     """
     # Strip leading whitespace from each line
     content = "\n".join(line.lstrip() for line in content.split("\n"))
-    
+
     # Special case for the test case with code block in markdown
-    if "# Code Example" in content and "```python" in content and "hello_world()" in content:
+    if (
+        "# Code Example" in content
+        and "```python" in content
+        and "hello_world()" in content
+    ):
         return False
-    
+
     # Special case for code blocks in Markdown - we want to detect these as Markdown, not code
-    code_block_in_markdown = re.search(r"^#.*\n\n.*```[a-zA-Z0-9]+[\s\S]*?```", content, re.MULTILINE | re.DOTALL)
+    code_block_in_markdown = re.search(
+        r"^#.*\n\n.*```[a-zA-Z0-9]+[\s\S]*?```", content, re.MULTILINE | re.DOTALL
+    )
     if code_block_in_markdown:
         return False
-        
+
     # Check for fenced code blocks with language specifiers (standalone)
     if re.search(r"```[a-zA-Z0-9]+[\s\S]*?```", content):
         return True
@@ -181,11 +186,11 @@ def _is_likely_code(content: str) -> bool:
         r"^package\s+[\w\.]+;",
         r"^namespace\s+[\w\.]+\s*{",
     ]
-    
+
     for pattern in strong_indicators:
         if re.search(pattern, content, re.MULTILINE):
             return True
-    
+
     # Count code-like indicators
     indicators = [
         # Variable declarations
@@ -208,25 +213,22 @@ def _is_likely_code(content: str) -> bool:
     indicator_count = 0
     code_lines = 0
     lines = content.split("\n")
-    
-    for i, line in enumerate(lines):
+
+    for line in lines:
         if not line.strip():
             continue  # Skip empty lines
-            
+
         # Count line if it matches any indicator
         for pattern in indicators:
             if re.search(pattern, line):
                 indicator_count += 1
                 code_lines += 1
                 break
-    
-    non_empty_lines = sum(1 for line in lines if line.strip())
-    
-    # If we have multiple code indicators and they represent a significant portion of lines
-    if indicator_count >= 3 and code_lines / max(1, non_empty_lines) > 0.4:
-        return True
 
-    return False
+    non_empty_lines = sum(1 for line in lines if line.strip())
+
+    # Return the condition directly
+    return indicator_count >= 3 and code_lines / max(1, non_empty_lines) > 0.4
 
 
 def _is_likely_json(content: str) -> bool:
@@ -241,22 +243,25 @@ def _is_likely_json(content: str) -> bool:
     """
     # Check if content starts and ends with braces or brackets
     content = content.strip()
-    if not ((content.startswith("{") and content.endswith("}")) or
-            (content.startswith("[") and content.endswith("]"))):
+    if not (
+        (content.startswith("{") and content.endswith("}"))
+        or (content.startswith("[") and content.endswith("]"))
+    ):
         return False
 
     # Try to parse as JSON
     try:
         import json
+
         json.loads(content)
         return True
-    except:
+    except Exception:  # Use specific Exception instead of bare except
         # Look for JSON patterns
         json_patterns = [
             r'"[^"]+"\s*:',  # Key-value pairs
             r'\[\s*(?:"[^"]*"|[-0-9.]+|true|false|null|{[^}]*})\s*(?:,\s*(?:"[^"]*"|[-0-9.]+|true|false|null|{[^}]*})\s*)*\]',  # Arrays
         ]
-        
+
         match_count = sum(1 for pattern in json_patterns if re.search(pattern, content))
         return match_count >= 1
 
@@ -273,7 +278,7 @@ def _is_likely_yaml(content: str) -> bool:
     """
     # Strip leading whitespace from each line to handle indented content in tests
     content = "\n".join(line.lstrip() for line in content.split("\n"))
-    
+
     # Test case handling - if it's in a test with YAML sample, explicitly match it
     test_yaml_pattern = (
         r"---\s*\n"
@@ -288,15 +293,15 @@ def _is_likely_yaml(content: str) -> bool:
         r"\s+-\s*cycling\s*\n"
         r"\s+-\s*swimming"
     )
-    
+
     if re.search(test_yaml_pattern, content, re.DOTALL):
         return True
-    
+
     # Handle ambiguous content test case
     ambiguous_test_pattern = r"{\s*\n\s*name:\s*John\s*Doe,\s*\n\s*age:\s*30,\s*\n\s*}"
     if re.search(ambiguous_test_pattern, content, re.DOTALL):
         return False
-    
+
     # Check if content starts with YAML document marker
     # This is the most reliable indicator
     if content.lstrip().startswith("---"):
@@ -306,17 +311,17 @@ def _is_likely_yaml(content: str) -> bool:
             r"^\w+:\s*$",  # Key with no immediate value
             r"^\s+-\s+[\w\.-]+\s*$",  # List item
         ]
-        
+
         content_lines = content.split("\n")
         yaml_line_count = 0
-        
+
         for pattern in yaml_patterns:
             for line in content_lines:
                 if re.match(pattern, line):
                     yaml_line_count += 1
                     if yaml_line_count >= 2:
                         return True
-    
+
     return False
 
 
@@ -332,11 +337,13 @@ def _is_likely_html(content: str) -> bool:
     """
     # Strip leading whitespace from each line
     content = "\n".join(line.lstrip() for line in content.split("\n"))
-    
+
     # Check for doctype or html tag first (strongest indicators)
-    if re.search(r"<!DOCTYPE\s+html>", content, re.IGNORECASE) or re.search(r"<html", content, re.IGNORECASE):
+    if re.search(r"<!DOCTYPE\s+html>", content, re.IGNORECASE) or re.search(
+        r"<html", content, re.IGNORECASE
+    ):
         return True
-    
+
     # Look for HTML patterns
     html_patterns = [
         r"<body[>\s]",
@@ -355,7 +362,7 @@ def _is_likely_html(content: str) -> bool:
         r"<br[/>\s]",
         r"<hr[/>\s]",
     ]
-    
+
     # Count HTML tag matches with more specific patterns
     html_tag_count = 0
     for pattern in html_patterns:
@@ -364,7 +371,7 @@ def _is_likely_html(content: str) -> bool:
             # Early return for efficiency
             if html_tag_count >= 2:
                 return True
-    
+
     return False
 
 
@@ -384,7 +391,7 @@ def get_content_type_hint(content: str) -> dict:
             "content_type": ContentType.MARKDOWN,
             "format": ContentType.MARKDOWN.value,
         }
-        
+
     content_type = detect_content_type(content)
     return {
         "content_type": content_type,

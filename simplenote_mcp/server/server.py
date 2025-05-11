@@ -715,12 +715,14 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         if name == "create_note":
             content = arguments.get("content", "")
             tags_input = arguments.get("tags", "")
-            
+
             # Handle tags which can be either a string or a list
             if isinstance(tags_input, list):
                 tags = [tag.strip() for tag in tags_input]
             elif isinstance(tags_input, str):
-                tags = [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                tags = (
+                    [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                )
             else:
                 tags = []
 
@@ -747,7 +749,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                                     "success": True,
                                     "message": "Note created successfully",
                                     "note_id": note.get("key"),
-                                    "key": note.get("key"),  # For backward compatibility
+                                    "key": note.get(
+                                        "key"
+                                    ),  # For backward compatibility
                                     "first_line": (
                                         content.splitlines()[0][:30] if content else ""
                                     ),
@@ -925,7 +929,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if isinstance(tags_input, list):
                     tag_filters = [tag.strip() for tag in tags_input if tag.strip()]
                 elif isinstance(tags_input, str):
-                    tag_filters = [tag.strip() for tag in tags_input.split(",") if tag.strip()]
+                    tag_filters = [
+                        tag.strip() for tag in tags_input.split(",") if tag.strip()
+                    ]
                 else:
                     tag_filters = None
                 logger.debug(f"Tag filters: {tag_filters}")
@@ -1176,7 +1182,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             if isinstance(tags_input, list):
                 tags = [tag.strip() for tag in tags_input]
             elif isinstance(tags_input, str):
-                tags = [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                tags = (
+                    [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                )
             else:
                 tags = []
             try:
@@ -1199,7 +1207,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
                 # Parse the tags to add
                 tags_to_add = [
-                    tag.strip() for tag in tags_str.split(",") if tag.strip()
+                    tag.strip() for tag in tags_input.split(",") if tag.strip()
                 ]
 
                 # Get current tags or initialize empty list
@@ -1282,7 +1290,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             if isinstance(tags_input, list):
                 tags = [tag.strip() for tag in tags_input]
             elif isinstance(tags_input, str):
-                tags = [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                tags = (
+                    [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                )
             else:
                 tags = []
             try:
@@ -1305,7 +1315,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
                 # Parse the tags to remove
                 tags_to_remove = [
-                    tag.strip() for tag in tags_str.split(",") if tag.strip()
+                    tag.strip() for tag in tags_input.split(",") if tag.strip()
                 ]
 
                 # Get current tags or initialize empty list
@@ -1421,7 +1431,11 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if isinstance(tags_input, list):
                     new_tags = [tag.strip() for tag in tags_input if tag.strip()]
                 elif isinstance(tags_input, str):
-                    new_tags = [tag.strip() for tag in tags_input.split(",") if tag.strip()] if tags_input else []
+                    new_tags = (
+                        [tag.strip() for tag in tags_input.split(",") if tag.strip()]
+                        if tags_input
+                        else []
+                    )
                 else:
                     new_tags = []
 
