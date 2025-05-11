@@ -2,9 +2,7 @@
 """
 Compatibility module for resolving differences between Python versions.
 
-This module handles compatibility issues between different Python versions,
-particularly focused on changes in Python 3.13+ such as the pathlib
-restructuring.
+This module handles compatibility issues between different Python versions.
 """
 
 import importlib
@@ -12,26 +10,8 @@ import os
 import sys
 from typing import Any, Optional, Type, TypeVar, Union
 
-# Try different import approaches for Path
-try:
-    from pathlib import Path, PurePath  # type: ignore
-except ImportError:
-    try:
-        from pathlib._local import Path, PurePath  # type: ignore
-    except ImportError:
-        # Last resort: try to use the pathlib_patch if available
-        try:
-            # Try to import the patch from project root
-            sys.path.insert(
-                0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../"))
-            )
-            import pathlib_patch  # noqa
-            from pathlib import Path, PurePath  # type: ignore # noqa
-        except ImportError as err:
-            raise ImportError(
-                "Could not import Path from pathlib or pathlib._local. "
-                "Python 3.13+ requires the pathlib_patch.py to be available."
-            ) from err
+# Import directly from pathlib (works with Python 3.12)
+from pathlib import Path, PurePath
 
 # Export Path for project-wide use
 __all__ = ["Path", "PurePath", "get_optional_module", "is_module_available"]

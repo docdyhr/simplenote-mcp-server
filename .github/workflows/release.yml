@@ -168,15 +168,14 @@ jobs:
       - name: Create GitHub Release
         id: create_release
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: "v${{ steps.bump_version.outputs.new_version }}"
           tag_name: "v${{ steps.bump_version.outputs.new_version }}"
           body: ${{ steps.changelog.outputs.changelog }}
           prerelease: ${{ github.event.inputs.pre_release != '' }}
           draft: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Set release creation output
         if: ${{ github.event.inputs.dry_run != 'true' }}

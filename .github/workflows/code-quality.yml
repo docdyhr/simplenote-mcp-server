@@ -32,13 +32,13 @@ jobs:
       id: ruff-format
       run: |
         ruff format --check . | tee ruff-format-output.txt
-        echo "::set-output name=format_issues::$(cat ruff-format-output.txt | grep -c . || echo 0)"
-    
+        echo "format_issues=$(cat ruff-format-output.txt | grep -c . || echo 0)" >> $GITHUB_OUTPUT
+
     - name: Run Ruff lint
       id: ruff-lint
       run: |
         ruff check . --output-format=github | tee ruff-lint-output.txt
-        echo "::set-output name=lint_issues::$(cat ruff-lint-output.txt | grep -c . || echo 0)"
+        echo "lint_issues=$(cat ruff-lint-output.txt | grep -c . || echo 0)" >> $GITHUB_OUTPUT
     
     - name: Generate linting report
       run: |
@@ -48,7 +48,7 @@ jobs:
         echo "Total issues: $((${{ steps.ruff-format.outputs.format_issues }} + ${{ steps.ruff-lint.outputs.lint_issues }}))" >> linting-report.md
     
     - name: Upload linting report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: linting-report
         path: linting-report.md
@@ -76,7 +76,7 @@ jobs:
         bandit -c pyproject.toml -r simplenote_mcp
     
     - name: Upload security report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: security-report
         path: bandit-results.json
@@ -103,7 +103,7 @@ jobs:
         mypy simplenote_mcp --config-file=mypy.ini --html-report mypy-report
     
     - name: Upload type checking report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: mypy-report
         path: mypy-report
@@ -116,7 +116,7 @@ jobs:
     - uses: actions/checkout@v4
     
     - name: Download linting report
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: linting-report
     
@@ -139,7 +139,7 @@ jobs:
     
     - name: Commit updated trend data
       if: github.ref == 'refs/heads/main' && github.event_name == 'schedule'
-      uses: stefanzweifel/git-auto-commit-action@v4
+      uses: stefanzweifel/git-auto-commit-action@v5
       with:
         commit_message: "Update code quality trend data [skip ci]"
         file_pattern: .github/code-quality-trend.csv

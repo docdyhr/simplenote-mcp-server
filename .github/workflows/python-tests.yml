@@ -35,10 +35,32 @@ jobs:
 
     - name: Test with pytest
       run: |
-        python -m pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term simplenote_mcp/tests/ -v
+        # For Python 3.13+, we need to run in a way that bypasses the import issue
+        python_version=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+
+        if [[ "$python_version" == "3.13" ]]; then
+          echo "Running in Python 3.13 compatibility mode"
+          # Create a special test environment that avoids import issues
+          python -c "import python_patch, hashlib_patch" || true
+          # Run pytest with direct subprocess call to avoid import issues
+          python -c "
+import os
+import sys
+import subprocess
+
+env = os.environ.copy()
+env['PYTHONPATH'] = '${{ github.workspace }}'
+cmd = [sys.executable, '-m', 'pytest', '--cov=simplenote_mcp', '--cov-report=xml', '--cov-report=term', 'simplenote_mcp/tests/', '-v']
+sys.exit(subprocess.call(cmd, env=env))
+"
+        else
+          # Regular pytest for earlier Python versions
+          python -m pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term simplenote_mcp/tests/ -v
+        fi
       env:
         SIMPLENOTE_EMAIL: ${{ secrets.SIMPLENOTE_EMAIL || 'test@example.com' }}
         SIMPLENOTE_PASSWORD: ${{ secrets.SIMPLENOTE_PASSWORD || 'test_password' }}
+        PYTHONPATH: ${{ github.workspace }}
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5
@@ -51,7 +73,7 @@ jobs:
         verbose: true
         
     - name: Upload test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
         path: |
@@ -76,7 +98,7 @@ jobs:
           pip install coverage
 
       - name: Download all coverage data
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Combine coverage data
         run: |
@@ -86,7 +108,7 @@ jobs:
           python -m coverage xml
           
       - name: Upload combined coverage report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: combined-coverage-report
           path: |
@@ -121,13 +143,35 @@ jobs:
           
       - name: Run compat module tests
         run: |
-          python -m pytest --cov=simplenote_mcp.server.compat --cov-report=xml --cov-report=term simplenote_mcp/tests/test_compat.py -v
+          # For Python 3.13+, we need to run in a way that bypasses the import issue
+          python_version=$(python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+
+          if [[ "$python_version" == "3.13" ]]; then
+            echo "Running compat tests in Python 3.13 compatibility mode"
+            # Create a special test environment that avoids import issues
+            python -c "import python_patch, hashlib_patch" || true
+            # Run pytest with direct subprocess call to avoid import issues
+            python -c "
+import os
+import sys
+import subprocess
+
+env = os.environ.copy()
+env['PYTHONPATH'] = '${{ github.workspace }}'
+cmd = [sys.executable, '-m', 'pytest', '--cov=simplenote_mcp.server.compat', '--cov-report=xml', '--cov-report=term', 'simplenote_mcp/tests/test_compat.py', '-v']
+sys.exit(subprocess.call(cmd, env=env))
+"
+          else
+            # Regular pytest for earlier Python versions
+            python -m pytest --cov=simplenote_mcp.server.compat --cov-report=xml --cov-report=term simplenote_mcp/tests/test_compat.py -v
+          fi
         env:
           SIMPLENOTE_EMAIL: ${{ secrets.SIMPLENOTE_EMAIL || 'test@example.com' }}
           SIMPLENOTE_PASSWORD: ${{ secrets.SIMPLENOTE_PASSWORD || 'test_password' }}
+          PYTHONPATH: ${{ github.workspace }}
           
       - name: Upload compat coverage report
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: compat-coverage-report
           path: |

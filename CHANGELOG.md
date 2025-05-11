@@ -13,11 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Detects Markdown, code snippets, JSON, YAML, and HTML formatting
   - Includes content type in resource metadata to improve AI rendering
   - Helps Claude better understand and process note content
-- Python 3.13.x compatibility layer with automatic pathlib patch
 - Compatibility module at `simplenote_mcp.server.compat` for cross-version support
 - Diagnostic tools for API connectivity troubleshooting
 - Improved server launcher with better error handling
 - Comprehensive testing for advanced search functionality
+
+### Changed
+
+- Removed Python 3.13.x compatibility patches in favor of maintaining Python 3.12.x support
+- Updated project configuration to target Python 3.12
 - Performance tests for search operations
 - Enhanced error handling in tests
 

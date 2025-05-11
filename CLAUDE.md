@@ -49,7 +49,7 @@ The Simplenote MCP server provides:
 2. **Authentication issues**: Check environment variables or Claude Desktop config
 3. **API format issues**: The MCP library uses JSON Schema format with `inputSchema` property
 4. **Multiple server instances**: If multiple server instances are running and causing issues, use `./simplenote_mcp/scripts/cleanup_servers.sh` to terminate them gracefully
-5. **Python 3.13 compatibility issues**: For Python 3.13+, the server automatically applies patching for `pathlib.Path` and `hashlib` blake2 functions through `python_patch.py` at startup
+5. **Python version compatibility**: The server is designed to run with Python 3.12.x and does not support Python 3.13+ (due to breaking changes in `pathlib.Path` and other modules)
 
 ## Important Code Sections
 

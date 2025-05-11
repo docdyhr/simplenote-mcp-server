@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 """
-run_server.py - Simplenote MCP Server Launcher with Python 3.13+ Compatibility
+run_server.py - Simplenote MCP Server Launcher for Python 3.12
 
-This script launches the Simplenote MCP server with the pathlib patch applied,
-ensuring compatibility with Python 3.13+ where pathlib.Path was moved to pathlib._local.
+This script launches the Simplenote MCP server designed for Python 3.12.
 
 Usage:
     python run_server.py [--debug] [--verbose]
@@ -13,17 +12,19 @@ Options:
     --verbose   Enable verbose output for the server
 
 Author: Claude
-Created: May 9, 2025
+Created: May 11, 2025
 """
 
 import argparse
 import atexit
+import contextlib
 import datetime
 import logging
 import os
 import signal
 import sys
 import time
+from pathlib import Path
 from subprocess import PIPE, Popen
 
 # Configure logging
@@ -38,29 +39,12 @@ logger = logging.getLogger("simplenote-mcp-launcher")
 script_dir = os.path.dirname(os.path.abspath(__file__))
 os.chdir(script_dir)
 
-# Import the pathlib patch first to ensure compatibility with Python 3.13+
-import contextlib
-
-sys.path.insert(0, script_dir)
-try:
-    import pathlib_patch  # noqa: F401
-except ImportError:
-    logger.error("Could not import pathlib_patch.py")
-    logger.error("Make sure pathlib_patch.py is in the same directory as this script")
-    sys.exit(1)
-
-# Make sure the patch worked
-try:
-    from pathlib import Path
-
-    logger.info("✅ pathlib.Path is available")
-except ImportError:
-    logger.error("❌ Failed to patch pathlib.Path - server may not work correctly")
+logger.info("✅ pathlib.Path is available")
 
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
-        description="Launch Simplenote MCP Server with Python 3.13+ compatibility"
+        description="Launch Simplenote MCP Server for Python 3.12"
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug mode")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
@@ -121,7 +105,7 @@ def check_server_status():
 
 
 def run_server():
-    """Run the Simplenote MCP server with the pathlib patch."""
+    """Run the Simplenote MCP server."""
     args = parse_arguments()
 
     # Set environment variables based on arguments

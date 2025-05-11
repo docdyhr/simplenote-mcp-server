@@ -17,6 +17,7 @@ Usage:
 
 import contextlib
 import datetime
+import importlib.util
 import logging
 import os
 import sys
@@ -310,6 +311,57 @@ def patch_dependencies():
 # ====== MAIN FUNCTIONALITY ======
 
 
+def patch_pytest():
+    """Patch pytest for Python 3.13+ compatibility"""
+    # Check Python version
+    major, minor, micro = (
+        sys.version_info.major,
+        sys.version_info.minor,
+        sys.version_info.micro,
+    )
+    if (major, minor) < (3, 13):
+        logger.debug(
+            f"Python version {major}.{minor}.{micro} doesn't need the pytest patch"
+        )
+        return False  # Skip if not Python 3.13+
+
+    # Check if pytest is installed
+    pytest_spec = importlib.util.find_spec("pytest")
+    if pytest_spec is None:
+        logger.debug("pytest is not installed, skipping patch")
+        return False
+
+    try:
+        # Import pathlib module
+        import pathlib
+
+        # Add _pytest.pathlib module if it doesn't exist
+        if "_pytest.pathlib" not in sys.modules and hasattr(pathlib, "Path"):
+            # Create a new module
+            from types import ModuleType
+
+            pytest_pathlib = ModuleType("_pytest.pathlib")
+
+            # Add core functionality
+            pytest_pathlib.absolutepath = lambda p: str(pathlib.Path(p).absolute())
+            pytest_pathlib.bestrelpath = lambda path, other: str(
+                pathlib.Path(other).relative_to(path)
+                if str(path) in str(other)
+                else other
+            )
+
+            # Register the module
+            sys.modules["_pytest.pathlib"] = pytest_pathlib
+            logger.info("Created _pytest.pathlib compatibility module")
+            return True
+
+    except Exception as e:
+        logger.error(f"Error patching pytest: {type(e).__name__}: {e}")
+        return False
+
+    return False
+
+
 def apply_all_patches():
     """Apply all patches for Python 3.13+ compatibility"""
     results = {}
@@ -322,6 +374,9 @@ def apply_all_patches():
 
     # Patch dependencies that might be affected
     results["dependencies"] = patch_dependencies()
+
+    # Patch pytest if needed
+    results["pytest"] = patch_pytest()
 
     return results
 

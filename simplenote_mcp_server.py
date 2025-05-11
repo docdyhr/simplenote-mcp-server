@@ -8,26 +8,15 @@ Model Context Protocol (MCP) capabilities for Simplenote integration with
 Claude Desktop and other MCP clients.
 """
 
-# Import the patches first
-# This must be the absolute first import to fix Python 3.13+ compatibility
 import os
 import sys
 
-# Apply the patches early to handle Python 3.13+ changes
+# Setup script directory in path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, script_dir)
-import contextlib
 
-# Use contextlib.suppress to silence the ImportError
-with contextlib.suppress(ImportError):
-    import pathlib_patch  # noqa: E402, F401
-
-# Also import the hashlib patch for blake2 hash functions in Python 3.13+
-with contextlib.suppress(ImportError):
-    import hashlib_patch  # noqa: E402, F401
-
-# Now we can safely import from our compatibility module
-from simplenote_mcp.server.compat import Path  # This will work with all Python versions
+# Import directly from pathlib since we're using Python 3.12
+from pathlib import Path
 
 # Enable debug logging if not already set
 if "LOG_LEVEL" not in os.environ:
