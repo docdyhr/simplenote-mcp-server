@@ -20,13 +20,12 @@ import datetime
 import logging
 import os
 import sys
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Union
 
 # Configure logging
 PATCH_LOG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "python_patch.log"
 )
-
 
 def setup_logging():
     """Setup logging for the patch"""
@@ -56,10 +55,8 @@ def setup_logging():
 
     return logger
 
-
 # Initialize logger
 logger = setup_logging()
-
 
 # ====== PATHLIB PATCH ======
 
@@ -160,7 +157,6 @@ def patch_pathlib():
         logger.error(f"Error patching pathlib: {type(e).__name__}: {e}")
         return False
 
-
 # ====== HASHLIB PATCH ======
 
 class FallbackBlake2Hash:
@@ -172,7 +168,6 @@ class FallbackBlake2Hash:
         self._data = bytearray()
         self._fallback_hash = None
         self._kwargs = kwargs
-        
         # Log the fallback being used
         logger.debug(f"Using fallback Blake2Hash with digest_size={digest_size}")
 
@@ -211,20 +206,17 @@ class FallbackBlake2Hash:
         copy_obj._data = self._data.copy()
         return copy_obj
 
-
 def blake2b_fallback(*args: Any, **kwargs: Any) -> FallbackBlake2Hash:
     """Fallback implementation for blake2b"""
     new_kwargs = kwargs.copy()
     new_kwargs["digest_size"] = 64
     return FallbackBlake2Hash(*args, **new_kwargs)
 
-
 def blake2s_fallback(*args: Any, **kwargs: Any) -> FallbackBlake2Hash:
     """Fallback implementation for blake2s"""
     new_kwargs = kwargs.copy()
     new_kwargs["digest_size"] = 32
     return FallbackBlake2Hash(*args, **new_kwargs)
-
 
 def patch_hashlib() -> bool:
     """
@@ -265,7 +257,6 @@ def patch_hashlib() -> bool:
     
     return patched
 
-
 # ====== PATCH DEPENDENCIES ======
 
 def patch_dependencies():
@@ -301,7 +292,6 @@ def patch_dependencies():
     
     return False
 
-
 # ====== MAIN FUNCTIONALITY ======
 
 def apply_all_patches():
@@ -319,10 +309,8 @@ def apply_all_patches():
     
     return results
 
-
 # Apply patches when this module is imported
 patch_results = apply_all_patches()
-
 
 # For direct execution
 if __name__ == "__main__":
