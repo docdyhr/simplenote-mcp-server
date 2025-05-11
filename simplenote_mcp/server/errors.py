@@ -163,6 +163,7 @@ class ServerError(Exception):
     This provides consistent error handling with categories, severity levels,
     and enhanced logging.
     """
+    details: Dict[str, Any]
 
     def __init__(
         self,
@@ -268,7 +269,7 @@ class ServerError(Exception):
         log_message = str(self)
 
         # Create a structured log context with all error information
-        log_context = {
+        log_context: Dict[str, Any] = {
             "error_code": self.error_code,
             "category": self.category.value,
             "subcategory": self.subcategory,

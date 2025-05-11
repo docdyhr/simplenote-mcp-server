@@ -8,7 +8,7 @@ import tempfile
 import threading
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, MutableMapping, Optional
 
 # Use our compatibility module for cross-version support
 from .compat import Path
@@ -120,21 +120,21 @@ def initialize_logging() -> None:
 
 
 class StructuredLogAdapter(logging.LoggerAdapter):
-    """Logger adapter that adds structured context to log records."""
+    """Logger adapter that adds structured context to all log messages."""
 
     def __init__(
         self, logger: logging.Logger, extra: Optional[Dict[str, Any]] = None
     ) -> None:
-        """Initialize the adapter with a logger and optional extra context.
+        """Initialize a new StructuredLogAdapter.
 
         Args:
             logger: The logger to wrap
             extra: Optional extra context to include in all log messages
         """
         super().__init__(logger, extra or {})
-        self.trace_id = None
+        self.trace_id: Optional[str] = None
 
-    def process(self, msg: str, kwargs: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
+    def process(self, msg: str, kwargs: MutableMapping[str, Any]) -> tuple[str, MutableMapping[str, Any]]:
         """Process the log message by adding structured context.
 
         Args:
@@ -184,7 +184,7 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             A new StructuredLogAdapter with the trace ID set
         """
         adapter = StructuredLogAdapter(self.logger, self.extra)
-        adapter.trace_id = trace_id or str(uuid.uuid4())
+        adapter.trace_id = trace_id if trace_id is not None else str(uuid.uuid4())
         return adapter
 
 
