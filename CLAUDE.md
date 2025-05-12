@@ -57,3 +57,9 @@ The Simplenote MCP server provides:
 - **Docstrings**: Use docstrings for all functions explaining purpose and parameters
 - **Line length**: Keep lines under 88 characters
 - **Logging**: Use the log_debug function for debug logging to stderr
+
+## Branch Management
+- **Feature branches**: Create a new branch for each feature using the naming convention `feature/feature-name`
+- **Implementation**: Implement and test the feature in its branch
+- **Merging**: After implementation is complete, remember to merge the feature branch into `main`
+- **Clean up**: Delete feature branches after a successful merge to keep the repository clean
