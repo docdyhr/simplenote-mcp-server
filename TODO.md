@@ -144,9 +144,9 @@ This file outlines the tasks needed to implement the Simplenote MCP Server accor
   - [ ] Clear distinction from regular trash operation
   - [ ] Confirmation mechanism to prevent accidents
 
-- [ ] **Note Organization Enhancements**
-  - [ ] Add support for note pinning and favorites
-  - [ ] Custom sorting options
+- [x] **Note Organization Enhancements** ✅
+  - [x] Add support for note pinning and favorites
+  - [x] Custom sorting options
 
 - [ ] **Cross-Platform Installation Scripts**
   - [ ] Create and validate installation scripts for Windows and Linux
