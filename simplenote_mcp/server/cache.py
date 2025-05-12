@@ -113,7 +113,7 @@ class NoteCache:
                         raise
                     raise NetworkError(
                         f"Failed to initialize cache after {max_retries} attempts: {str(e)}"
-                    )
+                    ) from e
 
         # Store notes in the cache
         self._notes = {note["key"]: note for note in notes_data}
@@ -213,7 +213,7 @@ class NoteCache:
                         raise
                     raise NetworkError(
                         f"Failed to sync after {max_retries} attempts: {str(e)}"
-                    )
+                    ) from e
 
         try:
             # Update local index mark for test compatibility

@@ -29,7 +29,7 @@ async def test_simplenote_connection() -> bool:
                 if note.get("content")
                 else "No content"
             )
-            print(f"{i+1}. {first_line}...")
+            print(f"{i + 1}. {first_line}...")
 
         return True
     except Exception as e:

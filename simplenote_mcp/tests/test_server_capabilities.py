@@ -101,11 +101,19 @@ async def test_read_resource():
 
     # Assertions
     assert content is not None, "Content should not be None"
-    assert isinstance(content, types.ReadResourceResult), "Content should be a ReadResourceResult"
-    assert hasattr(content, "contents") and content.contents is not None and len(content.contents) > 0, "Content should not be empty"
+    assert isinstance(content, types.ReadResourceResult), (
+        "Content should be a ReadResourceResult"
+    )
+    assert (
+        hasattr(content, "contents")
+        and content.contents is not None
+        and len(content.contents) > 0
+    ), "Content should not be empty"
 
     # Verify content items
-    text_content = next((item for item in content.contents if hasattr(item, "text")), None)
+    text_content = next(
+        (item for item in content.contents if hasattr(item, "text")), None
+    )
     assert text_content is not None, "Should have text content item"
     assert isinstance(text_content.text, str), "Text content should be a string"
     assert len(text_content.text) > 0, "Text content should not be empty"
@@ -321,16 +329,22 @@ async def test_error_handling():
     """Test error handling in server capabilities."""
     # Test invalid tool name - the server returns an error response but doesn't raise
     result = await handle_call_tool("nonexistent_tool", {})
-    
+
     # Check for error in the response
-    assert any("error" in str(getattr(item, "text", "")) for item in result), "Error should be in response"
-    assert any("Unknown tool" in str(getattr(item, "text", "")) for item in result), "Should indicate unknown tool"
+    assert any("error" in str(getattr(item, "text", "")) for item in result), (
+        "Error should be in response"
+    )
+    assert any("Unknown tool" in str(getattr(item, "text", "")) for item in result), (
+        "Should indicate unknown tool"
+    )
 
     # Test missing required arguments
     result = await handle_call_tool("get_note", {})
-    
+
     # Check for error message about required fields
-    assert any("required" in str(getattr(item, "text", "")).lower() for item in result), "Should indicate missing required argument"
+    assert any(
+        "required" in str(getattr(item, "text", "")).lower() for item in result
+    ), "Should indicate missing required argument"
 
     # Test invalid resource URI
     try:

@@ -56,12 +56,12 @@ class Config:
 
         # Logging configuration - check multiple possible environment variable names
         log_level_env = (
-            os.environ.get("LOG_LEVEL") or
-            os.environ.get("SIMPLENOTE_LOG_LEVEL") or
-            os.environ.get("MCP_LOG_LEVEL") or
-            os.environ.get("LOGLEVEL") or
-            os.environ.get("DEBUG") or
-            "INFO"
+            os.environ.get("LOG_LEVEL")
+            or os.environ.get("SIMPLENOTE_LOG_LEVEL")
+            or os.environ.get("MCP_LOG_LEVEL")
+            or os.environ.get("LOGLEVEL")
+            or os.environ.get("DEBUG")
+            or "INFO"
         )
         # We'll add debug info to our file - we'll implement this after importing logging
         # to avoid circular imports

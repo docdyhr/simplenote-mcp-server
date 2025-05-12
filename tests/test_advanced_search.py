@@ -108,16 +108,27 @@ class TestQueryParser:
         tokens = parser.tokens
 
         assert len(tokens) >= 3
-        assert any(token.type == TokenType.TAG and token.value == "important" for token in tokens)
-        assert any(token.type == TokenType.TAG and token.value == "project" for token in tokens)
+        assert any(
+            token.type == TokenType.TAG and token.value == "important"
+            for token in tokens
+        )
+        assert any(
+            token.type == TokenType.TAG and token.value == "project" for token in tokens
+        )
 
     def test_date_filters(self):
         """Test parsing date filters."""
         parser = QueryParser("meeting from:2023-01-01 to:2023-12-31")
         tokens = parser.tokens
 
-        assert any(token.type == TokenType.DATE_FROM and token.value == "2023-01-01" for token in tokens)
-        assert any(token.type == TokenType.DATE_TO and token.value == "2023-12-31" for token in tokens)
+        assert any(
+            token.type == TokenType.DATE_FROM and token.value == "2023-01-01"
+            for token in tokens
+        )
+        assert any(
+            token.type == TokenType.DATE_TO and token.value == "2023-12-31"
+            for token in tokens
+        )
 
 
 class TestSearchEngine:
@@ -218,7 +229,9 @@ class TestSearchEngine:
 
         # Should not match when words are separated
         results = engine.search(test_notes, '"project report"')
-        assert len(results) == 0, "Should not match 'project report' when words are separated"
+        assert len(results) == 0, (
+            "Should not match 'project report' when words are separated"
+        )
 
     def test_tag_filters(self):
         """Test tag filtering."""
@@ -288,11 +301,7 @@ class TestSearchEngine:
         one_week_ago = now - timedelta(days=7)
 
         # Should only return note1 (from yesterday)
-        results = engine.search(
-            test_notes,
-            "",
-            date_range=(one_week_ago, now)
-        )
+        results = engine.search(test_notes, "", date_range=(one_week_ago, now))
         assert len(results) == 1, "Should only find 1 note from the last week"
         assert results[0]["key"] == "note1"
 
@@ -300,11 +309,7 @@ class TestSearchEngine:
         two_weeks_ago = now - timedelta(days=14)
 
         # Should return notes 1 and 2
-        results = engine.search(
-            test_notes,
-            "",
-            date_range=(two_weeks_ago, now)
-        )
+        results = engine.search(test_notes, "", date_range=(two_weeks_ago, now))
         assert len(results) == 2, "Should find 2 notes from the last two weeks"
         assert any(note["key"] == "note1" for note in results)
         assert any(note["key"] == "note2" for note in results)

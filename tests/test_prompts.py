@@ -78,9 +78,7 @@ class TestPromptCapabilities:
             mock_prompt_message.return_value = MagicMock()
             mock_result.return_value = MagicMock()
 
-            await handle_get_prompt(
-                "search_notes_prompt", {"query": "test query"}
-            )
+            await handle_get_prompt("search_notes_prompt", {"query": "test query"})
 
             # Verify result was created
             mock_result.assert_called_once()

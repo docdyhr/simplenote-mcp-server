@@ -192,7 +192,9 @@ class TestHandleListResources:
         ):
             # Configure mocks
             mock_note_cache_obj = MagicMock()
-            mock_note_cache_obj.get_all_notes.return_value = [{"key": "note1", "content": "Test note 1"}]
+            mock_note_cache_obj.get_all_notes.return_value = [
+                {"key": "note1", "content": "Test note 1"}
+            ]
             mock_note_cache_class.return_value = mock_note_cache_obj
 
             # Configure mock config
@@ -204,7 +206,9 @@ class TestHandleListResources:
             mock_coro = MagicMock()
 
             # Patch the initialize_cache function
-            with patch("simplenote_mcp.server.server.initialize_cache", return_value=mock_coro):
+            with patch(
+                "simplenote_mcp.server.server.initialize_cache", return_value=mock_coro
+            ):
                 # Call handler
                 resources = await handle_list_resources()
 
@@ -520,7 +524,9 @@ class TestHandleCallTool:
             assert "snippet" in response["results"][0]
 
             # Verify cache was used
-            mock_cache.search_notes.assert_called_once_with(query="test", limit=10, tag_filters=None, date_range=None)
+            mock_cache.search_notes.assert_called_once_with(
+                query="test", limit=10, tag_filters=None, date_range=None
+            )
 
     async def test_get_note(self):
         """Test getting a note by ID."""

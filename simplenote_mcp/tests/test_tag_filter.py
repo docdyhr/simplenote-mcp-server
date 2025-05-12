@@ -36,7 +36,7 @@ async def main() -> None:
     print(f"Found {len(resources)} resources")
     print("Sample resource names:")
     for i, resource in enumerate(resources[:5]):
-        print(f"  {i+1}. {resource.name}")
+        print(f"  {i + 1}. {resource.name}")
 
     # Now test with a tag filter
     test_tag = "test"  # Change this to any tag you know exists in your notes
@@ -47,10 +47,10 @@ async def main() -> None:
     if filtered_resources:
         print("Sample tagged resource names:")
         for i, resource in enumerate(filtered_resources[:5]):
-            print(f"  {i+1}. {resource.name}")
-            assert (
-                test_tag in resource.meta["tags"]
-            ), f"Tag '{test_tag}' not found in resource tags!"
+            print(f"  {i + 1}. {resource.name}")
+            assert test_tag in resource.meta["tags"], (
+                f"Tag '{test_tag}' not found in resource tags!"
+            )
 
         print("\nVerifying all returned resources have the requested tag...")
         all_have_tag = all(test_tag in r.meta["tags"] for r in filtered_resources)
@@ -66,9 +66,9 @@ async def main() -> None:
     print(f"\n3. Testing list_resources with limit {limit}:")
     limited_resources = await handle_list_resources(limit=limit)
     print(f"Requested {limit} resources, got {len(limited_resources)} resources")
-    assert (
-        len(limited_resources) <= limit
-    ), f"Got {len(limited_resources)} resources, expected at most {limit}"
+    assert len(limited_resources) <= limit, (
+        f"Got {len(limited_resources)} resources, expected at most {limit}"
+    )
 
     if len(limited_resources) == limit:
         print("✅ Success! Got exactly the requested number of resources.")
