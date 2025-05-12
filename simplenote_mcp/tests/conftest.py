@@ -27,16 +27,17 @@ from simplenote_mcp.server.compat import Path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from simplenote_mcp.server import get_logger, get_simplenote_client
+from simplenote_mcp.server import get_simplenote_client
 from simplenote_mcp.server.cache import NoteCache
 from simplenote_mcp.server.config import get_config
 from simplenote_mcp.server.errors import (
     AuthenticationError,
 )
+from simplenote_mcp.server.logging import logger as mcp_logger
 from simplenote_mcp.server.server import initialize_cache
 
 # Logger for tests
-logger = get_logger("tests")
+logger = mcp_logger.getChild("tests")
 
 
 @pytest.fixture(scope="session")

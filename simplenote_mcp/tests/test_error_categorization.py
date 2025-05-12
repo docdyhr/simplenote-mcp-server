@@ -36,7 +36,6 @@ from simplenote_mcp.server.errors import (
     InternalError,
     NetworkError,
     ResourceNotFoundError,
-    TimeoutError,
     ValidationError,
     handle_exception,
 )

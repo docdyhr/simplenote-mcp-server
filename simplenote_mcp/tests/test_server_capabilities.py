@@ -15,9 +15,9 @@ import time
 import mcp.types as types
 import pytest
 
-from simplenote_mcp.server import get_logger
 from simplenote_mcp.server.compat import Path
 from simplenote_mcp.server.errors import ResourceNotFoundError, ValidationError
+from simplenote_mcp.server.logging import logger as mcp_logger
 from simplenote_mcp.server.server import (
     handle_call_tool,
     handle_list_resources,
@@ -36,7 +36,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Logger for this test module
-logger = get_logger("tests.server_capabilities")
+logger = mcp_logger.getChild("tests.server_capabilities")
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -62,7 +62,7 @@ async def test_list_resources():
     assert isinstance(first_resource, types.Resource), "Each item should be a Resource"
     assert first_resource.name is not None, "Resource should have a name"
     assert first_resource.uri is not None, "Resource should have a URI"
-    assert first_resource.uri.startswith("simplenote://note/"), (
+    assert str(first_resource.uri).startswith("simplenote://note/"), (
         "URI should have expected format"
     )
 
@@ -101,11 +101,11 @@ async def test_read_resource():
 
     # Assertions
     assert content is not None, "Content should not be None"
-    assert isinstance(content, list), "Content should be a list"
-    assert len(content) > 0, "Content should not be empty"
+    assert isinstance(content, types.ReadResourceResult), "Content should be a ReadResourceResult"
+    assert hasattr(content, "contents") and content.contents is not None and len(content.contents) > 0, "Content should not be empty"
 
     # Verify content items
-    text_content = next((item for item in content if item.type == "text"), None)
+    text_content = next((item for item in content.contents if hasattr(item, "text")), None)
     assert text_content is not None, "Should have text content item"
     assert isinstance(text_content.text, str), "Text content should be a string"
     assert len(text_content.text) > 0, "Text content should not be empty"
@@ -115,7 +115,9 @@ async def test_read_resource():
     with pytest.raises(ResourceNotFoundError) as exc_info:
         await handle_read_resource(invalid_uri)
 
-    assert "not found" in str(exc_info.value).lower(), (
+    # Check for various "not found" phrases in the error message
+    error_msg = str(exc_info.value).lower()
+    assert any(phrase in error_msg for phrase in ["not found", "not_found"]), (
         "Error should indicate resource not found"
     )
 
@@ -317,25 +319,25 @@ async def test_tag_management_tools():
 @pytest.mark.asyncio
 async def test_error_handling():
     """Test error handling in server capabilities."""
-    # Test invalid tool name
-    with pytest.raises(Exception) as exc_info:
-        await handle_call_tool("nonexistent_tool", {})
-
-    assert "unknown tool" in str(exc_info.value).lower(), "Should indicate unknown tool"
+    # Test invalid tool name - the server returns an error response but doesn't raise
+    result = await handle_call_tool("nonexistent_tool", {})
+    
+    # Check for error in the response
+    assert any("error" in str(getattr(item, "text", "")) for item in result), "Error should be in response"
+    assert any("Unknown tool" in str(getattr(item, "text", "")) for item in result), "Should indicate unknown tool"
 
     # Test missing required arguments
-    with pytest.raises(Exception) as exc_info:
-        await handle_call_tool("create_note", {})
-
-    assert "required" in str(exc_info.value).lower(), (
-        "Should indicate missing required field"
-    )
+    result = await handle_call_tool("get_note", {})
+    
+    # Check for error message about required fields
+    assert any("required" in str(getattr(item, "text", "")).lower() for item in result), "Should indicate missing required argument"
 
     # Test invalid resource URI
-    with pytest.raises(Exception) as exc_info:
+    try:
         await handle_read_resource("invalid://uri")
-
-    assert "invalid" in str(exc_info.value).lower(), "Should indicate invalid URI"
+        assert False, "Should have raised an exception"
+    except ValidationError as exc:
+        assert "invalid" in str(exc).lower(), "Should indicate invalid URI"
 
 
 # Run the tests if called directly

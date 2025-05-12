@@ -19,6 +19,7 @@ _cache_instance: Optional["NoteCache"] = None
 CACHE_NOT_INITIALIZED = "Note cache not initialized. Call initialize_cache() first."
 CACHE_NOT_LOADED = "Cache not initialized"
 
+
 def get_cache() -> "NoteCache":
     """Get the global note cache instance."""
     if _cache_instance is None:
@@ -77,14 +78,19 @@ class NoteCache:
                 if status != 0:
                     # Log the error but don't raise exception yet if we have retries left
                     if retry_count < max_retries - 1:
-                        logger.warning(f"Failed to get notes from Simplenote (status {status}), retrying {retry_count + 1}/{max_retries}...")
+                        logger.warning(
+                            f"Failed to get notes from Simplenote (status {status}), retrying {retry_count + 1}/{max_retries}..."
+                        )
                         retry_count += 1
                         await asyncio.sleep(retry_delay)
                         retry_delay *= 2  # Exponential backoff
                         continue
                     else:
                         from .errors import NetworkError
-                        raise NetworkError(f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts")
+
+                        raise NetworkError(
+                            f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts"
+                        )
 
                 # If we got here, we succeeded
                 break
@@ -92,7 +98,9 @@ class NoteCache:
             except Exception as e:
                 # Handle other exceptions similarly
                 if retry_count < max_retries - 1:
-                    logger.warning(f"Error connecting to Simplenote: {str(e)}, retrying {retry_count + 1}/{max_retries}...")
+                    logger.warning(
+                        f"Error connecting to Simplenote: {str(e)}, retrying {retry_count + 1}/{max_retries}..."
+                    )
                     retry_count += 1
                     await asyncio.sleep(retry_delay)
                     retry_delay *= 2
@@ -100,9 +108,12 @@ class NoteCache:
                 else:
                     # Re-raise the exception after all retries
                     from .errors import NetworkError
+
                     if isinstance(e, NetworkError):
                         raise
-                    raise NetworkError(f"Failed to initialize cache after {max_retries} attempts: {str(e)}")
+                    raise NetworkError(
+                        f"Failed to initialize cache after {max_retries} attempts: {str(e)}"
+                    )
 
         # Store notes in the cache
         self._notes = {note["key"]: note for note in notes_data}
@@ -167,14 +178,19 @@ class NoteCache:
                 if status != 0:
                     # Handle non-zero status
                     if retry_count < max_retries - 1:
-                        logger.warning(f"Sync failed with status {status}, retrying {retry_count + 1}/{max_retries}...")
+                        logger.warning(
+                            f"Sync failed with status {status}, retrying {retry_count + 1}/{max_retries}..."
+                        )
                         retry_count += 1
                         await asyncio.sleep(retry_delay)
                         retry_delay *= 2
                         continue
                     else:
                         from .errors import NetworkError
-                        raise NetworkError(f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts")
+
+                        raise NetworkError(
+                            f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts"
+                        )
 
                 # Successful API call
                 break
@@ -182,7 +198,9 @@ class NoteCache:
             except Exception as e:
                 # Handle other exceptions
                 if retry_count < max_retries - 1:
-                    logger.warning(f"Error during sync: {str(e)}, retrying {retry_count + 1}/{max_retries}...")
+                    logger.warning(
+                        f"Error during sync: {str(e)}, retrying {retry_count + 1}/{max_retries}..."
+                    )
                     retry_count += 1
                     await asyncio.sleep(retry_delay)
                     retry_delay *= 2
@@ -190,9 +208,12 @@ class NoteCache:
                 else:
                     # Re-raise after all retries
                     from .errors import NetworkError
+
                     if isinstance(e, NetworkError):
                         raise
-                    raise NetworkError(f"Failed to sync after {max_retries} attempts: {str(e)}")
+                    raise NetworkError(
+                        f"Failed to sync after {max_retries} attempts: {str(e)}"
+                    )
 
         try:
             # Update local index mark for test compatibility
@@ -266,7 +287,9 @@ class NoteCache:
         except Exception as e:
             # Handle processing errors
             elapsed = time.time() - start_time
-            logger.error(f"Error processing sync results after {elapsed:.2f}s: {str(e)}")
+            logger.error(
+                f"Error processing sync results after {elapsed:.2f}s: {str(e)}"
+            )
 
             # Return 0 changes for non-critical errors during processing
             # This allows the sync loop to continue rather than crashing
@@ -355,7 +378,7 @@ class NoteCache:
         query: str,
         limit: Optional[int] = None,
         tag_filters: Optional[List[str]] = None,
-        date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]] = None
+        date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]] = None,
     ) -> List[Dict[str, Any]]:
         """Search for notes in the cache using advanced search capabilities.
 
@@ -371,24 +394,24 @@ class NoteCache:
         Examples:
             Simple search:
             >>> search_notes("project meeting")
-            
+
             Boolean operators:
             >>> search_notes("project AND meeting AND NOT cancelled")
-            
+
             Quoted phrases:
             >>> search_notes('"action items" AND project')
-            
+
             Tag filters:
             >>> search_notes("meeting", tag_filters=["work", "important"])
             >>> search_notes("meeting tag:work tag:important")  # Equivalent
-            
+
             Date range:
             >>> from datetime import datetime
             >>> start_date = datetime(2023, 1, 1)
             >>> end_date = datetime(2023, 12, 31)
             >>> search_notes("meeting", date_range=(start_date, end_date))
             >>> search_notes("meeting from:2023-01-01 to:2023-12-31")  # Equivalent
-            
+
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
@@ -408,7 +431,7 @@ class NoteCache:
             query=query,
             tag_filters=tag_filters,
             date_range=date_range,
-            limit=limit
+            limit=limit,
         )
 
         # Apply limit if specified
@@ -513,7 +536,9 @@ class NoteCache:
 
         """
         # For debugging search issues, log current cache state when checked
-        logger.debug(f"Cache initialization status: initialized={self._initialized}, note count={len(self._notes)}")
+        logger.debug(
+            f"Cache initialization status: initialized={self._initialized}, note count={len(self._notes)}"
+        )
         return self._initialized
 
     @property
@@ -592,7 +617,7 @@ class BackgroundSync:
         self._cache = cache
         self._config = config or get_config()
         self._running = False
-        self._task = None
+        self._task: Optional[asyncio.Task] = None
 
     async def start(self) -> None:
         """Start the background sync task."""
@@ -602,6 +627,7 @@ class BackgroundSync:
 
         self._running = True
         self._task = asyncio.create_task(self._sync_loop(), name="BackgroundSyncTask")
+        # Store the task but don't assign to None field
         logger.info(
             f"Started background sync task (interval: {self._config.sync_interval_seconds}s)"
         )
@@ -668,7 +694,9 @@ class BackgroundSync:
                     # Add timeout to the sync operation to prevent hanging
                     try:
                         sync_task = asyncio.create_task(self._cache.sync())
-                        changes = await asyncio.wait_for(sync_task, timeout=30.0)  # 30 second timeout
+                        changes = await asyncio.wait_for(
+                            sync_task, timeout=30.0
+                        )  # 30 second timeout
 
                         # Success - reset backoff parameters
                         consecutive_failures = 0
@@ -702,10 +730,13 @@ class BackgroundSync:
 
                     # Calculate backoff delay using exponential backoff with jitter
                     import random
+
                     jitter = random.uniform(0.8, 1.2)  # 20% jitter
                     current_retry_delay = min(
                         max_retry_delay,
-                        base_retry_delay * (2 ** min(consecutive_failures - 1, 5)) * jitter
+                        base_retry_delay
+                        * (2 ** min(consecutive_failures - 1, 5))
+                        * jitter,
                     )
 
                     logger.warning(
