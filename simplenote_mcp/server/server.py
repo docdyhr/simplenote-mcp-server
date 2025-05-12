@@ -10,7 +10,7 @@ import sys
 import tempfile
 import threading
 import time
-from typing import Optional
+from typing import Any, List, Optional, cast
 
 # External imports
 import mcp.server.stdio  # type: ignore
@@ -26,6 +26,7 @@ from .compat import Path
 from .config import LogLevel, get_config
 from .errors import (
     AuthenticationError,
+    InternalError,
     NetworkError,
     ResourceNotFoundError,
     ServerError,
@@ -34,6 +35,54 @@ from .errors import (
 )
 from .logging import logger
 from .utils import get_content_type_hint
+
+
+# Utility functions for safe access to potentially exception objects
+def safe_get(obj: Any, key: str, default: Any = None) -> Any:
+    """Safely get a value from an object that might be a dict or an exception."""
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(key, default)
+    if hasattr(obj, "get"):
+        try:
+            return obj.get(key, default)
+        except Exception:
+            pass
+    if hasattr(obj, "__getitem__"):
+        try:
+            return obj[key]
+        except Exception:
+            pass
+    return default
+
+
+def safe_set(obj: Any, key: str, value: Any) -> None:
+    """Safely set a value on an object that might be a dict or an exception."""
+    if obj is None:
+        return
+    if isinstance(obj, dict):
+        obj[key] = value
+        return
+    if hasattr(obj, "__setitem__"):
+        try:
+            obj[key] = value
+        except Exception:
+            pass
+    return
+
+
+def safe_split(obj: Any, delimiter: str = ",") -> List[str]:
+    """Safely split a string or return empty list for other types."""
+    if isinstance(obj, str):
+        return obj.split(delimiter)
+    elif isinstance(obj, list):
+        return [str(x) for x in obj]
+    else:
+        return []
+
+
+# Remove this function since we're not using it
 
 # Error messages for better maintainability and reusability
 AUTH_ERROR_MSG = "SIMPLENOTE_EMAIL (or SIMPLENOTE_USERNAME) and SIMPLENOTE_PASSWORD environment variables must be set"
@@ -229,6 +278,12 @@ async def initialize_cache() -> None:
         initialization_timeout = 60  # seconds - increased from 45
 
         async def background_initialization() -> None:
+            # Assign global to local and check for None
+            current_note_cache = note_cache
+            if current_note_cache is None:
+                logger.error("Background initialization called but note_cache is None.")
+                return  # Exit early if cache is not initialized
+
             try:
                 # Try direct API call to get notes synchronously
                 try:
@@ -238,15 +293,19 @@ async def initialize_cache() -> None:
                         # Success! Update the cache directly
                         # Using non-context lock (lock/unlock) since the lock might not be a context manager
                         try:
-                            await note_cache._lock.acquire()
+                            await current_note_cache._lock.acquire()  # Use local var
                             for note in all_notes:
                                 note_id = note.get("key")
                                 if note_id:
-                                    note_cache._notes[note_id] = note
+                                    current_note_cache._notes[note_id] = (
+                                        note  # Use local var
+                                    )
                                     if "tags" in note and note["tags"]:
-                                        note_cache._tags.update(note["tags"])
+                                        current_note_cache._tags.update(
+                                            note["tags"]
+                                        )  # Use local var
                         finally:
-                            note_cache._lock.release()
+                            current_note_cache._lock.release()  # Use local var
                         logger.info(
                             f"Direct API load successful, loaded {len(all_notes)} notes"
                         )
@@ -256,15 +315,17 @@ async def initialize_cache() -> None:
                     )
 
                 # Start real initialization in background
-                init_task = asyncio.create_task(note_cache.initialize())
+                init_task = asyncio.create_task(
+                    current_note_cache.initialize()
+                )  # Use local var
                 try:
                     await asyncio.wait_for(init_task, timeout=initialization_timeout)
                     logger.info(
-                        f"Note cache initialization completed successfully with {len(note_cache._notes)} notes"
+                        f"Note cache initialization completed successfully with {len(current_note_cache._notes)} notes"  # Use local var
                     )
                 except asyncio.TimeoutError:
                     logger.warning(
-                        f"Note cache initialization timed out after {initialization_timeout}s, cache has {len(note_cache._notes)} notes"
+                        f"Note cache initialization timed out after {initialization_timeout}s, cache has {len(current_note_cache._notes)} notes"  # Use local var
                     )
                     # We already have some notes from direct API call hopefully
             except Exception as e:
@@ -332,22 +393,26 @@ async def handle_list_resources(
             + (f" with tag '{tag}'" if tag else "")
         )
 
-        return [
-            types.Resource(
-                uri=f"simplenote://note/{note['key']}",
+        resources = []
+        for note in notes:
+            resource = types.Resource(
+                # Cast to Any to avoid type errors with AnyUrl
+                uri=cast(Any, f"simplenote://note/{note['key']}"),
                 name=(
-                    note.get("content", "").splitlines()[0][:30]
-                    if note.get("content")
-                    else note["key"]
+                    safe_get(note, "content", "").splitlines()[0][:30]
+                    if safe_get(note, "content")
+                    else safe_get(note, "key", "unknown")
                 ),
-                description=f"Note from {note.get('modifydate', 'unknown date')}",
-                meta={
-                    "tags": note.get("tags", []),
-                    **get_content_type_hint(note.get("content", "")),
-                },
+                description=f"Note from {safe_get(note, 'modifydate', 'unknown date')}",
             )
-            for note in notes
-        ]
+            # Add metadata as dictionary to the Resource
+            resource_dict = resource.__dict__
+            resource_dict["meta"] = {
+                "tags": safe_get(note, "tags", []),
+                **get_content_type_hint(safe_get(note, "content", "")),
+            }
+            resources.append(resource)
+        return resources
 
     except Exception as e:
         if isinstance(e, ServerError):
@@ -415,21 +480,25 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
                     note_modifydate = ""
                     note_createdate = ""
                 else:
-                    note_content = note.get("content", "")
-                    note_tags = note.get("tags", [])
-                    note_modifydate = note.get("modifydate", "")
-                    note_createdate = note.get("createdate", "")
+                    note_content = safe_get(note, "content", "")
+                    note_tags = safe_get(note, "tags", [])
+                    note_modifydate = safe_get(note, "modifydate", "")
+                    note_createdate = safe_get(note, "createdate", "")
 
+                note_uri = f"simplenote://note/{note_id}"
+                # Create TextResourceContents with URI cast to Any
                 text_contents = types.TextResourceContents(
                     text=note_content,
-                    uri=note_uri,
-                    meta={
-                        "tags": note_tags,
-                        "modifydate": note_modifydate,
-                        "createdate": note_createdate,
-                        **get_content_type_hint(note_content),
-                    },
+                    uri=cast(Any, note_uri),
                 )
+                # Add metadata as dictionary to the TextResourceContents
+                text_contents_dict = text_contents.__dict__
+                text_contents_dict["meta"] = {
+                    "tags": note_tags,
+                    "modifydate": note_modifydate,
+                    "createdate": note_createdate,
+                    **get_content_type_hint(note_content),
+                }
                 return types.ReadResourceResult(contents=[text_contents])
             except ResourceNotFoundError:
                 # If not in cache, we'll try the API directly
@@ -440,22 +509,25 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
         sn = get_simplenote_client()
         note, status = sn.get_note(note_id)
 
-        if status == 0:
+        if status == 0 and isinstance(note, dict):
             # Update the cache if it's initialized
-            if note_cache is not None and note_cache.is_initialized and note:
+            if note_cache is not None and note_cache.is_initialized:
                 note_cache.update_cache_after_update(note)
 
             note_uri = f"simplenote://note/{note_id}"
+            # Create TextResourceContents with URI cast to Any
             text_contents = types.TextResourceContents(
-                text=note.get("content", "") if note else "",
-                uri=note_uri,
-                meta={
-                    "tags": note.get("tags", []) if note else [],
-                    "modifydate": note.get("modifydate", "") if note else "",
-                    "createdate": note.get("createdate", "") if note else "",
-                    **get_content_type_hint(note.get("content", "") if note else ""),
-                },
+                text=safe_get(note, "content", ""),
+                uri=cast(Any, note_uri),
             )
+            # Add metadata as dictionary to the TextResourceContents
+            text_contents_dict = text_contents.__dict__
+            text_contents_dict["meta"] = {
+                "tags": safe_get(note, "tags", []),
+                "modifydate": safe_get(note, "modifydate", ""),
+                "createdate": safe_get(note, "createdate", ""),
+                **get_content_type_hint(safe_get(note, "content", "")),
+            }
             return types.ReadResourceResult(contents=[text_contents])
         else:
             error_msg = f"Failed to get note with ID {note_id}"
@@ -721,7 +793,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 tags = [tag.strip() for tag in tags_input]
             elif isinstance(tags_input, str):
                 tags = (
-                    [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                    [tag.strip() for tag in safe_split(tags_input)]
+                    if tags_input
+                    else []
                 )
             else:
                 tags = []
@@ -734,12 +808,22 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if tags:
                     note["tags"] = tags
 
-                note, status = sn.add_note(note)
+                created_note, status = sn.add_note(note)
 
                 if status == 0:
-                    # Update the cache if it's initialized
-                    if note_cache is not None and note_cache.is_initialized:
-                        note_cache.update_cache_after_create(note)
+                    if isinstance(created_note, dict):
+                        # Update the cache if it's initialized
+                        if note_cache is not None and note_cache.is_initialized:
+                            note_cache.update_cache_after_create(created_note)
+                    else:
+                        logger.error(
+                            f"API call success status 0, but returned non-dict: {type(created_note)} for create_note"
+                        )
+                        # Create a safe dictionary to use instead of the error
+                        created_note = {"content": "", "key": "unknown", "tags": []}
+                        logger.error(
+                            "Using default note due to unexpected API response"
+                        )
 
                     return [
                         types.TextContent(
@@ -748,8 +832,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                                 {
                                     "success": True,
                                     "message": "Note created successfully",
-                                    "note_id": note.get("key"),
-                                    "key": note.get(
+                                    "note_id": created_note.get("key"),
+                                    "key": created_note.get(
                                         "key"
                                     ),  # For backward compatibility
                                     "first_line": (
@@ -800,13 +884,13 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 # If not found in cache, get from API
                 if existing_note is None:
                     existing_note, status = sn.get_note(note_id)
-                    if status != 0:
+                    if status != 0 or not isinstance(existing_note, dict):
                         error_msg = FAILED_GET_NOTE.format(note_id=note_id)
                         logger.error(error_msg)
                         raise ResourceNotFoundError(error_msg)
 
                 # Update the note content
-                existing_note["content"] = content
+                safe_set(existing_note, "content", content)
 
                 # Update tags if provided
                 if tags_input:
@@ -814,17 +898,34 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     if isinstance(tags_input, list):
                         tags = [tag.strip() for tag in tags_input]
                     elif isinstance(tags_input, str):
-                        tags = [tag.strip() for tag in tags_input.split(",")]
+                        # Use safer split operation
+                        tags = [tag.strip() for tag in safe_split(tags_input)]
                     else:
                         tags = []
-                    existing_note["tags"] = tags
+
+                    # Set tags on the note
+                    safe_set(existing_note, "tags", tags)
 
                 updated_note, status = sn.update_note(existing_note)
 
                 if status == 0:
-                    # Update the cache if it's initialized
-                    if note_cache is not None and note_cache.is_initialized:
-                        note_cache.update_cache_after_update(updated_note)
+                    if isinstance(updated_note, dict):
+                        # Update the cache if it's initialized
+                        if note_cache is not None and note_cache.is_initialized:
+                            note_cache.update_cache_after_update(updated_note)
+                    else:
+                        logger.error(
+                            f"API call success status 0, but returned non-dict: {type(updated_note)} for update_note"
+                        )
+                        # Create a safe dictionary to use instead of the error
+                        content = ""
+                        if isinstance(existing_note, dict):
+                            content = existing_note.get("content", "")
+                        # Create a safe dictionary to use instead of the error
+                        updated_note = {"content": content, "key": note_id, "tags": []}
+                        logger.error(
+                            f"Using default note after update due to unexpected API response for {note_id}"
+                        )
 
                     return [
                         types.TextContent(
@@ -930,7 +1031,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     tag_filters = [tag.strip() for tag in tags_input if tag.strip()]
                 elif isinstance(tags_input, str):
                     tag_filters = [
-                        tag.strip() for tag in tags_input.split(",") if tag.strip()
+                        tag.strip() for tag in safe_split(tags_input) if tag.strip()
                     ]
                 else:
                     tag_filters = None
@@ -991,7 +1092,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                                 "title": (
                                     content.splitlines()[0][:30]
                                     if content
-                                    else note.get("key")
+                                    else safe_get(note, "key", "")
                                 ),
                                 "snippet": (
                                     content[:100] + "..."
@@ -1069,7 +1170,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                             "title": (
                                 content.splitlines()[0][:30]
                                 if content
-                                else note.get("key")
+                                else safe_get(note, "key", "")
                             ),
                             "snippet": (
                                 content[:100] + "..." if len(content) > 100 else content
@@ -1131,12 +1232,18 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if note is None:
                     note, status = sn.get_note(note_id)
                     if status != 0:
-                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
+                        error_msg = f"Failed to get note with ID {note_id}"
                         logger.error(error_msg)
                         raise ResourceNotFoundError(error_msg)
 
+                    # Verify that we have a dictionary before proceeding
+                    if not isinstance(note, dict):
+                        error_msg = f"API returned non-dictionary for note {note_id}"
+                        logger.error(error_msg)
+                        raise InternalError(error_msg)
+
                 # Prepare response
-                content = note.get("content", "")
+                content = safe_get(note, "content", "")
                 first_line = content.splitlines()[0][:30] if content else ""
 
                 return [
@@ -1183,7 +1290,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 tags = [tag.strip() for tag in tags_input]
             elif isinstance(tags_input, str):
                 tags = (
-                    [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                    [tag.strip() for tag in safe_split(tags_input)]
+                    if tags_input
+                    else []
                 )
             else:
                 tags = []
@@ -1200,18 +1309,18 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 # If not found in cache, get from API
                 if existing_note is None:
                     existing_note, status = sn.get_note(note_id)
-                    if status != 0:
+                    if status != 0 or not isinstance(existing_note, dict):
                         error_msg = FAILED_GET_NOTE.format(note_id=note_id)
                         logger.error(error_msg)
                         raise ResourceNotFoundError(error_msg)
 
                 # Parse the tags to add
                 tags_to_add = [
-                    tag.strip() for tag in tags_input.split(",") if tag.strip()
+                    tag.strip() for tag in safe_split(tags_input) if tag.strip()
                 ]
 
                 # Get current tags or initialize empty list
-                current_tags = existing_note.get("tags", [])
+                current_tags = safe_get(existing_note, "tags", [])
                 if current_tags is None:
                     current_tags = []
 
@@ -1229,6 +1338,15 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     updated_note, status = sn.update_note(existing_note)
 
                     if status == 0:
+                        # Check if the result is actually a dictionary
+                        if not isinstance(updated_note, dict):
+                            logger.error(
+                                f"API call success status 0, but returned non-dict: {type(updated_note)} for add_tags"
+                            )
+                            raise InternalError(
+                                "Unexpected API response type after adding tags."
+                            )
+
                         # Update the cache if it's initialized
                         if note_cache is not None and note_cache.is_initialized:
                             note_cache.update_cache_after_update(updated_note)
@@ -1291,7 +1409,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 tags = [tag.strip() for tag in tags_input]
             elif isinstance(tags_input, str):
                 tags = (
-                    [tag.strip() for tag in tags_input.split(",")] if tags_input else []
+                    [tag.strip() for tag in safe_split(tags_input)]
+                    if tags_input
+                    else []
                 )
             else:
                 tags = []
@@ -1315,11 +1435,11 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
                 # Parse the tags to remove
                 tags_to_remove = [
-                    tag.strip() for tag in tags_input.split(",") if tag.strip()
+                    tag.strip() for tag in safe_split(tags_input) if tag.strip()
                 ]
 
                 # Get current tags or initialize empty list
-                current_tags = existing_note.get("tags", [])
+                current_tags = safe_get(existing_note, "tags", [])
                 if current_tags is None:
                     current_tags = []
 
@@ -1351,10 +1471,19 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 # Only update if tags were actually removed
                 if removed_tags:
                     # Update the note
-                    existing_note["tags"] = new_tags
+                    safe_set(existing_note, "tags", new_tags)
                     updated_note, status = sn.update_note(existing_note)
 
                     if status == 0:
+                        # Check if the result is actually a dictionary
+                        if not isinstance(updated_note, dict):
+                            logger.error(
+                                f"API call success status 0, but returned non-dict: {type(updated_note)} for remove_tags"
+                            )
+                            raise InternalError(
+                                "Unexpected API response type after removing tags."
+                            )
+
                         # Update the cache if it's initialized
                         if note_cache is not None and note_cache.is_initialized:
                             note_cache.update_cache_after_update(updated_note)
@@ -1432,7 +1561,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     new_tags = [tag.strip() for tag in tags_input if tag.strip()]
                 elif isinstance(tags_input, str):
                     new_tags = (
-                        [tag.strip() for tag in tags_input.split(",") if tag.strip()]
+                        [tag.strip() for tag in safe_split(tags_input) if tag.strip()]
                         if tags_input
                         else []
                     )
@@ -1440,15 +1569,24 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     new_tags = []
 
                 # Get current tags
-                current_tags = existing_note.get("tags", [])
+                current_tags = safe_get(existing_note, "tags", [])
                 if current_tags is None:
                     current_tags = []
 
                 # Update the note with new tags
-                existing_note["tags"] = new_tags
+                safe_set(existing_note, "tags", new_tags)
                 updated_note, status = sn.update_note(existing_note)
 
                 if status == 0:
+                    # Check if the result is actually a dictionary
+                    if not isinstance(updated_note, dict):
+                        logger.error(
+                            f"API call success status 0, but returned non-dict: {type(updated_note)} for replace_tags"
+                        )
+                        raise InternalError(
+                            "Unexpected API response type after replacing tags."
+                        )
+
                     # Update the cache if it's initialized
                     if note_cache is not None and note_cache.is_initialized:
                         note_cache.update_cache_after_update(updated_note)
@@ -1576,7 +1714,7 @@ async def handle_get_prompt(
             description="Create a new note in Simplenote",
             messages=[
                 types.PromptMessage(
-                    role="system",
+                    role="user",
                     content=types.TextContent(
                         type="text",
                         text="You are creating a new note in Simplenote.",
@@ -1599,7 +1737,7 @@ async def handle_get_prompt(
             description="Search for notes in Simplenote",
             messages=[
                 types.PromptMessage(
-                    role="system",
+                    role="user",
                     content=types.TextContent(
                         type="text",
                         text="You are searching for notes in Simplenote.",

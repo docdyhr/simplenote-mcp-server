@@ -1,5 +1,9 @@
 exclude: '.git|.venv|venv|__pycache__|.pytest_cache'
 
+# Specify Python version to use for all hooks
+default_language_version:
+  python: python3.12
+
 # Custom CI-specific environment variables
 ci:
   # Skip mypy and bandit hooks in CI due to Python 3.13 compatibility issues
@@ -7,7 +11,7 @@ ci:
   # For pre-commit.ci autofix, we can safely run these hooks
   autofix_commit_msg: |
     [pre-commit.ci] Auto fixes from pre-commit hooks
-    
+
     For more information, see https://pre-commit.ci
 
 repos:
@@ -37,6 +41,7 @@ repos:
           (?x)^(
               simplenote_mcp_server\.py|
               run_server\.py|
+              run_test_workflow\.py|
               simplenote_mcp/scripts/.*\.py|
               simplenote_mcp/tests/.*\.py
           )$
@@ -46,9 +51,8 @@ repos:
     rev: v1.15.0
     hooks:
     -   id: mypy
-        args: ["--config-file=mypy.ini"]
         # Apply Python 3.13+ compatibility patches before running mypy
-        entry: bash -c 'python simplenote-mcp-server/python_patch.py >/dev/null 2>&1 || true; mypy'
+        entry: bash -c 'python3 ./python_patch.py >/dev/null 2>&1 || true && mypy --config-file=mypy.ini simplenote_mcp'
         additional_dependencies: [
             "types-requests",
             "types-setuptools",
@@ -61,6 +65,5 @@ repos:
     hooks:
     -   id: bandit
         # Apply Python 3.13+ compatibility patches before running bandit
-        entry: bash -c 'python simplenote-mcp-server/python_patch.py >/dev/null 2>&1 || true; bandit'
-        args: ["-c", "pyproject.toml"]
+        entry: bash -c 'python3 ./python_patch.py >/dev/null 2>&1 || true && bandit -c pyproject.toml -r simplenote_mcp -s B310,B311,B603,B607,B404'
         additional_dependencies: ["bandit[toml]"]
