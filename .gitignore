@@ -51,3 +51,5 @@ Thumbs.db
 # Local configuration
 .python-version
 **/CLAUDE.local.md
+private_*
+.venv_precommit/
