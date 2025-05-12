@@ -3,10 +3,4 @@ include README.md
 include CHANGELOG.md
 include VERSION
 include pyproject.toml
-include pathlib_patch.py
-include patch_pathlib.py
-include simplenote_mcp/py.typed
 recursive-include simplenote_mcp/scripts *.sh
-recursive-include simplenote_mcp/scripts *.py
-recursive-include simplenote_mcp/server/compat *.py
-recursive-include stubs *.pyi

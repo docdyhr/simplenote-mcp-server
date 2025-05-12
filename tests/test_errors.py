@@ -20,7 +20,7 @@ class TestServerError:
         error = ServerError("Test error message")
         assert error.message == "Test error message"
         assert error.category == ErrorCategory.UNKNOWN
-        assert "UNKNOWN: Test error message" in str(error)
+        assert str(error) == "UNKNOWN: Test error message"
 
     def test_server_error_with_category(self):
         """Test creating ServerError with a specific category."""

@@ -2,17 +2,9 @@
 # monitor_server.py - Monitor communication with Claude Desktop
 
 import json
-import os
 import sys
 import time
-
-# Add the parent directory to the Python path
-script_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.abspath(os.path.join(script_dir, "../../"))
-sys.path.insert(0, project_root)
-
-# Now we can import from our compatibility module
-from simplenote_mcp.server.compat import Path
+from pathlib import Path
 
 # Get the project root directory
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -53,8 +45,7 @@ buffer = ""
 while True:
     try:
         # Read a chunk from stdin
-        # Use read instead of read1 for better type compatibility
-        chunk = sys.stdin.buffer.read(1024).decode("utf-8")
+        chunk = sys.stdin.buffer.read1(1024).decode("utf-8")
         if not chunk:
             debug_print("No more input, exiting")
             break

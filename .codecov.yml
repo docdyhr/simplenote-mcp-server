@@ -1,8 +1,8 @@
 codecov:
-  require_ci_to_pass: true
+  require_ci_to_pass: yes
   notify:
     after_n_builds: 1
-    wait_for_ci: true
+    wait_for_ci: yes
 
 coverage:
   precision: 2
@@ -18,9 +18,15 @@ coverage:
         target: auto
         threshold: 0%
 
-# Removed gcov parser section as it's not typically needed for Python
+parsers:
+  gcov:
+    branch_detection:
+      conditional: yes
+      loop: yes
+      method: no
+      macro: no
 
 comment:
   layout: "reach,diff,flags,files,footer"
   behavior: default
-  require_changes: false
+  require_changes: no

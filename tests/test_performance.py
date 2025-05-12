@@ -1,7 +1,6 @@
 """Performance tests for the Simplenote MCP server."""
 
 import time
-from typing import Dict, List, Union
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -16,7 +15,7 @@ from simplenote_mcp.server.server import (
 
 
 @pytest.fixture
-def mock_large_note_list() -> List[Dict[str, Union[str, List[str]]]]:
+def mock_large_note_list():
     """Create a mock list of many notes for performance testing."""
     return [
         {
@@ -31,9 +30,7 @@ def mock_large_note_list() -> List[Dict[str, Union[str, List[str]]]]:
 
 
 @pytest.fixture
-def setup_performance_cache(
-    mock_large_note_list: List[Dict[str, Union[str, List[str]]]],
-) -> NoteCache:
+def setup_performance_cache(mock_large_note_list):
     """Set up a NoteCache with a large number of notes for performance testing."""
     mock_client = MagicMock()
     mock_client.get_note_list.return_value = (mock_large_note_list, 0)
@@ -45,7 +42,7 @@ def setup_performance_cache(
     def init_cache():
         # Simulate API delay
         time.sleep(0.1)
-        cache._notes = {str(note["key"]): note for note in mock_large_note_list}
+        cache._notes = {note["key"]: note for note in mock_large_note_list}
         cache._tags = set()
         for note in mock_large_note_list:
             if "tags" in note:
@@ -61,14 +58,13 @@ class TestPerformance:
     """Performance tests for server operations."""
 
     @pytest.mark.asyncio
-    async def test_list_resources_performance(
-        self, setup_performance_cache: NoteCache
-    ) -> None:
+    async def test_list_resources_performance(self, setup_performance_cache):
         """Test the performance of listing resources."""
         with (
             patch("simplenote_mcp.server.server.note_cache", setup_performance_cache),
             patch("simplenote_mcp.server.server.get_config") as mock_get_config,
         ):
+
             # Configure mock config
             mock_config = MagicMock()
             mock_config.default_resource_limit = 100
@@ -97,15 +93,13 @@ class TestPerformance:
             large_resources = await handle_list_resources(limit=500)
             large_listing_time = time.time() - start_time
             print(f"Listing 500 resources took {large_listing_time:.4f} seconds")
-            assert large_listing_time < 0.2, (
-                "Listing large number of resources should be reasonably fast"
-            )
+            assert (
+                large_listing_time < 0.2
+            ), "Listing large number of resources should be reasonably fast"
             assert len(large_resources) == 500
 
     @pytest.mark.asyncio
-    async def test_read_resource_performance(
-        self, setup_performance_cache: NoteCache
-    ) -> None:
+    async def test_read_resource_performance(self, setup_performance_cache):
         """Test the performance of reading a resource."""
         with (
             patch("simplenote_mcp.server.server.note_cache", setup_performance_cache),
@@ -113,6 +107,7 @@ class TestPerformance:
                 "simplenote_mcp.server.server.get_simplenote_client"
             ) as mock_get_client,
         ):
+
             # Create a large note for testing read performance
             large_note = {
                 "key": "large_note",
@@ -130,9 +125,7 @@ class TestPerformance:
             result = await handle_read_resource("simplenote://note/large_note")
             cache_read_time = time.time() - start_time
             print(f"Reading large note from cache took {cache_read_time:.4f} seconds")
-            assert cache_read_time < 30, (
-                "Reading from cache should complete in a reasonable time"
-            )
+            assert cache_read_time < 0.05, "Reading from cache should be very fast"
             assert len(result.contents[0].text) > 100000
 
             # Simulate API read by removing from cache and setting up mock client
@@ -149,7 +142,7 @@ class TestPerformance:
             assert api_read_time < 0.1, "Reading from API should be reasonably fast"
 
     @pytest.mark.asyncio
-    async def test_search_performance(self, setup_performance_cache: NoteCache) -> None:
+    async def test_search_performance(self, setup_performance_cache):
         """Test the performance of searching notes."""
         with (
             patch("simplenote_mcp.server.server.note_cache", setup_performance_cache),
@@ -157,6 +150,7 @@ class TestPerformance:
                 "simplenote_mcp.server.server.get_simplenote_client"
             ) as mock_get_client,
         ):
+
             # Set up mock client
             mock_client = MagicMock()
             mock_get_client.return_value = mock_client
@@ -181,7 +175,7 @@ class TestPerformance:
             assert len(response["results"]) <= 50
 
     @pytest.mark.asyncio
-    async def test_cache_initialization_performance(self) -> None:
+    async def test_cache_initialization_performance(self):
         """Test the performance of initializing the cache."""
         # Create a large mock note list
         large_note_list = [
@@ -211,6 +205,7 @@ class TestPerformance:
             ),
             patch("simplenote_mcp.server.server.note_cache", None),
         ):
+
             # Measure initialization performance
             start_time = time.time()
             await initialize_cache()

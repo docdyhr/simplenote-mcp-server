@@ -3,30 +3,10 @@ name = "simplenote-mcp-server"
 version = "1.4.0"
 description = "A simple MCP Server that connects to Simplenote"
 readme = "README.md"
-requires-python = ">=3.11, <3.13"
+requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Thomas Juul Dyhr", email = "docdyhr@me.com" }]
 dependencies = ["mcp[cli]>=0.4.0", "simplenote>=2.1.4"]
-
-[tool.setuptools.package-data]
-"simplenote_mcp" = ["py.typed"]
-"simplenote_mcp.server" = ["py.typed"]
-
-[project.optional-dependencies]
-dev = [
-    "mypy>=1.5.1",
-    "ruff>=0.0.284",
-    "pre-commit>=3.3.3",
-    "bandit>=1.7.5",
-    "types-requests",
-    "types-setuptools",
-    "types-PyYAML",
-]
-test = [
-    "pytest>=7.4.0",
-    "pytest-asyncio>=0.21.1",
-    "pytest-cov>=4.1.0",
-]
 
 [project.scripts]
 simplenote-mcp-server = "simplenote_mcp.server:run_main"
@@ -35,50 +15,17 @@ simplenote-mcp-server = "simplenote_mcp.server:run_main"
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.ruff]
-target-version = "py312"
-line-length = 88  # Match Black's default
-fix = true  # Attempt to automatically fix violations
-unsafe-fixes = false
+[tool.black]
+line-length = 88
+target-version = ['py311']
+include = '\.pyi?$'
 
-[tool.ruff.format]
-quote-style = "double"
-indent-style = "space"
-skip-magic-trailing-comma = false
-line-ending = "auto"
-
-[tool.ruff.lint]
-select = [
-    "E",   # pycodestyle errors
-    "F",   # pyflakes
-    "W",   # pycodestyle warnings
-    "I",   # isort
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "ARG", # flake8-unused-arguments
-    "SIM", # flake8-simplify
-    "UP",  # pyupgrade
-    "RUF", # Ruff-specific rules
-    "D",   # pydocstyle
-]
-ignore = ["E203", "E501"]  # Maintain compatibility with Black style
-
-[tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]
-"tests/*" = ["ARG001", "ARG002"]
-"simplenote_mcp/scripts/*.py" = ["E402"]
-"simplenote_mcp/tests/*.py" = ["E402"]
-"simplenote_mcp_server.py" = ["E402"]
-
-[tool.ruff.lint.pydocstyle]
-convention = "google"
-
-[tool.ruff.lint.isort]
-known-first-party = ["simplenote_mcp"]
-combine-as-imports = true
+[tool.isort]
+profile = "black"
+multi_line_output = 3
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.11"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -88,7 +35,14 @@ disallow_incomplete_defs = true
 module = "tests.*"
 disallow_untyped_defs = false
 
-[tool.bandit]
-exclude_dirs = ["tests", "venv", ".venv", ".git", "__pycache__"]
-skips = ["B101", "B104"]
-targets = ["simplenote_mcp"]
+[tool.ruff]
+target-version = "py311"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "C4", "ARG", "SIM"]
+ignore = ["E203", "E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["ARG001", "ARG002"]

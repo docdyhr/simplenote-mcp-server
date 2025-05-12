@@ -1,18 +1,10 @@
 """Unit tests for process management functions."""
 
-import os
 import signal
-import sys
 import threading
+from pathlib import Path
 from unittest.mock import patch
 
-# Add the project root to the Python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../")))
-
-# Import from our compatibility module
-import pytest
-
-from simplenote_mcp.server.compat import Path
 from simplenote_mcp.server.server import (
     cleanup_pid_file,
     setup_signal_handlers,
@@ -111,7 +103,7 @@ class TestProcessManagement:
             mock_logger.error.assert_called_once()
             assert "Error removing PID file" in mock_logger.error.call_args[0][0]
 
-    def test_setup_signal_handlers(self, monkeypatch):
+    def test_setup_signal_handlers(self):
         """Test setting up signal handlers."""
         with (
             patch("signal.signal") as mock_signal,
@@ -127,28 +119,29 @@ class TestProcessManagement:
             # Verify atexit handler was registered
             mock_register.assert_called_once_with(cleanup_pid_file)
 
-    def test_signal_handler(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_signal_handler(self):
         """Test the signal handler function."""
         # Create proper thread mock objects
-        worker_thread_mock = type("MockThread", (), {"name": "worker_thread"})()
-        main_thread_mock = type("MockThread", (), {"name": "main_thread"})()
+        worker_thread_mock = type('MockThread', (), {'name': 'worker_thread'})()
+        main_thread_mock = type('MockThread', (), {'name': 'main_thread'})()
 
         # Set up all patches
         with (
             patch("signal.signal") as mock_signal,
             patch("atexit.register"),
+            patch("threading.current_thread"),
+            patch("threading.main_thread"),
             patch("sys.exit") as mock_exit,
             patch("simplenote_mcp.server.server.shutdown_requested", False),
-            patch("simplenote_mcp.server.server.logger.info"),  # Prevent actual logging
+            patch("simplenote_mcp.server.server.logger.info")  # Prevent actual logging
         ):
             # Call setup_signal_handlers to capture the handler function
             setup_signal_handlers()
             signal_handler = mock_signal.call_args[0][1]
 
             # Test 1: Signal in non-main thread should exit immediately
-            # Use monkeypatch to avoid mypy complaints about assigning to return_value
-            monkeypatch.setattr(threading, "current_thread", lambda: worker_thread_mock)
-            monkeypatch.setattr(threading, "main_thread", lambda: main_thread_mock)
+            threading.current_thread.return_value = worker_thread_mock
+            threading.main_thread.return_value = main_thread_mock
             signal_handler(signal.SIGTERM, None)
             # Verify sys.exit was called when in non-main thread
             mock_exit.assert_called_once_with(0)
@@ -157,9 +150,8 @@ class TestProcessManagement:
             mock_exit.reset_mock()
 
             # Test 2: Signal in main thread should set flag but not exit
-            # Use monkeypatch to avoid mypy complaints about assigning to return_value
-            monkeypatch.setattr(threading, "current_thread", lambda: main_thread_mock)
-            monkeypatch.setattr(threading, "main_thread", lambda: main_thread_mock)
+            threading.current_thread.return_value = main_thread_mock
+            threading.main_thread.return_value = main_thread_mock
             with patch("simplenote_mcp.server.server.shutdown_requested", False):
                 signal_handler(signal.SIGTERM, None)
                 # Verify sys.exit was NOT called when in main thread

@@ -18,7 +18,7 @@ if [ -f "$PID_FILE" ]; then
     echo "PID file found at: $PID_FILE"
     SERVER_PID=$(cat "$PID_FILE")
     echo "Server PID: $SERVER_PID"
-
+    
     # Check if process is running
     if ps -p $SERVER_PID > /dev/null 2>&1; then
         echo "Status: RUNNING"
@@ -44,13 +44,13 @@ else
     echo "Found running server processes:"
     echo "$SERVER_PROCESSES" | awk '{print "PID:", $2, "Start:", $9, "Command:", $11, $12, $13}'
     echo
-
+    
     # Count processes
     PROCESS_COUNT=$(echo "$SERVER_PROCESSES" | wc -l)
     echo "Total server processes: $PROCESS_COUNT"
-
+    
     if [ $PROCESS_COUNT -gt 1 ]; then
-        echo
+        echo 
         echo "WARNING: Multiple server instances detected!"
         echo "This can cause unexpected behavior."
         echo "Use './cleanup_servers.sh' to clean up all instances."

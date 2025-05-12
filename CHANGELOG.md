@@ -5,41 +5,9 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
-
-### Added
-
-- Content type hinting for notes based on content analysis
-  - Detects Markdown, code snippets, JSON, YAML, and HTML formatting
-  - Includes content type in resource metadata to improve AI rendering
-  - Helps Claude better understand and process note content
-- Compatibility module at `simplenote_mcp.server.compat` for cross-version support
-- Diagnostic tools for API connectivity troubleshooting
-- Improved server launcher with better error handling
-- Comprehensive testing for advanced search functionality
-
-### Changed
-
-- Removed Python 3.13.x compatibility patches in favor of maintaining Python 3.12.x support
-- Updated project configuration to target Python 3.12
-- Performance tests for search operations
-- Enhanced error handling in tests
-
-### Improved
-
-- Fixed compatibility with Python 3.13.x by addressing `pathlib.Path` import changes
-- Enhanced error handling for path-related operations
-- Better network connectivity with more robust reconnection logic
-- Fixed type annotations throughout the codebase
-- Better test robustness with proper fixtures and mocks
-- Added pytest stubs for better type checking
-- Updated pytest.ini to ignore specific warnings
-- Improved integration tests to handle API response variations
-
 ## [0.1.0] - 2025-04-10
 
 ### Added
-
 - Initial project structure with `mcp` package integration
 - Core MCP server functionality for Simplenote interactions
 - Resource capabilities for listing and reading notes
@@ -50,7 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.2.0] - 2025-04-10
 
 ### Added
-
 - Organized project into a proper package structure
   - `/simplenote_mcp/server/` - Server code
   - `/simplenote_mcp/scripts/` - Helper scripts
@@ -61,22 +28,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `verify_tools.sh` for checking tool registration
 
 ### Changed
-
 - Updated file paths in all scripts to use the new structure
 - Improved server module to use proper Python imports
 - Enhanced logging to store logs in a dedicated directory
 - Updated package configuration in setup.py and pyproject.toml
 
 ### Fixed
-
 - Fixed logging path issues by supporting both new and legacy locations
 - Corrected tool verification to work with the current log structure
 
 ## [1.0.0] - 2025-04-10
 
 ### Added
-
-- In-memory cache implementation for faster note access
+- In-memory cache implementation for faster note access 
 - Background synchronization task for keeping notes up to date
 - Support for filtering notes by tags in resource listing
 - Comprehensive unit, integration, and performance tests
@@ -89,7 +53,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Proper type annotations throughout the code
 
 ### Changed
-
 - Optimized resource listing for performance
 - Enhanced error handling with better categorization and recovery
 - Updated environment variable handling with comprehensive configuration options
@@ -99,7 +62,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved synchronization logic for more reliable updates
 
 ### Fixed
-
 - Server startup issues with logging directory
 - Circular import problem with version imports
 - API parameter issues in the cache module
@@ -108,7 +70,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.1.0] - 2025-04-12
 
 ### Added
-
 - Dedicated tag management tools:
   - `add_tags`: Add additional tags to a note without modifying content
   - `remove_tags`: Remove specific tags from a note
@@ -117,7 +78,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Updated documentation to reflect new capabilities
 
 ### Changed
-
 - Expanded README with detailed descriptions of the tag management tools
 - Updated TODO.md to reflect completion of tag management feature
 - Created and documented a strategic ROADMAP.md for future enhancements
@@ -125,7 +85,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.0] - 2025-04-13
 
 ### Added
-
 - Docker support with a new Dockerfile for containerized deployment
 - Smithery configuration for simplified cloud deployment
 - Installation instructions for Smithery platform
@@ -134,7 +93,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Timeout handling for background sync to prevent hanging
 
 ### Improved
-
 - Code quality improvements:
   - Modern type annotations (replaced typing.Dict, typing.List with built-in types)
   - Better docstring formatting with consistent style
@@ -146,7 +104,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Graceful handling of network connectivity issues
 
 ### Fixed
-
 - Bug in email logging when credentials are not provided
 - Server crashes during background sync when network errors occur
 - Unstable behavior when Simplenote API is unreachable
@@ -156,13 +113,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.3.0] - 2025-04-14
 
 ### Added
-
 - Debug logging configuration in pytest.ini for better test visibility
 - Detailed debug logging throughout the search operation
 - Thread-safe caching with proper lock implementation
 
 ### Improved
-
 - Enhanced search algorithm with better relevance scoring
 - Prioritization of title matches in search results
 - More descriptive tool documentation for search functionality
@@ -170,7 +125,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended timeout for better handling of slow API responses
 
 ### Fixed
-
 - Search functionality in Claude Desktop returning empty results
 - Thread safety issues with concurrent cache access
 - Cache initialization failures with Simplenote API
@@ -179,40 +133,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.4.0] - 2025-04-14
 
 ### Added
-
 - Advanced search functionality with:
   - Boolean operators (AND, OR, NOT)
   - Phrase matching with quotes
   - Tag filtering with `tag:` syntax
   - Date range filtering
-- Pre-commit hooks for code quality assurance
-- Comprehensive type checking with mypy:
-  - Type annotations for all functions
-  - Proper null checking for optional parameters
-  - Custom mypy configuration for the codebase
 - New search engine architecture:
   - Query parser for tokenizing search expressions
   - Boolean expression evaluation engine
   - Relevance scoring based on content matches, title matches, and recency
 - Comprehensive test suite for advanced search capabilities
-- Pre-commit hooks for code quality assurance:
-  - Automatic code formatting with black
-  - Import sorting with isort
-  - Linting with ruff
-  - Type checking with mypy
-  - Security checks for sensitive data
 
 ### Improved
-
 - Enhanced search results with better scoring and ranking
 - More flexible search syntax allowing complex queries
 - Better handling of empty queries with tag or date filters
 - Better error reporting for invalid search queries
 - More descriptive search results including relevance information
-- Code quality consistency through automated tooling
 
 ### Fixed
-
 - Issues with empty search results when using tag filters
 - Date range filtering not working correctly
 - Thread safety issues in search operations

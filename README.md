@@ -1,22 +1,18 @@
+![Logo](assets/logo.png)
 # Simplenote MCP Server
-
-![Simplenote MCP Server Logo](assets/logo.png)
 
 A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://github.com/johnsmith9982/claude-desktop) using the [MCP Python SDK](https://github.com/johnsmith9982/mcp-python-sdk).
 
 This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
 
-[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 
 [![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
 [![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12-blue)](./pyproject.toml)
-[![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml)
-[![Code Quality](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml)
-[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
+[![Python Version](https://img.shields.io/badge/python-3.11-blue)](./setup.py)
+[![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
+[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
 [![smithery badge](https://smithery.ai/badge/@docdyhr/simplenote-mcp-server)](https://smithery.ai/server/@docdyhr/simplenote-mcp-server)
-
 ---
 
 ## 🔧 Features
@@ -31,45 +27,12 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 ## Project Structure
 
-```plaintext
+```
 simplenote_mcp/            # Main package
 ├── logs/                  # Log files directory
 ├── scripts/               # Helper scripts for testing and management
 ├── server/                # Main server code
-│   ├── search/            # Advanced search capabilities
-│   │   ├── engine.py      # Search engine with boolean logic
-│   │   └── parser.py      # Query tokenization and parsing
-│   └── server.py          # Server implementation 
 └── tests/                 # Test utilities and client
-```
-
-## Development Tools
-
-The project uses several tools to ensure code quality:
-
-- **Type Checking**: Comprehensive static type annotations with mypy
-- **Code Formatting**: Black for consistent code style
-- **Import Sorting**: isort for organizing imports
-- **Linting**: Ruff for fast Python linting
-- **Pre-commit Hooks**: Automated checks before each commit
-- **Testing**: pytest for unit and integration tests
-
-Run type checking:
-
-```bash
-mypy simplenote_mcp
-```
-
-Run tests:
-
-```bash
-pytest
-```
-
-Run linting:
-
-```bash
-ruff check .
 ```
 
 ## Overview
@@ -77,7 +40,6 @@ ruff check .
 This project provides an MCP server that allows you to interact with your Simplenote account through Claude Desktop or any other MCP-compatible client.
 
 Key features:
-
 - List all your Simplenote notes as resources
 - View note contents
 - Create, update, and delete notes
@@ -194,29 +156,14 @@ simplenote-mcp-server
 
 ### Testing the server
 
-The project uses `pytest` for testing.
-
-**Run all tests:**
+The server can be tested by running:
 
 ```bash
-pytest
-```
+# Test Simplenote connectivity
+python simplenote_mcp/tests/test_mcp_client.py
 
-**Run specific tests:**
-
-For example, to test the direct Simplenote client library integration (authentication, basic CRUD):
-
-```bash
-pytest simplenote_mcp/tests/test_mcp_client.py
-```
-
-**Start the server for manual or integration testing:**
-
-```bash
 # Start the server in the foreground
 python simplenote_mcp_server.py
-# or
-simplenote-mcp
 ```
 
 ## Claude Desktop Integration
@@ -226,7 +173,6 @@ There are two ways to use Simplenote MCP Server with Claude Desktop:
 ### Method 1: Manual Connection (Temporary)
 
 1. Run the server in a terminal window:
-
    ```bash
    simplenote-mcp-server
    ```
@@ -273,14 +219,12 @@ For a more seamless experience, configure Claude Desktop to automatically start 
 }
 ```
 
-1. Restart Claude Desktop using the provided script:
-
+3. Restart Claude Desktop using the provided script:
    ```bash
    ./simplenote_mcp/scripts/restart_claude.sh
    ```
 
-2. Verify the connection using the included verification script:
-
+4. Verify the connection using the included verification script:
    ```bash
    ./simplenote_mcp/scripts/verify_tools.sh
    ```
@@ -298,59 +242,40 @@ Simplenote notes are exposed as resources with the URI format `simplenote://note
   - Supports limiting results (`limit` parameter)
   - Returns notes sorted by modification date (newest first)
 
-- **Read Resource** - View the content and metadata of a specific note, including content type hints
+- **Read Resource** - View the content and metadata of a specific note
 
-With a total of 10 implemented capabilities (8 tools and 2 prompts) as of version 1.4.0, the server provides a comprehensive interface for managing your Simplenote notes. Additionally, the server includes content type hinting to help Claude better understand and render your note content.
-
-### Content Type Hinting
-
-The server automatically analyzes note content and provides content type hints in the metadata, helping Claude better understand and render your notes. Content types detected include:
-
-- **Markdown**: Notes with headings, lists, links, code blocks, and other Markdown formatting
-- **Code**: Notes containing code snippets, function definitions, imports, etc.
-- **JSON**: Notes with properly formatted JSON data
-- **YAML**: Notes with YAML-formatted data
-- **HTML**: Notes containing HTML markup
-- **Plain Text**: Default for notes without specialized formatting
-
-These hints are included in both resource listings and when reading individual notes, allowing Claude to render content appropriately without you having to specify the format.
+With a total of 10 implemented capabilities (8 tools and 2 prompts) as of version 1.4.0, the server provides a comprehensive interface for managing your Simplenote notes.
 
 ### Advanced Search Capabilities
 
 The server supports powerful search functionality with the following features:
 
 - **Boolean Logic**: Combine search terms with `AND`, `OR`, and `NOT` operators
-
-  ```text
+  ```
   project AND meeting AND NOT cancelled
   ```
 
 - **Phrase Matching**: Search for exact phrases using quotes
-
-  ```text
+  ```
   "action items" AND project
   ```
 
 - **Tag Filtering**: Filter by tags directly in the query or via parameters
-
-  ```text
+  ```
   meeting tag:work tag:important
   ```
 
 - **Date Range Filtering**: Limit results by modification date
-
-  ```text
+  ```
   project from:2023-01-01 to:2023-12-31
   ```
 
 - **Combining Methods**: Mix and match all of the above in a single query
-
-  ```text
+  ```
   "status update" AND project tag:work from:2023-01-01 NOT cancelled
   ```
 
 The search engine uses a sophisticated query parser and boolean expression evaluator to process complex search expressions. Results are ranked by relevance, with higher scores given to:
-
 - Title matches (when the search term appears in the first line)
 - Tag matches (when the search term matches a note tag)
 - Recent notes (with a recency bonus for newer notes)
@@ -362,14 +287,14 @@ The server provides the following tools for Simplenote interaction:
 
 | Tool | Description | Parameters |
 |------|-------------|------------|
-| `create_note` | Create a new note | `content` (required): Note content<br> `tags` (optional): Comma-separated tags |
-| `update_note` | Update an existing note | `note_id` (required): The ID of the note<br> `content` (required): New content<br> `tags` (optional): Comma-separated tags |
+| `create_note` | Create a new note | `content` (required): Note content<br>`tags` (optional): Comma-separated tags |
+| `update_note` | Update an existing note | `note_id` (required): The ID of the note<br>`content` (required): New content<br>`tags` (optional): Comma-separated tags |
 | `delete_note` | Move a note to trash | `note_id` (required): The ID of the note to delete |
 | `get_note` | Get a note by ID | `note_id` (required): The ID of the note to retrieve |
-| `search_notes` | Search for notes with advanced capabilities | `query` (required): Search terms with boolean operators & filters<br> `limit` (optional): Maximum results to return<br> `tags` (optional): Tags to filter by (alternative to tag: syntax)<br> `from_date` (optional): Start date filter (alternative to from: syntax)<br> `to_date` (optional): End date filter (alternative to to: syntax) |
-| `add_tags` | Add tags to an existing note | `note_id` (required): The ID of the note to modify<br> `tags` (required): Comma-separated tags to add |
-| `remove_tags` | Remove tags from an existing note | `note_id` (required): The ID of the note to modify<br> `tags` (required): Comma-separated tags to remove |
-| `replace_tags` | Replace all tags on an existing note | `note_id` (required): The ID of the note to modify<br> `tags` (required): Comma-separated new tags |
+| `search_notes` | Search for notes with advanced capabilities | `query` (required): Search terms with boolean operators & filters<br>`limit` (optional): Maximum results to return<br>`tags` (optional): Tags to filter by (alternative to tag: syntax)<br>`from_date` (optional): Start date filter (alternative to from: syntax)<br>`to_date` (optional): End date filter (alternative to to: syntax) |
+| `add_tags` | Add tags to an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated tags to add |
+| `remove_tags` | Remove tags from an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated tags to remove |
+| `replace_tags` | Replace all tags on an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated new tags |
 
 ### Prompts
 
@@ -377,7 +302,7 @@ The server provides prompt templates for more interactive experiences:
 
 | Prompt | Description | Parameters |
 |--------|-------------|------------|
-| `create_note_prompt` | Create a new note with content | `content` (required): Note content<br> `tags` (optional): Comma-separated tags |
+| `create_note_prompt` | Create a new note with content | `content` (required): Note content<br>`tags` (optional): Comma-separated tags |
 | `search_notes_prompt` | Search for notes matching a query | `query` (required): Search terms |
 
 ## Versioning
@@ -439,7 +364,6 @@ The Simplenote MCP Server uses a sophisticated in-memory caching system to provi
 **Symptoms**: Error messages about missing or invalid credentials.
 
 **Solutions**:
-
 - Verify that `SIMPLENOTE_EMAIL` and `SIMPLENOTE_PASSWORD` are correctly set
 - Check for typos in your email address and password
 - Make sure password contains no special characters that might need escaping
@@ -449,7 +373,6 @@ The Simplenote MCP Server uses a sophisticated in-memory caching system to provi
 **Symptoms**: Server fails to start, Claude Desktop can't connect.
 
 **Solutions**:
-
 - Check log files: `cat simplenote_mcp/logs/server.log`
 - Look for Python errors in your terminal
 - Verify Python version is 3.9 or higher: `python --version`
@@ -460,33 +383,27 @@ The Simplenote MCP Server uses a sophisticated in-memory caching system to provi
 **Symptoms**: Claude says it doesn't have access to Simplenote tools.
 
 **Solutions**:
-
 1. Verify the server is running:
-
    ```bash
    ps aux | grep simplenote-mcp
    ```
 
 2. Check if tools are properly registered:
-
    ```bash
    ./simplenote_mcp/scripts/verify_tools.sh
    ```
 
 3. Restart Claude Desktop and the server:
-
    ```bash
    ./simplenote_mcp/scripts/restart_claude.sh
    ```
 
 4. Watch logs for communication errors:
-
    ```bash
    ./simplenote_mcp/scripts/watch_logs.sh
    ```
 
 5. Clean up all server instances and start fresh:
-
    ```bash
    ./simplenote_mcp/scripts/cleanup_servers.sh
    simplenote-mcp-server
@@ -506,31 +423,26 @@ Set `LOG_LEVEL=DEBUG` for more detailed logs.
 The project includes several diagnostic tools:
 
 1. **check_server_pid.sh** - Checks server process status:
-
    ```bash
    ./simplenote_mcp/scripts/check_server_pid.sh
    ```
 
 2. **verify_tools.sh** - Checks tool registration:
-
    ```bash
    ./simplenote_mcp/scripts/verify_tools.sh
    ```
 
 3. **test_tool_visibility.sh** - Tests if Claude sees the tools:
-
    ```bash
    ./simplenote_mcp/scripts/test_tool_visibility.sh
    ```
 
 4. **monitor_server.py** - Monitors MCP protocol messages:
-
    ```bash
    python simplenote_mcp/tests/monitor_server.py
    ```
 
 5. **test_mcp_client.py** - Tests basic connectivity:
-
    ```bash
    python simplenote_mcp/tests/test_mcp_client.py
    ```
@@ -538,71 +450,9 @@ The project includes several diagnostic tools:
 ## Roadmap
 
 See [ROADMAP.md](./ROADMAP.md) for planned features and goals.
-
-## Development
-
-### Pre-commit Hooks
-
-This project uses pre-commit hooks to ensure code quality and consistency. These hooks automatically check and fix issues before each commit.
-
-To get started with pre-commit:
-
-1. Install pre-commit:
-
-   ```bash
-   pip install pre-commit
-   ```
-
-2. Install the pre-commit hooks:
-
-   ```bash
-   pre-commit install
-   ./pre_commit_fix.sh  # Apply Python 3.13+ compatibility fixes
-   ```
-
-3. Run pre-commit checks using our convenience script:
-
-   ```bash
-   ./run_pre_commit.sh
-   ```
-
-   For detailed information about the pre-commit setup, including troubleshooting Python 3.13+ compatibility issues, see [PRE_COMMIT_README.md](./PRE_COMMIT_README.md).
-
-4. The hooks will now run automatically on every commit. They include:
-   - Code formatting with Ruff
-   - Import sorting with isort
-   - Linting with Ruff
-   - Type checking with MyPy
-   - Security checks for sensitive data
-   - Various file consistency checks
-
-4. You can run the hooks manually on all files:
-
-   ```bash
-   pre-commit run --all-files
-   ```
-
-### Code Style
-
-The project follows these code style guidelines:
-
-- Line length: 88 characters (Black default)
-- Python version: 3.11+
-- Type annotations required for all functions
-- Docstrings in Google style format
-- Imports sorted by: standard library, third-party, local
-- All modules should have appropriate `__all__` declarations
-
 ## Contributing
 
 Contributions are welcome and pull requests are welcome! Please open an issue first to discuss any significant changes. Read our [Contributing Guide](./.github/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
-
-Before submitting a PR, please make sure:
-1. All tests pass (`pytest`)
-2. Code quality checks pass (`./run_pre_commit.sh`)
-3. Your changes are documented appropriately
-
-The project uses pre-commit hooks to ensure code quality standards. See [PRE_COMMIT_README.md](./PRE_COMMIT_README.md) for more details.
 
 ## Security
 
