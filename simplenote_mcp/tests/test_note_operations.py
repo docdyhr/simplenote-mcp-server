@@ -82,6 +82,11 @@ async def test_note_retrieval(test_note: Dict[str, Any]):
     # Assert
     assert status == 0, f"Failed to retrieve note: API returned status {status}"
     assert retrieved_note is not None, "Retrieved note should not be None"
+    # Verify note is a dictionary before accessing its properties
+    assert isinstance(retrieved_note, dict), (
+        f"Retrieved note is not a dict: {type(retrieved_note)}"
+    )
+
     assert retrieved_note["key"] == note_id, (
         "Note ID in retrieved note doesn't match expected ID"
     )
@@ -116,6 +121,10 @@ async def test_note_update(test_note: Dict[str, Any]):
     # Assert
     assert status == 0, f"Failed to update note: API returned status {status}"
     assert updated_note is not None, "Updated note should not be None"
+    # Ensure we have a dictionary before accessing its properties
+    assert isinstance(updated_note, dict), (
+        f"Updated note is not a dict: {type(updated_note)}"
+    )
     assert updated_note["key"] == note_id, "Note ID changed after update"
     assert updated_note["content"] == updated_content, (
         "Note content wasn't updated correctly"
@@ -123,6 +132,9 @@ async def test_note_update(test_note: Dict[str, Any]):
 
     # Verify tags were updated
     assert "tags" in updated_note, "Updated note should have tags"
+    assert isinstance(updated_note["tags"], list), (
+        f"Tags is not a list: {type(updated_note['tags'])}"
+    )
     assert "updated" in updated_note["tags"], (
         "New tag 'updated' not found in updated note"
     )
@@ -132,6 +144,12 @@ async def test_note_update(test_note: Dict[str, Any]):
 
     # Verify note version was incremented
     if "version" in test_note and "version" in updated_note:
+        assert isinstance(updated_note["version"], (int, float)), (
+            f"Version is not a number: {type(updated_note['version'])}"
+        )
+        assert isinstance(test_note["version"], (int, float)), (
+            f"Original version is not a number: {type(test_note['version'])}"
+        )
         assert updated_note["version"] > test_note["version"], (
             "Note version should have incremented"
         )

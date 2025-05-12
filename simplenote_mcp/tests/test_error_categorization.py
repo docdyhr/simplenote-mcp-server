@@ -51,14 +51,24 @@ class TestErrorCategorization:
         error = ValidationError("Test validation error")
 
         # Basic error properties
-        assert error.message == "Test validation error", "Error message should be set correctly"
-        assert error.category == ErrorCategory.VALIDATION, "Error category should be VALIDATION"
-        assert error.severity == ErrorSeverity.WARNING, "Default severity for ValidationError should be WARNING"
-        assert error.recoverable is True, "ValidationError should be recoverable by default"
+        assert error.message == "Test validation error", (
+            "Error message should be set correctly"
+        )
+        assert error.category == ErrorCategory.VALIDATION, (
+            "Error category should be VALIDATION"
+        )
+        assert error.severity == ErrorSeverity.WARNING, (
+            "Default severity for ValidationError should be WARNING"
+        )
+        assert error.recoverable is True, (
+            "ValidationError should be recoverable by default"
+        )
 
         # Generated properties
         assert error.error_code is not None, "Error code should be generated"
-        assert error.error_code.startswith("VAL_"), "Validation error code should start with VAL"
+        assert error.error_code.startswith("VAL_"), (
+            "Validation error code should start with VAL"
+        )
         assert error.trace_id is not None, "Trace ID should be generated"
         assert error.resolution_steps, "Resolution steps should be provided"
 
@@ -66,22 +76,24 @@ class TestErrorCategorization:
         """Test errors with specific subcategories."""
         # Create errors with subcategories
         auth_error = AuthenticationError(
-            "Invalid credentials",
-            subcategory="credentials"
+            "Invalid credentials", subcategory="credentials"
         )
 
         # Verify subcategory
-        assert auth_error.subcategory == "credentials", "Subcategory should be set correctly"
-        assert auth_error.error_code.startswith("AUTH_CRD"), "Error code should include subcategory"
-
-        # Test with a different subcategory
-        network_error = NetworkError(
-            "API unavailable",
-            subcategory="api"
+        assert auth_error.subcategory == "credentials", (
+            "Subcategory should be set correctly"
+        )
+        assert auth_error.error_code.startswith("AUTH_CRD"), (
+            "Error code should include subcategory"
         )
 
+        # Test with a different subcategory
+        network_error = NetworkError("API unavailable", subcategory="api")
+
         assert network_error.subcategory == "api", "Subcategory should be set correctly"
-        assert network_error.error_code.startswith("NET_API"), "Error code should include subcategory"
+        assert network_error.error_code.startswith("NET_API"), (
+            "Error code should include subcategory"
+        )
 
     def test_error_with_context(self):
         """Test errors with additional context."""
@@ -91,7 +103,7 @@ class TestErrorCategorization:
             subcategory="note",
             resource_id="note123",
             operation="get_note",
-            details={"requested_at": "2023-09-25T12:34:56Z"}
+            details={"requested_at": "2023-09-25T12:34:56Z"},
         )
 
         # Verify context
@@ -107,7 +119,7 @@ class TestErrorCategorization:
             "Required field missing",
             subcategory="required",
             field="content",
-            user_message="The note content cannot be empty"
+            user_message="The note content cannot be empty",
         )
 
         # Convert to dict
@@ -122,11 +134,17 @@ class TestErrorCategorization:
         error_info = error_dict["error"]
         assert error_info["code"] == error.error_code, "Error code should match"
         assert error_info["message"] == error.message, "Error message should match"
-        assert error_info["user_message"] == error.user_message, "User message should match"
+        assert error_info["user_message"] == error.user_message, (
+            "User message should match"
+        )
         assert error_info["category"] == error.category.value, "Category should match"
-        assert error_info["subcategory"] == error.subcategory, "Subcategory should match"
+        assert error_info["subcategory"] == error.subcategory, (
+            "Subcategory should match"
+        )
         assert error_info["severity"] == error.severity.value, "Severity should match"
-        assert error_info["recoverable"] == error.recoverable, "Recoverable flag should match"
+        assert error_info["recoverable"] == error.recoverable, (
+            "Recoverable flag should match"
+        )
         assert error_info["trace_id"] == error.trace_id, "Trace ID should match"
         assert "resolution_steps" in error_info, "Resolution steps should be included"
 
@@ -138,8 +156,12 @@ class TestErrorCategorization:
 
         # Verify resolution steps
         assert auth_error.resolution_steps, "Auth error should have resolution steps"
-        assert network_error.resolution_steps, "Network error should have resolution steps"
-        assert len(auth_error.resolution_steps) > 0, "Auth error should have at least one resolution step"
+        assert network_error.resolution_steps, (
+            "Network error should have resolution steps"
+        )
+        assert len(auth_error.resolution_steps) > 0, (
+            "Auth error should have at least one resolution step"
+        )
 
         # Check that resolution steps are different for different categories
         assert auth_error.resolution_steps != network_error.resolution_steps, (
@@ -155,8 +177,12 @@ class TestErrorCategorization:
             error = handle_exception(e, "testing", "test_operation")
 
         # Verify error type and properties
-        assert isinstance(error, ValidationError), "ValueError should be converted to ValidationError"
-        assert "Invalid value" in error.message, "Original exception message should be included"
+        assert isinstance(error, ValidationError), (
+            "ValueError should be converted to ValidationError"
+        )
+        assert "Invalid value" in error.message, (
+            "Original exception message should be included"
+        )
         assert error.operation == "test_operation", "Operation should be set correctly"
 
         # Test with KeyError
@@ -166,8 +192,12 @@ class TestErrorCategorization:
         except KeyError as e:
             error = handle_exception(e, "accessing dictionary", "get_value")
 
-        assert isinstance(error, ValidationError), "KeyError should be converted to ValidationError"
-        assert "missing_key" in str(error), "Missing key should be mentioned in the error"
+        assert isinstance(error, ValidationError), (
+            "KeyError should be converted to ValidationError"
+        )
+        assert "missing_key" in str(error), (
+            "Missing key should be mentioned in the error"
+        )
 
         # Test with custom error message pattern
         try:
@@ -175,7 +205,9 @@ class TestErrorCategorization:
         except Exception as e:
             error = handle_exception(e)
 
-        assert error.resource_id == "note123", "Resource ID should be extracted from the error message"
+        assert error.resource_id == "note123", (
+            "Resource ID should be extracted from the error message"
+        )
 
     def test_error_subcategory_detection(self):
         """Test automatic detection of error subcategories."""
@@ -186,7 +218,9 @@ class TestErrorCategorization:
             error = handle_exception(e)
 
         assert isinstance(error, ValidationError), "Should be a ValidationError"
-        assert error.subcategory == "required", "Subcategory should be 'required' based on error message"
+        assert error.subcategory == "required", (
+            "Subcategory should be 'required' based on error message"
+        )
 
         # Test network error detection
         try:
@@ -211,16 +245,18 @@ class TestErrorCategorization:
             code_info = parse_error_code(error.error_code)
 
             # Verify code parsing
-            assert code_info is not None, f"Error code {error.error_code} should be parseable"
+            assert code_info is not None, (
+                f"Error code {error.error_code} should be parseable"
+            )
             assert code_info["category"] == CATEGORY_PREFIXES[error.category.value], (
                 "Parsed category should match error category"
             )
 
             subcategory_code = f"{error.category.value}_{error.subcategory}"
             if subcategory_code in SUBCATEGORY_CODES:
-                assert code_info["subcategory"] == SUBCATEGORY_CODES[subcategory_code], (
-                    "Parsed subcategory should match error subcategory description"
-                )
+                assert (
+                    code_info["subcategory"] == SUBCATEGORY_CODES[subcategory_code]
+                ), "Parsed subcategory should match error subcategory description"
 
     def test_error_severity(self):
         """Test error severity levels."""
@@ -230,21 +266,20 @@ class TestErrorCategorization:
 
         # Test explicit severity
         critical_error = InternalError(
-            "Database corruption",
-            severity=ErrorSeverity.CRITICAL
+            "Database corruption", severity=ErrorSeverity.CRITICAL
         )
         assert critical_error.severity == ErrorSeverity.CRITICAL
 
         # Test warning level
         warning_error = ConfigurationError(
-            "Using default configuration",
-            severity=ErrorSeverity.WARNING
+            "Using default configuration", severity=ErrorSeverity.WARNING
         )
         assert warning_error.severity == ErrorSeverity.WARNING
 
     @pytest.mark.asyncio
     async def test_error_in_async_context(self):
         """Test errors in async functions."""
+
         async def async_operation():
             try:
                 raise TimeoutError("Operation timed out after 30 seconds")
@@ -267,17 +302,19 @@ class TestErrorCategorization:
                 raise ValueError("Invalid input value")
             except ValueError as e:
                 raise ValidationError(
-                    "Validation failed",
-                    original_error=e,
-                    subcategory="format"
+                    "Validation failed", original_error=e, subcategory="format"
                 ) from e
         except ValidationError as e:
             chained_error = e
 
         # Verify error chain
         assert chained_error.original_error is not None, "Original error should be set"
-        assert isinstance(chained_error.original_error, ValueError), "Original error should be ValueError"
-        assert "Invalid input value" in str(chained_error.original_error), "Original error message should be preserved"
+        assert isinstance(chained_error.original_error, ValueError), (
+            "Original error should be ValueError"
+        )
+        assert "Invalid input value" in str(chained_error.original_error), (
+            "Original error message should be preserved"
+        )
 
     def test_user_friendly_messages(self):
         """Test user-friendly error messages."""
@@ -288,21 +325,24 @@ class TestErrorCategorization:
         # Test custom user message
         custom_msg = "Please enter content for your note"
         error2 = ValidationError(
-            "Note content cannot be empty",
-            user_message=custom_msg
+            "Note content cannot be empty", user_message=custom_msg
         )
-        assert error2.get_user_message() == custom_msg, "Custom user message should be used"
+        assert error2.get_user_message() == custom_msg, (
+            "Custom user message should be used"
+        )
 
         # Test subcategory-based user message
         error3 = AuthenticationError(
-            "Invalid credentials provided",
-            subcategory="credentials"
+            "Invalid credentials provided", subcategory="credentials"
         )
-        assert "credentials" in error3.get_user_message().lower(), "User message should mention credentials"
+        assert "credentials" in error3.get_user_message().lower(), (
+            "User message should mention credentials"
+        )
 
 
 # Run the tests if called directly
 if __name__ == "__main__":
     # Use pytest to run the tests
     import pytest
+
     sys.exit(pytest.main(["-xvs", __file__]))

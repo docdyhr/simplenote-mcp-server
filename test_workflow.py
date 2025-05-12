@@ -23,7 +23,9 @@ env["PYTHONPATH"] = os.path.abspath(".")
 test_cmd = [sys.executable, "-m", "pytest", "--collect-only", "-q"]
 
 try:
-    result = subprocess.run(test_cmd, env=env, check=False, text=True, capture_output=True)
+    result = subprocess.run(
+        test_cmd, env=env, check=False, text=True, capture_output=True
+    )
     if result.returncode == 0:
         print("✅ pytest command executed successfully")
         print(f"Found tests: {result.stdout.strip()}")
@@ -37,9 +39,9 @@ except Exception as e:
 print("\nTesting GitHub Actions output commands...")
 print("::group::GitHub Actions Commands Test")
 print("Using $GITHUB_OUTPUT style (current):")
-print("echo \"format_issues=5\" >> $GITHUB_OUTPUT")
+print('echo "format_issues=5" >> $GITHUB_OUTPUT')
 print("\nUsing ::set-output style (deprecated):")
-print("echo \"::set-output name=format_issues::5\"")
+print('echo "::set-output name=format_issues::5"')
 print("::endgroup::")
 
 # Summary

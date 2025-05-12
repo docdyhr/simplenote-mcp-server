@@ -40,9 +40,15 @@ class TestStructuredLogging:
         logger = get_logger("test")
 
         # Assert logger properties
-        assert isinstance(logger, StructuredLogAdapter), "Logger should be a StructuredLogAdapter"
-        assert logger.logger.name == "simplenote_mcp.test", "Logger name should be prefixed with simplenote_mcp"
-        assert isinstance(logger.extra, dict), "Logger extra context should be a dictionary"
+        assert isinstance(logger, StructuredLogAdapter), (
+            "Logger should be a StructuredLogAdapter"
+        )
+        assert logger.logger.name == "simplenote_mcp.test", (
+            "Logger name should be prefixed with simplenote_mcp"
+        )
+        assert isinstance(logger.extra, dict), (
+            "Logger extra context should be a dictionary"
+        )
 
     def test_contextual_logging(self):
         """Test that context is properly added to logs."""
@@ -51,17 +57,33 @@ class TestStructuredLogging:
         logger = get_logger("context_test", **context)
 
         # Verify the context was added
-        assert "component" in logger.extra, "Context item 'component' should be in logger.extra"
-        assert logger.extra["component"] == "test", "Context value for 'component' is incorrect"
-        assert "operation" in logger.extra, "Context item 'operation' should be in logger.extra"
-        assert logger.extra["operation"] == "logging_test", "Context value for 'operation' is incorrect"
+        assert "component" in logger.extra, (
+            "Context item 'component' should be in logger.extra"
+        )
+        assert logger.extra["component"] == "test", (
+            "Context value for 'component' is incorrect"
+        )
+        assert "operation" in logger.extra, (
+            "Context item 'operation' should be in logger.extra"
+        )
+        assert logger.extra["operation"] == "logging_test", (
+            "Context value for 'operation' is incorrect"
+        )
 
         # Test adding more context with with_context
         enhanced_logger = logger.with_context(user_id="123", action="read")
-        assert "user_id" in enhanced_logger.extra, "Context item 'user_id' should be added"
-        assert "action" in enhanced_logger.extra, "Context item 'action' should be added"
-        assert "component" in enhanced_logger.extra, "Original context 'component' should be preserved"
-        assert enhanced_logger.extra["user_id"] == "123", "Context value for 'user_id' is incorrect"
+        assert "user_id" in enhanced_logger.extra, (
+            "Context item 'user_id' should be added"
+        )
+        assert "action" in enhanced_logger.extra, (
+            "Context item 'action' should be added"
+        )
+        assert "component" in enhanced_logger.extra, (
+            "Original context 'component' should be preserved"
+        )
+        assert enhanced_logger.extra["user_id"] == "123", (
+            "Context value for 'user_id' is incorrect"
+        )
 
     def test_trace_id_generation(self):
         """Test that trace IDs are generated and propagated correctly."""
@@ -76,7 +98,9 @@ class TestStructuredLogging:
         # Test explicit trace ID
         explicit_trace_id = "test-trace-123"
         trace_logger2 = get_logger("trace_test").trace(explicit_trace_id)
-        assert trace_logger2.trace_id == explicit_trace_id, "Explicit trace ID was not set correctly"
+        assert trace_logger2.trace_id == explicit_trace_id, (
+            "Explicit trace ID was not set correctly"
+        )
 
     def test_request_logger(self):
         """Test request logger creation and context."""
@@ -86,10 +110,16 @@ class TestStructuredLogging:
 
         # Verify request ID and context
         assert req_logger.trace_id is not None, "Request logger should have trace ID"
-        assert "request_id" in req_logger.extra, "Request logger should have request_id in context"
-        assert req_logger.extra["request_id"] == request_id, "Request ID in context should match"
+        assert "request_id" in req_logger.extra, (
+            "Request logger should have request_id in context"
+        )
+        assert req_logger.extra["request_id"] == request_id, (
+            "Request ID in context should match"
+        )
         assert "user" in req_logger.extra, "Request logger should have user in context"
-        assert "action" in req_logger.extra, "Request logger should have action in context"
+        assert "action" in req_logger.extra, (
+            "Request logger should have action in context"
+        )
 
     @pytest.mark.asyncio
     async def test_log_context_in_async(self):
@@ -98,15 +128,13 @@ class TestStructuredLogging:
 
         async def task_with_logger(task_id):
             # Create a logger with task-specific context
-            task_logger = get_logger("async_test").with_context(
-                task_id=task_id
-            )
+            task_logger = get_logger("async_test").with_context(task_id=task_id)
             # Log and capture the extra context
-            with patch.object(task_logger, 'info') as mock_info:
+            with patch.object(task_logger, "info") as mock_info:
                 task_logger.info(f"Task {task_id} running")
                 # Get the kwargs from the call
                 call_kwargs = mock_info.call_args.kwargs
-                results.append(call_kwargs.get('extra', {}))
+                results.append(call_kwargs.get("extra", {}))
 
             return task_id
 
@@ -136,7 +164,7 @@ class TestStructuredLogging:
             "name": "test_logger",
             "trace_id": "test-trace-456",
             "component": "test",
-            "user_id": "789"
+            "user_id": "789",
         }
 
         # Format the record
@@ -158,7 +186,7 @@ class TestStructuredLogging:
         logger = get_logger("exception_test").with_context(operation="test_op")
 
         # Capture the log output
-        with patch.object(logger, 'error') as mock_error:
+        with patch.object(logger, "error") as mock_error:
             try:
                 raise ValueError("Test error")
             except ValueError:
@@ -168,11 +196,17 @@ class TestStructuredLogging:
             mock_error.assert_called_once()
             args, kwargs = mock_error.call_args
             assert args[0] == "An error occurred", "Error message should be logged"
-            assert kwargs.get('exc_info') is True, "exc_info should be True"
-            assert "operation" in kwargs.get('extra', {}), "Context should include operation"
-            assert kwargs.get('extra', {}).get('operation') == "test_op", "Operation context is incorrect"
+            assert kwargs.get("exc_info") is True, "exc_info should be True"
+            assert "operation" in kwargs.get("extra", {}), (
+                "Context should include operation"
+            )
+            assert kwargs.get("extra", {}).get("operation") == "test_op", (
+                "Operation context is incorrect"
+            )
 
-    @pytest.mark.parametrize("log_level", ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"])
+    @pytest.mark.parametrize(
+        "log_level", ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    )
     def test_log_levels(self, log_level):
         """Test that different log levels work correctly."""
         logger = get_logger("level_test")
@@ -192,14 +226,18 @@ class TestStructuredLogging:
         logger = get_logger("caller_test")
 
         # Capture the log to inspect context
-        with patch.object(logger, 'info') as mock_info:
+        with patch.object(logger, "info") as mock_info:
             logger.info("Test message")
 
             # Verify caller information is included
             _, kwargs = mock_info.call_args
-            assert "caller" in kwargs.get('extra', {}), "Caller information should be included"
-            caller = kwargs.get('extra', {}).get('caller', '')
-            assert "test_structured_logging" in caller, "Caller should include test module name"
+            assert "caller" in kwargs.get("extra", {}), (
+                "Caller information should be included"
+            )
+            caller = kwargs.get("extra", {}).get("caller", "")
+            assert "test_structured_logging" in caller, (
+                "Caller should include test module name"
+            )
 
 
 # Run the tests if called directly

@@ -34,6 +34,7 @@ Thank you for considering contributing to the Simplenote MCP Server! This docume
 
    ```bash
    pre-commit install
+   ./pre_commit_fix.sh  # Apply Python 3.13+ compatibility fixes
    ```
 
 ## Code Quality Tools
@@ -47,16 +48,26 @@ Pre-commit hooks run automatically when you commit code and help catch issues ea
 - **Trailing whitespace**: Removes trailing whitespace
 - **End-of-file fixer**: Ensures files end with a newline
 - **YAML/TOML checker**: Validates configuration files
-- **Black**: Formats code according to PEP 8 (88-character line length)
-- **isort**: Sorts imports consistently
-- **Ruff**: Lints code for common issues
+- **Ruff**: Lints code for common issues and formats it automatically
 - **MyPy**: Checks type annotations
 - **Bandit**: Identifies security issues
 
-You can run all pre-commit hooks manually:
+You can run all pre-commit hooks manually using our convenience script:
 
 ```bash
-pre-commit run --all-files
+./run_pre_commit.sh
+```
+
+This script applies Python 3.12/3.13 compatibility fixes before running the hooks.
+
+For detailed information about the pre-commit setup, including troubleshooting, see [PRE_COMMIT_README.md](PRE_COMMIT_README.md).
+
+#### Python 3.13 Compatibility
+
+This project includes special handling to ensure compatibility with both Python 3.12 and 3.13. When using pre-commit, always run the fix script first if you encounter any errors:
+
+```bash
+./pre_commit_fix.sh
 ```
 
 ### Type Checking
@@ -85,7 +96,7 @@ pytest --cov=simplenote_mcp tests/
 
 1. Create a new branch for your feature or bugfix
 2. Make your changes
-3. Ensure tests pass and pre-commit hooks succeed
+3. Ensure tests pass and pre-commit hooks succeed (`./run_pre_commit.sh`)
 4. Push your branch and create a pull request
 5. Update the CHANGELOG.md with your changes
 6. Wait for review and address any feedback

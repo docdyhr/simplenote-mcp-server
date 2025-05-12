@@ -6,6 +6,7 @@ and aggregating their results into a comprehensive report.
 """
 
 import argparse
+import contextlib
 import datetime
 import json
 import os
@@ -97,10 +98,8 @@ def run_linting(project_dir: str) -> Dict[str, Any]:
 
     for line in stdout.splitlines():
         if line.strip().startswith("Found") and "errors" in line:
-            try:
+            with contextlib.suppress(IndexError, ValueError):
                 issues_total = int(line.strip().split(" ")[1])
-            except (IndexError, ValueError):
-                pass
         elif line.strip() and ":" in line and not line.strip().startswith("simplenote"):
             parts = line.strip().split(":")
             if len(parts) >= 2:
@@ -143,13 +142,21 @@ def run_mypy(project_dir: str) -> Dict[str, Any]:
             errors += 1
             # Try to categorize error
             if "Incompatible" in line:
-                errors_by_type["Incompatible type"] = errors_by_type.get("Incompatible type", 0) + 1
+                errors_by_type["Incompatible type"] = (
+                    errors_by_type.get("Incompatible type", 0) + 1
+                )
             elif "Untyped" in line:
-                errors_by_type["Untyped function/call"] = errors_by_type.get("Untyped function/call", 0) + 1
+                errors_by_type["Untyped function/call"] = (
+                    errors_by_type.get("Untyped function/call", 0) + 1
+                )
             elif "Missing" in line:
-                errors_by_type["Missing type annotation"] = errors_by_type.get("Missing type annotation", 0) + 1
+                errors_by_type["Missing type annotation"] = (
+                    errors_by_type.get("Missing type annotation", 0) + 1
+                )
             else:
-                errors_by_type["Other type error"] = errors_by_type.get("Other type error", 0) + 1
+                errors_by_type["Other type error"] = (
+                    errors_by_type.get("Other type error", 0) + 1
+                )
 
     return {
         "status": "pass" if return_code == 0 else "fail",
@@ -217,7 +224,9 @@ def run_coverage_report(project_dir: str) -> Dict[str, Any]:
 
     # First run pytest with coverage
     pytest_cmd = [
-        "python", "-m", "pytest",
+        "python",
+        "-m",
+        "pytest",
         "--cov=simplenote_mcp",
         "--cov-report=xml",
         "--cov-report=term",
@@ -253,10 +262,8 @@ def run_coverage_report(project_dir: str) -> Dict[str, Any]:
         if line.startswith("TOTAL"):
             parts = line.split()
             if len(parts) >= 5:
-                try:
+                with contextlib.suppress(ValueError, IndexError):
                     coverage_data["total_coverage"] = float(parts[-1].strip("%"))
-                except (ValueError, IndexError):
-                    pass
 
     return coverage_data
 
@@ -282,7 +289,13 @@ def run_docstring_coverage(project_dir: str) -> Dict[str, Any]:
 
     # Run docstr-coverage
     stdout, stderr, return_code = run_command(
-        ["docstr-coverage", "simplenote_mcp", "--skipmagic", "--skipinit", "--verbose=2"],
+        [
+            "docstr-coverage",
+            "simplenote_mcp",
+            "--skipmagic",
+            "--skipinit",
+            "--verbose=2",
+        ],
         cwd=project_dir,
     )
 
@@ -292,15 +305,11 @@ def run_docstring_coverage(project_dir: str) -> Dict[str, Any]:
 
     for line in stdout.splitlines():
         if "Total docstring coverage:" in line:
-            try:
+            with contextlib.suppress(ValueError, IndexError):
                 coverage_percent = float(line.split(":")[1].strip().strip("%"))
-            except (ValueError, IndexError):
-                pass
         elif "Missing docstrings:" in line:
-            try:
+            with contextlib.suppress(ValueError, IndexError):
                 missing_count = int(line.split(":")[1].strip())
-            except (ValueError, IndexError):
-                pass
 
     return {
         "status": "pass" if coverage_percent >= 80 else "fail",
@@ -464,7 +473,7 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
 <body>
     <h1>Code Quality Report</h1>
     <p>Generated on {report["timestamp"]}</p>
-    
+
     <h2>Summary</h2>
     <div class="summary">
         <div class="metric-card {report["formatting"]["status"]}">
@@ -472,46 +481,46 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
             <div class="metric-value">{report["formatting"]["files_to_format"]}</div>
             <p>Files needing reformatting</p>
         </div>
-        
+
         <div class="metric-card {report["lint"]["status"]}">
             <h3>Linting Issues</h3>
             <div class="metric-value">{report["lint"]["issues_total"]}</div>
             <p>Total linting issues</p>
         </div>
-        
+
         <div class="metric-card {report["type_checking"]["status"]}">
             <h3>Type Errors</h3>
             <div class="metric-value">{report["type_checking"]["type_errors"]}</div>
             <p>Type checking errors</p>
         </div>
-        
+
         <div class="metric-card {report["security"]["status"]}">
             <h3>Security Issues</h3>
             <div class="metric-value">{report["security"]["issues_count"]}</div>
             <p>Security vulnerabilities</p>
         </div>
-        
-        <div class="metric-card {'pass' if report["coverage"]["total_coverage"] >= 80 else 'warn' if report["coverage"]["total_coverage"] >= 60 else 'fail'}">
+
+        <div class="metric-card {"pass" if report["coverage"]["total_coverage"] >= 80 else "warn" if report["coverage"]["total_coverage"] >= 60 else "fail"}">
             <h3>Test Coverage</h3>
             <div class="metric-value">{report["coverage"]["total_coverage"]}%</div>
             <p>Code coverage</p>
         </div>
-        
-        <div class="metric-card {'pass' if report["docstring_coverage"]["docstring_coverage"] >= 80 else 'warn' if report["docstring_coverage"]["docstring_coverage"] >= 60 else 'fail'}">
+
+        <div class="metric-card {"pass" if report["docstring_coverage"]["docstring_coverage"] >= 80 else "warn" if report["docstring_coverage"]["docstring_coverage"] >= 60 else "fail"}">
             <h3>Docstring Coverage</h3>
             <div class="metric-value">{report["docstring_coverage"]["docstring_coverage"]}%</div>
             <p>{report["docstring_coverage"]["missing_docstrings"]} missing docstrings</p>
         </div>
     </div>
-    
+
     <h2>Detailed Results</h2>
-    
+
     <h3>Code Formatting</h3>
     <pre>{report["formatting"]["details"]}</pre>
-    
+
     <h3>Linting Issues</h3>
     <p>Total issues: {report["lint"]["issues_total"]}</p>
-    
+
     <h4>Issues by Rule</h4>
     <table>
         <tr>
@@ -520,10 +529,10 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
         </tr>
         {"".join(f"<tr><td>{rule}</td><td>{count}</td></tr>" for rule, count in sorted(report["lint"]["issues_by_rule"].items(), key=lambda x: x[1], reverse=True))}
     </table>
-    
+
     <h3>Type Checking</h3>
     <p>Total type errors: {report["type_checking"]["type_errors"]}</p>
-    
+
     <h4>Errors by Type</h4>
     <table>
         <tr>
@@ -532,10 +541,10 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
         </tr>
         {"".join(f"<tr><td>{error_type}</td><td>{count}</td></tr>" for error_type, count in sorted(report["type_checking"]["errors_by_type"].items(), key=lambda x: x[1], reverse=True))}
     </table>
-    
+
     <h3>Security Analysis</h3>
     <p>Total issues: {report["security"]["issues_count"]}</p>
-    
+
     <h4>Issues by Severity</h4>
     <table>
         <tr>
@@ -544,10 +553,10 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
         </tr>
         {"".join(f"<tr><td>{severity}</td><td>{count}</td></tr>" for severity, count in sorted(report["security"]["issues_by_severity"].items(), key=lambda x: severity_value(x[0]), reverse=True))}
     </table>
-    
+
     <h3>Test Coverage</h3>
     <p>Total coverage: {report["coverage"]["total_coverage"]}%</p>
-    
+
     <h3>Docstring Coverage</h3>
     <p>Total docstring coverage: {report["docstring_coverage"]["docstring_coverage"]}%</p>
     <p>Missing docstrings: {report["docstring_coverage"]["missing_docstrings"]}</p>
@@ -584,23 +593,19 @@ def main() -> int:
     parser.add_argument(
         "--project-dir",
         default=".",
-        help="Project directory path (default: current directory)"
+        help="Project directory path (default: current directory)",
     )
     parser.add_argument(
         "--output-dir",
         default="code_quality_reports",
-        help="Output directory for reports"
+        help="Output directory for reports",
     )
     parser.add_argument(
         "--trend-file",
         default=".github/code-quality-trend.json",
-        help="Path to trend data file"
+        help="Path to trend data file",
     )
-    parser.add_argument(
-        "--html",
-        action="store_true",
-        help="Generate HTML report"
-    )
+    parser.add_argument("--html", action="store_true", help="Generate HTML report")
     args = parser.parse_args()
 
     # Ensure project_dir is absolute

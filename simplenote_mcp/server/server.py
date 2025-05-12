@@ -1,5 +1,6 @@
 # simplenote_mcp/server/server.py
 
+# Import standard libraries
 import asyncio
 import atexit
 import contextlib
@@ -10,6 +11,7 @@ import sys
 import tempfile
 import threading
 import time
+from contextlib import suppress
 from typing import Any, List, Optional, cast
 
 # External imports
@@ -45,15 +47,11 @@ def safe_get(obj: Any, key: str, default: Any = None) -> Any:
     if isinstance(obj, dict):
         return obj.get(key, default)
     if hasattr(obj, "get"):
-        try:
+        with suppress(Exception):
             return obj.get(key, default)
-        except Exception:
-            pass
     if hasattr(obj, "__getitem__"):
-        try:
+        with suppress(Exception):
             return obj[key]
-        except Exception:
-            pass
     return default
 
 
@@ -65,10 +63,8 @@ def safe_set(obj: Any, key: str, value: Any) -> None:
         obj[key] = value
         return
     if hasattr(obj, "__setitem__"):
-        try:
+        with suppress(Exception):
             obj[key] = value
-        except Exception:
-            pass
     return
 
 

@@ -69,11 +69,16 @@ class NoteCache:
         max_retries = 3
         retry_count = 0
         retry_delay = 2
+        notes_data = []  # Initialize notes_data to prevent unbound variable errors
 
         while retry_count < max_retries:
             try:
                 # Get all notes from Simplenote
                 notes_data, status = self._client.get_note_list(tags=[])
+
+                # Ensure notes_data is a list, even if we got an error
+                if not isinstance(notes_data, list):
+                    notes_data = []  # type: ignore
 
                 if status != 0:
                     # Log the error but don't raise exception yet if we have retries left
@@ -168,10 +173,15 @@ class NoteCache:
         max_retries = 2
         retry_count = 0
         retry_delay = 1
+        result = []  # Initialize result to prevent unbound variable errors
 
         while retry_count < max_retries:
             try:
                 result, status = self._client.get_note_list(since=since, tags=[])
+
+                # Set default result types in case of errors
+                if not isinstance(result, (dict, list)):
+                    result = []  # type: ignore
 
                 if status != 0:
                     # Handle non-zero status
@@ -213,6 +223,7 @@ class NoteCache:
                         f"Failed to sync after {max_retries} attempts: {str(e)}"
                     ) from e
 
+        # Create a separate try block for processing the result
         try:
             # Update local index mark for test compatibility
             if isinstance(result, dict) and "mark" in result:
@@ -454,7 +465,7 @@ class NoteCache:
         if "tags" in note and note["tags"]:
             self._tags.update(note["tags"])
 
-    def update_cache_after_update(self, note: dict) -> None:
+    def update_cache_after_update(self, note) -> None:
         """Update cache after updating a note.
 
         Args:
@@ -463,6 +474,15 @@ class NoteCache:
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
+
+        # Ensure we have a dictionary
+        if not isinstance(note, dict):
+            logger.error(f"Cannot update cache with non-dictionary note: {type(note)}")
+            return
+
+        if "key" not in note:
+            logger.error("Cannot update cache with note missing 'key' field")
+            return
 
         note_id = note["key"]
 

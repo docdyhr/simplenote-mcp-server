@@ -36,14 +36,18 @@ class TestPathCompat:
     def test_path_join(self):
         """Test joining paths."""
         path = Path("test") / "path" / "file.txt"
-        assert str(path) == os.path.join("test", "path", "file.txt"), "Path joining should work"
+        assert str(path) == os.path.join("test", "path", "file.txt"), (
+            "Path joining should work"
+        )
 
     def test_path_parent(self):
         """Test path parent property."""
         path = Path("test/path/file.txt")
         parent = path.parent
         assert parent is not None, "Parent should not be None"
-        assert str(parent) == os.path.dirname("test/path/file.txt"), "Parent should be the directory"
+        assert str(parent) == os.path.dirname("test/path/file.txt"), (
+            "Parent should be the directory"
+        )
 
     def test_path_name(self):
         """Test path name property."""
@@ -134,7 +138,9 @@ class TestPathCompat:
             # Test *.txt pattern
             txt_files = list(path.glob("*.txt"))
             assert len(txt_files) == 2, "Should find 2 txt files"
-            assert all(file.suffix == ".txt" for file in txt_files), "All files should have .txt suffix"
+            assert all(file.suffix == ".txt" for file in txt_files), (
+                "All files should have .txt suffix"
+            )
 
             # Test *.py pattern
             py_files = list(path.glob("*.py"))
@@ -162,12 +168,18 @@ class TestOtherCompat:
         if sys.version_info >= (3, 13):
             # Python 3.13+: We should be using our custom Path implementation
             import inspect
+
             path_module = inspect.getmodule(Path)
-            assert "compat" in str(path_module), "Path should come from our compat module in Python 3.13+"
+            assert "compat" in str(path_module), (
+                "Path should come from our compat module in Python 3.13+"
+            )
         else:
             # Python < 3.13: We should be using pathlib.Path
             import pathlib
-            assert Path == pathlib.Path, "Path should be identical to pathlib.Path in Python < 3.13"
+
+            assert Path == pathlib.Path, (
+                "Path should be identical to pathlib.Path in Python < 3.13"
+            )
 
 
 if __name__ == "__main__":

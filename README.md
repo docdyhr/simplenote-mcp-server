@@ -6,6 +6,8 @@ A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) w
 
 This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
 
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
+
 [![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
 [![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
@@ -555,10 +557,19 @@ To get started with pre-commit:
 
    ```bash
    pre-commit install
+   ./pre_commit_fix.sh  # Apply Python 3.13+ compatibility fixes
    ```
 
-3. The hooks will now run automatically on every commit. They include:
-   - Code formatting with Black
+3. Run pre-commit checks using our convenience script:
+
+   ```bash
+   ./run_pre_commit.sh
+   ```
+
+   For detailed information about the pre-commit setup, including troubleshooting Python 3.13+ compatibility issues, see [PRE_COMMIT_README.md](./PRE_COMMIT_README.md).
+
+4. The hooks will now run automatically on every commit. They include:
+   - Code formatting with Ruff
    - Import sorting with isort
    - Linting with Ruff
    - Type checking with MyPy
@@ -585,6 +596,13 @@ The project follows these code style guidelines:
 ## Contributing
 
 Contributions are welcome and pull requests are welcome! Please open an issue first to discuss any significant changes. Read our [Contributing Guide](./.github/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
+
+Before submitting a PR, please make sure:
+1. All tests pass (`pytest`)
+2. Code quality checks pass (`./run_pre_commit.sh`)
+3. Your changes are documented appropriately
+
+The project uses pre-commit hooks to ensure code quality standards. See [PRE_COMMIT_README.md](./PRE_COMMIT_README.md) for more details.
 
 ## Security
 

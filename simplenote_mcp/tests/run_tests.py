@@ -27,9 +27,11 @@ from simplenote_mcp.server.logging import get_logger, initialize_logging
 # Create a logger for this script
 logger = get_logger("tests.runner")
 
+
 # Test categories
 class TestCategory(Enum):
     """Categories of tests that can be run."""
+
     UNIT = "unit"
     INTEGRATION = "integration"
     ALL = "all"
@@ -37,7 +39,7 @@ class TestCategory(Enum):
 
 def check_environment() -> bool:
     """Check if the environment is properly configured for tests.
-    
+
     Returns:
         bool: True if environment is properly configured
     """
@@ -56,10 +58,10 @@ def check_environment() -> bool:
 
 def discover_tests(category: TestCategory = TestCategory.ALL) -> List[str]:
     """Discover test modules based on category.
-    
+
     Args:
         category: The category of tests to discover
-        
+
     Returns:
         List of discovered test module paths
     """
@@ -69,7 +71,7 @@ def discover_tests(category: TestCategory = TestCategory.ALL) -> List[str]:
     patterns = {
         TestCategory.UNIT: ["test_*py"],
         TestCategory.INTEGRATION: ["test_integration_*py"],
-        TestCategory.ALL: ["test_*py"]
+        TestCategory.ALL: ["test_*py"],
     }
 
     # Special handling for specific categories
@@ -89,13 +91,15 @@ def discover_tests(category: TestCategory = TestCategory.ALL) -> List[str]:
     return sorted(test_files)
 
 
-async def run_single_test_async(test_path: str, verbose: bool = False) -> Tuple[bool, str]:
+async def run_single_test_async(
+    test_path: str, verbose: bool = False
+) -> Tuple[bool, str]:
     """Run a single test module asynchronously.
-    
+
     Args:
         test_path: Path to test module
         verbose: Whether to use verbose output
-        
+
     Returns:
         Tuple of (success, output)
     """
@@ -107,9 +111,7 @@ async def run_single_test_async(test_path: str, verbose: bool = False) -> Tuple[
     # Run the test process and capture output
     try:
         process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
         )
 
         stdout, stderr = await process.communicate()
@@ -128,11 +130,11 @@ async def run_single_test_async(test_path: str, verbose: bool = False) -> Tuple[
 
 async def run_tests_async(test_paths: List[str], verbose: bool = False) -> bool:
     """Run multiple test modules asynchronously.
-    
+
     Args:
         test_paths: List of test module paths to run
         verbose: Whether to use verbose output
-        
+
     Returns:
         True if all tests passed
     """
@@ -192,23 +194,29 @@ async def run_tests_async(test_paths: List[str], verbose: bool = False) -> bool:
     return failed == 0
 
 
-def run_pytest(test_paths: Optional[List[str]] = None, verbose: bool = False,
-              coverage: bool = False, junit: bool = False) -> bool:
+def run_pytest(
+    test_paths: Optional[List[str]] = None,
+    verbose: bool = False,
+    coverage: bool = False,
+    junit: bool = False,
+) -> bool:
     """Run tests using pytest.
-    
+
     Args:
         test_paths: Optional list of specific test paths to run
         verbose: Whether to use verbose output
         coverage: Whether to generate coverage report
         junit: Whether to generate JUnit XML report
-        
+
     Returns:
         True if all tests passed
     """
     pytest_args = ["-xvs"] if verbose else ["-xs"]
 
     if coverage:
-        pytest_args.extend(["--cov=simplenote_mcp", "--cov-report=term", "--cov-report=html"])
+        pytest_args.extend(
+            ["--cov=simplenote_mcp", "--cov-report=term", "--cov-report=html"]
+        )
 
     if junit:
         pytest_args.extend(["--junitxml=test-results.xml"])
@@ -224,6 +232,7 @@ def run_pytest(test_paths: Optional[List[str]] = None, verbose: bool = False,
     # Import pytest here to avoid unnecessary dependency if not used
     try:
         import pytest
+
         result = pytest.main(pytest_args)
         return result == 0
     except ImportError:
@@ -239,38 +248,28 @@ def main():
         "--mode",
         choices=["direct", "pytest"],
         default="pytest",
-        help="Test execution mode (default: pytest)"
+        help="Test execution mode (default: pytest)",
     )
     parser.add_argument(
         "--category",
         choices=[c.value for c in TestCategory],
         default=TestCategory.ALL.value,
-        help="Test category to run (default: all)"
+        help="Test category to run (default: all)",
     )
-    parser.add_argument(
-        "--tests",
-        nargs="*",
-        help="Specific test paths to run"
-    )
-    parser.add_argument(
-        "-v", "--verbose",
-        action="store_true",
-        help="Verbose output"
-    )
+    parser.add_argument("--tests", nargs="*", help="Specific test paths to run")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")
     parser.add_argument(
         "--coverage",
         action="store_true",
-        help="Generate coverage report (pytest mode only)"
+        help="Generate coverage report (pytest mode only)",
     )
     parser.add_argument(
         "--junit",
         action="store_true",
-        help="Generate JUnit XML report (pytest mode only)"
+        help="Generate JUnit XML report (pytest mode only)",
     )
     parser.add_argument(
-        "--no-env-check",
-        action="store_true",
-        help="Skip environment variable check"
+        "--no-env-check", action="store_true", help="Skip environment variable check"
     )
 
     args = parser.parse_args()
@@ -284,7 +283,9 @@ def main():
     initialize_logging()
 
     # Determine which tests to run
-    test_paths = args.tests if args.tests else discover_tests(TestCategory(args.category))
+    test_paths = (
+        args.tests if args.tests else discover_tests(TestCategory(args.category))
+    )
 
     if args.mode == "pytest":
         success = run_pytest(test_paths, args.verbose, args.coverage, args.junit)

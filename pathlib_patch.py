@@ -156,7 +156,9 @@ def patch_pathlib():
 
 
 # Apply the patch when this module is imported
-success = patch_pathlib()  # We need to run the patch on import for Python 3.13 compatibility
+success = (
+    patch_pathlib()
+)  # We need to run the patch on import for Python 3.13 compatibility
 # To enable patches if needed, the main application should explicitly call patch_pathlib()
 # and potentially patch_dependencies() from this module.
 

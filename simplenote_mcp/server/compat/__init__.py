@@ -8,10 +8,10 @@ This module handles compatibility issues between different Python versions.
 import importlib
 import os
 import sys
-from typing import Any, Optional, Type, TypeVar, Union
 
 # Import directly from pathlib (works with Python 3.12)
 from pathlib import Path, PurePath
+from typing import Any, Optional, Type, TypeVar, Union
 
 # Export Path for project-wide use
 __all__ = ["Path", "PurePath", "get_optional_module", "is_module_available"]
