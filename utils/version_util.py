@@ -1,6 +1,7 @@
 #!/usr/bin/env python
-import sys
 import logging
+import sys
+
 
 def check_python_version(major: int, minor: int) -> bool:
     """Check if the current Python version meets the required major and minor versions."""

@@ -1,6 +1,5 @@
 """Unit tests for Simplenote API interaction and handlers."""
 
-import json
 from unittest.mock import MagicMock, patch
 
 import mcp.types as types
@@ -13,7 +12,6 @@ from simplenote_mcp.server.errors import (
 )
 from simplenote_mcp.server.server import (
     get_simplenote_client,
-    handle_call_tool,
     handle_list_resources,
     handle_read_resource,
 )
@@ -111,7 +109,7 @@ class TestHandleListResources:
             assert len(resources) == len(mock_notes)  # Validate count of resources
 
             # Verify correct data structure
-            for resource, expected_note in zip(resources, mock_notes):
+            for resource, expected_note in zip(resources, mock_notes, strict=False):
                 assert isinstance(resource, types.Resource)
                 assert resource.key == expected_note["key"]
                 assert resource.content == expected_note["content"]

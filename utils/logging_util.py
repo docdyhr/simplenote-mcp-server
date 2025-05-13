@@ -2,6 +2,7 @@
 import logging
 import os
 
+
 def setup_logging(module_name: str, log_file: str) -> logging.Logger:
     """Setup logging for a given module."""
     logger = logging.getLogger(module_name)

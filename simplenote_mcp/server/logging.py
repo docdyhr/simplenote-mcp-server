@@ -1,5 +1,6 @@
 # simplenote_mcp/server/logging.py
 
+import inspect
 import json
 import logging
 import sys
@@ -7,8 +8,7 @@ import uuid
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Dict, Optional
-import inspect
+from typing import Any
 
 from .config import LogLevel, get_config
 
@@ -87,7 +87,7 @@ def initialize_logging() -> None:
     if config.log_to_file:
         # Use rotating file handler for main log file
         file_handler = RotatingFileHandler(
-            LOG_FILE, 
+            LOG_FILE,
             maxBytes=MAX_LOG_SIZE,
             backupCount=BACKUP_COUNT
         )
@@ -139,13 +139,13 @@ class JsonFormatter(logging.Formatter):
             "message": getattr(record, "message", ""),
             "logger": getattr(record, "name", "unknown"),
         }
-        
+
         try:
             if callable(getattr(record, "getMessage", None)):
                 log_entry["message"] = record.getMessage()
         except (AttributeError, TypeError):
             pass
-            
+
         # Add exception info if present
         try:
             if getattr(record, "exc_info", None):
@@ -160,10 +160,10 @@ class JsonFormatter(logging.Formatter):
         # Add all extra attributes from record.__dict__
         try:
             for key, value in record.__dict__.items():
-                if key not in ("args", "exc_info", "exc_text", "stack_info", "lineno", 
-                             "funcName", "created", "msecs", "relativeCreated", 
-                             "levelname", "levelno", "pathname", "filename", 
-                             "module", "name", "thread", "threadName", 
+                if key not in ("args", "exc_info", "exc_text", "stack_info", "lineno",
+                             "funcName", "created", "msecs", "relativeCreated",
+                             "levelname", "levelno", "pathname", "filename",
+                             "module", "name", "thread", "threadName",
                              "processName", "process", "message"):
                     log_entry[key] = value
         except (AttributeError, TypeError):
@@ -219,7 +219,7 @@ class StructuredLogAdapter(logging.LoggerAdapter):
         self.trace_id = None
         extra = extra or {}
         super().__init__(logger, extra)
-    
+
     def process(self, msg, kwargs):
         """Process the log message and add context."""
         # Get caller information for detailed logs
@@ -230,11 +230,11 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             current_frame = frame.f_back
             if current_frame:
                 current_frame = current_frame.f_back  # Skip the immediate adapter method
-                
+
                 # Now search for a frame that's not in this file
                 while current_frame and "logging.py" in current_frame.f_code.co_filename:
                     current_frame = current_frame.f_back
-                
+
                 if current_frame:
                     caller_info = f"{current_frame.f_code.co_filename}:{current_frame.f_lineno}"
                     self.extra["caller"] = caller_info
@@ -244,44 +244,42 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             self.extra["trace_id"] = self.trace_id
 
         # Ensure we always have an extra dict
-        if "extra" not in kwargs:
+        if "extra" not in kwargs or not isinstance(kwargs["extra"], dict):
             kwargs["extra"] = {}
-        elif not isinstance(kwargs["extra"], dict):
-            kwargs["extra"] = {}
-            
+
         # Make a deep copy to avoid modifying shared dictionaries
         kwargs["extra"] = kwargs["extra"].copy()
-        
+
         # Update with our context
         for key, value in self.extra.items():
             kwargs["extra"][key] = value
-        
+
         return msg, kwargs
-    
+
     def debug(self, msg, *args, **kwargs):
         """Log a debug message with context."""
         msg, kwargs = self.process(msg, kwargs.copy())  # Use copy to avoid modifying original
         self.logger.debug(msg, *args, **kwargs)
         return kwargs  # Return kwargs for testing purposes
-        
+
     def info(self, msg, *args, **kwargs):
         """Log an info message with context."""
         msg, kwargs = self.process(msg, kwargs.copy())  # Use copy to avoid modifying original
         self.logger.info(msg, *args, **kwargs)
         return kwargs  # Return kwargs for testing purposes
-        
+
     def warning(self, msg, *args, **kwargs):
         """Log a warning message with context."""
         msg, kwargs = self.process(msg, kwargs.copy())  # Use copy to avoid modifying original
         self.logger.warning(msg, *args, **kwargs)
         return kwargs  # Return kwargs for testing purposes
-        
+
     def error(self, msg, *args, **kwargs):
         """Log an error message with context."""
         msg, kwargs = self.process(msg, kwargs.copy())  # Use copy to avoid modifying original
         self.logger.error(msg, *args, **kwargs)
         return kwargs  # Return kwargs for testing purposes
-        
+
     def critical(self, msg, *args, **kwargs):
         """Log a critical message with context."""
         msg, kwargs = self.process(msg, kwargs.copy())  # Use copy to avoid modifying original
@@ -292,15 +290,15 @@ class StructuredLogAdapter(logging.LoggerAdapter):
         """Create a new logger with additional context."""
         new_extra = self.extra.copy()
         new_extra.update(context)
-        
+
         # Create new adapter with combined context
         adapter = StructuredLogAdapter(self.logger, new_extra)
-        
+
         # Copy trace ID if present
         if hasattr(self, "trace_id") and self.trace_id:
             adapter.trace_id = self.trace_id
             adapter.extra["trace_id"] = self.trace_id
-            
+
         return adapter
 
     def trace(self, trace_id=None):
@@ -325,7 +323,7 @@ def get_logger(name, **extra):
     # Ensure name is prefixed properly
     if not name.startswith("simplenote_mcp.") and name != "simplenote_mcp":
         name = f"simplenote_mcp.{name}"
-    
+
     return StructuredLogAdapter(logging.getLogger(name), extra)
 
 
@@ -342,7 +340,7 @@ def get_request_logger(request_id, **context):
     # Create basic context with request ID
     req_context = {"request_id": request_id}
     req_context.update(context)
-    
+
     # Create logger with context and trace ID
     logger = get_logger("request", **req_context)
     return logger.trace(request_id)

@@ -36,7 +36,7 @@ logger = get_logger(__name__)
 
 class PerformanceTest:
     """Class for measuring and reporting performance metrics."""
-    
+
     def __init__(self, name: str):
         """Initialize the performance test.
         
@@ -60,7 +60,7 @@ class PerformanceTest:
     def report(self) -> None:
         """Print the performance report."""
         print(f"{self.name}: {self.duration:.4f} seconds")
-        
+    
     def __enter__(self):
         """Start timer when entering context."""
         self.start()
@@ -73,7 +73,7 @@ class PerformanceTest:
 
 
 async def test_pagination_get_all_notes(cache: NoteCache) -> bool:
-    """Test pagination with search_notes.
+    """Test pagination with get_all_notes.
     
     Args:
         cache: Initialized NoteCache instance
@@ -235,10 +235,10 @@ async def test_pagination_search_notes(cache: NoteCache) -> bool:
 
 async def test_cache_performance(cache: NoteCache) -> bool:
     """Test cache performance with repeated searches.
-    
+
     Args:
         cache: Initialized NoteCache instance
-        
+
     Returns:
         True if test passes, False otherwise
     """
@@ -296,10 +296,10 @@ async def test_cache_performance(cache: NoteCache) -> bool:
 
 async def test_tag_index_performance(cache: NoteCache) -> bool:
     """Test tag index performance improvements.
-    
+
     Args:
         cache: Initialized NoteCache instance
-        
+
     Returns:
         True if test passes, False otherwise
     """
@@ -345,10 +345,10 @@ async def test_tag_index_performance(cache: NoteCache) -> bool:
 
 async def test_query_cache(cache: NoteCache) -> bool:
     """Test query cache performance.
-    
+
     Args:
         cache: Initialized NoteCache instance
-        
+
     Returns:
         True if test passes, False otherwise
     """
@@ -391,7 +391,7 @@ async def test_query_cache(cache: NoteCache) -> bool:
 
 async def main() -> bool:
     """Run all pagination and cache performance tests.
-    
+
     Returns:
         True if all tests pass, False otherwise
     """

@@ -1149,7 +1149,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     logger.debug("Using advanced search with cache")
 
                     # Get offset parameter for pagination or default to 0
-                    offset = safe_get(tool_params, "offset", 0, int)
+                    offset = safe_get(params, "offset", 0, int)
 
                     # Get total matching notes for pagination info
                     all_matching_notes = note_cache.search_notes(

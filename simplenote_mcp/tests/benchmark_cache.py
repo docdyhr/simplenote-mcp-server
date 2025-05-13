@@ -126,7 +126,7 @@ class Timer:
 
 async def benchmark_initialization(client, result: BenchmarkResult) -> NoteCache:
     """Benchmark cache initialization performance.
-    
+
     Args:
         client: Simplenote client
         result: BenchmarkResult to store timings
@@ -152,7 +152,7 @@ async def benchmark_initialization(client, result: BenchmarkResult) -> NoteCache
 
 async def benchmark_tag_filtering(cache: NoteCache, result: BenchmarkResult) -> None:
     """Benchmark tag filtering performance.
-    
+
     Args:
         cache: Initialized cache
         result: BenchmarkResult to store timings
@@ -183,8 +183,8 @@ async def benchmark_tag_filtering(cache: NoteCache, result: BenchmarkResult) -> 
 
 
 async def benchmark_search(cache: NoteCache, result: BenchmarkResult) -> None:
-    """Benchmark sort performance.
-    
+    """Benchmark search performance.
+
     Args:
         cache: Initialized cache
         result: BenchmarkResult to store timings
@@ -231,7 +231,7 @@ async def benchmark_search(cache: NoteCache, result: BenchmarkResult) -> None:
 
 async def benchmark_pagination(cache: NoteCache, result: BenchmarkResult) -> None:
     """Benchmark pagination performance.
-    
+
     Args:
         cache: Initialized cache
         result: BenchmarkResult to store timings
@@ -378,4 +378,3 @@ async def run_benchmarks() -> None:
 
 if __name__ == "__main__":
     asyncio.run(run_benchmarks())
-

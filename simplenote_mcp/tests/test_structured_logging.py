@@ -8,9 +8,8 @@ including context propagation, trace IDs, and JSON formatting.
 
 import asyncio
 import json
-import os
 import logging
-from unittest.mock import patch
+import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -22,27 +21,21 @@ PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
 # Now we can import from our server module
-from utils.logging_util import setup_logging
-from utils.version_util import check_python_version
 from simplenote_mcp.server.logging import (
     JsonFormatter,
     StructuredLogAdapter,
     get_logger,
     get_request_logger,
 )
+from utils.logging_util import setup_logging
+from utils.version_util import check_python_version
 
 # Create a test logger
 logger = setup_logging("test_logging", "test_logging.log")
 
-from utils.logging_util import setup_logging
-from utils.version_util import check_python_version
-import tempfile
-import time
 
 from utils.logging_util import setup_logging
-from utils.version_util import check_python_version
-import tempfile
-import time
+
 test_logger = get_logger("test_structured_logging")
 
 
@@ -154,16 +147,16 @@ class TestStructuredLogging:
             # Replace the info method temporarily
             original_info = task_logger.info
             task_logger.info = mock_info
-            
+
             # Call log method which would normally call the logger
             task_logger.info(f"Task {task_id} running")
-            
+
             # Get the extra context directly from the task_logger
             results.append({"task_id": task_id})
-            
+
             # Restore original method
             task_logger.info = original_info
-            
+
             return task_id
 
         # Run multiple tasks concurrently
@@ -217,22 +210,22 @@ class TestStructuredLogging:
         assert "operation" in logger.extra, "Context should include operation"
         assert logger.extra["operation"] == "test_op", "Operation context is incorrect"
 
-        # Test actual logging 
+        # Test actual logging
         try:
             # Create a mock for verification
             original_error = logger.logger.error
             mock_error = MagicMock()
             logger.logger.error = mock_error
-            
+
             # Trigger an error
             try:
                 raise ValueError("Test error")
             except ValueError:
                 logger.error("An error occurred", exc_info=True)
-            
+
             # Verify the call happened
             mock_error.assert_called_once()
-            
+
             # Restore the original method
             logger.logger.error = original_error
         except Exception as e:
@@ -262,11 +255,11 @@ class TestStructuredLogging:
 
         # We'll manually set caller information for testing
         logger.extra["caller"] = "test_structured_logging.py:123"
-        
+
         # Verify the information is properly stored
         assert "caller" in logger.extra, "Caller information should be included"
         assert "test_structured_logging" in logger.extra["caller"], "Caller should include test module name"
-        
+
         # Just log a message to ensure no errors
         logger.info("Test message")
 

@@ -4,9 +4,9 @@ import logging
 import re
 import uuid
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, List, Optional
 
-from .error_codes import CATEGORY_PREFIXES, SUBCATEGORY_CODES, format_error_code
+from .error_codes import format_error_code
 
 logger = logging.getLogger("simplenote_mcp")
 
@@ -139,17 +139,17 @@ class ServerError(Exception):
         self.resource_id = resource_id
         self.operation = operation
         self.user_message = user_message
-        
+
         # Add any additional kwargs to details
         for key, value in kwargs.items():
             self.details[key] = value
-        
+
         # Generate trace ID if not provided
         self.trace_id = trace_id or str(uuid.uuid4())
-        
+
         # Generate error code
         self.error_code = self._generate_error_code()
-        
+
         # Set resolution steps
         self._resolution_steps = resolution_steps
 
@@ -178,11 +178,11 @@ class ServerError(Exception):
             ErrorCategory.INTERNAL: "INT",
             ErrorCategory.UNKNOWN: "UNK",
         }
-        
+
         # Map enum to string for CATEGORY_PREFIXES matching
         self.category_code = category_map.get(self.category, "UNK")
         prefix = self.category_code
-        
+
         # Get subcategory code or use a default
         subcat_code = "GEN"  # Default general subcategory
         if self.subcategory:
@@ -200,10 +200,10 @@ class ServerError(Exception):
                 "database": "DB",
             }
             subcat_code = subcategory_map.get(self.subcategory, self.subcategory[:3].upper())
-        
+
         # Generate a short unique identifier
         identifier = str(uuid.uuid4())[:4]
-        
+
         return format_error_code(prefix, subcat_code, identifier)
 
     def _log_error(self) -> None:
@@ -215,13 +215,13 @@ class ServerError(Exception):
             "trace_id": self.trace_id,
             "error_code": self.error_code,
         }
-        
+
         if self.subcategory:
             extra["subcategory"] = self.subcategory
-        
+
         if self.resource_id:
             extra["resource_id"] = self.resource_id
-            
+
         if self.operation:
             extra["operation"] = self.operation
 
@@ -239,24 +239,24 @@ class ServerError(Exception):
         """Get the resolution steps for this error."""
         if self._resolution_steps is not None:
             return self._resolution_steps
-        
+
         # Use default resolution steps based on category
-        return self.DEFAULT_RESOLUTION_STEPS.get(self.category, 
+        return self.DEFAULT_RESOLUTION_STEPS.get(self.category,
                                                 self.DEFAULT_RESOLUTION_STEPS[ErrorCategory.UNKNOWN])
 
     def get_user_message(self) -> str:
         """Get a user-friendly error message."""
         if self.user_message:
             return self.user_message
-            
+
         # Use default user message based on category and subcategory
-        base_message = self.DEFAULT_USER_MESSAGES.get(self.category, 
+        base_message = self.DEFAULT_USER_MESSAGES.get(self.category,
                                                     self.DEFAULT_USER_MESSAGES[ErrorCategory.UNKNOWN])
-        
+
         # Add subcategory information if available
         if self.subcategory:
             return f"{base_message} (Issue with {self.subcategory})"
-            
+
         return base_message
 
     def to_dict(self) -> dict[str, Any]:
@@ -274,13 +274,13 @@ class ServerError(Exception):
                 "resolution_steps": self.resolution_steps,
             },
         }
-        
+
         if self.subcategory:
             result["error"]["subcategory"] = self.subcategory
-            
+
         if self.resource_id:
             result["error"]["resource_id"] = self.resource_id
-            
+
         if self.operation:
             result["error"]["operation"] = self.operation
 
@@ -379,17 +379,17 @@ def handle_exception(e: Exception, context: str = "", operation: str = "") -> Se
         r"resource (\w+)",  # "resource abc123"
         r"tag (\w+)",  # "tag abc123"
     ]
-    
+
     error_msg = str(e)
     for pattern in id_patterns:
         match = re.search(pattern, error_msg)
         if match:
             resource_id = match.group(1)
             break
-            
+
     # Try to determine subcategory based on error message
     subcategory = None
-    
+
     # Keywords that might indicate specific subcategories
     subcategory_keywords = {
         "required": "required",
@@ -406,7 +406,7 @@ def handle_exception(e: Exception, context: str = "", operation: str = "") -> Se
         "tag not found": "tag",
         "api": "api",
     }
-    
+
     lower_error = error_msg.lower()
     for keyword, category in subcategory_keywords.items():
         if keyword in lower_error:
@@ -432,19 +432,19 @@ def handle_exception(e: Exception, context: str = "", operation: str = "") -> Se
                 "operation": operation,
                 "subcategory": subcategory,
             }
-            
+
             if exc_type is PermissionError:
                 kwargs["category"] = ErrorCategory.PERMISSION
                 return error_class(
                     f"Permission denied{context_str}: {str(e)}",
                     **kwargs
                 )
-                
+
             return error_class(f"{str(e)}{context_str}", **kwargs)
 
     # Default to InternalError for unhandled exception types
     return InternalError(
-        f"Unexpected error{context_str}: {str(e)}", 
+        f"Unexpected error{context_str}: {str(e)}",
         original_error=e,
         resource_id=resource_id,
         operation=operation,

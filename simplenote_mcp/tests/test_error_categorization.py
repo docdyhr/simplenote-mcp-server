@@ -24,7 +24,6 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 from simplenote_mcp.server.error_codes import (
-    CATEGORY_PREFIXES,
     CATEGORY_DISPLAY_NAMES,
     SUBCATEGORY_CODES,
     parse_error_code,
@@ -41,10 +40,11 @@ from simplenote_mcp.server.errors import (
     handle_exception,
 )
 
+
 # Create a custom TimeoutError for testing
 class TimeoutError(NetworkError):
     """Timeout-specific network error for testing."""
-    
+
     def __init__(self, message: str, **kwargs) -> None:
         kwargs.setdefault("subcategory", "timeout")
         super().__init__(message, **kwargs)
@@ -292,7 +292,7 @@ class TestErrorCategorization:
         async def async_operation():
             try:
                 # Use our custom TimeoutError instead of the built-in one
-                return TimeoutError("Operation timed out after 30 seconds", 
+                return TimeoutError("Operation timed out after 30 seconds",
                                    operation="async_task")
             except Exception as e:
                 return handle_exception(e, "performing async operation", "async_task")

@@ -18,7 +18,7 @@ from typing import Dict, Optional
 # Category prefixes mapping from enum values to code prefixes
 CATEGORY_PREFIXES = {
     "authentication": "AUTH",
-    "configuration": "CONFIG", 
+    "configuration": "CONFIG",
     "network": "NET",
     "not_found": "NF",
     "permission": "PERM",

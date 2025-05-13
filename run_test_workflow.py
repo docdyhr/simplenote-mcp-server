@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """Simulate CI workflow by running the same setup as in CI"""
 
+import hashlib
 import os
+import pathlib
 import sys
 
 # Add the project root to Python path
@@ -14,7 +16,6 @@ print("Using Python 3.12, no patches needed")
 print("✅ pytest imported successfully")
 
 # Verify hashlib.blake2b exists
-import hashlib
 
 if hasattr(hashlib, "blake2b") and hasattr(hashlib, "blake2s"):
     print("✅ hashlib.blake2b and blake2s are available")
@@ -22,7 +23,6 @@ else:
     print("❌ hashlib.blake2b or blake2s is missing")
 
 # Verify pathlib.Path exists
-import pathlib
 
 if hasattr(pathlib, "Path"):
     print("✅ pathlib.Path is available")

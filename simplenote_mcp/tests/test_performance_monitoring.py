@@ -11,8 +11,6 @@ import json
 import os
 import sys
 import time
-import unittest
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -24,21 +22,19 @@ sys.path.insert(0, PROJECT_ROOT)
 
 # Import the monitoring system
 from simplenote_mcp.server.monitoring.metrics import (
-    MetricsCollector,
-    PerformanceMetrics,
-    TimeMetric,
-    CounterMetric,
+    METRICS_DIR,
     ApiMetrics,
     CacheMetrics,
+    CounterMetric,
+    MetricsCollector,
     ResourceMetrics,
-    start_metrics_collection,
+    TimeMetric,
     get_metrics,
     record_api_call,
-    record_response_time,
     record_cache_hit,
     record_cache_miss,
-    METRICS_DIR,
-    METRICS_FILE,
+    record_response_time,
+    start_metrics_collection,
 )
 
 
@@ -52,7 +48,7 @@ class TestPerformanceMonitoring:
 
         # Create a test metrics file path
         self.test_metrics_file = METRICS_DIR / "test_metrics.json"
-        
+
         # Create a metrics collector
         self.collector = MetricsCollector()
 
@@ -60,7 +56,7 @@ class TestPerformanceMonitoring:
         """Clean up after each test."""
         # Stop metrics collection
         self.collector.stop_collection()
-        
+
         # Remove test files
         if self.test_metrics_file.exists():
             self.test_metrics_file.unlink()
@@ -69,29 +65,29 @@ class TestPerformanceMonitoring:
         """Test that MetricsCollector is a singleton."""
         collector1 = MetricsCollector()
         collector2 = MetricsCollector()
-        
+
         # Should be the same instance
         assert collector1 is collector2
-        
+
         # Should share the same metrics object
         assert collector1.metrics is collector2.metrics
 
     def test_time_metric(self):
         """Test the TimeMetric class."""
         metric = TimeMetric()
-        
+
         # Add some time measurements
         metric.add(1.0)
         metric.add(2.0)
         metric.add(3.0)
-        
+
         # Check counts and totals
         assert metric.count == 3
         assert metric.total_time == 6.0
         assert metric.min_time == 1.0
         assert metric.max_time == 3.0
         assert metric.avg_time == 2.0
-        
+
         # Check serialization
         data = metric.to_dict()
         assert data["count"] == 3
@@ -103,14 +99,14 @@ class TestPerformanceMonitoring:
     def test_counter_metric(self):
         """Test the CounterMetric class."""
         counter = CounterMetric()
-        
+
         # Increment counter several times
         for _ in range(5):
             counter.increment()
-        
+
         # Check count
         assert counter.count == 5
-        
+
         # Check serialization
         data = counter.to_dict()
         assert data["count"] == 5
@@ -120,26 +116,26 @@ class TestPerformanceMonitoring:
     def test_api_metrics(self):
         """Test the ApiMetrics class."""
         api_metrics = ApiMetrics()
-        
+
         # Record some API calls
         api_metrics.record_call("get_notes", success=True)
         api_metrics.record_call("create_note", success=True)
         api_metrics.record_call("update_note", success=False, error_type="NotFound")
-        
+
         # Record response times
         api_metrics.record_response_time("get_notes", 0.5)
         api_metrics.record_response_time("get_notes", 0.7)
-        
+
         # Check counts
         assert api_metrics.calls.count == 3
         assert api_metrics.successes.count == 2
         assert api_metrics.failures.count == 1
         assert api_metrics.errors_by_type["NotFound"].count == 1
-        
+
         # Check response times
         assert api_metrics.response_times["get_notes"].count == 2
         assert api_metrics.response_times["get_notes"].avg_time == 0.6
-        
+
         # Check serialization
         data = api_metrics.to_dict()
         assert data["calls"]["count"] == 3
@@ -151,23 +147,23 @@ class TestPerformanceMonitoring:
     def test_cache_metrics(self):
         """Test the CacheMetrics class."""
         cache_metrics = CacheMetrics()
-        
+
         # Record hits and misses
         for _ in range(8):
             cache_metrics.record_hit()
         for _ in range(2):
             cache_metrics.record_miss()
-        
+
         # Update cache size
         cache_metrics.update_size(500, 1000)
-        
+
         # Check metrics
         assert cache_metrics.hits.count == 8
         assert cache_metrics.misses.count == 2
         assert cache_metrics.hit_rate == 80.0
         assert cache_metrics.size == 500
         assert cache_metrics.max_size == 1000
-        
+
         # Check serialization
         data = cache_metrics.to_dict()
         assert data["hits"]["count"] == 8
@@ -184,42 +180,42 @@ class TestPerformanceMonitoring:
         """Test the ResourceMetrics class with mocked system resources."""
         # Mock the system resource functions
         mock_cpu_percent.return_value = 25.0
-        
+
         memory_mock = MagicMock()
         memory_mock.percent = 40.0
         mock_virtual_memory.return_value = memory_mock
-        
+
         disk_mock = MagicMock()
         disk_mock.percent = 60.0
         mock_disk_usage.return_value = disk_mock
-        
+
         # Create resource metrics and update
         resource_metrics = ResourceMetrics()
         resource_metrics.update()
-        
+
         # Check metrics
         assert len(resource_metrics.cpu_samples) == 1
         assert resource_metrics.cpu_samples[0] == 25.0
         assert len(resource_metrics.memory_samples) == 1
         assert resource_metrics.memory_samples[0] == 40.0
         assert resource_metrics.disk_usage == 60.0
-        
+
         # Check computed metrics
         assert resource_metrics.avg_cpu == 25.0
         assert resource_metrics.max_cpu == 25.0
         assert resource_metrics.avg_memory == 40.0
         assert resource_metrics.max_memory == 40.0
-        
+
         # Update again with different values
         mock_cpu_percent.return_value = 35.0
         memory_mock.percent = 45.0
         resource_metrics.update()
-        
+
         # Check updated metrics
         assert len(resource_metrics.cpu_samples) == 2
         assert resource_metrics.avg_cpu == 30.0  # (25 + 35) / 2
         assert resource_metrics.max_cpu == 35.0
-        
+
         # Check serialization
         data = resource_metrics.to_dict()
         assert data["cpu"]["current"] == 35.0
@@ -234,18 +230,18 @@ class TestPerformanceMonitoring:
         # Record API calls
         record_api_call("get_notes", success=True)
         record_api_call("get_note", success=False, error_type="NotFound")
-        
+
         # Record response time
         record_response_time("get_notes", 0.3)
-        
+
         # Record cache hits and misses
         record_cache_hit()
         record_cache_hit()
         record_cache_miss()
-        
+
         # Get metrics
         metrics = get_metrics()
-        
+
         # Check API metrics
         assert metrics["api"]["calls"]["count"] == 2
         assert metrics["api"]["successes"]["count"] == 1
@@ -253,7 +249,7 @@ class TestPerformanceMonitoring:
         assert metrics["api"]["errors_by_type"]["NotFound"]["count"] == 1
         assert metrics["api"]["response_times"]["get_notes"]["count"] == 1
         assert metrics["api"]["response_times"]["get_notes"]["total_time"] == 0.3
-        
+
         # Check cache metrics
         assert metrics["cache"]["hits"]["count"] == 2
         assert metrics["cache"]["misses"]["count"] == 1
@@ -263,18 +259,18 @@ class TestPerformanceMonitoring:
         """Test starting and stopping metrics collection."""
         # Start with a short interval
         start_metrics_collection(interval=1)
-        
+
         # Wait for collection to run
         time.sleep(2)
-        
+
         # Get metrics
         metrics = get_metrics()
-        
+
         # Should have valid timestamps
         assert "timestamp" in metrics
         assert "server_info" in metrics
         assert "start_time" in metrics["server_info"]
-        
+
         # Stop collection
         self.collector.stop_collection()
 
@@ -282,25 +278,25 @@ class TestPerformanceMonitoring:
     def test_metrics_save_to_file(self):
         """Test saving metrics to a file."""
         test_file = METRICS_DIR / "test_save.json"
-        
+
         # Record some metrics
         record_api_call("test_api", success=True)
         record_cache_hit()
-        
+
         # Save metrics
         self.collector.metrics.save_to_file()
-        
+
         # Check file exists
         assert test_file.exists()
-        
+
         # Read and check content
         with open(test_file, 'r') as f:
             data = json.load(f)
-        
+
         assert data["api"]["calls"]["count"] == 1
         assert data["api"]["successes"]["count"] == 1
         assert data["cache"]["hits"]["count"] == 1
-        
+
         # Clean up
         test_file.unlink()
 
