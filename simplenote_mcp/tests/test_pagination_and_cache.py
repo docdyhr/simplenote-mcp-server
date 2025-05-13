@@ -155,7 +155,7 @@ async def test_pagination_get_all_notes(cache: NoteCache) -> bool:
 
             if total_notes > page_size:
                 assert pagination["next_offset"] == page_size
-                assert pagination["prev_offset"] == 0
+                assert pagination["prev_offset"] == 0  # First page should have prev_offset=0
 
         return True
     except Exception as e:

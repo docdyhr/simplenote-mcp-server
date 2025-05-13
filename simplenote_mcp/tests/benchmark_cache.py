@@ -24,10 +24,10 @@ from simplenote_mcp.server.compat import Path
 from simplenote_mcp.server import get_simplenote_client
 from simplenote_mcp.server.cache import NoteCache
 from simplenote_mcp.server.search.engine import SearchEngine
-from simplenote_mcp.server.logging import get_logger, configure_logging
+from simplenote_mcp.server.logging import get_logger, initialize_logging
 
 # Configure logging
-configure_logging(debug=True, log_to_file=True, log_format="standard")
+initialize_logging()
 logger = get_logger(__name__)
 
 # Set output colors
