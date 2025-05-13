@@ -8,14 +8,12 @@ import sys
 from collections import Counter, defaultdict
 from datetime import datetime
 
+from simplenote_mcp.server.compat import Path
+
 # Add the project root to the Python path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, project_root)
-
-# Now we can import from the compatibility module
-
-from simplenote_mcp.server.compat import Path
 
 # Add the parent directory to the Python path
 PROJECT_ROOT = Path(__file__).parent.parent.parent

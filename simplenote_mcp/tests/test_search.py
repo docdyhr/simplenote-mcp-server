@@ -285,7 +285,7 @@ async def main() -> bool:
             if cache_result["time"] > 0
             else 0
         )
-        print(f"\nPerformance comparison:")
+        print("\nPerformance comparison:")
         print(f"  Direct search: {direct_result['time']:.4f} seconds")
         print(f"  Cached search: {cache_result['time']:.4f} seconds")
         print(f"  Cache speedup: {speedup:.2f}x faster")
@@ -296,7 +296,7 @@ async def main() -> bool:
             if cache_result["second_search_time"] > 0
             else 0
         )
-        print(f"\nCache internal speedup:")
+        print("\nCache internal speedup:")
         print(f"  First search: {cache_result['first_search_time']:.4f} seconds")
         print(f"  Second search: {cache_result['second_search_time']:.4f} seconds")
         print(f"  Speedup: {first_vs_second:.2f}x faster")

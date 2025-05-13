@@ -24,6 +24,7 @@ from typing import Any, Dict, List
 # Try to import optional dependencies for enhanced visualization
 try:
     import asciichartpy
+
     HAS_ASCII_CHART = True
 except ImportError:
     HAS_ASCII_CHART = False
@@ -34,6 +35,7 @@ try:
     from rich.layout import Layout
     from rich.panel import Panel
     from rich.table import Table
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -44,7 +46,8 @@ METRICS_DIR = SCRIPT_DIR.parent / "logs" / "metrics"
 METRICS_FILE = METRICS_DIR / "performance_metrics.json"
 
 # Initialize locale for number formatting
-locale.setlocale(locale.LC_ALL, '')
+locale.setlocale(locale.LC_ALL, "")
+
 
 # Historical data storage
 class MetricsHistory:
@@ -67,22 +70,30 @@ class MetricsHistory:
                 avg_times = [data.get("avg_time", 0) for data in endpoints.values()]
                 if avg_times:
                     self.api_response_times.append(sum(avg_times) / len(avg_times))
-                    self.api_response_times = self.api_response_times[-self.max_points:]
+                    self.api_response_times = self.api_response_times[
+                        -self.max_points :
+                    ]
 
         # Cache hit rate
         if "cache" in metrics and "hit_rate" in metrics["cache"]:
             self.cache_hit_rates.append(metrics["cache"]["hit_rate"])
-            self.cache_hit_rates = self.cache_hit_rates[-self.max_points:]
+            self.cache_hit_rates = self.cache_hit_rates[-self.max_points :]
 
         # CPU and memory usage
         if "resources" in metrics:
-            if "cpu" in metrics["resources"] and "current" in metrics["resources"]["cpu"]:
+            if (
+                "cpu" in metrics["resources"]
+                and "current" in metrics["resources"]["cpu"]
+            ):
                 self.cpu_usage.append(metrics["resources"]["cpu"]["current"])
-                self.cpu_usage = self.cpu_usage[-self.max_points:]
+                self.cpu_usage = self.cpu_usage[-self.max_points :]
 
-            if "memory" in metrics["resources"] and "current" in metrics["resources"]["memory"]:
+            if (
+                "memory" in metrics["resources"]
+                and "current" in metrics["resources"]["memory"]
+            ):
                 self.memory_usage.append(metrics["resources"]["memory"]["current"])
-                self.memory_usage = self.memory_usage[-self.max_points:]
+                self.memory_usage = self.memory_usage[-self.max_points :]
 
         # Tool calls
         if "tools" in metrics and "tool_calls" in metrics["tools"]:
@@ -96,7 +107,7 @@ def load_metrics() -> Dict[str, Any]:
         if not METRICS_FILE.exists():
             return {"error": "Metrics file not found"}
 
-        with open(METRICS_FILE, 'r') as f:
+        with open(METRICS_FILE, "r") as f:
             return json.load(f)
     except (json.JSONDecodeError, OSError) as e:
         return {"error": f"Failed to load metrics: {str(e)}"}
@@ -136,15 +147,14 @@ def create_ascii_chart(data: List[float], height: int = 10, width: int = 40) -> 
     else:
         data = data[-width:]
 
-    config = {
-        'height': height,
-        'format': lambda x: format_number(x)
-    }
+    config = {"height": height, "format": lambda x: format_number(x)}
 
     return asciichartpy.plot(data, config)
 
 
-def display_terminal_ui(stdscr, metrics_history: MetricsHistory, refresh_interval: int) -> None:
+def display_terminal_ui(
+    stdscr, metrics_history: MetricsHistory, refresh_interval: int
+) -> None:
     """Display a curses-based terminal UI."""
     curses.curs_set(0)  # Hide cursor
     curses.start_color()
@@ -197,7 +207,9 @@ def display_terminal_ui(stdscr, metrics_history: MetricsHistory, refresh_interva
             calls = api_data.get("calls", {}).get("count", 0)
             success_rate = api_data.get("success_rate", 0)
             stdscr.addstr(row, 0, f"Total Calls: {calls} | Success Rate: ")
-            color = GREEN if success_rate > 95 else (YELLOW if success_rate > 80 else RED)
+            color = (
+                GREEN if success_rate > 95 else (YELLOW if success_rate > 80 else RED)
+            )
             stdscr.addstr(f"{format_percent(success_rate)}", color)
             row += 1
 
@@ -214,7 +226,9 @@ def display_terminal_ui(stdscr, metrics_history: MetricsHistory, refresh_interva
                     p95_time = data.get("p95_time", 0)
 
                     stdscr.addstr(row, 2, f"{endpoint}: ")
-                    stdscr.addstr(f"{count} calls, Avg: {format_duration(avg_time)}, P95: {format_duration(p95_time)}")
+                    stdscr.addstr(
+                        f"{count} calls, Avg: {format_duration(avg_time)}, P95: {format_duration(p95_time)}"
+                    )
                     row += 1
 
             # Cache Section
@@ -236,7 +250,11 @@ def display_terminal_ui(stdscr, metrics_history: MetricsHistory, refresh_interva
             stdscr.addstr(f" ({hits} hits, {misses} misses)")
             row += 1
 
-            stdscr.addstr(row, 0, f"Size: {size} / {max_size} notes | Utilization: {format_percent(utilization)}")
+            stdscr.addstr(
+                row,
+                0,
+                f"Size: {size} / {max_size} notes | Utilization: {format_percent(utilization)}",
+            )
             row += 1
 
             # Resource Section
@@ -251,9 +269,15 @@ def display_terminal_ui(stdscr, metrics_history: MetricsHistory, refresh_interva
             mem_max = resource_data.get("memory", {}).get("max", 0)
             disk_usage = resource_data.get("disk", {}).get("usage_percent", 0)
 
-            cpu_color = GREEN if cpu_current < 50 else (YELLOW if cpu_current < 80 else RED)
-            mem_color = GREEN if mem_current < 60 else (YELLOW if mem_current < 85 else RED)
-            disk_color = GREEN if disk_usage < 70 else (YELLOW if disk_usage < 90 else RED)
+            cpu_color = (
+                GREEN if cpu_current < 50 else (YELLOW if cpu_current < 80 else RED)
+            )
+            mem_color = (
+                GREEN if mem_current < 60 else (YELLOW if mem_current < 85 else RED)
+            )
+            disk_color = (
+                GREEN if disk_usage < 70 else (YELLOW if disk_usage < 90 else RED)
+            )
 
             stdscr.addstr(row, 0, "CPU: ")
             stdscr.addstr(f"{format_percent(cpu_current)}", cpu_color)
@@ -303,7 +327,7 @@ def display_terminal_ui(stdscr, metrics_history: MetricsHistory, refresh_interva
             # Wait for input or timeout
             stdscr.timeout(refresh_interval * 1000)
             key = stdscr.getch()
-            if key == ord('q'):
+            if key == ord("q"):
                 break
 
     except KeyboardInterrupt:
@@ -338,8 +362,12 @@ def display_rich_ui(metrics_history: MetricsHistory, refresh_interval: int) -> N
             server_info = metrics.get("server_info", {})
             uptime = server_info.get("uptime", "Unknown")
 
-            console.print(f"[bold blue]Simplenote MCP Server Monitoring[/bold blue] - {timestamp}")
-            console.print(f"Uptime: [green]{uptime}[/green] | Refresh: {refresh_interval}s")
+            console.print(
+                f"[bold blue]Simplenote MCP Server Monitoring[/bold blue] - {timestamp}"
+            )
+            console.print(
+                f"Uptime: [green]{uptime}[/green] | Refresh: {refresh_interval}s"
+            )
             console.print()
 
             # API Performance
@@ -351,9 +379,16 @@ def display_rich_ui(metrics_history: MetricsHistory, refresh_interval: int) -> N
             api_table.add_column("Metric")
             api_table.add_column("Value")
 
-            success_color = "green" if success_rate > 95 else ("yellow" if success_rate > 80 else "red")
+            success_color = (
+                "green"
+                if success_rate > 95
+                else ("yellow" if success_rate > 80 else "red")
+            )
             api_table.add_row("Total Calls", str(calls))
-            api_table.add_row("Success Rate", f"[{success_color}]{format_percent(success_rate)}[/{success_color}]")
+            api_table.add_row(
+                "Success Rate",
+                f"[{success_color}]{format_percent(success_rate)}[/{success_color}]",
+            )
 
             if "response_times" in api_data and api_data["response_times"]:
                 endpoints_table = Table(box=None)
@@ -374,7 +409,7 @@ def display_rich_ui(metrics_history: MetricsHistory, refresh_interval: int) -> N
                         endpoint,
                         str(count),
                         format_duration(avg_time),
-                        format_duration(p95_time)
+                        format_duration(p95_time),
                     )
 
                 api_table.add_row("Top Endpoints", endpoints_table)
@@ -395,8 +430,12 @@ def display_rich_ui(metrics_history: MetricsHistory, refresh_interval: int) -> N
             cache_table.add_column("Metric")
             cache_table.add_column("Value")
 
-            hit_color = "green" if hit_rate > 90 else ("yellow" if hit_rate > 70 else "red")
-            cache_table.add_row("Hit Rate", f"[{hit_color}]{format_percent(hit_rate)}[/{hit_color}]")
+            hit_color = (
+                "green" if hit_rate > 90 else ("yellow" if hit_rate > 70 else "red")
+            )
+            cache_table.add_row(
+                "Hit Rate", f"[{hit_color}]{format_percent(hit_rate)}[/{hit_color}]"
+            )
             cache_table.add_row("Hits/Misses", f"{hits} / {misses}")
             cache_table.add_row("Size", f"{size} / {max_size} notes")
             cache_table.add_row("Utilization", f"{format_percent(utilization)}")
@@ -417,24 +456,32 @@ def display_rich_ui(metrics_history: MetricsHistory, refresh_interval: int) -> N
             resource_table.add_column("Current")
             resource_table.add_column("Maximum")
 
-            cpu_color = "green" if cpu_current < 50 else ("yellow" if cpu_current < 80 else "red")
-            mem_color = "green" if mem_current < 60 else ("yellow" if mem_current < 85 else "red")
-            disk_color = "green" if disk_usage < 70 else ("yellow" if disk_usage < 90 else "red")
+            cpu_color = (
+                "green"
+                if cpu_current < 50
+                else ("yellow" if cpu_current < 80 else "red")
+            )
+            mem_color = (
+                "green"
+                if mem_current < 60
+                else ("yellow" if mem_current < 85 else "red")
+            )
+            disk_color = (
+                "green" if disk_usage < 70 else ("yellow" if disk_usage < 90 else "red")
+            )
 
             resource_table.add_row(
                 "CPU",
                 f"[{cpu_color}]{format_percent(cpu_current)}[/{cpu_color}]",
-                f"{format_percent(cpu_max)}"
+                f"{format_percent(cpu_max)}",
             )
             resource_table.add_row(
                 "Memory",
                 f"[{mem_color}]{format_percent(mem_current)}[/{mem_color}]",
-                f"{format_percent(mem_max)}"
+                f"{format_percent(mem_max)}",
             )
             resource_table.add_row(
-                "Disk",
-                f"[{disk_color}]{format_percent(disk_usage)}[/{disk_color}]",
-                ""
+                "Disk", f"[{disk_color}]{format_percent(disk_usage)}[/{disk_color}]", ""
             )
 
             console.print(resource_table)
@@ -462,7 +509,7 @@ def display_rich_ui(metrics_history: MetricsHistory, refresh_interval: int) -> N
                     tool_table.add_row(
                         tool,
                         str(count),
-                        format_duration(avg_time) if avg_time > 0 else "N/A"
+                        format_duration(avg_time) if avg_time > 0 else "N/A",
                     )
 
                 console.print(tool_table)
@@ -479,9 +526,15 @@ def display_rich_ui(metrics_history: MetricsHistory, refresh_interval: int) -> N
 
 def main():
     """Main entry point for the monitoring dashboard."""
-    parser = argparse.ArgumentParser(description="Simplenote MCP Server Monitoring Dashboard")
-    parser.add_argument("--refresh", type=int, default=3, help="Refresh interval in seconds")
-    parser.add_argument("--rich", action="store_true", help="Use rich text UI if available")
+    parser = argparse.ArgumentParser(
+        description="Simplenote MCP Server Monitoring Dashboard"
+    )
+    parser.add_argument(
+        "--refresh", type=int, default=3, help="Refresh interval in seconds"
+    )
+    parser.add_argument(
+        "--rich", action="store_true", help="Use rich text UI if available"
+    )
     args = parser.parse_args()
 
     # Create metrics history
@@ -489,7 +542,9 @@ def main():
 
     if not METRICS_FILE.exists():
         print(f"Error: Metrics file not found at {METRICS_FILE}")
-        print("Make sure the Simplenote MCP Server is running with performance monitoring enabled.")
+        print(
+            "Make sure the Simplenote MCP Server is running with performance monitoring enabled."
+        )
         return 1
 
     print(f"Starting Simplenote MCP Monitoring Dashboard (refresh: {args.refresh}s)")

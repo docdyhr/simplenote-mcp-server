@@ -199,13 +199,21 @@ class TestNoteCache:
         results = cache.search_notes("note", limit=2)
         assert len(results) == 2
 
-    def test_get_all_notes(self, mock_simplenote_client, mock_note_data):
+    @pytest.mark.asyncio
+    async def test_get_all_notes(self, mock_simplenote_client, mock_note_data):
         """Test getting all notes with filtering and limits."""
-        # Create cache with notes
+        # Set up client mock for initialization
+        mock_simplenote_client.get_note_list.side_effect = [
+            (mock_note_data, 0),  # First call for initial note list
+            (
+                {"notes": [], "mark": "test_mark_get_all_notes"},
+                0,
+            ),  # Second call for index mark
+        ]
+
+        # Create and initialize cache
         cache = NoteCache(mock_simplenote_client)
-        for note in mock_note_data:
-            cache._notes[note["key"]] = note
-        cache._initialized = True
+        await cache.initialize()
 
         # Get all notes
         notes = cache.get_all_notes()

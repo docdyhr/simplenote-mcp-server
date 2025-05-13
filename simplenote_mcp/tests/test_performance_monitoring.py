@@ -297,17 +297,14 @@ class TestPerformanceMonitoring:
             "timestamp": datetime.now().isoformat(),
             "server_info": {
                 "start_time": datetime.now().isoformat(),
-                "platform": "test"
+                "platform": "test",
             },
             "api": {
                 "calls": {"count": 1},
                 "successes": {"count": 1},
-                "failures": {"count": 0}
+                "failures": {"count": 0},
             },
-            "cache": {
-                "hits": {"count": 1},
-                "misses": {"count": 0}
-            }
+            "cache": {"hits": {"count": 1}, "misses": {"count": 0}},
         }
 
         # Record some metrics
@@ -317,19 +314,23 @@ class TestPerformanceMonitoring:
         try:
             # Save metrics
             self.collector.metrics.save_to_file()
-            
+
             # Check file exists and has content
             assert test_file.exists(), "Metrics file was not created"
             file_size = test_file.stat().st_size
-            assert file_size > 0, f"Metrics file exists but is empty (size: {file_size} bytes)"
-            
+            assert file_size > 0, (
+                f"Metrics file exists but is empty (size: {file_size} bytes)"
+            )
+
             # Try to read the file content
             with open(test_file, "r") as f:
                 file_content = f.read()
 
             # Check if the file content is valid JSON
             if not file_content.strip():
-                print("WARNING: File exists but is empty. Using fake metrics for testing.")
+                print(
+                    "WARNING: File exists but is empty. Using fake metrics for testing."
+                )
                 # Write fake metrics for testing
                 with open(test_file, "w") as f:
                     json.dump(fake_metrics, f)
@@ -340,7 +341,9 @@ class TestPerformanceMonitoring:
                 try:
                     data = json.loads(file_content)
                 except json.JSONDecodeError:
-                    print("WARNING: File exists but has invalid JSON. Using fake metrics for testing.")
+                    print(
+                        "WARNING: File exists but has invalid JSON. Using fake metrics for testing."
+                    )
                     # Write fake metrics for testing
                     with open(test_file, "w") as f:
                         json.dump(fake_metrics, f)
@@ -350,16 +353,20 @@ class TestPerformanceMonitoring:
             # Verify structure of the JSON data
             assert "api" in data, "No 'api' field in metrics data"
             assert "cache" in data, "No 'cache' field in metrics data"
-            
+
             # Check that API metrics exist
             assert "calls" in data["api"], "No 'calls' field in API metrics"
             if "count" in data["api"]["calls"]:
-                assert isinstance(data["api"]["calls"]["count"], int), "API calls count is not an integer"
-            
+                assert isinstance(data["api"]["calls"]["count"], int), (
+                    "API calls count is not an integer"
+                )
+
             # Verify cache metrics exist
             assert "hits" in data["cache"], "No 'hits' field in cache metrics"
             if "count" in data["cache"]["hits"]:
-                assert isinstance(data["cache"]["hits"]["count"], int), "Cache hits count is not an integer"
+                assert isinstance(data["cache"]["hits"]["count"], int), (
+                    "Cache hits count is not an integer"
+                )
         finally:
             # Always clean up, even if test fails
             if test_file.exists():

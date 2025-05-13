@@ -7,12 +7,12 @@ and compares the optimized cache with different configurations.
 """
 
 import asyncio
+import json
 import os
 import sys
 import time
-import json
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple, Any, cast
+from typing import Any, Dict
 
 # Add the parent directory to the Python path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -20,10 +20,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
 # Import project modules
-from simplenote_mcp.server.compat import Path
 from simplenote_mcp.server import get_simplenote_client
 from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.server.search.engine import SearchEngine
 from simplenote_mcp.server.logging import get_logger, initialize_logging
 
 # Configure logging

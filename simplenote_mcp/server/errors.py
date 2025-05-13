@@ -110,7 +110,7 @@ class ServerError(Exception):
         user_message: Optional[str] = None,
         resolution_steps: Optional[List[str]] = None,
         trace_id: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialize a new ServerError.
 
@@ -199,7 +199,9 @@ class ServerError(Exception):
                 "server": "SRV",
                 "database": "DB",
             }
-            subcat_code = subcategory_map.get(self.subcategory, self.subcategory[:3].upper())
+            subcat_code = subcategory_map.get(
+                self.subcategory, self.subcategory[:3].upper()
+            )
 
         # Generate a short unique identifier
         identifier = str(uuid.uuid4())[:4]
@@ -241,8 +243,9 @@ class ServerError(Exception):
             return self._resolution_steps
 
         # Use default resolution steps based on category
-        return self.DEFAULT_RESOLUTION_STEPS.get(self.category,
-                                                self.DEFAULT_RESOLUTION_STEPS[ErrorCategory.UNKNOWN])
+        return self.DEFAULT_RESOLUTION_STEPS.get(
+            self.category, self.DEFAULT_RESOLUTION_STEPS[ErrorCategory.UNKNOWN]
+        )
 
     def get_user_message(self) -> str:
         """Get a user-friendly error message."""
@@ -250,8 +253,9 @@ class ServerError(Exception):
             return self.user_message
 
         # Use default user message based on category and subcategory
-        base_message = self.DEFAULT_USER_MESSAGES.get(self.category,
-                                                    self.DEFAULT_USER_MESSAGES[ErrorCategory.UNKNOWN])
+        base_message = self.DEFAULT_USER_MESSAGES.get(
+            self.category, self.DEFAULT_USER_MESSAGES[ErrorCategory.UNKNOWN]
+        )
 
         # Add subcategory information if available
         if self.subcategory:
@@ -351,7 +355,9 @@ class InternalError(ServerError):
         super().__init__(message, **kwargs)
 
 
-def handle_exception(e: Exception, context: str = "", operation: str = "") -> ServerError:
+def handle_exception(
+    e: Exception, context: str = "", operation: str = ""
+) -> ServerError:
     """Convert standard exceptions to appropriate ServerError types.
 
     Args:
@@ -436,8 +442,7 @@ def handle_exception(e: Exception, context: str = "", operation: str = "") -> Se
             if exc_type is PermissionError:
                 kwargs["category"] = ErrorCategory.PERMISSION
                 return error_class(
-                    f"Permission denied{context_str}: {str(e)}",
-                    **kwargs
+                    f"Permission denied{context_str}: {str(e)}", **kwargs
                 )
 
             return error_class(f"{str(e)}{context_str}", **kwargs)
@@ -448,5 +453,5 @@ def handle_exception(e: Exception, context: str = "", operation: str = "") -> Se
         original_error=e,
         resource_id=resource_id,
         operation=operation,
-        subcategory="unhandled" if not subcategory else subcategory
+        subcategory="unhandled" if not subcategory else subcategory,
     )

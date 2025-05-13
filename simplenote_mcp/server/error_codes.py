@@ -174,7 +174,10 @@ def parse_error_code(code: str) -> Optional[Dict[str, str]]:
     subcategory = f"{category_prefix}_{parts[1]}"
     identifier = parts[2]
 
-    if category_prefix not in CATEGORY_DISPLAY_NAMES or subcategory not in SUBCATEGORY_CODES:
+    if (
+        category_prefix not in CATEGORY_DISPLAY_NAMES
+        or subcategory not in SUBCATEGORY_CODES
+    ):
         return None
 
     return {

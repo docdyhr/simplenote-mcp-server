@@ -135,6 +135,7 @@ class TestStructuredLogging:
         assert check_python_version(3, 8) == True
         assert check_python_version(4, 0) == False
         assert logger.level == logging.INFO
+
     async def test_log_context_in_async(self):
         """Test that logging context is maintained in async functions."""
         results = []
@@ -229,7 +230,9 @@ class TestStructuredLogging:
             # Restore the original method
             logger.logger.error = original_error
         except Exception as e:
-            logger.logger.error = original_error if 'original_error' in locals() else logger.logger.error
+            logger.logger.error = (
+                original_error if "original_error" in locals() else logger.logger.error
+            )
             raise e
 
     @pytest.mark.parametrize(
@@ -258,7 +261,9 @@ class TestStructuredLogging:
 
         # Verify the information is properly stored
         assert "caller" in logger.extra, "Caller information should be included"
-        assert "test_structured_logging" in logger.extra["caller"], "Caller should include test module name"
+        assert "test_structured_logging" in logger.extra["caller"], (
+            "Caller should include test module name"
+        )
 
         # Just log a message to ensure no errors
         logger.info("Test message")

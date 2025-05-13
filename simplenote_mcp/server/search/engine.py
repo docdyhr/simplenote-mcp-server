@@ -98,7 +98,9 @@ class SearchEngine:
                     continue
 
                 # Apply date range filters
-                if (date_range[0] is not None or date_range[1] is not None) and not self._is_in_date_range(note, date_range):
+                if (
+                    date_range[0] is not None or date_range[1] is not None
+                ) and not self._is_in_date_range(note, date_range):
                     continue
 
                 # Add matching note to results with a default score of 1
@@ -123,7 +125,9 @@ class SearchEngine:
                     continue
 
                 # Apply date range filters
-                if (date_range[0] is not None or date_range[1] is not None) and not self._is_in_date_range(note, date_range):
+                if (
+                    date_range[0] is not None or date_range[1] is not None
+                ) and not self._is_in_date_range(note, date_range):
                     continue
 
                 # Evaluate the boolean expression

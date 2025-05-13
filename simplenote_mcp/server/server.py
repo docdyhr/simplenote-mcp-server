@@ -514,6 +514,7 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
         raise ValidationError(invalid_uri_msg)
 
     note_id = uri_str.replace("simplenote://note/", "")
+    note_uri = f"simplenote://note/{note_id}"
 
     try:
         # Check for cache initialization, but don't block waiting for it
@@ -532,73 +533,49 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
             asyncio.create_task(initialize_cache())
 
         # Try to get the note from cache first if cache is initialized
+        note = None
         if note_cache is not None:
             logger.debug("Attempting to fetch note with ID: %s from cache", note_id)
             try:
                 note = note_cache.get_note(note_id)
                 logger.debug(f"Found note {note_id} in cache")
-                note_uri = f"simplenote://note/{note_id}"
-                # Ensure we have a valid note object before accessing properties
-                if note is None:
-                    note_content = ""
-                    note_tags = []
-                    note_modifydate = ""
-                    note_createdate = ""
-                else:
-                    note_content = safe_get(note, "content", "")
-                    note_tags = safe_get(note, "tags", [])
-                    note_modifydate = safe_get(note, "modifydate", "")
-                    note_createdate = safe_get(note, "createdate", "")
-
-                note_uri = f"simplenote://note/{note_id}"
-                # Create TextResourceContents with URI cast to Any
-                text_contents = types.TextResourceContents(
-                    text=note_content,
-                    uri=cast(Any, note_uri),
-                )
-                # Add metadata as dictionary to the TextResourceContents
-                text_contents_dict = text_contents.__dict__
-                text_contents_dict["meta"] = {
-                    "tags": note_tags,
-                    "modifydate": note_modifydate,
-                    "createdate": note_createdate,
-                    **get_content_type_hint(note_content),
-                }
-                return types.ReadResourceResult(contents=[text_contents])
             except ResourceNotFoundError:
                 # If not in cache, we'll try the API directly
                 logger.debug(f"Note {note_id} not found in cache, trying API")
-                pass
+                # Get the note from Simplenote API
+                sn = get_simplenote_client()
+                note, status = sn.get_note(note_id)
 
-        # Get the note from Simplenote API if not found in cache
-        sn = get_simplenote_client()
-        note, status = sn.get_note(note_id)
+                if status != 0 or not isinstance(note, dict):
+                    error_msg = f"Failed to get note with ID {note_id}"
+                    logger.error(error_msg)
+                    raise ResourceNotFoundError(error_msg) from None
 
-        if status == 0 and isinstance(note, dict):
-            logger.debug("Successfully retrieved note from Simplenote API.")
-            # Update the cache if it's initialized
-            if note_cache is not None and note_cache.is_initialized:
-                note_cache.update_cache_after_update(note)
+                # Update the cache if it's initialized
+                if note_cache is not None and note_cache.is_initialized:
+                    note_cache.update_cache_after_update(note)
 
-            note_uri = f"simplenote://note/{note_id}"
-            # Create TextResourceContents with URI cast to Any
-            text_contents = types.TextResourceContents(
-                text=safe_get(note, "content", ""),
-                uri=cast(Any, note_uri),
-            )
-            # Add metadata as dictionary to the TextResourceContents
-            text_contents_dict = text_contents.__dict__
-            text_contents_dict["meta"] = {
-                "tags": safe_get(note, "tags", []),
-                "modifydate": safe_get(note, "modifydate", ""),
-                "createdate": safe_get(note, "createdate", ""),
-                **get_content_type_hint(safe_get(note, "content", "")),
-            }
-            return types.ReadResourceResult(contents=[text_contents])
-        else:
-            error_msg = f"Failed to get note with ID {note_id}"
-            logger.error(error_msg)
-            raise ResourceNotFoundError(error_msg)
+        # Extract note data - only process the note once
+        note_content = safe_get(note, "content", "")
+        note_tags = safe_get(note, "tags", [])
+        note_modifydate = safe_get(note, "modifydate", "")
+        note_createdate = safe_get(note, "createdate", "")
+
+        # Create the resource contents object
+        text_contents = types.TextResourceContents(
+            text=note_content,
+            uri=cast(Any, note_uri),
+        )
+
+        # Add metadata directly
+        text_contents.meta = {
+            "tags": note_tags,
+            "modifydate": note_modifydate,
+            "createdate": note_createdate,
+            **get_content_type_hint(note_content),
+        }
+
+        return types.ReadResourceResult(contents=[text_contents])
 
     except Exception as e:
         if isinstance(e, ServerError):
@@ -1149,7 +1126,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     logger.debug("Using advanced search with cache")
 
                     # Get offset parameter for pagination or default to 0
-                    offset = safe_get(params, "offset", 0, int)
+                    offset = safe_get(arguments, "offset", 0)
 
                     # Get total matching notes for pagination info
                     all_matching_notes = note_cache.search_notes(

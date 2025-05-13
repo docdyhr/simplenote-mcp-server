@@ -102,7 +102,9 @@ class TestHandleListResources:
                 {"key": "note1", "content": "Test note 1", "tags": ["test"]},
                 {"key": "note2", "content": "Test note 2", "modifydate": "2025-04-10"},
             ]
-            mock_cache.get_all_notes.return_value = mock_notes  # Simulate successful cache
+            mock_cache.get_all_notes.return_value = (
+                mock_notes  # Simulate successful cache
+            )
 
             # Call handler
             resources = await handle_list_resources()
@@ -122,7 +124,9 @@ class TestHandleListResources:
             patch("simplenote_mcp.server.server.get_config") as mock_get_config,
         ):
             mock_cache.is_initialized = True
-            mock_cache.get_all_notes.side_effect = Exception("Test error")  # Simulate an error
+            mock_cache.get_all_notes.side_effect = Exception(
+                "Test error"
+            )  # Simulate an error
 
             # Call handler
             resources = await handle_list_resources()
@@ -152,7 +156,9 @@ class TestHandleReadResource:
                 "modifydate": "2025-04-10",
                 "createdate": "2025-04-01",
             }
-            mock_cache.get_note.return_value = mock_note  # Simulate successful cache hit
+            mock_cache.get_note.return_value = (
+                mock_note  # Simulate successful cache hit
+            )
 
             # Call handler after simulating API response
             result = await handle_read_resource("simplenote://note/note123")
@@ -181,7 +187,9 @@ class TestHandleReadResource:
         ):
             # Configure cache
             mock_cache.is_initialized = True
-            mock_cache.get_note.side_effect = ResourceNotFoundError("Not in cache")  # Simulate cache miss
+            mock_cache.get_note.side_effect = ResourceNotFoundError(
+                "Not in cache"
+            )  # Simulate cache miss
 
             # Configure API response
             mock_client = MagicMock()
@@ -229,5 +237,6 @@ class TestHandleReadResource:
             mock_client = MagicMock()
             mock_client.get_note.return_value = (None, 1)  # Error status
             mock_get_client.return_value = mock_client
+
 
 # Tests complete for the simplified interactions across API and handlers.

@@ -257,9 +257,9 @@ class TestErrorCategorization:
                 f"Error code {error.error_code} should be parseable"
             )
             # Check that the parsed category matches the display name of the category
-            assert code_info["category"] == CATEGORY_DISPLAY_NAMES[error.category_code], (
-                "Parsed category should match error category"
-            )
+            assert (
+                code_info["category"] == CATEGORY_DISPLAY_NAMES[error.category_code]
+            ), "Parsed category should match error category"
 
             subcategory_code = f"{error.category.value}_{error.subcategory}"
             if subcategory_code in SUBCATEGORY_CODES:
@@ -292,8 +292,9 @@ class TestErrorCategorization:
         async def async_operation():
             try:
                 # Use our custom TimeoutError instead of the built-in one
-                return TimeoutError("Operation timed out after 30 seconds",
-                                   operation="async_task")
+                return TimeoutError(
+                    "Operation timed out after 30 seconds", operation="async_task"
+                )
             except Exception as e:
                 return handle_exception(e, "performing async operation", "async_task")
 

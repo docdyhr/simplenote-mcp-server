@@ -10,8 +10,6 @@ import asyncio
 import os
 import sys
 import time
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
 
 # Add the parent directory to the Python path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -27,7 +25,6 @@ sys.path.insert(0, str(PROJECT_ROOT_PATH))
 
 from simplenote_mcp.server import get_simplenote_client
 from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.server.search.engine import SearchEngine
 from simplenote_mcp.server.logging import get_logger
 
 # Set up logger
@@ -39,7 +36,7 @@ class PerformanceTest:
 
     def __init__(self, name: str):
         """Initialize the performance test.
-        
+
         Args:
             name: The name of the test
         """
@@ -60,7 +57,7 @@ class PerformanceTest:
     def report(self) -> None:
         """Print the performance report."""
         print(f"{self.name}: {self.duration:.4f} seconds")
-    
+
     def __enter__(self):
         """Start timer when entering context."""
         self.start()
@@ -74,10 +71,10 @@ class PerformanceTest:
 
 async def test_pagination_get_all_notes(cache: NoteCache) -> bool:
     """Test pagination with get_all_notes.
-    
+
     Args:
         cache: Initialized NoteCache instance
-        
+
     Returns:
         True if test passes, False otherwise
     """
@@ -155,7 +152,9 @@ async def test_pagination_get_all_notes(cache: NoteCache) -> bool:
 
             if total_notes > page_size:
                 assert pagination["next_offset"] == page_size
-                assert pagination["prev_offset"] == 0  # First page should have prev_offset=0
+                assert (
+                    pagination["prev_offset"] == 0
+                )  # First page should have prev_offset=0
 
         return True
     except Exception as e:
