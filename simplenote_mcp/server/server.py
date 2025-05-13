@@ -15,6 +15,7 @@ from contextlib import suppress
 from typing import Any, List, Optional, cast
 
 # External imports
+from pydantic import AnyUrl  # type: ignore
 import mcp.server.stdio  # type: ignore
 import mcp.types as types  # type: ignore
 from mcp.server import NotificationOptions, Server  # type: ignore # noqa
@@ -34,6 +35,16 @@ from .errors import (
     ServerError,
     ValidationError,
     handle_exception,
+)
+from .monitoring.metrics import (
+    start_metrics_collection,
+    record_api_call,
+    record_response_time,
+    record_cache_hit,
+    record_cache_miss,
+    record_tool_call,
+    record_tool_execution_time,
+    update_cache_size,
 )
 from .logging import logger
 from .utils import get_content_type_hint
@@ -100,7 +111,8 @@ try:
     server = Server("simplenote-mcp-server")
     logger.info("MCP server instance created successfully")
 except Exception as e:
-    logger.error(f"Error creating server instance: {str(e)}", exc_info=True)
+    logger.error(f"Error creating MCP server: {str(e)}", exc_info=True)
+    record_api_call("create_note", success=False, error_type=type(e).__name__)
     raise
 
 # Initialize Simplenote client
@@ -229,7 +241,8 @@ def setup_signal_handlers() -> None:
 
 async def initialize_cache() -> None:
     """Initialize the note cache and start background sync."""
-    global note_cache, background_sync, shutdown_requested
+    global note_cache, background_sync
+    logger.debug("Initializing note cache")
 
     try:
         logger.info("Initializing note cache")
@@ -257,7 +270,9 @@ async def initialize_cache() -> None:
 
         # Create a minimal cache immediately so we can respond to clients
         if note_cache is None:
-            note_cache = NoteCache(sn)
+            logger.debug("Cache is uninitialized; initializing cache now.")
+            note_cache = NoteCache(sn)  # Ensure the NoteCache class implements required attributes
+            logger.debug("Cache initialization complete.")
             note_cache._initialized = True
             note_cache._notes = {}
             note_cache._last_sync = time.time()
@@ -364,6 +379,7 @@ async def handle_list_resources(
         global note_cache
         if note_cache is None:
             logger.info("Cache not initialized, creating empty cache")
+            logger.debug("Attempting to create Simplenote client for cache initialization")
             # Create a minimal cache without waiting for initialization
             simplenote_client = get_simplenote_client()
             note_cache = NoteCache(simplenote_client)
@@ -382,6 +398,7 @@ async def handle_list_resources(
         actual_limit = limit if limit is not None else config.default_resource_limit
 
         # Apply tag filtering if specified
+        logger.debug("Fetching all notes from cache with limit: %d and tag_filter: %s", actual_limit, tag)
         notes = note_cache.get_all_notes(limit=actual_limit, tag_filter=tag)
 
         logger.debug(
@@ -422,7 +439,7 @@ async def handle_list_resources(
 
 
 @server.read_resource()
-async def handle_read_resource(uri: str) -> types.ReadResourceResult:
+async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
     """Handle the read_resource capability.
 
     Args:
@@ -441,7 +458,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
     # Parse the URI to get the note ID
     uri_str = str(uri)
     if not uri_str.startswith("simplenote://note/"):
-        logger.error(f"Invalid Simplenote URI: {uri_str}")
+        logger.error(f"Invalid Simplenote URI: {uri}")
         invalid_uri_msg = f"Invalid Simplenote URI: {uri_str}"
         raise ValidationError(invalid_uri_msg)
 
@@ -465,7 +482,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
 
         # Try to get the note from cache first if cache is initialized
         if note_cache is not None:
-            logger.debug(f"Getting note {note_id} from cache")
+            logger.debug("Attempting to fetch note with ID: %s from cache", note_id)
             try:
                 note = note_cache.get_note(note_id)
                 logger.debug(f"Found note {note_id} in cache")
@@ -507,6 +524,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
         note, status = sn.get_note(note_id)
 
         if status == 0 and isinstance(note, dict):
+            logger.debug("Successfully retrieved note from Simplenote API.")
             # Update the cache if it's initialized
             if note_cache is not None and note_cache.is_initialized:
                 note_cache.update_cache_after_update(note)
@@ -763,9 +781,16 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
     """
     logger.info(f"Tool call: {name} with arguments: {json.dumps(arguments)}")
-
+    
+    # Record tool call for performance monitoring
+    record_tool_call(name)
+    
     try:
+        # Record API call
+        record_api_call("get_simplenote_client", success=True)
+        api_start_time = time.time()
         sn = get_simplenote_client()
+        record_response_time("get_simplenote_client", time.time() - api_start_time)
 
         # Check for cache initialization, but don't block waiting for it
         global note_cache
@@ -1767,6 +1792,10 @@ async def run() -> None:
             logger.info("STDIO server created, initializing MCP server")
 
             try:
+                # Start performance monitoring
+                logger.info("Starting performance monitoring")
+                start_metrics_collection(interval=60)  # Collect metrics every minute
+
                 # Start cache initialization in background but don't wait
                 asyncio.create_task(initialize_cache())
 
@@ -1854,12 +1883,16 @@ async def run() -> None:
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                     loop.run_until_complete(background_sync.stop())
-                    loop.close()
+                    if 'start_time' in locals():
+                        loop.close()
                 else:
                     # Use the existing event loop
                     asyncio.get_event_loop().create_task(background_sync.stop())
                     # Give it a moment to complete
                     time.sleep(0.5)
+            
+                # No need to record tool execution time here as it's already tracked elsewhere
+                pass
             except Exception as e:
                 logger.error(f"Error stopping background sync: {str(e)}", exc_info=True)
 
@@ -1909,6 +1942,9 @@ def run_main() -> None:
 
         # Run the async event loop with graceful shutdown support
         try:
+            # Update cache metrics
+            if note_cache:
+                update_cache_size(len(note_cache.notes), note_cache.max_size)
             asyncio.run(run())
         except KeyboardInterrupt:
             # Handle Ctrl+C gracefully - signal handler will set shutdown_requested flag

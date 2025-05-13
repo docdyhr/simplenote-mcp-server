@@ -18,43 +18,16 @@ import os
 import sys
 from typing import Any, Union
 
+from utils.logging_util import setup_logging
+
 # Configure logging - only if running as script or debug is enabled
 PATCH_LOG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "hashlib_patch.log"
 )
 
 
-def setup_logging():
-    """Setup logging for the hashlib patch"""
-    logger = logging.getLogger("hashlib_patch")
-    logger.setLevel(logging.INFO)
-
-    # Only add handlers if they don't exist
-    if not logger.handlers:
-        # Add console handler for interactive use
-        console = logging.StreamHandler()
-        console.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        )
-        console.setLevel(logging.INFO)
-        logger.addHandler(console)
-
-        # Add file handler for debugging
-        if os.environ.get("DEBUG_PATCH", "").lower() in ("1", "true", "yes"):
-            file_handler = logging.FileHandler(PATCH_LOG_FILE)
-            file_handler.setFormatter(
-                logging.Formatter(
-                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                )
-            )
-            file_handler.setLevel(logging.DEBUG)
-            logger.addHandler(file_handler)
-
-    return logger
-
-
-# Initialize logger
-logger = setup_logging()
+# Initialize logger using the common logging utility
+logger = setup_logging("hashlib_patch", PATCH_LOG_FILE)
 
 
 class FallbackBlake2Hash:

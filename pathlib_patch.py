@@ -18,53 +18,26 @@ import logging
 import os
 import sys
 
+from utils.logging_util import setup_logging
+
 # Configure logging - only if running as script or debug is enabled
 PATCH_LOG_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "pathlib_patch.log"
 )
 
-
-def setup_logging():
-    """Setup logging for the pathlib patch"""
-    logger = logging.getLogger("pathlib_patch")
-    logger.setLevel(logging.INFO)
-
-    # Only add handlers if they don't exist
-    if not logger.handlers:
-        # Add console handler for interactive use
-        console = logging.StreamHandler()
-        console.setFormatter(
-            logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        )
-        console.setLevel(logging.INFO)
-        logger.addHandler(console)
-
-        # Add file handler for debugging
-        if os.environ.get("DEBUG_PATCH", "").lower() in ("1", "true", "yes"):
-            file_handler = logging.FileHandler(PATCH_LOG_FILE)
-            file_handler.setFormatter(
-                logging.Formatter(
-                    "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-                )
-            )
-            file_handler.setLevel(logging.DEBUG)
-            logger.addHandler(file_handler)
-
-    return logger
-
-
-# Initialize logger
-logger = setup_logging()
+# Initialize logger using the common logging utility
+logger = setup_logging("pathlib_patch", PATCH_LOG_FILE)
 
 
 def patch_pathlib():
     """Patch pathlib module to expose Path class from pathlib._local in Python 3.13+"""
-    # Check Python version
+    # Check if the current Python version meets the required version
     major, minor, micro = (
         sys.version_info.major,
         sys.version_info.minor,
         sys.version_info.micro,
     )
+
     if (major, minor) < (3, 13):
         logger.debug(
             f"Python version {major}.{minor}.{micro} doesn't need the pathlib patch"
