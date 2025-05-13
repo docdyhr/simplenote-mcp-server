@@ -151,11 +151,11 @@ class TestPathCompat:
             for name in ["file1.txt", "file2.txt", "other.py"]:
                 try:
                     os.unlink(os.path.join(test_dir, name))
-                except:
+                except Exception:
                     pass
             try:
                 os.rmdir(test_dir)
-            except:
+            except Exception:
                 pass
 
 

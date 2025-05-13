@@ -14,8 +14,15 @@ MONITORING_LOG_FILE = LOG_DIR / "monitoring.log"
 # Ensure log directory exists
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-# For backwards compatibility
-LEGACY_MONITORING_LOG_FILE = Path("/tmp/simplenote_monitoring.log")
+# For backwards compatibility - create user-specific temp dir
+import os
+import tempfile
+
+USER_TEMP_DIR = Path(tempfile.gettempdir()) / f"simplenote_mcp_{os.getuid()}"
+USER_TEMP_DIR.mkdir(
+    exist_ok=True, mode=0o700
+)  # Ensure directory exists with restrictive permissions
+LEGACY_MONITORING_LOG_FILE = USER_TEMP_DIR / "simplenote_monitoring.log"
 
 
 # Print both to console and to debug log

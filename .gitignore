@@ -53,3 +53,5 @@ Thumbs.db
 .python-version
 **/CLAUDE.local.md
 .venv_precommit/
+
+**/.claude/settings.local.json

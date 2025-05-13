@@ -585,9 +585,9 @@ class NoteCache:
             to_str = to_date.isoformat() if to_date else ""
             date_str = f"{from_str},{to_str}"
 
-        # Combine parameters and calculate hash
+        # Combine parameters and calculate hash - not used for security purposes
         combined = f"{query}|{tag_str}|{date_str}|{self._last_sync}"
-        return hashlib.md5(combined.encode()).hexdigest()
+        return hashlib.md5(combined.encode(), usedforsecurity=False).hexdigest()
 
     def update_cache_after_create(self, note: dict) -> None:
         """Update cache after creating a note.

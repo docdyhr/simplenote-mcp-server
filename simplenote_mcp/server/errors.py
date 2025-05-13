@@ -453,5 +453,5 @@ def handle_exception(
         original_error=e,
         resource_id=resource_id,
         operation=operation,
-        subcategory="unhandled" if not subcategory else subcategory,
+        subcategory=subcategory if subcategory else "unhandled",
     )

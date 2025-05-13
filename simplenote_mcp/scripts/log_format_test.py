@@ -47,7 +47,7 @@ def print_log_entries(log_file, count=5):
                         print(json.dumps(parsed, indent=2))
                     else:
                         print(line.strip())
-                except:
+                except Exception:
                     print(line.strip())
     except Exception as e:
         print(f"Error reading log file {log_file}: {e}")

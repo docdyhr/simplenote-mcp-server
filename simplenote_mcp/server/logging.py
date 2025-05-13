@@ -3,7 +3,9 @@
 import inspect
 import json
 import logging
+import os
 import sys
+import tempfile
 import uuid
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
@@ -15,8 +17,13 @@ from .config import LogLevel, get_config
 # Set the log file path in the logs directory
 LOGS_DIR = Path(__file__).parent.parent / "logs"
 LOG_FILE = LOGS_DIR / "server.log"
-LEGACY_LOG_FILE = Path("/tmp/simplenote_mcp_debug.log")
-DEBUG_LOG_FILE = Path("/tmp/simplenote_mcp_debug_extra.log")
+# Use more secure user-specific temp directory instead of global /tmp
+USER_TEMP_DIR = Path(tempfile.gettempdir()) / f"simplenote_mcp_{os.getuid()}"
+USER_TEMP_DIR.mkdir(
+    exist_ok=True, mode=0o700
+)  # Ensure directory exists with restrictive permissions
+LEGACY_LOG_FILE = USER_TEMP_DIR / "simplenote_mcp_debug.log"
+DEBUG_LOG_FILE = USER_TEMP_DIR / "simplenote_mcp_debug_extra.log"
 
 # We'll initialize the debug log file in the initialize_logging function to avoid
 # breaking the protocol before the MCP server is fully initialized

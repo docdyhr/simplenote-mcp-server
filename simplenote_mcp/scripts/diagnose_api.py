@@ -13,13 +13,12 @@ import urllib.request
 from datetime import datetime
 from typing import Dict, TypedDict
 
+from simplenote_mcp.server.compat import Path
+
 # Add the parent directory to the Python path
 script_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, project_root)
-
-# Import from our compatibility module
-from simplenote_mcp.server.compat import Path
 
 # Set project root
 PROJECT_ROOT = Path(__file__).parent.parent.parent
