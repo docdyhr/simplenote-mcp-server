@@ -46,6 +46,9 @@ coverage.xml
 .DS_Store
 Thumbs.db
 
+# Benchmark results
+*benchmark_*.json
+
 # Local configuration
 .python-version
 **/CLAUDE.local.md
