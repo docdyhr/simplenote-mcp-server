@@ -360,19 +360,37 @@ async def initialize_cache() -> None:
 
 @server.list_resources()
 async def handle_list_resources(
-    tag: Optional[str] = None, limit: Optional[int] = None
+    tag: Optional[str] = None,
+    limit: Optional[int] = None,
+    offset: int = 0,
+    sort_by: str = "modifydate",
+    sort_direction: str = "desc",
 ) -> list[types.Resource]:
-    """Handle the list_resources capability.
+    """Handle the list_resources capability with pagination support.
 
     Args:
         tag: Optional tag to filter notes by
         limit: Optional limit for the number of notes to return
+        offset: Number of notes to skip (pagination offset, 0-based)
+        sort_by: Field to sort by (modifydate, createdate, title)
+        sort_direction: Sort direction (asc or desc)
 
     Returns:
-        List of Simplenote note resources
+        List of Simplenote note resources with pagination metadata.
+        The first resource in the list contains pagination metadata in its meta field:
+        - total: Total number of matching notes
+        - offset: Current offset (0-based)
+        - limit: Number of notes per page
+        - has_more: Whether there are more notes after this page
+        - next_offset: Offset for next page (null if no next page)
+        - prev_offset: Offset for previous page (null if first page)
+        - page: Current page number (1-based)
+        - total_pages: Total number of pages
 
     """
-    logger.debug(f"list_resources called with tag={tag}, limit={limit}")
+    logger.debug(
+        f"list_resources called with tag={tag}, limit={limit}, offset={offset}, sort_by={sort_by}, sort_direction={sort_direction}"
+    )
 
     try:
         # Check for cache initialization, but don't block waiting for it
@@ -399,38 +417,65 @@ async def handle_list_resources(
         # Use provided limit or fall back to default
         actual_limit = limit if limit is not None else config.default_resource_limit
 
-        # Apply tag filtering if specified
+        # Apply tag filtering if specified and pagination
         logger.debug(
-            "Fetching all notes from cache with limit: %d and tag_filter: %s",
+            "Fetching notes from cache with limit: %d, offset: %d, sort_by: %s, sort_direction: %s, tag_filter: %s",
             actual_limit,
+            offset,
+            sort_by,
+            sort_direction,
             tag,
         )
-        notes = note_cache.get_all_notes(limit=actual_limit, tag_filter=tag)
+
+        # Get total notes count for pagination info
+        total_matching_notes = len(note_cache.get_all_notes(tag_filter=tag))
+
+        # Get the paginated notes
+        notes = note_cache.get_all_notes(
+            limit=actual_limit,
+            tag_filter=tag,
+            offset=offset,
+            sort_by=sort_by,
+            sort_direction=sort_direction,
+        )
+        # Ensure each note has tags key for default tags list
+        for note in notes:
+            note.setdefault("tags", [])
+
+        pagination_info = note_cache.get_pagination_info(
+            total_items=total_matching_notes, limit=actual_limit, offset=offset
+        )
 
         logger.debug(
             f"Listing resources, found {len(notes)} notes"
             + (f" with tag '{tag}'" if tag else "")
+            + f" (page {pagination_info.get('page', 1)} of {pagination_info.get('total_pages', 1)})"
         )
 
         resources = []
         for note in notes:
+            note.setdefault("tags", [])
+            tags = note["tags"]
+            content = note.get("content", "")
             resource = types.Resource(
-                # Cast to Any to avoid type errors with AnyUrl
                 uri=cast(Any, f"simplenote://note/{note['key']}"),
-                name=(
-                    safe_get(note, "content", "").splitlines()[0][:30]
-                    if safe_get(note, "content")
-                    else safe_get(note, "key", "unknown")
-                ),
-                description=f"Note from {safe_get(note, 'modifydate', 'unknown date')}",
+                name=(content.splitlines()[0][:30] if content else note.get("key", "")),
+                description=f"Note from {note.get('modifydate', 'unknown date')}",
             )
-            # Add metadata as dictionary to the Resource
-            resource_dict = resource.__dict__
-            resource_dict["meta"] = {
-                "tags": safe_get(note, "tags", []),
-                **get_content_type_hint(safe_get(note, "content", "")),
+            resource.key = note.get("key")
+            resource.content = content
+            resource.tags = tags
+            resource.meta = {
+                "tags": tags,
+                "pagination": pagination_info,
+                **get_content_type_hint(content),
             }
             resources.append(resource)
+
+        # Add pagination metadata to the first resource if available
+        if resources and len(resources) > 0:
+            resources[0].meta["pagination"] = pagination_info
+
         return resources
 
     except Exception as e:
@@ -1103,10 +1148,23 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                 if cache_initialized:
                     logger.debug("Using advanced search with cache")
 
-                    # Use the enhanced search implementation
+                    # Get offset parameter for pagination or default to 0
+                    offset = safe_get(tool_params, "offset", 0, int)
+
+                    # Get total matching notes for pagination info
+                    all_matching_notes = note_cache.search_notes(
+                        query=query,
+                        tag_filters=tag_filters,
+                        date_range=date_range,
+                    )
+                    total_matching_notes = len(all_matching_notes)
+
+                    # Use the enhanced search implementation with pagination
+                    # Use the enhanced search implementation with pagination support
                     notes = note_cache.search_notes(
                         query=query,
                         limit=limit,
+                        offset=offset,
                         tag_filters=tag_filters,
                         date_range=date_range,
                     )
@@ -1144,12 +1202,24 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                             f"First result title: {results[0].get('title', 'No title')}"
                         )
 
-                    # Create response
+                    # Get pagination metadata
+                    pagination_info = note_cache.get_pagination_info(
+                        total_items=total_matching_notes, limit=limit, offset=offset
+                    )
+
+                    # Create response with pagination info
                     response = {
                         "success": True,
                         "results": results,
                         "count": len(results),
+                        "total": total_matching_notes,
+                        "pagination": pagination_info,
                         "query": query,
+                        "page": pagination_info.get("page", 1),
+                        "total_pages": pagination_info.get("total_pages", 1),
+                        "has_more": pagination_info.get("has_more", False),
+                        "next_offset": pagination_info.get("next_offset"),
+                        "prev_offset": pagination_info.get("prev_offset"),
                     }
 
                     # Log the response size

@@ -1,6 +1,7 @@
 """Cache module for Simplenote MCP server."""
 
 import asyncio
+import hashlib
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Set, Tuple
@@ -48,6 +49,18 @@ class NoteCache:
         self._tags: Set[str] = set()  # Set of all unique tags
         self._lock = asyncio.Lock()  # Lock for thread-safe access
         self._search_engine = SearchEngine()  # Search engine for advanced search
+
+        # New data structures for optimized cache
+        self._tag_index: Dict[
+            str, Set[str]
+        ] = {}  # Map of tag to set of note IDs with that tag
+        self._query_cache: Dict[
+            str, Tuple[float, List[Dict[str, Any]]]
+        ] = {}  # Cache for search queries
+        self._query_cache_ttl: float = 60.0  # Cache TTL in seconds
+        self._title_index: Dict[
+            str, List[str]
+        ] = {}  # Map of first word in title to note IDs (for prefix search)
 
     async def initialize(self) -> int:
         """Initialize the cache with all notes from Simplenote.
@@ -136,10 +149,28 @@ class NoteCache:
             logger.warning(f"Failed to get index mark (non-critical): {str(e)}")
             self._index_mark = "test_mark"
 
-        # Extract all unique tags
-        for note in self._notes.values():
+        # Extract all unique tags and build indexes
+        for note_id, note in self._notes.items():
+            # Build tag index
             if "tags" in note and note["tags"]:
                 self._tags.update(note["tags"])
+
+                # Update tag index for each tag
+                for tag in note["tags"]:
+                    if tag not in self._tag_index:
+                        self._tag_index[tag] = set()
+                    self._tag_index[tag].add(note_id)
+
+            # Build title index
+            content = note.get("content", "")
+            if content:
+                first_line = content.splitlines()[0] if content else ""
+                if first_line:
+                    first_word = first_line.split()[0] if first_line.split() else ""
+                    if first_word:
+                        if first_word not in self._title_index:
+                            self._title_index[first_word] = []
+                        self._title_index[first_word].append(note_id)
 
         elapsed = time.time() - start_time
         logger.info(f"Loaded {len(self._notes)} notes into cache in {elapsed:.2f}s")
@@ -276,6 +307,9 @@ class NoteCache:
             # Update last sync time
             self._last_sync = time.time()
 
+            # Clear query cache after sync
+            self._query_cache.clear()
+
             elapsed = time.time() - start_time
             if change_count > 0:
                 logger.info(f"Updated {change_count} notes in cache in {elapsed:.2f}s")
@@ -336,13 +370,21 @@ class NoteCache:
         return note_data
 
     def get_all_notes(
-        self, limit: Optional[int] = None, tag_filter: Optional[str] = None
+        self,
+        limit: Optional[int] = None,
+        tag_filter: Optional[str] = None,
+        offset: int = 0,
+        sort_by: str = "modifydate",
+        sort_direction: str = "desc",
     ) -> list[dict]:
-        """Get all notes from the cache.
+        """Get all notes from the cache with pagination support.
 
         Args:
             limit: Optional maximum number of notes to return.
             tag_filter: Optional tag to filter notes by.
+            offset: Number of notes to skip (pagination offset).
+            sort_by: Field to sort by (default: "modifydate").
+            sort_direction: Sort direction ("asc" or "desc").
 
         Returns:
             List of note data.
@@ -351,32 +393,52 @@ class NoteCache:
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
 
-        # Filter by tag if specified
+        # Filter by tag if specified using tag index for faster performance
         if tag_filter:
-            filtered_notes = [
-                note
-                for note in self._notes.values()
-                if "tags" in note and note["tags"] and tag_filter in note["tags"]
-            ]
+            if tag_filter in self._tag_index:
+                # Use the tag index for faster filtering
+                note_keys = self._tag_index[tag_filter]
+                filtered_notes = [
+                    self._notes[key] for key in note_keys if key in self._notes
+                ]
+            else:
+                # Tag doesn't exist in index
+                filtered_notes = []
         else:
             filtered_notes = list(self._notes.values())
 
-        # Sort by modification date (newest first)
+        # Get sort key function based on sort_by parameter
+        def get_sort_key(note):
+            if sort_by == "title":
+                # Use first line of content or empty string if no content
+                content = note.get("content", "")
+                return content.splitlines()[0] if content else ""
+            elif sort_by == "createdate":
+                return note.get("createdate", 0)
+            else:  # Default to modifydate
+                return note.get("modifydate", 0)
+
+        # Sort direction
+        reverse_sort = sort_direction.lower() == "desc"
+
+        # Sort notes by specified field and direction
         sorted_notes = sorted(
             filtered_notes,
-            key=lambda n: n.get("modifydate", 0),
-            reverse=True,
+            key=get_sort_key,
+            reverse=reverse_sort,
         )
 
-        # Apply limit if specified
-        if limit is not None and limit > 0:
-            return sorted_notes[:limit]
-        return sorted_notes
+        # Apply pagination (offset + limit)
+        start_idx = offset
+        end_idx = None if limit is None else offset + limit
+
+        return sorted_notes[start_idx:end_idx]
 
     def search_notes(
         self,
         query: str,
         limit: Optional[int] = None,
+        offset: int = 0,
         tag_filters: Optional[List[str]] = None,
         date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]] = None,
     ) -> List[Dict[str, Any]]:
@@ -385,6 +447,7 @@ class NoteCache:
         Args:
             query: The search query (supports boolean operators and special filters).
             limit: Optional maximum number of results to return.
+            offset: Number of matching notes to skip (pagination offset).
             tag_filters: Optional list of tags to filter by.
             date_range: Optional tuple of (from_date, to_date) for date filtering.
 
@@ -412,6 +475,8 @@ class NoteCache:
             >>> search_notes("meeting", date_range=(start_date, end_date))
             >>> search_notes("meeting from:2023-01-01 to:2023-12-31")  # Equivalent
 
+            Pagination:
+            >>> search_notes("meeting", limit=10, offset=20)  # Return notes 21-30
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
@@ -422,22 +487,107 @@ class NoteCache:
             f"tags={tag_filters}, "
             f"date_range={date_range}, "
             f"limit={limit}, "
+            f"offset={offset}, "
             f"notes_count={len(self._notes)}"
         )
 
-        # Use the search engine to perform the search
-        results = self._search_engine.search(
-            notes=self._notes,
+        # Generate a cache key for this search
+        cache_key = self._generate_search_cache_key(query, tag_filters, date_range)
+
+        # Check if we have a cached result for this search
+        current_time = time.time()
+        if cache_key in self._query_cache:
+            cached_time, cached_results = self._query_cache[cache_key]
+            # Use cached results if they're not too old
+            if current_time - cached_time < self._query_cache_ttl:
+                logger.debug(f"Using cached search results for query: '{query}'")
+                # Apply pagination to cached results
+                start_idx = offset
+                end_idx = None if limit is None else offset + limit
+                return cached_results[start_idx:end_idx]
+
+        # Optimize search by pre-filtering notes if we have tag_filters
+        notes_to_search = self._notes
+        if tag_filters:
+            # Get the set of notes that have all required tags
+            matching_note_ids = None
+            for tag in tag_filters:
+                if tag in self._tag_index:
+                    tag_note_ids = self._tag_index[tag]
+                    if matching_note_ids is None:
+                        matching_note_ids = set(tag_note_ids)
+                    else:
+                        matching_note_ids &= tag_note_ids
+                else:
+                    # If any tag doesn't exist, no notes can match
+                    matching_note_ids = set()
+                    break
+
+            if matching_note_ids is not None:
+                # Create filtered dict of notes to search
+                notes_to_search = {
+                    key: self._notes[key]
+                    for key in matching_note_ids
+                    if key in self._notes
+                }
+                logger.debug(
+                    f"Pre-filtered notes by tags: {len(notes_to_search)} of {len(self._notes)}"
+                )
+
+        # Use the search engine to perform the search with the filtered notes
+        all_results = self._search_engine.search(
+            notes=notes_to_search,
             query=query,
             tag_filters=tag_filters,
             date_range=date_range,
-            limit=limit,
         )
 
-        # Apply limit if specified
-        if limit is not None and limit > 0:
-            return results[:limit]
-        return results
+        # Store results in cache
+        self._query_cache[cache_key] = (current_time, all_results)
+
+        # Manage cache size - remove oldest entries if we have too many
+        if len(self._query_cache) > 100:  # Limit cache to 100 entries
+            oldest_keys = sorted(
+                self._query_cache.keys(), key=lambda k: self._query_cache[k][0]
+            )[:10]  # Remove 10 oldest entries
+            for k in oldest_keys:
+                del self._query_cache[k]
+
+        # Apply pagination (offset + limit)
+        start_idx = offset
+        end_idx = None if limit is None else offset + limit
+
+        return all_results[start_idx:end_idx]
+
+    def _generate_search_cache_key(
+        self,
+        query: str,
+        tag_filters: Optional[List[str]],
+        date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]],
+    ) -> str:
+        """Generate a cache key for search results.
+
+        Args:
+            query: The search query string
+            tag_filters: List of tags to filter by
+            date_range: Tuple of (from_date, to_date)
+
+        Returns:
+            A string key for the query cache
+        """
+        # Create a hashable representation of the search parameters
+        tag_str = ",".join(sorted(tag_filters)) if tag_filters else ""
+
+        date_str = ""
+        if date_range:
+            from_date, to_date = date_range
+            from_str = from_date.isoformat() if from_date else ""
+            to_str = to_date.isoformat() if to_date else ""
+            date_str = f"{from_str},{to_str}"
+
+        # Combine parameters and calculate hash
+        combined = f"{query}|{tag_str}|{date_str}|{self._last_sync}"
+        return hashlib.md5(combined.encode()).hexdigest()
 
     def update_cache_after_create(self, note: dict) -> None:
         """Update cache after creating a note.
@@ -452,9 +602,29 @@ class NoteCache:
         note_id = note["key"]
         self._notes[note_id] = note
 
-        # Update tags
+        # Update tags and tag index
         if "tags" in note and note["tags"]:
-            self._tags.update(note["tags"])
+            for tag in note["tags"]:
+                self._tags.add(tag)
+
+                # Update tag index
+                if tag not in self._tag_index:
+                    self._tag_index[tag] = set()
+                self._tag_index[tag].add(note_id)
+
+        # Update title index
+        content = note.get("content", "")
+        if content:
+            first_line = content.splitlines()[0] if content else ""
+            if first_line:
+                first_word = first_line.split()[0] if first_line.split() else ""
+                if first_word:
+                    if first_word not in self._title_index:
+                        self._title_index[first_word] = []
+                    self._title_index[first_word].append(note_id)
+
+        # Clear query cache on note creation
+        self._query_cache.clear()
 
     def update_cache_after_update(self, note: dict) -> None:
         """Update cache after updating a note.
@@ -468,21 +638,76 @@ class NoteCache:
 
         note_id = note["key"]
 
-        # Remove old tags if note was already in cache
+        # Remove old tags from indexes if note was already in cache
         if note_id in self._notes and "tags" in self._notes[note_id]:
             old_tags = self._notes[note_id]["tags"]
-            # Remove tags that are no longer used
+            new_tags = note.get("tags", [])
+
+            # Process removed tags
             for tag in old_tags:
-                # Check if tag is used in any other note
-                if not any(
-                    tag in other_note.get("tags", [])
-                    for other_key, other_note in self._notes.items()
-                    if other_key != note_id
+                if tag not in new_tags:
+                    # Remove note ID from tag index
+                    if tag in self._tag_index:
+                        self._tag_index[tag].discard(note_id)
+                        # Clean up empty tag index entries
+                        if not self._tag_index[tag]:
+                            del self._tag_index[tag]
+
+                    # Check if tag is used in any other note
+                    if not any(
+                        tag in other_note.get("tags", [])
+                        for other_key, other_note in self._notes.items()
+                        if other_key != note_id
+                    ):
+                        self._tags.discard(tag)
+
+        # Update title index - remove old entries
+        old_content = (
+            self._notes[note_id].get("content", "") if note_id in self._notes else ""
+        )
+        if old_content:
+            old_first_line = old_content.splitlines()[0] if old_content else ""
+            if old_first_line:
+                old_first_word = (
+                    old_first_line.split()[0] if old_first_line.split() else ""
+                )
+                if (
+                    old_first_word
+                    and old_first_word in self._title_index
+                    and note_id in self._title_index[old_first_word]
                 ):
-                    self._tags.discard(tag)
+                    self._title_index[old_first_word].remove(note_id)
+                    # Clean up empty title index entries
+                    if not self._title_index[old_first_word]:
+                        del self._title_index[old_first_word]
 
         # Update note
         self._notes[note_id] = note
+
+        # Add new tags to indexes
+        if "tags" in note and note["tags"]:
+            for tag in note["tags"]:
+                self._tags.add(tag)
+
+                # Update tag index
+                if tag not in self._tag_index:
+                    self._tag_index[tag] = set()
+                self._tag_index[tag].add(note_id)
+
+        # Update title index with new content
+        content = note.get("content", "")
+        if content:
+            first_line = content.splitlines()[0] if content else ""
+            if first_line:
+                first_word = first_line.split()[0] if first_line.split() else ""
+                if first_word:
+                    if first_word not in self._title_index:
+                        self._title_index[first_word] = []
+                    if note_id not in self._title_index[first_word]:
+                        self._title_index[first_word].append(note_id)
+
+        # Clear query cache on note update
+        self._query_cache.clear()
 
         # Add new tags
         if "tags" in note and note["tags"]:
@@ -492,17 +717,25 @@ class NoteCache:
         """Update cache after deleting a note.
 
         Args:
-            note_id: ID of the deleted note.
+            note_id: The ID of the deleted note.
 
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
 
-        # Remove tags if this was the only note with those tags
+        # Remove tags from indexes
         if note_id in self._notes and "tags" in self._notes[note_id]:
             old_tags = self._notes[note_id]["tags"]
-            # Remove tags that are no longer used
+
+            # Process removed tags
             for tag in old_tags:
+                # Remove note ID from tag index
+                if tag in self._tag_index:
+                    self._tag_index[tag].discard(note_id)
+                    # Clean up empty tag index entries
+                    if not self._tag_index[tag]:
+                        del self._tag_index[tag]
+
                 # Check if tag is used in any other note
                 if not any(
                     tag in other_note.get("tags", [])
@@ -511,9 +744,29 @@ class NoteCache:
                 ):
                     self._tags.discard(tag)
 
-        # Remove from cache
+        # Update title index - remove deleted note
+        if note_id in self._notes:
+            content = self._notes[note_id].get("content", "")
+            if content:
+                first_line = content.splitlines()[0] if content else ""
+                if first_line:
+                    first_word = first_line.split()[0] if first_line.split() else ""
+                    if (
+                        first_word
+                        and first_word in self._title_index
+                        and note_id in self._title_index[first_word]
+                    ):
+                        self._title_index[first_word].remove(note_id)
+                        # Clean up empty title index entries
+                        if not self._title_index[first_word]:
+                            del self._title_index[first_word]
+
+        # Remove note from cache
         if note_id in self._notes:
             del self._notes[note_id]
+
+        # Clear query cache on note deletion
+        self._query_cache.clear()
 
     def get_all_tags(self) -> list[str]:
         """Get all unique tags from the cache.
@@ -549,7 +802,43 @@ class NoteCache:
             Number of notes in the cache.
 
         """
+        if not self._initialized:
+            return 0
         return len(self._notes)
+
+    def get_pagination_info(
+        self, total_items: int, limit: Optional[int], offset: int
+    ) -> dict:
+        """Generate pagination metadata for a result set.
+
+        Args:
+            total_items: Total number of items available
+            limit: Number of items per page (or None for all)
+            offset: Starting position (0-based)
+
+        Returns:
+            Dictionary with pagination metadata
+        """
+        if limit is None or limit <= 0:
+            return {
+                "total": total_items,
+                "offset": offset,
+                "limit": None,
+                "has_more": False,
+            }
+
+        return {
+            "total": total_items,
+            "offset": offset,
+            "limit": limit,
+            "has_more": offset + limit < total_items,
+            "next_offset": min(offset + limit, total_items)
+            if offset + limit < total_items
+            else None,
+            "prev_offset": max(0, offset - limit) if offset > 0 else None,
+            "page": (offset // limit) + 1,
+            "total_pages": (total_items + limit - 1) // limit if limit > 0 else 1,
+        }
 
     @property
     def cache_size(self) -> int:

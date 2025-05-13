@@ -29,7 +29,6 @@ class SearchEngine:
         query: str,
         tag_filters: Optional[List[str]] = None,
         date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]] = None,
-        limit: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         """Search notes using advanced query capabilities.
 
@@ -38,10 +37,10 @@ class SearchEngine:
             query: The search query (supports boolean operators)
             tag_filters: Optional list of tags to filter by
             date_range: Optional tuple of (from_date, to_date)
-            limit: Optional maximum number of results to return
 
         Returns:
-            List of matching notes sorted by relevance
+            List of matching notes sorted by relevance. Pagination should be handled
+            by the caller.
 
         """
         logger.debug(f"Performing advanced search with query: '{query}'")
@@ -91,7 +90,7 @@ class SearchEngine:
             # Collect results with scores
             results = []
 
-            for note_id, note in notes.items():
+            for _, note in notes.items():
                 # Apply tag filters
                 if global_tag_filters and not self._matches_tags(
                     note, global_tag_filters
@@ -99,19 +98,14 @@ class SearchEngine:
                     continue
 
                 # Apply date range filters
-                if date_range[0] is not None or date_range[1] is not None:
-                    if not self._is_in_date_range(note, date_range):
-                        continue
+                if (date_range[0] is not None or date_range[1] is not None) and not self._is_in_date_range(note, date_range):
+                    continue
 
                 # Add matching note to results with a default score of 1
                 results.append((note, 1))
 
             # Sort by modification date (most recent first) as a default
             results.sort(key=lambda x: self._get_modify_date(x[0]), reverse=True)
-
-            # Apply limit if specified
-            if limit is not None and limit > 0:
-                results = results[:limit]
 
             # Return just the notes, not the scores
             return [note for note, _ in results]
@@ -121,7 +115,7 @@ class SearchEngine:
             # Collect results with scores
             results = []
 
-            for note_id, note in notes.items():
+            for _, note in notes.items():
                 # Apply tag filters
                 if global_tag_filters and not self._matches_tags(
                     note, global_tag_filters
@@ -129,9 +123,8 @@ class SearchEngine:
                     continue
 
                 # Apply date range filters
-                if date_range[0] is not None or date_range[1] is not None:
-                    if not self._is_in_date_range(note, date_range):
-                        continue
+                if (date_range[0] is not None or date_range[1] is not None) and not self._is_in_date_range(note, date_range):
+                    continue
 
                 # Evaluate the boolean expression
                 if remaining_tokens and not self._evaluate_expression(
@@ -147,10 +140,6 @@ class SearchEngine:
 
             # Sort by relevance score (descending)
             results.sort(key=lambda x: x[1], reverse=True)
-
-            # Apply limit if specified
-            if limit is not None and limit > 0:
-                results = results[:limit]
 
             # Return just the notes, not the scores
             return [note for note, _ in results]
@@ -220,10 +209,7 @@ class SearchEngine:
         if from_date and note_date < from_date:
             return False
 
-        if to_date and note_date > to_date:
-            return False
-
-        return True
+        return not (to_date and note_date > to_date)
 
     def _evaluate_expression(
         self, note: Dict[str, Any], tokens: List[QueryToken]

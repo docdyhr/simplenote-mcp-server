@@ -34,6 +34,7 @@ class TestCategory(Enum):
 
     UNIT = "unit"
     INTEGRATION = "integration"
+    PERFORMANCE = "performance"
     ALL = "all"
 
 
@@ -71,13 +72,19 @@ def discover_tests(category: TestCategory = TestCategory.ALL) -> List[str]:
     patterns = {
         TestCategory.UNIT: ["test_*py"],
         TestCategory.INTEGRATION: ["test_integration_*py"],
+        TestCategory.PERFORMANCE: ["test_pagination_and_cache.py", "benchmark_cache.py", "test_search.py"],
         TestCategory.ALL: ["test_*py"],
     }
 
     # Special handling for specific categories
     if category == TestCategory.UNIT:
-        # Exclude integration tests
+        # Exclude integration tests and performance tests
         exclude = {str(p) for p in tests_dir.glob("test_integration_*.py")}
+        exclude.update({str(tests_dir / "test_pagination_and_cache.py"),
+                       str(tests_dir / "benchmark_cache.py")})
+    elif category == TestCategory.PERFORMANCE:
+        # Only include performance tests
+        return [str(tests_dir / path) for path in patterns[category]]
     else:
         exclude = set()
 
@@ -148,7 +155,11 @@ async def run_tests_async(test_paths: List[str], verbose: bool = False) -> bool:
     results = []
 
     # Run tests with limited concurrency to avoid resource contention
-    semaphore = asyncio.Semaphore(3)  # Max 3 concurrent tests
+    # Use less concurrency for performance tests to avoid interference
+    if any("pagination" in path or "benchmark" in path for path in test_paths):
+        semaphore = asyncio.Semaphore(1)  # Sequential for performance tests
+    else:
+        semaphore = asyncio.Semaphore(3)  # Max 3 concurrent tests
 
     async def run_with_semaphore(test_path):
         async with semaphore:
@@ -254,7 +265,7 @@ def main():
         "--category",
         choices=[c.value for c in TestCategory],
         default=TestCategory.ALL.value,
-        help="Test category to run (default: all)",
+        help="Test category to run (default: all, options: unit, integration, performance)",
     )
     parser.add_argument("--tests", nargs="*", help="Specific test paths to run")
     parser.add_argument("-v", "--verbose", action="store_true", help="Verbose output")

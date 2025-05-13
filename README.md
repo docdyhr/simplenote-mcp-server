@@ -154,13 +154,19 @@ Or, after installation:
 simplenote-mcp-server
 ```
 
-### Testing the server
+## Testing the server
 
 The server can be tested by running:
 
 ```bash
 # Test Simplenote connectivity
 python simplenote_mcp/tests/test_mcp_client.py
+
+# Test pagination and cache performance
+python simplenote_mcp/tests/test_pagination_and_cache.py
+
+# Run cache optimization benchmarks
+python simplenote_mcp/tests/benchmark_cache.py
 
 # Start the server in the foreground
 python simplenote_mcp_server.py
@@ -240,7 +246,9 @@ Simplenote notes are exposed as resources with the URI format `simplenote://note
 - **List Resources** - Browse your Simplenote notes
   - Supports tag filtering (`tag` parameter)
   - Supports limiting results (`limit` parameter)
-  - Returns notes sorted by modification date (newest first)
+  - Supports pagination (`offset` parameter)
+  - Supports sorting (`sort_by` and `sort_direction` parameters)
+  - Returns notes with comprehensive pagination metadata
 
 - **Read Resource** - View the content and metadata of a specific note
 
@@ -291,7 +299,7 @@ The server provides the following tools for Simplenote interaction:
 | `update_note` | Update an existing note | `note_id` (required): The ID of the note<br>`content` (required): New content<br>`tags` (optional): Comma-separated tags |
 | `delete_note` | Move a note to trash | `note_id` (required): The ID of the note to delete |
 | `get_note` | Get a note by ID | `note_id` (required): The ID of the note to retrieve |
-| `search_notes` | Search for notes with advanced capabilities | `query` (required): Search terms with boolean operators & filters<br>`limit` (optional): Maximum results to return<br>`tags` (optional): Tags to filter by (alternative to tag: syntax)<br>`from_date` (optional): Start date filter (alternative to from: syntax)<br>`to_date` (optional): End date filter (alternative to to: syntax) |
+| `search_notes` | Search for notes with advanced capabilities | `query` (required): Search terms with boolean operators & filters<br>`limit` (optional): Maximum results to return<br>`offset` (optional): Number of results to skip for pagination<br>`tags` (optional): Tags to filter by (alternative to tag: syntax)<br>`from_date` (optional): Start date filter (alternative to from: syntax)<br>`to_date` (optional): End date filter (alternative to to: syntax) |
 | `add_tags` | Add tags to an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated tags to add |
 | `remove_tags` | Remove tags from an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated tags to remove |
 | `replace_tags` | Replace all tags on an existing note | `note_id` (required): The ID of the note to modify<br>`tags` (required): Comma-separated new tags |
@@ -330,11 +338,32 @@ This project comes with several helper scripts in the `simplenote_mcp/scripts` d
 Testing utilities in the `simplenote_mcp/tests` directory:
 
 1. **test_mcp_client.py** - Tests connectivity with the Simplenote MCP server
-2. **monitor_server.py** - Helps debug communications between Claude Desktop and the server
+2. **test_pagination_and_cache.py** - Tests pagination functionality and cache optimization
+3. **benchmark_cache.py** - Benchmarks cache performance improvements
+4. **monitor_server.py** - Helps debug communications between Claude Desktop and the server
 
 ## Caching Mechanism
 
 The Simplenote MCP Server uses a sophisticated in-memory caching system to provide fast access to your notes while minimizing API calls to Simplenote.
+
+### Pagination Support
+
+The server supports pagination for efficiently handling large note collections:
+
+1. **Resource Listing Pagination**
+   - Use `offset` parameter to skip a specified number of notes
+   - Use `limit` parameter to control results per page
+   - Access comprehensive pagination metadata in the response
+   - Sort results with `sort_by` ("modifydate", "createdate", "title") and `sort_direction` ("asc" or "desc")
+
+2. **Search Pagination**
+   - Use `offset` and `limit` parameters with search queries
+   - Pagination metadata includes: total results, current page, total pages, next/previous page offsets
+
+3. **Performance Optimizations**
+   - Efficient indexed lookups for tag filtering
+   - Query result caching for frequently used searches
+   - Pre-filtering before complex searches
 
 ### How Caching Works
 
@@ -354,6 +383,12 @@ The Simplenote MCP Server uses a sophisticated in-memory caching system to provi
    - Faster response times for all operations
    - Reduced API calls to Simplenote's servers
    - Support for efficient filtering and searching
+   - Optimized for large collections with pagination support
+   - Indexed lookups for tags and content
+   - Query result caching for repeated searches
+   - Optimized for large collections with pagination support
+   - Indexed lookups for tags and content
+   - Query result caching for repeated searches
 
 ## Troubleshooting
 
@@ -403,7 +438,12 @@ The Simplenote MCP Server uses a sophisticated in-memory caching system to provi
    ./simplenote_mcp/scripts/watch_logs.sh
    ```
 
-5. Clean up all server instances and start fresh:
+5. **Test performance and pagination**:
+   ```bash
+   python simplenote_mcp/tests/test_pagination_and_cache.py
+   ```
+
+6. **Clean up all server instances and start fresh**:
    ```bash
    ./simplenote_mcp/scripts/cleanup_servers.sh
    simplenote-mcp-server
@@ -445,6 +485,16 @@ The project includes several diagnostic tools:
 5. **test_mcp_client.py** - Tests basic connectivity:
    ```bash
    python simplenote_mcp/tests/test_mcp_client.py
+   ```
+
+6. **benchmark_cache.py** - Benchmarks cache performance:
+   ```bash
+   python simplenote_mcp/tests/benchmark_cache.py
+   ```
+   
+7. **run_tests.py** - Run all tests with various options:
+   ```bash
+   python simplenote_mcp/tests/run_tests.py --category performance
    ```
 
 ## Roadmap
