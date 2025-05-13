@@ -83,7 +83,7 @@ def test_tags() -> List[str]:
 @pytest.fixture
 async def test_note(
     simplenote_client, test_note_content: str, test_tags: List[str]
-) -> Dict[str, Any]:
+) -> AsyncGenerator[Dict[str, Any], None]:
     """Create a test note and return it. Delete it after the test."""
     note = {"content": test_note_content, "tags": test_tags}
 
@@ -96,7 +96,7 @@ async def test_note(
         retrieved_note, status = simplenote_client.get_note(note_id)
         assert status == 0, f"Failed to retrieve created note, status: {status}"
 
-        yield created_note
+        yield created_note  # type: ignore
 
         # Clean up - delete the note
         simplenote_client.trash_note(created_note.get("key"))
@@ -107,7 +107,7 @@ async def test_note(
 @pytest.fixture
 async def multiple_test_notes(
     simplenote_client, test_note_content: str, test_tags: List[str]
-) -> List[Dict[str, Any]]:
+) -> AsyncGenerator[List[Dict[str, Any]], None]:
     """Create multiple test notes and return them. Delete them after the test."""
     notes = []
     note_ids = []
@@ -124,7 +124,7 @@ async def multiple_test_notes(
             notes.append(created_note)
             note_ids.append(created_note.get("key"))
 
-        yield notes
+        yield notes  # type: ignore
 
         # Clean up - delete all created notes
         for note_id in note_ids:

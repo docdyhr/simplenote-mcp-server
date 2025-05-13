@@ -15,8 +15,24 @@ Example: AUTH_CRD_a1b2 - Authentication error with credentials subcategory
 
 from typing import Dict, Optional
 
-# Category prefixes - must match ERROR_CODE_PREFIXES in errors.py
+# Category prefixes mapping from enum values to code prefixes
 CATEGORY_PREFIXES = {
+    "authentication": "AUTH",
+    "configuration": "CONFIG", 
+    "network": "NET",
+    "not_found": "NF",
+    "permission": "PERM",
+    "validation": "VAL",
+    "internal": "INT",
+    "rate_limit": "RATE",
+    "timeout": "TIMEOUT",
+    "data": "DATA",
+    "synchronization": "SYNC",
+    "unknown": "UNK",
+}
+
+# Reverse mapping for display purposes
+CATEGORY_DISPLAY_NAMES = {
     "AUTH": "Authentication",
     "CONFIG": "Configuration",
     "NET": "Network",
@@ -158,11 +174,11 @@ def parse_error_code(code: str) -> Optional[Dict[str, str]]:
     subcategory = f"{category_prefix}_{parts[1]}"
     identifier = parts[2]
 
-    if category_prefix not in CATEGORY_PREFIXES or subcategory not in SUBCATEGORY_CODES:
+    if category_prefix not in CATEGORY_DISPLAY_NAMES or subcategory not in SUBCATEGORY_CODES:
         return None
 
     return {
-        "category": CATEGORY_PREFIXES[category_prefix],
+        "category": CATEGORY_DISPLAY_NAMES[category_prefix],
         "subcategory": SUBCATEGORY_CODES[subcategory],
         "identifier": identifier,
         "full_code": code,

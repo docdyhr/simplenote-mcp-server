@@ -14,12 +14,13 @@ import time
 from contextlib import suppress
 from typing import Any, List, Optional, cast
 
-# External imports
-from pydantic import AnyUrl  # type: ignore
 import mcp.server.stdio  # type: ignore
 import mcp.types as types  # type: ignore
 from mcp.server import NotificationOptions, Server  # type: ignore # noqa
 from mcp.server.models import InitializationOptions  # type: ignore
+
+# External imports
+from pydantic import AnyUrl  # type: ignore
 from simplenote import Simplenote  # type: ignore
 
 from .cache import BackgroundSync, NoteCache
@@ -36,17 +37,14 @@ from .errors import (
     ValidationError,
     handle_exception,
 )
+from .logging import logger
 from .monitoring.metrics import (
-    start_metrics_collection,
     record_api_call,
     record_response_time,
-    record_cache_hit,
-    record_cache_miss,
     record_tool_call,
-    record_tool_execution_time,
+    start_metrics_collection,
     update_cache_size,
 )
-from .logging import logger
 from .utils import get_content_type_hint
 
 
@@ -271,7 +269,9 @@ async def initialize_cache() -> None:
         # Create a minimal cache immediately so we can respond to clients
         if note_cache is None:
             logger.debug("Cache is uninitialized; initializing cache now.")
-            note_cache = NoteCache(sn)  # Ensure the NoteCache class implements required attributes
+            note_cache = NoteCache(
+                sn
+            )  # Ensure the NoteCache class implements required attributes
             logger.debug("Cache initialization complete.")
             note_cache._initialized = True
             note_cache._notes = {}
@@ -379,7 +379,9 @@ async def handle_list_resources(
         global note_cache
         if note_cache is None:
             logger.info("Cache not initialized, creating empty cache")
-            logger.debug("Attempting to create Simplenote client for cache initialization")
+            logger.debug(
+                "Attempting to create Simplenote client for cache initialization"
+            )
             # Create a minimal cache without waiting for initialization
             simplenote_client = get_simplenote_client()
             note_cache = NoteCache(simplenote_client)
@@ -398,7 +400,11 @@ async def handle_list_resources(
         actual_limit = limit if limit is not None else config.default_resource_limit
 
         # Apply tag filtering if specified
-        logger.debug("Fetching all notes from cache with limit: %d and tag_filter: %s", actual_limit, tag)
+        logger.debug(
+            "Fetching all notes from cache with limit: %d and tag_filter: %s",
+            actual_limit,
+            tag,
+        )
         notes = note_cache.get_all_notes(limit=actual_limit, tag_filter=tag)
 
         logger.debug(
@@ -781,10 +787,10 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
     """
     logger.info(f"Tool call: {name} with arguments: {json.dumps(arguments)}")
-    
+
     # Record tool call for performance monitoring
     record_tool_call(name)
-    
+
     try:
         # Record API call
         record_api_call("get_simplenote_client", success=True)
@@ -1883,14 +1889,14 @@ async def run() -> None:
                     loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(loop)
                     loop.run_until_complete(background_sync.stop())
-                    if 'start_time' in locals():
+                    if "start_time" in locals():
                         loop.close()
                 else:
                     # Use the existing event loop
                     asyncio.get_event_loop().create_task(background_sync.stop())
                     # Give it a moment to complete
                     time.sleep(0.5)
-            
+
                 # No need to record tool execution time here as it's already tracked elsewhere
                 pass
             except Exception as e:
