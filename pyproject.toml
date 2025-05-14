@@ -15,15 +15,6 @@ simplenote-mcp-server = "simplenote_mcp.server:run_main"
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
-[tool.black]
-line-length = 88
-target-version = ['py311']
-include = '\.pyi?$'
-
-[tool.isort]
-profile = "black"
-multi_line_output = 3
-
 [tool.mypy]
 python_version = "3.11"
 warn_return_any = true
@@ -40,9 +31,44 @@ target-version = "py311"
 line-length = 88
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "C4", "ARG", "SIM"]
-ignore = ["E203", "E501"]
+# Enhanced rule set that includes:
+# E, F: Error/Style (flake8)
+# W: Warnings
+# I: isort
+# B: flake8-bugbear
+# C4: flake8-comprehensions
+# ARG: flake8-unused-arguments
+# SIM: flake8-simplify
+# S: flake8-bandit (security)
+# ANN: flake8-annotations (type hints)
+# UP: pyupgrade
+# N: pep8-naming
+# D: pydocstyle
+select = ["E", "F", "W", "I", "B", "C4", "ARG", "SIM", "S", "ANN", "UP", "N", "D"]
+ignore = [
+    "E203",  # Whitespace before ':' (conflicts with Black)
+    "E501",  # Line too long (handled by formatter)
+    "ANN101",  # Missing type annotation for `self`
+    "ANN102",  # Missing type annotation for `cls`
+    "ANN401",  # Dynamically typed expressions (Any) are disallowed
+    "D203",  # One blank line required before class docstring
+    "D212",  # Multi-line docstring summary should start at first line
+    "D107",  # Missing docstring in __init__
+    "S101"   # Use of assert (needed for pytest)
+]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]
-"tests/*" = ["ARG001", "ARG002"]
+"__init__.py" = ["F401", "D104"]  # Unused imports, missing docstring in package
+"tests/*" = ["ARG001", "ARG002", "S101", "ANN", "D"]  # Unused args, assert, type hints in tests
+"simplenote_mcp/tests/*" = ["ARG001", "ARG002", "S101", "ANN", "D", "E402"]  # Same + imports not at top
+"**/conftest.py" = ["D", "ANN"]  # Skip docstrings and annotations in test fixtures
+
+[tool.ruff.lint.isort]
+known-first-party = ["simplenote_mcp"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# Security checks configuration
+[tool.ruff.lint.bandit]
+exclude-pathnames = ["tests/*", "simplenote_mcp/tests/*"]

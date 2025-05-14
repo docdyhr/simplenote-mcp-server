@@ -1,18 +1,20 @@
-![Logo](assets/logo.png)
 # Simplenote MCP Server
+
+![Simplenote MCP Server Logo](assets/logo.png)
 
 A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://github.com/johnsmith9982/claude-desktop) using the [MCP Python SDK](https://github.com/johnsmith9982/mcp-python-sdk).
 
 This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
 
-
 [![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
 [![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.11-blue)](./setup.py)
-[![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions)
-[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
+[![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](./pyproject.toml)
+[![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml)
+[![Code Quality](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml)
+[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
 [![smithery badge](https://smithery.ai/badge/@docdyhr/simplenote-mcp-server)](https://smithery.ai/server/@docdyhr/simplenote-mcp-server)
+
 ---
 
 ## 🔧 Features
@@ -27,7 +29,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 ## Project Structure
 
-```
+```plaintext
 simplenote_mcp/            # Main package
 ├── logs/                  # Log files directory
 ├── scripts/               # Helper scripts for testing and management
@@ -40,6 +42,7 @@ simplenote_mcp/            # Main package
 This project provides an MCP server that allows you to interact with your Simplenote account through Claude Desktop or any other MCP-compatible client.
 
 Key features:
+
 - List all your Simplenote notes as resources
 - View note contents
 - Create, update, and delete notes
@@ -179,6 +182,7 @@ There are two ways to use Simplenote MCP Server with Claude Desktop:
 ### Method 1: Manual Connection (Temporary)
 
 1. Run the server in a terminal window:
+
    ```bash
    simplenote-mcp-server
    ```
@@ -203,34 +207,36 @@ For a more seamless experience, configure Claude Desktop to automatically start 
 
 2. Add the following section to your configuration (adjust paths as needed):
 
-```json
-{
-  "mcpServers": {
-    "simplenote": {
-      "description": "Access and manage your Simplenote notes",
-      "command": "/path/to/your/python",
-      "args": [
-        "/path/to/simplenote_mcp_server.py"
-      ],
-      "autostart": true,
-      "disabled": false,
-      "restartOnCrash": true,
-      "env": {
-        "SIMPLENOTE_EMAIL": "your.email@example.com",
-        "SIMPLENOTE_PASSWORD": "your-password",
-        "LOG_LEVEL": "INFO"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "simplenote": {
+         "description": "Access and manage your Simplenote notes",
+         "command": "/path/to/your/python",
+         "args": [
+           "/path/to/simplenote_mcp_server.py"
+         ],
+         "autostart": true,
+         "disabled": false,
+         "restartOnCrash": true,
+         "env": {
+           "SIMPLENOTE_EMAIL": "your.email@example.com",
+           "SIMPLENOTE_PASSWORD": "your-password",
+           "LOG_LEVEL": "INFO"
+         }
+       }
+     }
+   }
+   ```
 
 3. Restart Claude Desktop using the provided script:
+
    ```bash
    ./simplenote_mcp/scripts/restart_claude.sh
    ```
 
 4. Verify the connection using the included verification script:
+
    ```bash
    ./simplenote_mcp/scripts/verify_tools.sh
    ```
@@ -259,31 +265,37 @@ With a total of 10 implemented capabilities (8 tools and 2 prompts) as of versio
 The server supports powerful search functionality with the following features:
 
 - **Boolean Logic**: Combine search terms with `AND`, `OR`, and `NOT` operators
-  ```
+
+  ```text
   project AND meeting AND NOT cancelled
   ```
 
 - **Phrase Matching**: Search for exact phrases using quotes
-  ```
+
+  ```text
   "action items" AND project
   ```
 
 - **Tag Filtering**: Filter by tags directly in the query or via parameters
-  ```
+
+  ```text
   meeting tag:work tag:important
   ```
 
 - **Date Range Filtering**: Limit results by modification date
-  ```
+
+  ```text
   project from:2023-01-01 to:2023-12-31
   ```
 
 - **Combining Methods**: Mix and match all of the above in a single query
-  ```
+
+  ```text
   "status update" AND project tag:work from:2023-01-01 NOT cancelled
   ```
 
 The search engine uses a sophisticated query parser and boolean expression evaluator to process complex search expressions. Results are ranked by relevance, with higher scores given to:
+
 - Title matches (when the search term appears in the first line)
 - Tag matches (when the search term matches a note tag)
 - Recent notes (with a recency bonus for newer notes)
@@ -399,6 +411,7 @@ The server supports pagination for efficiently handling large note collections:
 **Symptoms**: Error messages about missing or invalid credentials.
 
 **Solutions**:
+
 - Verify that `SIMPLENOTE_EMAIL` and `SIMPLENOTE_PASSWORD` are correctly set
 - Check for typos in your email address and password
 - Make sure password contains no special characters that might need escaping
@@ -408,6 +421,7 @@ The server supports pagination for efficiently handling large note collections:
 **Symptoms**: Server fails to start, Claude Desktop can't connect.
 
 **Solutions**:
+
 - Check log files: `cat simplenote_mcp/logs/server.log`
 - Look for Python errors in your terminal
 - Verify Python version is 3.9 or higher: `python --version`
@@ -418,32 +432,39 @@ The server supports pagination for efficiently handling large note collections:
 **Symptoms**: Claude says it doesn't have access to Simplenote tools.
 
 **Solutions**:
+
 1. Verify the server is running:
+
    ```bash
    ps aux | grep simplenote-mcp
    ```
 
 2. Check if tools are properly registered:
+
    ```bash
    ./simplenote_mcp/scripts/verify_tools.sh
    ```
 
 3. Restart Claude Desktop and the server:
+
    ```bash
    ./simplenote_mcp/scripts/restart_claude.sh
    ```
 
 4. Watch logs for communication errors:
+
    ```bash
    ./simplenote_mcp/scripts/watch_logs.sh
    ```
 
 5. **Test performance and pagination**:
+
    ```bash
    python simplenote_mcp/tests/test_pagination_and_cache.py
    ```
 
 6. **Clean up all server instances and start fresh**:
+
    ```bash
    ./simplenote_mcp/scripts/cleanup_servers.sh
    simplenote-mcp-server
@@ -463,36 +484,43 @@ Set `LOG_LEVEL=DEBUG` for more detailed logs.
 The project includes several diagnostic tools:
 
 1. **check_server_pid.sh** - Checks server process status:
+
    ```bash
    ./simplenote_mcp/scripts/check_server_pid.sh
    ```
 
 2. **verify_tools.sh** - Checks tool registration:
+
    ```bash
    ./simplenote_mcp/scripts/verify_tools.sh
    ```
 
 3. **test_tool_visibility.sh** - Tests if Claude sees the tools:
+
    ```bash
    ./simplenote_mcp/scripts/test_tool_visibility.sh
    ```
 
 4. **monitor_server.py** - Monitors MCP protocol messages:
+
    ```bash
    python simplenote_mcp/tests/monitor_server.py
    ```
 
 5. **test_mcp_client.py** - Tests basic connectivity:
+
    ```bash
    python simplenote_mcp/tests/test_mcp_client.py
    ```
 
 6. **benchmark_cache.py** - Benchmarks cache performance:
+
    ```bash
    python simplenote_mcp/tests/benchmark_cache.py
    ```
-   
+
 7. **run_tests.py** - Run all tests with various options:
+
    ```bash
    python simplenote_mcp/tests/run_tests.py --category performance
    ```
@@ -500,9 +528,32 @@ The project includes several diagnostic tools:
 ## Roadmap
 
 See [ROADMAP.md](./ROADMAP.md) for planned features and goals.
+
+## Development
+
+### Code Quality
+
+This project uses a streamlined approach to code quality with [Ruff](https://github.com/astral-sh/ruff) as the primary linting tool:
+
+- **Ruff** - A fast Python linter that handles:
+  - Code style checking (previously flake8)
+  - Import sorting (previously isort)
+  - Code formatting (previously black)
+  - Security checks (previously bandit)
+  - Type annotation validation
+  - Docstring formatting
+
+The linting setup can be verified with:
+
+```bash
+./scripts/verify_linting_setup.sh
+```
+
+For detailed information about the linting setup, see [docs/linting_guide.md](docs/linting_guide.md).
+
 ## Contributing
 
-Contributions are welcome and pull requests are welcome! Please open an issue first to discuss any significant changes. Read our [Contributing Guide](./.github/CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
+Contributions are welcome! Please open an issue first to discuss any significant changes. Read our [CONTRIBUTING.md](./CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
 
 ## Security
 

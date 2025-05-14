@@ -27,7 +27,7 @@ Thank you for considering contributing to the Simplenote MCP Server! This docume
 4. **Install development dependencies**:
 
    ```bash
-   pip install pre-commit pytest mypy ruff black
+   pip install pre-commit pytest mypy ruff
    ```
 
 5. **Set up pre-commit hooks**:
@@ -39,7 +39,7 @@ Thank you for considering contributing to the Simplenote MCP Server! This docume
 
 ## Code Quality Tools
 
-This project uses several tools to ensure code quality:
+This project uses a streamlined approach to ensure code quality:
 
 ### Pre-commit Hooks
 
@@ -48,9 +48,14 @@ Pre-commit hooks run automatically when you commit code and help catch issues ea
 - **Trailing whitespace**: Removes trailing whitespace
 - **End-of-file fixer**: Ensures files end with a newline
 - **YAML/TOML checker**: Validates configuration files
-- **Ruff**: Lints code for common issues and formats it automatically
-- **MyPy**: Checks type annotations
-- **Bandit**: Identifies security issues
+- **Ruff**: A unified Python linting tool that handles:
+  - Code style (previously flake8)
+  - Import sorting (previously isort)
+  - Code formatting (previously black)
+  - Security checks (previously bandit)
+  - Type annotation validation
+  - Docstring formatting
+- **MyPy**: Performs advanced static type checking
 
 You can run all pre-commit hooks manually using our convenience script:
 
@@ -59,6 +64,8 @@ You can run all pre-commit hooks manually using our convenience script:
 ```
 
 This script applies Python 3.12/3.13 compatibility fixes before running the hooks.
+
+For more detailed information about the linting setup, see [docs/linting_guide.md](docs/linting_guide.md).
 
 For detailed information about the pre-commit setup, including troubleshooting, see [PRE_COMMIT_README.md](PRE_COMMIT_README.md).
 

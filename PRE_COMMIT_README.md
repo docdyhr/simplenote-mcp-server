@@ -4,15 +4,19 @@ This document provides instructions for setting up and using pre-commit hooks in
 
 ## Overview
 
-Pre-commit hooks help ensure code quality by automatically checking code before each commit. The project uses several hooks:
+Pre-commit hooks help ensure code quality by automatically checking code before each commit. The project uses a streamlined approach with these hooks:
 
 - **trailing-whitespace**: Removes trailing whitespace
 - **end-of-file-fixer**: Ensures files end with a newline
 - **YAML/TOML checker**: Validates configuration files
-- **ruff**: Lints code for common issues
-- **ruff-format**: Formats code according to style guidelines
-- **MyPy**: Checks type annotations
-- **Bandit**: Identifies security issues
+- **ruff**: A unified Python linter that handles:
+  - Code style checking (previously flake8)
+  - Security checks (previously bandit)
+  - Type annotation validation
+  - Docstring formatting
+- **ruff-format**: Formats code according to style guidelines (previously black)
+  - Also handles import sorting (previously isort)
+- **MyPy**: Performs advanced static type checking
 
 ## Initial Setup
 
@@ -98,4 +102,4 @@ To modify pre-commit behavior, edit `.pre-commit-config.yaml`. Common customizat
 
 ## Continuous Integration
 
-The pre-commit configuration includes CI-specific settings that automatically disable certain hooks in CI environments that might fail due to Python 3.13 compatibility issues.
+The pre-commit configuration includes CI-specific settings that automatically disable the mypy hook in CI environments to prevent failures due to Python 3.13 compatibility issues. Ruff handles most of the linting checks in CI with great performance.

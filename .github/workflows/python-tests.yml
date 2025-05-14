@@ -36,6 +36,16 @@ jobs:
         . .venv/bin/activate
         ruff check --fix .
         
+    - name: Format with ruff
+      run: |
+        . .venv/bin/activate
+        ruff format --check .
+        
+    - name: Security check with ruff
+      run: |
+        . .venv/bin/activate
+        ruff check --select=S .
+        
     - name: Type check with mypy
       continue-on-error: true
       run: |
