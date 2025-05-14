@@ -15,8 +15,7 @@ echo
 
 # Run standard linting
 echo "Running Ruff linter..."
-ruff check simplenote_mcp/server/server.py
-if [ $? -eq 0 ]; then
+if ruff check simplenote_mcp/server/server.py; then
     echo "✅ Standard linting passed"
 else
     echo "❌ Standard linting failed"
@@ -25,8 +24,7 @@ echo
 
 # Run formatter
 echo "Running Ruff formatter..."
-ruff format --check simplenote_mcp/server/server.py
-if [ $? -eq 0 ]; then
+if ruff format --check simplenote_mcp/server/server.py; then
     echo "✅ Formatting check passed"
 else
     echo "❌ Formatting check failed"
@@ -35,8 +33,7 @@ echo
 
 # Run security checks
 echo "Running Ruff security checks..."
-ruff check --select=S simplenote_mcp/server/server.py
-if [ $? -eq 0 ]; then
+if ruff check --select=S simplenote_mcp/server/server.py; then
     echo "✅ Security checks passed"
 else
     echo "❌ Security checks failed"
@@ -45,8 +42,7 @@ echo
 
 # Run docstring checks
 echo "Running Ruff docstring checks..."
-ruff check --select=D simplenote_mcp/server/server.py
-if [ $? -eq 0 ]; then
+if ruff check --select=D simplenote_mcp/server/server.py; then
     echo "✅ Docstring checks passed"
 else
     echo "❌ Docstring checks failed - this may be expected for now"
@@ -55,8 +51,7 @@ echo
 
 # Run type checking
 echo "Running mypy..."
-mypy --config-file=mypy.ini simplenote_mcp/server/server.py
-if [ $? -eq 0 ]; then
+if mypy --config-file=mypy.ini simplenote_mcp/server/server.py; then
     echo "✅ Type checking passed"
 else
     echo "❌ Type checking failed"
