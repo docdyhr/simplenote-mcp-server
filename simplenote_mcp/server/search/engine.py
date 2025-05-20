@@ -163,9 +163,19 @@ class SearchEngine:
             True if note has all the specified tags, False otherwise
 
         """
+        # Special case for untagged notes
+        if any(tag.lower() == "untagged" for tag in tags):
+            note_tags = note.get("tags", [])
+            return not note_tags or len(note_tags) == 0
+
         note_tags = set(note.get("tags", []))
+
+        # Case insensitive tag matching
+        note_tags_lower = {tag.lower() for tag in note_tags}
+        tags_lower = {tag.lower() for tag in tags}
+
         logger.debug(f"Checking if tags {tags} are in note tags {note_tags}")
-        return tags.issubset(note_tags)
+        return tags_lower.issubset(note_tags_lower)
 
     def _is_in_date_range(
         self,

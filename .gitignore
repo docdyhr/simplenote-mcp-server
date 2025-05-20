@@ -54,4 +54,12 @@ Thumbs.db
 **/CLAUDE.local.md
 .venv_precommit/
 
-**/.claude/settings.local.json
+# AI Assistant configs
+**/.claude/
+**/.claude*/
+**/claude_desktop_config.json
+**/.anthropic/
+**/anthropic.json
+**/.github/copilot/
+**/.copilot/
+**/.aider*

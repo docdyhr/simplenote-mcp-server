@@ -94,10 +94,25 @@ Before using these guides, ensure that:
 *(Details to be added for using the search functionality, query syntax, and interpreting results.)*
 
 ### Using the `search_notes` Tool
-*(Details to be added)*
+
+The `search_notes` tool allows you to find notes based on keywords, tags, and date ranges.
+
+When filtering by tags:
+
+* **Case-Insensitive**: Tag matching is case-insensitive. For example, searching for `tag:work` will find notes tagged with `Work`, `work`, or `WORK`.
+* **Untagged Notes**: You can find notes that have no tags by using the special filter `tags:untagged`.
+* **Multiple Tags**: If you provide multiple tags (comma-separated), the search will return notes that contain *all* the specified tags. For example, `tags:project,important` will find notes tagged with both "project" (or its case variants) AND "important" (or its case variants).
 
 ### Search Query Syntax
-*(Details to be added, referring to the capabilities outlined in README.md if applicable, such as boolean logic, tag search, date range.)*
+
+The `search_notes` tool supports a query parameter for keywords and a `tags` parameter for tag-based filtering.
+
+* **Keywords**: The `query` parameter accepts text that will be searched for in the content of your notes.
+* **Tags**: The `tags` parameter accepts a comma-separated list of tags.
+  * To find notes with specific tags, provide the tag names (e.g., `Work`, `Personal`). Matching is case-insensitive.
+  * To find notes with no tags, use the special keyword `untagged`.
+  * Example: `tags:Urgent,ProjectAlpha` will find notes tagged with both "Urgent" and "ProjectAlpha" (case-insensitively).
+  * Example: `tags:untagged` will find all notes that have no tags.
 
 ### Interpreting Search Results
 *(Details to be added)*
@@ -117,10 +132,24 @@ Before using these guides, ensure that:
 *(Details to be added for listing all notes/resources, including any filtering or pagination.)*
 
 ### Using `list_resources`
-*(Details to be added)*
+
+The `list_resources` tool can be used to retrieve a list of your notes. It supports filtering by a single tag.
+
+When filtering by a tag:
+
+* **Case-Insensitive**: Tag matching is case-insensitive. For example, providing `tag:work` will list notes tagged with `Work`, `work`, or `WORK`.
+* **Untagged Notes**: You can list notes that have no tags by using the special filter `tag:untagged`.
 
 ### Filtering and Sorting (if available)
-*(Details to be added)*
+
+The `list_resources` tool currently supports filtering by a single tag via the `tag` parameter.
+
+* To filter by a specific tag, provide the tag name (e.g., `MyTag`). Matching is case-insensitive.
+* To list only notes that have no tags, use the special value `untagged`.
+* Example: `tag:travel` will list notes tagged with "travel" (or "Travel", "TRAVEL", etc.).
+* Example: `tag:untagged` will list all notes that are not tagged.
+
+Sorting options are not explicitly available through parameters in `list_resources`; notes are typically returned in the order determined by the Simplenote API (often by modification date).
 
 ## 9. Integrating with an AI Assistant (e.g., Claude)
 

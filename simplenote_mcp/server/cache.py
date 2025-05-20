@@ -395,15 +395,39 @@ class NoteCache:
 
         # Filter by tag if specified using tag index for faster performance
         if tag_filter:
-            if tag_filter in self._tag_index:
-                # Use the tag index for faster filtering
-                note_keys = self._tag_index[tag_filter]
+            if tag_filter.lower() == "untagged":
+                # Special case for untagged notes
                 filtered_notes = [
-                    self._notes[key] for key in note_keys if key in self._notes
+                    note
+                    for note_id, note in self._notes.items()
+                    if not note.get("tags") or len(note.get("tags", [])) == 0
                 ]
             else:
-                # Tag doesn't exist in index
-                filtered_notes = []
+                # First try exact match using tag index for faster performance
+                if tag_filter in self._tag_index:
+                    note_keys = self._tag_index[tag_filter]
+                    filtered_notes = [
+                        self._notes[key] for key in note_keys if key in self._notes
+                    ]
+                else:
+                    # Try case-insensitive match if exact match fails
+                    tag_filter_lower = tag_filter.lower()
+                    case_insensitive_match = False
+
+                    for tag in self._tag_index:
+                        if tag.lower() == tag_filter_lower:
+                            note_keys = self._tag_index[tag]
+                            filtered_notes = [
+                                self._notes[key]
+                                for key in note_keys
+                                if key in self._notes
+                            ]
+                            case_insensitive_match = True
+                            break
+
+                    # Tag doesn't exist in index
+                    if not case_insensitive_match:
+                        filtered_notes = []
         else:
             filtered_notes = list(self._notes.values())
 
@@ -509,30 +533,57 @@ class NoteCache:
         # Optimize search by pre-filtering notes if we have tag_filters
         notes_to_search = self._notes
         if tag_filters:
-            # Get the set of notes that have all required tags
-            matching_note_ids = None
-            for tag in tag_filters:
-                if tag in self._tag_index:
-                    tag_note_ids = self._tag_index[tag]
-                    if matching_note_ids is None:
-                        matching_note_ids = set(tag_note_ids)
-                    else:
-                        matching_note_ids &= tag_note_ids
-                else:
-                    # If any tag doesn't exist, no notes can match
-                    matching_note_ids = set()
-                    break
-
-            if matching_note_ids is not None:
-                # Create filtered dict of notes to search
+            # Check if we're looking for untagged notes
+            if len(tag_filters) == 1 and tag_filters[0].lower() == "untagged":
+                # Filter notes that have no tags
                 notes_to_search = {
-                    key: self._notes[key]
-                    for key in matching_note_ids
-                    if key in self._notes
+                    key: note
+                    for key, note in self._notes.items()
+                    if not note.get("tags") or len(note.get("tags", [])) == 0
                 }
                 logger.debug(
-                    f"Pre-filtered notes by tags: {len(notes_to_search)} of {len(self._notes)}"
+                    f"Filtered for untagged notes: {len(notes_to_search)} of {len(self._notes)}"
                 )
+            else:
+                # Get the set of notes that have all required tags
+                matching_note_ids = None
+                for tag in tag_filters:
+                    tag_lower = tag.lower()
+                    # First try exact match
+                    if tag in self._tag_index:
+                        tag_note_ids = self._tag_index[tag]
+                        if matching_note_ids is None:
+                            matching_note_ids = set(tag_note_ids)
+                        else:
+                            matching_note_ids &= tag_note_ids
+                    else:
+                        # Try case-insensitive match
+                        found_case_insensitive = False
+                        for indexed_tag in self._tag_index:
+                            if indexed_tag.lower() == tag_lower:
+                                tag_note_ids = self._tag_index[indexed_tag]
+                                if matching_note_ids is None:
+                                    matching_note_ids = set(tag_note_ids)
+                                else:
+                                    matching_note_ids &= tag_note_ids
+                                found_case_insensitive = True
+                                break
+
+                        # If tag doesn't exist even case-insensitively, no notes can match
+                        if not found_case_insensitive:
+                            matching_note_ids = set()
+                            break
+
+                if matching_note_ids is not None:
+                    # Create filtered dict of notes to search
+                    notes_to_search = {
+                        key: self._notes[key]
+                        for key in matching_note_ids
+                        if key in self._notes
+                    }
+                    logger.debug(
+                        f"Pre-filtered notes by tags: {len(notes_to_search)} of {len(self._notes)}"
+                    )
 
         # Use the search engine to perform the search with the filtered notes
         all_results = self._search_engine.search(

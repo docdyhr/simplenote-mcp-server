@@ -369,7 +369,7 @@ async def handle_list_resources(
     """Handle the list_resources capability with pagination support.
 
     Args:
-        tag: Optional tag to filter notes by
+        tag: Optional tag to filter notes by. Use 'untagged' to find notes without tags.
         limit: Optional limit for the number of notes to return
         offset: Number of notes to skip (pagination offset, 0-based)
         sort_by: Field to sort by (modifydate, createdate, title)
@@ -669,7 +669,7 @@ async def handle_list_tools() -> list[types.Tool]:
                         },
                         "tags": {
                             "type": "string",
-                            "description": "Tags to filter by (comma-separated list of tags that must all be present)",
+                            "description": "Tags to filter by (comma-separated list of tags that must all be present). Use 'untagged' to find notes without tags.",
                         },
                         "from_date": {
                             "type": "string",
@@ -787,7 +787,7 @@ async def handle_list_tools() -> list[types.Tool]:
                         },
                         "tags": {
                             "type": "string",
-                            "description": "Tags to filter by (comma-separated list of tags that must all be present)",
+                            "description": "Tags to filter by (comma-separated list of tags that must all be present). Use 'untagged' to find notes without tags.",
                         },
                     },
                     "required": ["query"],
