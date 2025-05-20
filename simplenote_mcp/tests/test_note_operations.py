@@ -18,14 +18,13 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
-# Now we can import from our compatibility module
-from simplenote_mcp.server.compat import Path
+from simplenote_mcp.server.compat import Path  # noqa: E402
 
 # Add project root to sys.path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from simplenote_mcp.server import get_logger, get_simplenote_client
+from simplenote_mcp.server import get_logger, get_simplenote_client  # noqa: E402
 
 # Logger for this test module
 logger = get_logger("tests.note_operations")

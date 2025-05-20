@@ -63,7 +63,7 @@ def test_basic_logging():
 
     # Log with exception
     try:
-        x = 1 / 0
+        _ = 1 / 0  # Using _ to avoid unused variable warning
     except Exception as e:
         logger.error(f"Exception occurred: {e}", exc_info=True)
 

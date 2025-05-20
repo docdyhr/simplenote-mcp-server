@@ -12,7 +12,6 @@ import os
 import sys
 import time
 from enum import Enum
-from pathlib import Path
 from typing import List, Optional, Tuple
 
 # Add the parent directory to the Python path
@@ -21,8 +20,8 @@ PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
 # Import server compatibility module
-from simplenote_mcp.server.compat import Path
-from simplenote_mcp.server.logging import get_logger, initialize_logging
+from simplenote_mcp.server.compat import Path  # noqa: E402, F811
+from simplenote_mcp.server.logging import get_logger, initialize_logging  # noqa: E402
 
 # Create a logger for this script
 logger = get_logger("tests.runner")
@@ -160,7 +159,6 @@ async def run_tests_async(test_paths: List[str], verbose: bool = False) -> bool:
     print(f"Running {len(test_paths)} test modules...")
 
     start_time = time.time()
-    results = []
 
     # Run tests with limited concurrency to avoid resource contention
     # Use less concurrency for performance tests to avoid interference

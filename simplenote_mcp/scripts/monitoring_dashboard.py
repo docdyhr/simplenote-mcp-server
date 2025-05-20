@@ -32,9 +32,10 @@ except ImportError:
 try:
     from rich import box
     from rich.console import Console
-    from rich.layout import Layout
-    from rich.panel import Panel
     from rich.table import Table
+    # These imports are not used directly in the code currently
+    # from rich.layout import Layout
+    # from rich.panel import Panel
 
     HAS_RICH = True
 except ImportError:
@@ -168,7 +169,8 @@ def display_terminal_ui(
     YELLOW = curses.color_pair(2)
     RED = curses.color_pair(3)
     CYAN = curses.color_pair(4)
-    MAGENTA = curses.color_pair(5)
+    # MAGENTA is not used in the current code
+    # MAGENTA = curses.color_pair(5)
 
     try:
         while True:
@@ -220,7 +222,7 @@ def display_terminal_ui(
 
                 endpoints = list(api_data["response_times"].items())
                 endpoints.sort(key=lambda x: x[1].get("count", 0), reverse=True)
-                for i, (endpoint, data) in enumerate(endpoints[:3]):
+                for _i, (endpoint, data) in enumerate(endpoints[:3]):
                     count = data.get("count", 0)
                     avg_time = data.get("avg_time", 0)
                     p95_time = data.get("p95_time", 0)
@@ -303,7 +305,7 @@ def display_terminal_ui(
                 tools = list(tool_data["tool_calls"].items())
                 tools.sort(key=lambda x: x[1].get("count", 0), reverse=True)
 
-                for i, (tool, data) in enumerate(tools[:5]):  # Show top 5 tools
+                for _i, (tool, data) in enumerate(tools[:5]):  # Show top 5 tools
                     count = data.get("count", 0)
                     stdscr.addstr(row, 0, f"{tool}: {count} calls")
 

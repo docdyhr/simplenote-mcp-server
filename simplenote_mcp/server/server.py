@@ -14,21 +14,29 @@ import time
 from contextlib import suppress
 from typing import Any, List, Optional, cast
 
-import mcp.server.stdio  # type: ignore
-import mcp.types as types  # type: ignore
-from mcp.server import NotificationOptions, Server  # type: ignore # noqa
-from mcp.server.models import InitializationOptions  # type: ignore
+# Import and apply MCP patch before importing Server
+sys.path.append(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+import mcp_patch  # type: ignore  # noqa: E402
+
+mcp_patch.apply_patch()
+
+import mcp.server.stdio  # type: ignore  # noqa: E402
+import mcp.types as types  # type: ignore  # noqa: E402
+from mcp.server import NotificationOptions, Server  # type: ignore  # noqa: E402
+from mcp.server.models import InitializationOptions  # type: ignore  # noqa: E402
 
 # External imports
-from pydantic import AnyUrl  # type: ignore
-from simplenote import Simplenote  # type: ignore
+from pydantic import AnyUrl  # type: ignore  # noqa: E402
+from simplenote import Simplenote  # type: ignore  # noqa: E402
 
-from .cache import BackgroundSync, NoteCache
+from .cache import BackgroundSync, NoteCache  # noqa: E402
 
 # Use our compatibility module for cross-version support
-from .compat import Path
-from .config import LogLevel, get_config
-from .errors import (
+from .compat import Path  # noqa: E402
+from .config import LogLevel, get_config  # noqa: E402
+from .errors import (  # noqa: E402
     AuthenticationError,
     InternalError,
     NetworkError,
@@ -37,15 +45,15 @@ from .errors import (
     ValidationError,
     handle_exception,
 )
-from .logging import logger
-from .monitoring.metrics import (
+from .logging import logger  # noqa: E402
+from .monitoring.metrics import (  # noqa: E402
     record_api_call,
     record_response_time,
     record_tool_call,
     start_metrics_collection,
     update_cache_size,
 )
-from .utils import get_content_type_hint
+from .utils import get_content_type_hint  # noqa: E402
 
 
 # Utility functions for safe access to potentially exception objects

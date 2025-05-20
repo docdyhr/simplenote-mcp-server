@@ -94,13 +94,20 @@ class TestHandleListResources:
         """Test listing resources with initialized cache."""
         with (
             patch("simplenote_mcp.server.server.note_cache") as mock_cache,
-            patch("simplenote_mcp.server.server.get_config") as mock_get_config,
+            patch(
+                "simplenote_mcp.server.server.get_config"
+            ),  # Using without 'as' for unused variable
         ):
             # Configure mock cache
             mock_cache.is_initialized = True
             mock_notes = [
                 {"key": "note1", "content": "Test note 1", "tags": ["test"]},
-                {"key": "note2", "content": "Test note 2", "modifydate": "2025-04-10"},
+                {
+                    "key": "note2",
+                    "content": "Test note 2",
+                    "modifydate": "2025-04-10",
+                    "tags": [],
+                },  # Added missing tags key
             ]
             mock_cache.get_all_notes.return_value = (
                 mock_notes  # Simulate successful cache
@@ -121,7 +128,9 @@ class TestHandleListResources:
         """Test error handling during resource listing."""
         with (
             patch("simplenote_mcp.server.server.note_cache") as mock_cache,
-            patch("simplenote_mcp.server.server.get_config") as mock_get_config,
+            patch(
+                "simplenote_mcp.server.server.get_config"
+            ),  # Using without 'as' for unused variable
         ):
             mock_cache.is_initialized = True
             mock_cache.get_all_notes.side_effect = Exception(
@@ -145,7 +154,7 @@ class TestHandleReadResource:
             patch("simplenote_mcp.server.server.note_cache") as mock_cache,
             patch(
                 "simplenote_mcp.server.server.get_simplenote_client"
-            ) as mock_get_client,
+            ),  # Not capturing the mock as it's not used
         ):
             # Configure cache hit
             mock_cache.is_initialized = True

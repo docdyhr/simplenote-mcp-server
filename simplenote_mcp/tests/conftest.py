@@ -13,28 +13,26 @@ import time
 import uuid
 from typing import Any, AsyncGenerator, Dict, List, Optional
 
-import pytest
-
 # Add the parent directory to the Python path so we can import the server module
 script_dir = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
-# Now we can import from our compatibility module
-from simplenote_mcp.server.compat import Path
+import pytest  # noqa: E402
+
+from simplenote_mcp.server import get_simplenote_client  # noqa: E402
+from simplenote_mcp.server.cache import NoteCache, initialize_cache  # noqa: E402
+from simplenote_mcp.server.compat import Path  # noqa: E402
+from simplenote_mcp.server.config import get_config  # noqa: E402
+from simplenote_mcp.server.errors import (  # noqa: E402
+    AuthenticationError,
+)
+from simplenote_mcp.server.logging import logger as mcp_logger  # noqa: E402
+from simplenote_mcp.tests.test_helpers import handle_call_tool, handle_read_resource  # noqa: E402
 
 # Add project root to sys.path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
-
-from simplenote_mcp.server import get_simplenote_client
-from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.server.config import get_config
-from simplenote_mcp.server.errors import (
-    AuthenticationError,
-)
-from simplenote_mcp.server.logging import logger as mcp_logger
-from simplenote_mcp.server.server import initialize_cache
 
 # Logger for tests
 logger = mcp_logger.getChild("tests")

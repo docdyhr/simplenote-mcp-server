@@ -20,21 +20,19 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
-# Now we can import from our server module
-from simplenote_mcp.server.logging import (
+# Now we can import from our server and utils modules
+# ruff: noqa: E402 - These imports depend on the sys.path.insert above
+from simplenote_mcp.server.logging import (  # noqa: E402
     JsonFormatter,
     StructuredLogAdapter,
     get_logger,
     get_request_logger,
 )
-from utils.logging_util import setup_logging
-from utils.version_util import check_python_version
+from utils.logging_util import setup_logging  # noqa: E402
+from utils.version_util import check_python_version  # noqa: E402
 
 # Create a test logger
 logger = setup_logging("test_logging", "test_logging.log")
-
-
-from utils.logging_util import setup_logging
 
 test_logger = get_logger("test_structured_logging")
 
@@ -130,10 +128,10 @@ class TestStructuredLogging:
         )
 
     @pytest.mark.asyncio
-    def test_version_checking():
+    def test_version_checking(self):
         """Test Python version checking utility."""
-        assert check_python_version(3, 8) == True
-        assert check_python_version(4, 0) == False
+        assert check_python_version(3, 8)
+        assert not check_python_version(4, 0)
         assert logger.level == logging.INFO
 
     async def test_log_context_in_async(self):

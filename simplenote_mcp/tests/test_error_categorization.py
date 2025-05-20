@@ -16,19 +16,18 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
-# Now we can import from our compatibility module
-from simplenote_mcp.server.compat import Path
+from simplenote_mcp.server.compat import Path  # noqa: E402
 
 # Add project root to sys.path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from simplenote_mcp.server.error_codes import (
+from simplenote_mcp.server.error_codes import (  # noqa: E402
     CATEGORY_DISPLAY_NAMES,
     SUBCATEGORY_CODES,
     parse_error_code,
 )
-from simplenote_mcp.server.errors import (
+from simplenote_mcp.server.errors import (  # noqa: E402
     AuthenticationError,
     ConfigurationError,
     ErrorCategory,

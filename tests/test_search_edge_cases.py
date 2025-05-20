@@ -142,10 +142,12 @@ class TestSearchEngineEdgeCases:
         """Test search with empty query but with filters."""
         engine = SearchEngine()
 
-        # Empty query with tag filter
+        # Empty query with tag filter (case-insensitive matching)
         results = engine.search(edge_case_notes, "", tag_filters=["test"])
-        assert len(results) == 1
-        assert results[0]["key"] == "duplicate_terms"
+        assert len(results) == 2  # Both "test" and "TEST" tags match
+        result_keys = [r["key"] for r in results]
+        assert "duplicate_terms" in result_keys
+        assert "mixed_case" in result_keys
 
         # Empty query with no filters should return empty result
         results = engine.search(edge_case_notes, "")

@@ -32,7 +32,7 @@ def example_basic_logging():
 
     # Using logger with exception information
     try:
-        1 / 0
+        _ = 1 / 0  # Assign to _ to avoid B018 warning
     except Exception:
         logger.error("An error occurred", exc_info=True)
 

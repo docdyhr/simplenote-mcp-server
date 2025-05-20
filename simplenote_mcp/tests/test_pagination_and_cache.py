@@ -17,15 +17,15 @@ PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
 # Now we can import from our compatibility module
-from simplenote_mcp.server.compat import Path
+from simplenote_mcp.server.compat import Path  # noqa: E402
 
 # Set project root path as a string for system path
 PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(PROJECT_ROOT_PATH))
 
-from simplenote_mcp.server import get_simplenote_client
-from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.server.logging import get_logger
+from simplenote_mcp.server import get_simplenote_client  # noqa: E402
+from simplenote_mcp.server.cache import NoteCache  # noqa: E402
+from simplenote_mcp.server.logging import get_logger  # noqa: E402
 
 # Set up logger
 logger = get_logger(__name__)
@@ -193,8 +193,8 @@ async def test_pagination_search_notes(cache: NoteCache) -> bool:
         # Set page size
         page_size = min(5, total_results // 2)
 
-        # Calculate number of pages
-        total_pages = (total_results + page_size - 1) // page_size
+        # Calculate number of pages (for reference)
+        # total_pages = (total_results + page_size - 1) // page_size
 
         # Test pagination
         print(f"Testing search pagination with page size {page_size}")

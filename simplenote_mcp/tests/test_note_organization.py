@@ -18,15 +18,15 @@ PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
 # Now we can import from our compatibility module
-from simplenote_mcp.server.compat import Path
+from simplenote_mcp.server.compat import Path  # noqa: E402
 
 # Add project root to sys.path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
-from simplenote_mcp.server import get_logger
-from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.server.errors import (
+from simplenote_mcp.server import get_logger  # noqa: E402
+from simplenote_mcp.server.cache import NoteCache  # noqa: E402
+from simplenote_mcp.server.errors import (  # noqa: E402
     ResourceNotFoundError,
 )
 
@@ -143,22 +143,38 @@ class NoteOrganizer:
         sort_reverse = True  # Default to descending (newest first)
 
         if sort_by == "modified_date":
-            sort_key = lambda n: n.get("modifydate", 0)
+
+            def sort_key(n):
+                return n.get("modifydate", 0)
+
             sort_reverse = True
         elif sort_by == "created_date":
-            sort_key = lambda n: n.get("createdate", 0)
+
+            def sort_key(n):
+                return n.get("createdate", 0)
+
             sort_reverse = True
         elif sort_by == "title":
-            sort_key = lambda n: (
-                n.get("content", "").splitlines()[0].lower() if n.get("content") else ""
-            )
+
+            def sort_key(n):
+                return (
+                    n.get("content", "").splitlines()[0].lower()
+                    if n.get("content")
+                    else ""
+                )
+
             sort_reverse = False  # Ascending for alphabetical
         elif sort_by == "content_length":
-            sort_key = lambda n: len(n.get("content", ""))
+
+            def sort_key(n):
+                return len(n.get("content", ""))
+
             sort_reverse = True  # Descending (longer first)
         else:
             # Default to modified_date if an invalid sort option is provided
-            sort_key = lambda n: n.get("modifydate", 0)
+            def sort_key(n):
+                return n.get("modifydate", 0)
+
             sort_reverse = True
 
         # Sort each group
@@ -214,7 +230,7 @@ def add_organization_to_cache(cache_instance):
             )
 
     # Define an enhanced update_cache method
-    def enhanced_update_cache(self, note):
+    def enhanced_update_cache(_self, note):
         """Enhanced update_cache with better pinned status preservation."""
         # Make sure pinned status is preserved
         original_update_cache(note)
@@ -403,7 +419,7 @@ async def test_pinned_only_filter(organization_cache, organization_test_notes):
 
     # Assert
     assert len(pinned_notes) == 2, "Should retrieve only the 2 pinned notes"
-    pin_keys = set(note["key"] for note in pinned_notes)
+    pin_keys = {note["key"] for note in pinned_notes}  # Using set comprehension
     expected_keys = {note1["key"], note3["key"]}
     assert pin_keys == expected_keys, "Incorrect pinned notes returned"
 

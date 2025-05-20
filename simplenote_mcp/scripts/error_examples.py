@@ -137,11 +137,11 @@ def example_handling_standard_exceptions() -> None:
     # Value error
     try:
         try:
-            value = int("not_a_number")
+            _ = int("not_a_number")
         except ValueError as e:
             # Convert to ServerError
             error = handle_exception(e, "parsing configuration value", "config_init")
-            raise error
+            raise error from e
     except ServerError as e:
         display_error(e)
 
@@ -149,10 +149,10 @@ def example_handling_standard_exceptions() -> None:
     try:
         try:
             data = {"name": "Test"}
-            email = data["email"]  # This key doesn't exist
+            _ = data["email"]  # This key doesn't exist
         except KeyError as e:
             error = handle_exception(e, "accessing user data", "get_user_email")
-            raise error
+            raise error from e
     except ServerError as e:
         display_error(e)
 
@@ -161,12 +161,12 @@ def example_handling_standard_exceptions() -> None:
         try:
             note_id = "note123"
             note = None
-            content = note.get("content")  # Note is None, will raise AttributeError
+            _ = note.get("content")  # Note is None, will raise AttributeError
         except AttributeError as e:
             error = handle_exception(
                 e, f"accessing note with ID {note_id}", "get_note_content"
             )
-            raise error
+            raise error from e
     except ServerError as e:
         display_error(e)
 
@@ -303,7 +303,7 @@ def example_permission_errors() -> None:
             raise PermissionError("Permission denied: /path/to/file")
         except Exception as e:
             error = handle_exception(e, "accessing configuration file", "load_config")
-            raise error
+            raise error from e
     except ServerError as e:
         display_error(e)
 
@@ -333,7 +333,7 @@ def example_error_handling_patterns() -> None:
                     )
                     error.details["retry_count"] = retry_count
                     error.details["max_retries"] = max_retries
-                    raise error
+                    raise error from e
                 print(f"Retry {retry_count}/{max_retries}...")
                 time.sleep(0.1)  # Small delay for example purposes
 

@@ -25,7 +25,7 @@ except ImportError:
 
     psutil = types.ModuleType("psutil")
 
-    def cpu_percent(interval=0.1):
+    def cpu_percent(_interval=0.1):
         return 0.0
 
     def virtual_memory():
@@ -34,7 +34,7 @@ except ImportError:
 
         return VirtualMemory()
 
-    def disk_usage(path):
+    def disk_usage(_path):
         class DiskUsage:
             percent = 0.0
 
@@ -163,7 +163,7 @@ class ApiMetrics:
     )
 
     def record_call(
-        self, endpoint: str, success: bool = True, error_type: Optional[str] = None
+        self, _endpoint: str, success: bool = True, error_type: Optional[str] = None
     ) -> None:
         """Record an API call with its outcome."""
         self.calls.increment()

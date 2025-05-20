@@ -7,11 +7,11 @@ import pytest
 
 from simplenote_mcp.server.cache import NoteCache
 from simplenote_mcp.server.server import (
-    handle_call_tool,
     handle_list_resources,
     handle_read_resource,
     initialize_cache,
 )
+from simplenote_mcp.tests.test_helpers import handle_call_tool
 
 
 @pytest.fixture

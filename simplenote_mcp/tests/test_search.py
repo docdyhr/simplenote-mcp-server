@@ -11,8 +11,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
-# Now we can import from our compatibility module
-from simplenote_mcp.server.compat import Path
+from simplenote_mcp.server.compat import Path  # noqa: E402
 
 # Set project root path as a string for system path
 PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
@@ -141,7 +140,9 @@ async def test_cache_search(query: str = "markdown") -> dict:
         timer.start()
         results1 = cache.search_notes(query=query)
         first_search_time = timer.stop()
-        print(f"First search completed in {first_search_time:.4f} seconds")
+        print(
+            f"First search completed in {first_search_time:.4f} seconds - found {len(results1)} results"
+        )
 
         # Second search - should use cache
         print("\nRunning second search (should use cache)...")

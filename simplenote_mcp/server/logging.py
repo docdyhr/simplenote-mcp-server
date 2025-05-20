@@ -6,11 +6,12 @@ import logging
 import os
 import sys
 import tempfile
+import time
 import uuid
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from .config import LogLevel, get_config
 
@@ -391,6 +392,45 @@ def get_request_logger(request_id, **context):
     # Create logger with context and trace ID
     logger = get_logger("request", **req_context)
     return logger.trace(request_id)
+
+
+# API metrics tracking
+def record_api_call(name: str, success: bool, error_type: Optional[str] = None) -> None:
+    """Record API call metrics for monitoring.
+
+    Args:
+        name: Name/identifier of the API call
+        success: Whether the call was successful
+        error_type: Type of error if success is False
+    """
+    logger.info(
+        f"API Call: {name}",
+        extra={
+            "metric_type": "api_call",
+            "api_name": name,
+            "success": success,
+            "error_type": error_type,
+            "timestamp": time.time(),
+        },
+    )
+
+
+def record_response_time(name: str, duration: float) -> None:
+    """Record response time metrics for performance monitoring.
+
+    Args:
+        name: Name/identifier of the operation
+        duration: Duration of the operation in seconds
+    """
+    logger.info(
+        f"Response time: {name}={duration:.4f}s",
+        extra={
+            "metric_type": "response_time",
+            "operation": name,
+            "duration": duration,
+            "timestamp": time.time(),
+        },
+    )
 
 
 # Initialize logging when this module is imported

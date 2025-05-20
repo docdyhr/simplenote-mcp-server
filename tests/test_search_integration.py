@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.server.server import handle_call_tool
+from simplenote_mcp.tests.test_helpers import handle_call_tool
 
 
 @pytest.fixture

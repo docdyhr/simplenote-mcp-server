@@ -1,14 +1,16 @@
 """Test the tag filtering functionality, including untagged notes."""
 
+from unittest.mock import MagicMock
+
 import pytest
 
 from simplenote_mcp.server.cache import NoteCache
 
 
 @pytest.fixture
-def mock_simplenote_client(mocker):
+def mock_simplenote_client():
     """Create a mock Simplenote client."""
-    mock_client = mocker.MagicMock()
+    mock_client = MagicMock()
     return mock_client
 
 

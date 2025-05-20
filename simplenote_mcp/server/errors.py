@@ -355,6 +355,36 @@ class InternalError(ServerError):
         super().__init__(message, **kwargs)
 
 
+class ConflictError(ServerError):
+    """Errors related to conflicting operations or states."""
+
+    def __init__(self, message: str, **kwargs: Any) -> None:
+        kwargs.setdefault("category", ErrorCategory.VALIDATION)
+        kwargs.setdefault("severity", ErrorSeverity.ERROR)
+        kwargs.setdefault("recoverable", True)
+        super().__init__(message, **kwargs)
+
+
+class InvalidArgumentsError(ServerError):
+    """Errors due to invalid arguments provided to a function or tool."""
+
+    def __init__(self, message: str, **kwargs: Any) -> None:
+        kwargs.setdefault("category", ErrorCategory.VALIDATION)
+        kwargs.setdefault("severity", ErrorSeverity.ERROR)
+        kwargs.setdefault("recoverable", True)
+        super().__init__(message, **kwargs)
+
+
+class ToolError(ServerError):
+    """Generic error for tool execution failures."""
+
+    def __init__(self, message: str, **kwargs: Any) -> None:
+        kwargs.setdefault("category", ErrorCategory.INTERNAL)
+        kwargs.setdefault("severity", ErrorSeverity.ERROR)
+        kwargs.setdefault("recoverable", False)
+        super().__init__(message, **kwargs)
+
+
 def handle_exception(
     e: Exception, context: str = "", operation: str = ""
 ) -> ServerError:

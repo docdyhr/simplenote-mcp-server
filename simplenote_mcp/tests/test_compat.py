@@ -6,6 +6,7 @@ This file contains tests for the cross-version compatibility
 modules to ensure they work correctly across Python versions.
 """
 
+import contextlib
 import os
 import sys
 
@@ -16,8 +17,7 @@ script_dir = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
-# Import the compatibility module
-from simplenote_mcp.server.compat import Path
+from simplenote_mcp.server.compat import Path  # noqa: E402
 
 
 class TestPathCompat:
@@ -149,14 +149,10 @@ class TestPathCompat:
         finally:
             # Clean up
             for name in ["file1.txt", "file2.txt", "other.py"]:
-                try:
+                with contextlib.suppress(Exception):
                     os.unlink(os.path.join(test_dir, name))
-                except Exception:
-                    pass
-            try:
+            with contextlib.suppress(Exception):
                 os.rmdir(test_dir)
-            except Exception:
-                pass
 
 
 class TestOtherCompat:

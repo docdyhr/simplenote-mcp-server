@@ -20,9 +20,9 @@ PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
 sys.path.insert(0, PROJECT_ROOT)
 
 # Import project modules
-from simplenote_mcp.server import get_simplenote_client
-from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.server.logging import get_logger, initialize_logging
+from simplenote_mcp.server import get_simplenote_client  # noqa: E402
+from simplenote_mcp.server.cache import NoteCache  # noqa: E402
+from simplenote_mcp.server.logging import get_logger, initialize_logging  # noqa: E402
 
 # Configure logging
 initialize_logging()
@@ -174,7 +174,7 @@ async def benchmark_tag_filtering(cache: NoteCache, result: BenchmarkResult) -> 
 
     # Second filtering - should use index
     with Timer("tag_filter_second", result):
-        notes_with_tag_2 = cache.get_all_notes(tag_filter=test_tag)
+        cache.get_all_notes(tag_filter=test_tag)
 
     # Record how many notes have this tag
     result.add_metadata("notes_with_tag", len(notes_with_tag))
@@ -201,7 +201,7 @@ async def benchmark_search(cache: NoteCache, result: BenchmarkResult) -> None:
 
     # Second search - simple query, should use cache
     with Timer("search_simple_second", result):
-        simple_results_2 = cache.search_notes(query=simple_query)
+        cache.search_notes(query=simple_query)
 
     # First search - complex query
     with Timer("search_complex_first", result):
@@ -209,7 +209,7 @@ async def benchmark_search(cache: NoteCache, result: BenchmarkResult) -> None:
 
     # Second search - complex query, should use cache
     with Timer("search_complex_second", result):
-        complex_results_2 = cache.search_notes(query=complex_query)
+        cache.search_notes(query=complex_query)
 
     # Record result counts
     result.add_metadata("simple_query_results", len(simple_results))
@@ -241,16 +241,16 @@ async def benchmark_pagination(cache: NoteCache, result: BenchmarkResult) -> Non
 
     # Get first page of all notes
     with Timer("pagination_all_notes_page1", result):
-        page1 = cache.get_all_notes(limit=page_size, offset=0)
+        cache.get_all_notes(limit=page_size, offset=0)
 
     # Get second page of all notes
     with Timer("pagination_all_notes_page2", result):
-        page2 = cache.get_all_notes(limit=page_size, offset=page_size)
+        cache.get_all_notes(limit=page_size, offset=page_size)
 
     # Get last page of all notes
     last_page_offset = (total_notes // page_size) * page_size
     with Timer("pagination_all_notes_last_page", result):
-        last_page = cache.get_all_notes(limit=page_size, offset=last_page_offset)
+        cache.get_all_notes(limit=page_size, offset=last_page_offset)
 
     # Search with pagination
     query = "the"  # Common word likely to give results
@@ -282,15 +282,15 @@ async def benchmark_sorting(cache: NoteCache, result: BenchmarkResult) -> None:
 
     # Sort by modification date descending (newest first)
     with Timer("sort_by_modifydate_desc", result):
-        newest_notes = cache.get_all_notes(sort_by="modifydate", sort_direction="desc")
+        cache.get_all_notes(sort_by="modifydate", sort_direction="desc")
 
     # Sort by modification date ascending (oldest first)
     with Timer("sort_by_modifydate_asc", result):
-        oldest_notes = cache.get_all_notes(sort_by="modifydate", sort_direction="asc")
+        cache.get_all_notes(sort_by="modifydate", sort_direction="asc")
 
     # Sort by title
     with Timer("sort_by_title", result):
-        title_sorted = cache.get_all_notes(sort_by="title", sort_direction="asc")
+        cache.get_all_notes(sort_by="title", sort_direction="asc")
 
 
 async def run_benchmarks() -> None:

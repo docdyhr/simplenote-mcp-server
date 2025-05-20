@@ -12,7 +12,7 @@ os.environ["LOG_LEVEL"] = "DEBUG"
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from simplenote_mcp.server import run_main
+from simplenote_mcp.server import run_main  # noqa: E402
 
 if __name__ == "__main__":
     run_main()
