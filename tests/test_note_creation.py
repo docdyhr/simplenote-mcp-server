@@ -15,11 +15,15 @@ from simplenote_mcp.tests.test_helpers import handle_call_tool
 def mock_simplenote_client():
     """Create a mock Simplenote client for note creation tests."""
     mock_client = MagicMock()
+    counter = 0
 
     # Mock successful note creation
     def mock_add_note(note_data):
+        nonlocal counter
+        counter += 1
+        timestamp = int(time.time() * 1000)
         created_note = {
-            "key": f"test_note_{int(time.time() * 1000)}",
+            "key": f"test_note_{timestamp}_{counter}",
             "content": note_data.get("content", ""),
             "tags": note_data.get("tags", []),
             "createdate": datetime.now().isoformat(),

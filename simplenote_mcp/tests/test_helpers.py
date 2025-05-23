@@ -1,6 +1,23 @@
 from typing import Any, Dict
 
+import mcp.types as types
+
 from mcp_patch import TOOL_PROVIDERS
+
+
+async def handle_read_resource(uri: str) -> types.ReadResourceResult:
+    """Helper to read a resource by URI."""
+    from simplenote_mcp.server.server import server_instance
+
+    if server_instance:
+        # Import the actual function from server
+        from simplenote_mcp.server.server import (
+            handle_read_resource as server_handle_read_resource,
+        )
+
+        return await server_handle_read_resource(uri)
+    else:
+        raise ValueError("Server instance not available")
 
 
 async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> Any:

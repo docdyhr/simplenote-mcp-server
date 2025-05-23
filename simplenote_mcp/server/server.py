@@ -862,8 +862,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             else:
                 tags = []
 
-            if not content:
-                raise ValidationError(NOTE_CONTENT_REQUIRED)
+            # Allow empty content for notes
 
             try:
                 note = {"content": content}

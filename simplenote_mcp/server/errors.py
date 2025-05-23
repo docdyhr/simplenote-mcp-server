@@ -271,6 +271,7 @@ class ServerError(Exception):
                 "code": self.error_code,
                 "message": self.message,
                 "user_message": self.get_user_message(),
+                "type": self.category.value,  # Add type field for test compatibility
                 "category": self.category.value,
                 "severity": self.severity.value,
                 "recoverable": self.recoverable,
