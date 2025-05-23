@@ -184,9 +184,11 @@ class ApiMetrics:
             "calls": self.calls.to_dict(),
             "successes": self.successes.to_dict(),
             "failures": self.failures.to_dict(),
-            "success_rate": (self.successes.count / self.calls.count * 100)
-            if self.calls.count > 0
-            else 100.0,
+            "success_rate": (
+                (self.successes.count / self.calls.count * 100)
+                if self.calls.count > 0
+                else 100.0
+            ),
             "response_times": {
                 endpoint: metric.to_dict()
                 for endpoint, metric in self.response_times.items()
@@ -234,9 +236,9 @@ class CacheMetrics:
             "hit_rate": self.hit_rate,
             "size": self.size,
             "max_size": self.max_size,
-            "utilization": (self.size / self.max_size * 100)
-            if self.max_size > 0
-            else 0.0,
+            "utilization": (
+                (self.size / self.max_size * 100) if self.max_size > 0 else 0.0
+            ),
         }
 
 

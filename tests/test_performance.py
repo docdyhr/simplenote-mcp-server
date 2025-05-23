@@ -118,9 +118,9 @@ class TestPerformance:
             # Apply additional performance patches for consistent test results
             patch(
                 "simplenote_mcp.server.server.safe_get",
-                lambda obj, key, default="": obj.get(key, default)
-                if isinstance(obj, dict)
-                else default,
+                lambda obj, key, default="": (
+                    obj.get(key, default) if isinstance(obj, dict) else default
+                ),
             ),
             patch(
                 "simplenote_mcp.server.utils.get_content_type_hint",

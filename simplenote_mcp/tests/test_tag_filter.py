@@ -6,14 +6,14 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add project root to sys.path
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root))
 
 # Now import the modules
 # Skip these tests for now
-import pytest
-
 from simplenote_mcp.server.cache import initialize_cache  # noqa: E402
 from simplenote_mcp.server.logging import logger  # noqa: E402
 from simplenote_mcp.server.server import handle_list_resources  # noqa: E402

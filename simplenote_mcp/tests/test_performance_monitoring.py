@@ -16,12 +16,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Add the parent directory to the Python path
-script_dir = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
-sys.path.insert(0, PROJECT_ROOT)
-
-# Import the monitoring system
 from simplenote_mcp.server.monitoring.metrics import (
     METRICS_DIR,
     ApiMetrics,
@@ -37,6 +31,11 @@ from simplenote_mcp.server.monitoring.metrics import (
     record_response_time,
     start_metrics_collection,
 )
+
+# Add the parent directory to the Python path
+script_dir = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.abspath(os.path.join(script_dir, "../../"))
+sys.path.insert(0, PROJECT_ROOT)
 
 
 class TestPerformanceMonitoring:
