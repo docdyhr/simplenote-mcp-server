@@ -152,11 +152,12 @@ class JsonFormatter(logging.Formatter):
 
         # Add exception info if present
         try:
-            if getattr(record, "exc_info", None):
+            exc_info = getattr(record, "exc_info", None)
+            if exc_info and exc_info[0] is not None:
                 log_entry["exception"] = {
-                    "type": record.exc_info[0].__name__,
-                    "message": str(record.exc_info[1]),
-                    "traceback": logging.Formatter().formatException(record.exc_info),
+                    "type": exc_info[0].__name__,
+                    "message": str(exc_info[1]),
+                    "traceback": logging.Formatter().formatException(exc_info),
                 }
         except (AttributeError, TypeError, IndexError):
             pass
@@ -271,11 +272,14 @@ class StructuredLogAdapter(logging.LoggerAdapter):
                     caller_info = (
                         f"{current_frame.f_code.co_filename}:{current_frame.f_lineno}"
                     )
-                    self.extra["caller"] = caller_info
+                    if isinstance(self.extra, dict):
+                        self.extra["caller"] = caller_info
 
         # Add trace ID if it exists
         if (
             hasattr(self, "trace_id")
+            and self.extra is not None
+            and isinstance(self.extra, dict)
             and self.extra.get("trace_id") is None
             and self.trace_id
         ):
@@ -286,11 +290,13 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             kwargs["extra"] = {}
 
         # Make a deep copy to avoid modifying shared dictionaries
-        kwargs["extra"] = kwargs["extra"].copy()
+        if isinstance(kwargs["extra"], dict):
+            kwargs["extra"] = kwargs["extra"].copy()
 
         # Update with our context
-        for key, value in self.extra.items():
-            kwargs["extra"][key] = value
+        if self.extra is not None and isinstance(self.extra, dict):
+            for key, value in self.extra.items():
+                kwargs["extra"][key] = value
 
         return msg, kwargs
 
@@ -300,7 +306,6 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
         self.logger.debug(msg, *args, **kwargs)
-        return kwargs  # Return kwargs for testing purposes
 
     def info(self, msg, *args, **kwargs):
         """Log an info message with context."""
@@ -308,7 +313,6 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
         self.logger.info(msg, *args, **kwargs)
-        return kwargs  # Return kwargs for testing purposes
 
     def warning(self, msg, *args, **kwargs):
         """Log a warning message with context."""
@@ -316,7 +320,6 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
         self.logger.warning(msg, *args, **kwargs)
-        return kwargs  # Return kwargs for testing purposes
 
     def error(self, msg, *args, **kwargs):
         """Log an error message with context."""
@@ -324,7 +327,6 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
         self.logger.error(msg, *args, **kwargs)
-        return kwargs  # Return kwargs for testing purposes
 
     def critical(self, msg, *args, **kwargs):
         """Log a critical message with context."""
@@ -332,11 +334,13 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
         self.logger.critical(msg, *args, **kwargs)
-        return kwargs  # Return kwargs for testing purposes
 
     def with_context(self, **context):
         """Create a new logger with additional context."""
-        new_extra = self.extra.copy()
+        if self.extra is not None and isinstance(self.extra, dict):
+            new_extra = dict(self.extra)
+        else:
+            new_extra = {}
         new_extra.update(context)
 
         # Create new adapter with combined context
@@ -345,7 +349,8 @@ class StructuredLogAdapter(logging.LoggerAdapter):
         # Copy trace ID if present
         if hasattr(self, "trace_id") and self.trace_id:
             adapter.trace_id = self.trace_id
-            adapter.extra["trace_id"] = self.trace_id
+            if isinstance(adapter.extra, dict):
+                adapter.extra["trace_id"] = self.trace_id
 
         return adapter
 
@@ -354,7 +359,8 @@ class StructuredLogAdapter(logging.LoggerAdapter):
         if trace_id is None:
             trace_id = str(uuid.uuid4())
         self.trace_id = trace_id
-        self.extra["trace_id"] = trace_id
+        if isinstance(self.extra, dict):
+            self.extra["trace_id"] = trace_id
         return self
 
 

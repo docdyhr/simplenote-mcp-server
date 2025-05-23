@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from simplenote import Simplenote
 
@@ -82,11 +82,20 @@ class NoteCache:
         max_retries = 3
         retry_count = 0
         retry_delay = 2
+        notes_data: List[Dict[str, Any]] = []  # Initialize to empty list
 
         while retry_count < max_retries:
             try:
                 # Get all notes from Simplenote
-                notes_data, status = self._client.get_note_list(tags=[])
+                notes_result, status = self._client.get_note_list(tags=[])
+
+                # Ensure we have proper type
+                if isinstance(notes_result, list):
+                    notes_data = notes_result
+                elif isinstance(notes_result, dict) and "notes" in notes_result:
+                    notes_data = notes_result["notes"]
+                else:
+                    notes_data = []
 
                 if status != 0:
                     # Log the error but don't raise exception yet if we have retries left
@@ -201,10 +210,17 @@ class NoteCache:
         max_retries = 2
         retry_count = 0
         retry_delay = 1
+        result: Union[
+            List[Dict[str, Any]], Dict[str, Any]
+        ] = []  # Initialize result to avoid unbound variable
+        notes_data: List[
+            Dict[str, Any]
+        ] = []  # Initialize notes_data to avoid unbound variable
 
         while retry_count < max_retries:
             try:
-                result, status = self._client.get_note_list(since=since, tags=[])
+                api_result, status = self._client.get_note_list(since=since, tags=[])
+                result = api_result
 
                 if status != 0:
                     # Handle non-zero status
@@ -360,6 +376,10 @@ class NoteCache:
         if status != 0 or note_data is None:
             raise ResourceNotFoundError(f"Note with ID {note_id} not found")
 
+        # Ensure note_data is a dict before caching
+        if not isinstance(note_data, dict):
+            raise ResourceNotFoundError(f"Invalid note data format for ID {note_id}")
+
         # Add note to cache
         self._notes[note_id] = note_data
 
@@ -392,6 +412,9 @@ class NoteCache:
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
+
+        # Initialize filtered_notes to prevent unbound variable error
+        filtered_notes = []
 
         # Filter by tag if specified using tag index for faster performance
         if tag_filter:

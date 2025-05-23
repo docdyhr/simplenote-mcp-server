@@ -3,7 +3,7 @@
 
 from .config import Config, get_config
 from .logging import get_logger, log_debug
-from .server import get_simplenote_client
+from .server import get_simplenote_client, run_main
 
 __all__ = [
     "Config",
@@ -11,4 +11,5 @@ __all__ = [
     "get_simplenote_client",
     "log_debug",
     "get_logger",
+    "run_main",
 ]

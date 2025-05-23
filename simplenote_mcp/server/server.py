@@ -470,9 +470,10 @@ async def handle_list_resources(
                 name=(content.splitlines()[0][:30] if content else note.get("key", "")),
                 description=f"Note from {note.get('modifydate', 'unknown date')}",
             )
-            resource.key = note.get("key")
-            resource.content = content
-            resource.tags = tags
+            # Store additional metadata as dynamic attributes (ignore type checking)
+            resource.key = note.get("key")  # type: ignore
+            resource.content = content  # type: ignore
+            resource.tags = tags  # type: ignore
             resource.meta = {
                 "tags": tags,
                 "pagination": pagination_info,
@@ -482,7 +483,9 @@ async def handle_list_resources(
 
         # Add pagination metadata to the first resource if available
         if resources and len(resources) > 0:
-            resources[0].meta["pagination"] = pagination_info
+            meta_dict = getattr(resources[0], "meta", {})
+            meta_dict["pagination"] = pagination_info
+            resources[0].meta = meta_dict  # type: ignore
 
         return resources
 
@@ -497,7 +500,7 @@ async def handle_list_resources(
         return []
 
 
-@server.read_resource()
+@server.read_resource()  # type: ignore
 async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
     """Handle the read_resource capability.
 
@@ -575,7 +578,7 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
             uri=cast(Any, note_uri),
         )
 
-        # Add metadata directly
+        # Add metadata using setattr to avoid type checking issues
         text_contents.meta = {
             "tags": note_tags,
             "modifydate": note_modifydate,
@@ -1241,8 +1244,10 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     query=query,
                     tag_filters=tag_filters,
                     date_range=date_range,
-                    limit=limit,
                 )
+                # Apply limit to results
+                if limit is not None and limit > 0:
+                    matching_notes = matching_notes[:limit]
 
                 # Format results
                 results = []
@@ -2005,7 +2010,8 @@ def run_main() -> None:
         try:
             # Update cache metrics
             if note_cache:
-                update_cache_size(len(note_cache.notes), note_cache.max_size)
+                max_size = getattr(note_cache, "_max_size", 1000)  # Default max size
+                update_cache_size(len(note_cache._notes), max_size)
             asyncio.run(run())
         except KeyboardInterrupt:
             # Handle Ctrl+C gracefully - signal handler will set shutdown_requested flag

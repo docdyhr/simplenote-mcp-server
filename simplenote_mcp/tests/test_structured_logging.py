@@ -63,12 +63,14 @@ class TestStructuredLogging:
         logger = get_logger("context_test", **context)
 
         # Verify the context was added
+        assert logger.extra is not None, "logger.extra should not be None"
         assert "component" in logger.extra, (
             "Context item 'component' should be in logger.extra"
         )
         assert logger.extra["component"] == "test", (
             "Context value for 'component' is incorrect"
         )
+
         assert "operation" in logger.extra, (
             "Context item 'operation' should be in logger.extra"
         )
@@ -78,6 +80,9 @@ class TestStructuredLogging:
 
         # Test adding more context with with_context
         enhanced_logger = logger.with_context(user_id="123", action="read")
+        assert enhanced_logger.extra is not None, (
+            "enhanced_logger.extra should not be None"
+        )
         assert "user_id" in enhanced_logger.extra, (
             "Context item 'user_id' should be added"
         )
@@ -116,6 +121,7 @@ class TestStructuredLogging:
 
         # Verify request ID and context
         assert req_logger.trace_id is not None, "Request logger should have trace ID"
+        assert req_logger.extra is not None, "req_logger.extra should not be None"
         assert "request_id" in req_logger.extra, (
             "Request logger should have request_id in context"
         )
@@ -206,13 +212,14 @@ class TestStructuredLogging:
         logger = get_logger("exception_test").with_context(operation="test_op")
 
         # Verify directly that the context is in the logger
+        assert logger.extra is not None, "logger.extra should not be None"
         assert "operation" in logger.extra, "Context should include operation"
         assert logger.extra["operation"] == "test_op", "Operation context is incorrect"
 
         # Test actual logging
+        original_error = logger.logger.error  # Initialize before try block
         try:
             # Create a mock for verification
-            original_error = logger.logger.error
             mock_error = MagicMock()
             logger.logger.error = mock_error
 
@@ -228,9 +235,7 @@ class TestStructuredLogging:
             # Restore the original method
             logger.logger.error = original_error
         except Exception as e:
-            logger.logger.error = (
-                original_error if "original_error" in locals() else logger.logger.error
-            )
+            logger.logger.error = original_error
             raise e
 
     @pytest.mark.parametrize(
@@ -255,7 +260,13 @@ class TestStructuredLogging:
         logger = get_logger("caller_test")
 
         # We'll manually set caller information for testing
-        logger.extra["caller"] = "test_structured_logging.py:123"
+        assert logger.extra is not None, "logger.extra should not be None"
+        if isinstance(logger.extra, dict):
+            logger.extra["caller"] = "test_structured_logging.py:123"
+        else:
+            # Convert to dict if it's not already
+            logger.extra = dict(logger.extra)
+            logger.extra["caller"] = "test_structured_logging.py:123"
 
         # Verify the information is properly stored
         assert "caller" in logger.extra, "Caller information should be included"
