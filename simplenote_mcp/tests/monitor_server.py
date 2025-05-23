@@ -2,7 +2,9 @@
 # monitor_server.py - Monitor communication with Claude Desktop
 
 import json
+import os
 import sys
+import tempfile
 import time
 from pathlib import Path
 
@@ -15,8 +17,6 @@ MONITORING_LOG_FILE = LOG_DIR / "monitoring.log"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 # For backwards compatibility - create user-specific temp dir
-import os
-import tempfile
 
 USER_TEMP_DIR = Path(tempfile.gettempdir()) / f"simplenote_mcp_{os.getuid()}"
 USER_TEMP_DIR.mkdir(

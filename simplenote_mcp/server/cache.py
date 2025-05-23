@@ -906,9 +906,11 @@ class NoteCache:
             "offset": offset,
             "limit": limit,
             "has_more": offset + limit < total_items,
-            "next_offset": min(offset + limit, total_items)
-            if offset + limit < total_items
-            else None,
+            "next_offset": (
+                min(offset + limit, total_items)
+                if offset + limit < total_items
+                else None
+            ),
             "prev_offset": max(0, offset - limit) if offset > 0 else 0,
             "page": (offset // limit) + 1,
             "total_pages": (total_items + limit - 1) // limit if limit > 0 else 1,

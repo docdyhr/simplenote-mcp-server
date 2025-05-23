@@ -33,6 +33,7 @@ try:
     from rich import box
     from rich.console import Console
     from rich.table import Table
+
     # These imports are not used directly in the code currently
     # from rich.layout import Layout
     # from rich.panel import Panel
