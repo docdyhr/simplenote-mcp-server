@@ -44,7 +44,7 @@ jobs:
     - name: Security check with ruff
       run: |
         . .venv/bin/activate
-        ruff check --select=S .
+        ruff check .
         
     - name: Type check with mypy
       continue-on-error: true
