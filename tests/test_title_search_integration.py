@@ -17,7 +17,7 @@ def event_loop():
     loop.close()
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 async def test_notes_cleanup():
     """Fixture to track and cleanup test notes created during tests."""
     created_note_ids = []

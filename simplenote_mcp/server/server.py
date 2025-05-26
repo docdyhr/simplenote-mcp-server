@@ -220,18 +220,13 @@ def cleanup_pid_file() -> None:
     try:
         if PID_FILE_PATH.exists():
             PID_FILE_PATH.unlink()
-            # Use contextlib.suppress for logging since file handles may be closed during shutdown
-            with contextlib.suppress(ValueError, OSError):
-                logger.info("Removed PID file: %s", PID_FILE_PATH)
 
         # Also remove the alternative PID file if it exists
         if ALT_PID_FILE_PATH.exists():
             ALT_PID_FILE_PATH.unlink()
-            with contextlib.suppress(ValueError, OSError):
-                logger.info(f"Removed PID file: {ALT_PID_FILE_PATH}")
-    except Exception as e:
-        with contextlib.suppress(ValueError, OSError):
-            logger.error(f"Error removing PID file: {str(e)}", exc_info=True)
+    except Exception:
+        # Silently ignore errors during cleanup to avoid logging issues during shutdown
+        pass
 
 
 # Global flag to indicate shutdown is in progress
