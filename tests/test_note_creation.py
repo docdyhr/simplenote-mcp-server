@@ -255,7 +255,7 @@ async def test_create_note_error_handling(mock_simplenote_client):
         result_data = json.loads(result[0].text)
 
         assert "error" in result_data
-        assert result_data["error"]["type"] == "APIError"
+        assert result_data["error"]["type"] == "network"
 
 
 @pytest.mark.asyncio

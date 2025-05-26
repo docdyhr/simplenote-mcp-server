@@ -56,6 +56,28 @@ from .monitoring.metrics import (  # noqa: E402
 from .utils import get_content_type_hint  # noqa: E402
 
 
+def extract_title_from_content(content: str, fallback: str = "") -> str:
+    """Extract the first non-empty line from content as title, limited to 30 chars.
+
+    Args:
+        content: The note content
+        fallback: Fallback value if no non-empty line found
+
+    Returns:
+        First non-empty line (up to 30 chars) or fallback
+    """
+    if not content:
+        return fallback
+
+    lines = content.splitlines()
+    for line in lines:
+        stripped_line = line.strip()
+        if stripped_line:
+            return stripped_line[:30]
+
+    return fallback
+
+
 # Utility functions for safe access to potentially exception objects
 def safe_get(obj: Any, key: str, default: Any = None) -> Any:
     """Safely get a value from an object that might be a dict or an exception."""
@@ -198,14 +220,18 @@ def cleanup_pid_file() -> None:
     try:
         if PID_FILE_PATH.exists():
             PID_FILE_PATH.unlink()
-            logger.info("Removed PID file: %s", PID_FILE_PATH)
+            # Use contextlib.suppress for logging since file handles may be closed during shutdown
+            with contextlib.suppress(ValueError, OSError):
+                logger.info("Removed PID file: %s", PID_FILE_PATH)
 
         # Also remove the alternative PID file if it exists
         if ALT_PID_FILE_PATH.exists():
             ALT_PID_FILE_PATH.unlink()
-            logger.info(f"Removed PID file: {ALT_PID_FILE_PATH}")
+            with contextlib.suppress(ValueError, OSError):
+                logger.info(f"Removed PID file: {ALT_PID_FILE_PATH}")
     except Exception as e:
-        logger.error(f"Error removing PID file: {str(e)}", exc_info=True)
+        with contextlib.suppress(ValueError, OSError):
+            logger.error(f"Error removing PID file: {str(e)}", exc_info=True)
 
 
 # Global flag to indicate shutdown is in progress
@@ -1163,10 +1189,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                         results.append(
                             {
                                 "id": note.get("key"),
-                                "title": (
-                                    content.splitlines()[0][:30]
-                                    if content
-                                    else safe_get(note, "key", "")
+                                "title": extract_title_from_content(
+                                    content, safe_get(note, "key", "")
                                 ),
                                 "snippet": (
                                     content[:100] + "..."
@@ -1255,10 +1279,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     results.append(
                         {
                             "id": note.get("key"),
-                            "title": (
-                                content.splitlines()[0][:30]
-                                if content
-                                else safe_get(note, "key", "")
+                            "title": extract_title_from_content(
+                                content, safe_get(note, "key", "")
                             ),
                             "snippet": (
                                 content[:100] + "..." if len(content) > 100 else content
