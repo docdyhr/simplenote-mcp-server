@@ -59,7 +59,7 @@ jobs:
         
         # Benchmark cache initialization
         def benchmark_cache_init():
-            from simplenote_mcp.cache.cache import NoteCache
+            from simplenote_mcp.server.cache import NoteCache
             cache = NoteCache()
             
             start_time = time.time()
@@ -85,7 +85,8 @@ jobs:
         
         # Benchmark search performance
         def benchmark_search():
-            from simplenote_mcp.search.advanced_search import SearchEngine, QueryParser
+            # Import available modules for search testing
+            import simplenote_mcp.server.server as server_module
             
             # Create mock notes for search
             mock_notes = []
