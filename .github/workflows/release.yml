@@ -47,7 +47,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install toml semver pyyaml pre-commit
-          python python_patch.py || true
 
       - name: Get current version
         id: get_version
@@ -203,12 +202,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install build twine pre-commit
-          python python_patch.py || true
           
       - name: Run pre-commit checks
         run: |
-          chmod +x pre_commit_fix.sh
-          ./pre_commit_fix.sh
           pre-commit run --all-files
           
       - name: Build package

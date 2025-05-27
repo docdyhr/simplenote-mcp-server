@@ -8,6 +8,28 @@ license = { text = "MIT" }
 authors = [{ name = "Thomas Juul Dyhr", email = "docdyhr@me.com" }]
 dependencies = ["mcp[cli]>=0.4.0", "simplenote>=2.1.4"]
 
+[project.optional-dependencies]
+dev = [
+    "ruff>=0.1.0",
+    "mypy>=1.5.0",
+    "pre-commit>=3.0.0",
+    "black>=23.0.0",
+]
+test = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.0.0",
+    "mkdocstrings[python]>=0.22.0",
+]
+all = [
+    "simplenote-mcp-server[dev,test,docs]",
+]
+
 [project.scripts]
 simplenote-mcp-server = "simplenote_mcp.server:run_main"
 

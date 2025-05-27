@@ -6,13 +6,20 @@ A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) w
 
 This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
 
-[![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
-[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./CHANGELOG.md)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Python Version](https://img.shields.io/badge/python-3.11%20%7C%203.12%20%7C%203.13-blue)](./pyproject.toml)
+[![CI/CD Pipeline](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/ci.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/ci.yml)
 [![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml)
 [![Code Quality](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml)
-[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
+[![codecov](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg?token=YOUR_CODECOV_TOKEN)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
+
+[![PyPI version](https://badge.fury.io/py/simplenote-mcp-server.svg)](https://badge.fury.io/py/simplenote-mcp-server)
+[![Python Version](https://img.shields.io/pypi/pyversions/simplenote-mcp-server)](https://pypi.org/project/simplenote-mcp-server/)
+[![Downloads](https://pepy.tech/badge/simplenote-mcp-server)](https://pepy.tech/project/simplenote-mcp-server)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+[![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit)
 [![smithery badge](https://smithery.ai/badge/@docdyhr/simplenote-mcp-server)](https://smithery.ai/server/@docdyhr/simplenote-mcp-server)
 
 ---

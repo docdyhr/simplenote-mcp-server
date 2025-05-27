@@ -1,0 +1,396 @@
+name: Performance Monitoring
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM UTC
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pytest pytest-benchmark memory-profiler psutil
+    
+    - name: Run performance benchmarks
+      run: |
+        python - <<'EOF'
+        import time
+        import psutil
+        import json
+        import os
+        from memory_profiler import profile
+        import sys
+        
+        # Mock Simplenote for benchmarking
+        class MockSimplenote:
+            def __init__(self):
+                self.notes = {}
+                for i in range(1000):
+                    self.notes[f"note_{i}"] = {
+                        'key': f"note_{i}",
+                        'content': f"This is test note {i} with some content to search through.",
+                        'tags': [f"tag_{i%10}", f"category_{i%5}"],
+                        'createdate': time.time() - (i * 3600),
+                        'modifydate': time.time() - (i * 1800)
+                    }
+            
+            def get_note_list(self, **kwargs):
+                return (self.notes, 0)
+        
+        # Benchmark cache initialization
+        def benchmark_cache_init():
+            from simplenote_mcp.cache.cache import NoteCache
+            cache = NoteCache()
+            
+            start_time = time.time()
+            start_memory = psutil.Process().memory_info().rss / 1024 / 1024
+            
+            # Simulate cache initialization with mock data
+            mock_client = MockSimplenote()
+            notes, _ = mock_client.get_note_list()
+            
+            for note_key, note_data in notes.items():
+                cache._notes[note_key] = note_data
+                for tag in note_data.get('tags', []):
+                    cache._tags.add(tag)
+            
+            end_time = time.time()
+            end_memory = psutil.Process().memory_info().rss / 1024 / 1024
+            
+            return {
+                'duration': end_time - start_time,
+                'memory_used': end_memory - start_memory,
+                'notes_processed': len(notes)
+            }
+        
+        # Benchmark search performance
+        def benchmark_search():
+            from simplenote_mcp.search.advanced_search import SearchEngine, QueryParser
+            
+            # Create mock notes for search
+            mock_notes = []
+            for i in range(1000):
+                mock_notes.append({
+                    'key': f"note_{i}",
+                    'content': f"This is test note {i} about {'programming' if i%2==0 else 'documentation'} with various keywords.",
+                    'tags': [f"tag_{i%10}", f"category_{i%5}"],
+                    'createdate': time.time() - (i * 3600)
+                })
+            
+            search_engine = SearchEngine()
+            query_parser = QueryParser()
+            
+            test_queries = [
+                "programming",
+                "programming AND documentation", 
+                "tag:tag_1",
+                '"test note"',
+                "programming OR documentation"
+            ]
+            
+            results = {}
+            
+            for query in test_queries:
+                start_time = time.time()
+                parsed_query = query_parser.parse(query)
+                search_results = search_engine.search(mock_notes, parsed_query)
+                end_time = time.time()
+                
+                results[query] = {
+                    'duration': end_time - start_time,
+                    'results_count': len(search_results)
+                }
+            
+            return results
+        
+        # Run benchmarks
+        print("Running performance benchmarks...")
+        
+        cache_result = benchmark_cache_init()
+        search_results = benchmark_search()
+        
+        # Prepare benchmark report
+        report = {
+            'timestamp': time.time(),
+            'python_version': sys.version,
+            'cache_performance': cache_result,
+            'search_performance': search_results,
+            'system_info': {
+                'cpu_count': psutil.cpu_count(),
+                'memory_total': psutil.virtual_memory().total / 1024 / 1024 / 1024,
+                'platform': os.uname().sysname if hasattr(os, 'uname') else 'unknown'
+            }
+        }
+        
+        # Save report
+        with open('benchmark_report.json', 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        # Print summary
+        print(f"Cache initialization: {cache_result['duration']:.3f}s, {cache_result['memory_used']:.1f}MB")
+        print(f"Notes processed: {cache_result['notes_processed']}")
+        print("\nSearch performance:")
+        for query, result in search_results.items():
+            print(f"  '{query}': {result['duration']:.3f}s ({result['results_count']} results)")
+        EOF
+    
+    - name: Memory profiling
+      run: |
+        python - <<'EOF'
+        import sys
+        import time
+        from memory_profiler import profile
+        
+        @profile
+        def memory_test():
+            # Simulate typical server operations
+            from simplenote_mcp.cache.cache import NoteCache
+            
+            cache = NoteCache()
+            
+            # Simulate loading notes
+            for i in range(100):
+                note = {
+                    'key': f"note_{i}",
+                    'content': f"Content for note {i}" * 50,  # Make it substantial
+                    'tags': [f"tag_{i%5}"],
+                    'createdate': time.time(),
+                    'modifydate': time.time()
+                }
+                cache._notes[f"note_{i}"] = note
+            
+            # Simulate search operations
+            notes = list(cache._notes.values())
+            for i in range(10):
+                # Simple search simulation
+                results = [n for n in notes if 'Content' in n['content']]
+            
+            return len(cache._notes)
+        
+        print("Running memory profiling...")
+        result = memory_test()
+        print(f"Processed {result} notes")
+        EOF
+    
+    - name: Load testing simulation
+      run: |
+        python - <<'EOF'
+        import asyncio
+        import time
+        import concurrent.futures
+        import statistics
+        
+        async def simulate_concurrent_requests():
+            """Simulate concurrent MCP requests"""
+            
+            async def mock_request(request_id):
+                # Simulate processing time for various operations
+                operations = {
+                    'search': 0.05,
+                    'get_note': 0.02,
+                    'list_resources': 0.1,
+                    'create_note': 0.03
+                }
+                
+                operation = list(operations.keys())[request_id % len(operations)]
+                await asyncio.sleep(operations[operation])
+                return f"Request {request_id}: {operation} completed"
+            
+            # Test with different concurrency levels
+            concurrency_levels = [1, 5, 10, 20]
+            results = {}
+            
+            for level in concurrency_levels:
+                print(f"Testing with {level} concurrent requests...")
+                start_time = time.time()
+                
+                tasks = [mock_request(i) for i in range(level)]
+                await asyncio.gather(*tasks)
+                
+                end_time = time.time()
+                duration = end_time - start_time
+                
+                results[level] = {
+                    'duration': duration,
+                    'requests_per_second': level / duration
+                }
+                
+                print(f"  Duration: {duration:.3f}s, RPS: {results[level]['requests_per_second']:.1f}")
+            
+            return results
+        
+        print("Running load testing simulation...")
+        results = asyncio.run(simulate_concurrent_requests())
+        
+        # Calculate performance metrics
+        rps_values = [r['requests_per_second'] for r in results.values()]
+        print(f"\nPerformance Summary:")
+        print(f"Max RPS: {max(rps_values):.1f}")
+        print(f"Avg RPS: {statistics.mean(rps_values):.1f}")
+        EOF
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: benchmark_report.json
+    
+    - name: Performance regression check
+      if: github.event_name == 'pull_request'
+      run: |
+        # Simple performance regression check
+        python - <<'EOF'
+        import json
+        import os
+        
+        # Load current benchmark results
+        if os.path.exists('benchmark_report.json'):
+            with open('benchmark_report.json', 'r') as f:
+                current = json.load(f)
+            
+            # Define performance thresholds
+            thresholds = {
+                'cache_init_max_time': 1.0,  # seconds
+                'search_max_time': 0.1,     # seconds per query
+                'memory_max_mb': 100        # MB
+            }
+            
+            # Check cache performance
+            cache_time = current['cache_performance']['duration']
+            if cache_time > thresholds['cache_init_max_time']:
+                print(f"❌ Cache initialization too slow: {cache_time:.3f}s > {thresholds['cache_init_max_time']}s")
+                exit(1)
+            
+            # Check search performance
+            for query, result in current['search_performance'].items():
+                if result['duration'] > thresholds['search_max_time']:
+                    print(f"❌ Search too slow for '{query}': {result['duration']:.3f}s > {thresholds['search_max_time']}s")
+                    exit(1)
+            
+            # Check memory usage
+            memory_used = current['cache_performance']['memory_used']
+            if memory_used > thresholds['memory_max_mb']:
+                print(f"❌ Memory usage too high: {memory_used:.1f}MB > {thresholds['memory_max_mb']}MB")
+                exit(1)
+            
+            print("✅ All performance checks passed!")
+            print(f"Cache init: {cache_time:.3f}s")
+            print(f"Memory usage: {memory_used:.1f}MB")
+            
+        else:
+            print("No benchmark results found, skipping regression check")
+        EOF
+
+  resource-usage:
+    name: Resource Usage Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install psutil matplotlib
+    
+    - name: Analyze resource usage patterns
+      run: |
+        python - <<'EOF'
+        import psutil
+        import time
+        import matplotlib
+        matplotlib.use('Agg')  # Use non-interactive backend
+        import matplotlib.pyplot as plt
+        import json
+        
+        def monitor_resources(duration=30, interval=1):
+            """Monitor CPU and memory usage over time"""
+            timestamps = []
+            cpu_usage = []
+            memory_usage = []
+            
+            start_time = time.time()
+            
+            while time.time() - start_time < duration:
+                timestamps.append(time.time() - start_time)
+                cpu_usage.append(psutil.cpu_percent(interval=0.1))
+                memory_usage.append(psutil.virtual_memory().percent)
+                time.sleep(interval)
+            
+            return timestamps, cpu_usage, memory_usage
+        
+        print("Monitoring system resources...")
+        timestamps, cpu, memory = monitor_resources(duration=10)  # Shorter for CI
+        
+        # Create resource usage plots
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+        
+        ax1.plot(timestamps, cpu, 'b-', label='CPU Usage %')
+        ax1.set_ylabel('CPU Usage (%)')
+        ax1.set_title('System Resource Usage During Tests')
+        ax1.legend()
+        ax1.grid(True)
+        
+        ax2.plot(timestamps, memory, 'r-', label='Memory Usage %')
+        ax2.set_xlabel('Time (seconds)')
+        ax2.set_ylabel('Memory Usage (%)')
+        ax2.legend()
+        ax2.grid(True)
+        
+        plt.tight_layout()
+        plt.savefig('resource_usage.png', dpi=150, bbox_inches='tight')
+        plt.close()
+        
+        # Save resource data
+        resource_data = {
+            'timestamps': timestamps,
+            'cpu_usage': cpu,
+            'memory_usage': memory,
+            'avg_cpu': sum(cpu) / len(cpu),
+            'max_cpu': max(cpu),
+            'avg_memory': sum(memory) / len(memory),
+            'max_memory': max(memory)
+        }
+        
+        with open('resource_usage.json', 'w') as f:
+            json.dump(resource_data, f, indent=2)
+        
+        print(f"Average CPU usage: {resource_data['avg_cpu']:.1f}%")
+        print(f"Peak CPU usage: {resource_data['max_cpu']:.1f}%")
+        print(f"Average memory usage: {resource_data['avg_memory']:.1f}%")
+        print(f"Peak memory usage: {resource_data['max_memory']:.1f}%")
+        EOF
+    
+    - name: Upload resource analysis
+      uses: actions/upload-artifact@v4
+      with:
+        name: resource-analysis
+        path: |
+          resource_usage.png
+          resource_usage.json

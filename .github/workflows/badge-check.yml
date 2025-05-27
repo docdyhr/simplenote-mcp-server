@@ -1,0 +1,143 @@
+name: Badge Status Check
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 6 AM UTC
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths: [ 'README.md', '.github/workflows/**' ]
+
+jobs:
+  check-badges:
+    name: Verify Badge Status
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests beautifulsoup4 lxml
+    
+    - name: Check badge URLs
+      run: |
+        python - <<'EOF'
+        import re
+        import requests
+        import sys
+        import time
+        from urllib.parse import urlparse
+        
+        # Read README content
+        with open('README.md', 'r') as f:
+            content = f.read()
+        
+        # Extract all badge URLs
+        badge_pattern = r'\[!\[.*?\]\((https://[^)]+)\)\]'
+        img_pattern = r'!\[.*?\]\((https://[^)]+\.svg[^)]*)\)'
+        
+        badge_urls = re.findall(badge_pattern, content)
+        img_urls = re.findall(img_pattern, content)
+        
+        all_urls = list(set(badge_urls + img_urls))
+        
+        print(f"Found {len(all_urls)} badge URLs to check")
+        
+        failed_badges = []
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (compatible; BadgeChecker/1.0)'
+        })
+        
+        for url in all_urls:
+            try:
+                print(f"Checking: {url}")
+                response = session.get(url, timeout=10, allow_redirects=True)
+                
+                if response.status_code != 200:
+                    failed_badges.append(f"{url} - HTTP {response.status_code}")
+                    print(f"  ❌ Failed: HTTP {response.status_code}")
+                elif 'svg' not in response.headers.get('content-type', '').lower():
+                    failed_badges.append(f"{url} - Not SVG content")
+                    print(f"  ❌ Failed: Not SVG content")
+                else:
+                    print(f"  ✅ OK")
+                
+                time.sleep(0.5)  # Rate limiting
+                
+            except Exception as e:
+                failed_badges.append(f"{url} - Error: {str(e)}")
+                print(f"  ❌ Error: {str(e)}")
+        
+        if failed_badges:
+            print("\n❌ Badge check failed!")
+            print("Failed badges:")
+            for badge in failed_badges:
+                print(f"  - {badge}")
+            sys.exit(1)
+        else:
+            print("\n✅ All badges are working correctly!")
+        EOF
+    
+    - name: Check workflow status badges
+      run: |
+        # Verify that workflow badges in README match actual workflow files
+        echo "Checking workflow badges..."
+        
+        # Get workflow names from .github/workflows/
+        workflows=$(find .github/workflows/ -name "*.yml" -o -name "*.yaml" | xargs grep -l "^name:" | while read file; do
+          grep "^name:" "$file" | head -1 | cut -d':' -f2 | sed 's/^ *//' | sed 's/ *$//'
+        done)
+        
+        echo "Found workflows:"
+        echo "$workflows"
+        
+        # Check if README contains badges for main workflows
+        if ! grep -q "CI" README.md && ! grep -q "python-tests" README.md; then
+          echo "⚠️ Warning: No CI/test badges found in README"
+        fi
+        
+        if ! grep -q "codecov" README.md; then
+          echo "⚠️ Warning: No coverage badge found in README"
+        fi
+    
+    - name: Create badge status report
+      if: failure()
+      run: |
+        cat > badge-report.md << 'EOF'
+        # Badge Status Report
+        
+        ## Failed Badges
+        
+        The following badges are not working correctly:
+        
+        ${{ env.FAILED_BADGES }}
+        
+        ## Recommendations
+        
+        1. Update broken badge URLs
+        2. Verify workflow names match badge references
+        3. Check service availability (GitHub Actions, Codecov, etc.)
+        4. Update repository settings if needed
+        
+        ## Next Steps
+        
+        - [ ] Fix broken badge URLs
+        - [ ] Verify service integrations
+        - [ ] Update documentation
+        EOF
+    
+    - name: Upload badge report
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: badge-status-report
+        path: badge-report.md
