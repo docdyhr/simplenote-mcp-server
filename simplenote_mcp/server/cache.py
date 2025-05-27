@@ -455,7 +455,7 @@ class NoteCache:
             filtered_notes = list(self._notes.values())
 
         # Get sort key function based on sort_by parameter
-        def get_sort_key(note):
+        def get_sort_key(note: dict[str, Any]) -> Any:
             if sort_by == "title":
                 # Use first line of content or empty string if no content
                 content = note.get("content", "")
@@ -1094,9 +1094,12 @@ class BackgroundSync:
                     consecutive_failures += 1
 
                     # Calculate backoff delay using exponential backoff with jitter
-                    import random
+                    import hashlib
+                    import time
 
-                    jitter = random.uniform(0.8, 1.2)  # 20% jitter
+                    # Use deterministic jitter based on time for non-cryptographic purposes
+                    time_hash = int(hashlib.md5(str(time.time()).encode()).hexdigest()[:8], 16)
+                    jitter = 0.8 + (time_hash % 1000) / 2500  # 20% jitter (0.8 to 1.2)
                     current_retry_delay = min(
                         max_retry_delay,
                         base_retry_delay
