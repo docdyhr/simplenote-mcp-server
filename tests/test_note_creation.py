@@ -15,15 +15,11 @@ from simplenote_mcp.tests.test_helpers import handle_call_tool
 def mock_simplenote_client():
     """Create a mock Simplenote client for note creation tests."""
     mock_client = MagicMock()
-    counter = 0
 
     # Mock successful note creation
     def mock_add_note(note_data):
-        nonlocal counter
-        counter += 1
-        timestamp = int(time.time() * 1000)
         created_note = {
-            "key": f"test_note_{timestamp}_{counter}",
+            "key": f"test_note_{int(time.time() * 1000)}_{id(note_data)}_{time.perf_counter_ns()}",
             "content": note_data.get("content", ""),
             "tags": note_data.get("tags", []),
             "createdate": datetime.now().isoformat(),
@@ -373,6 +369,27 @@ async def test_create_multiple_notes_sequentially(mock_simplenote_client):
     cache._initialized = True
 
     created_notes = []
+
+    # Override the add_note method to ensure unique keys for this test
+    note_counter = 0
+
+    def mock_sequential_add_note(note_data):
+        nonlocal note_counter
+        note_counter += 1
+        created_note = {
+            "key": f"unique_test_note_{note_counter}_{int(time.time() * 1000)}",
+            "content": note_data.get("content", ""),
+            "tags": note_data.get("tags", []),
+            "createdate": datetime.now().isoformat(),
+            "modifydate": datetime.now().isoformat(),
+            "version": 1,
+            "syncnum": 1,
+            "systemtags": [],
+            "deleted": False,
+        }
+        return created_note, 0
+
+    mock_simplenote_client.add_note.side_effect = mock_sequential_add_note
 
     with (
         patch("simplenote_mcp.server.server.note_cache", cache),
