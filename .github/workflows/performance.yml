@@ -85,21 +85,22 @@ jobs:
         
         # Benchmark search performance
         def benchmark_search():
-            # Import available modules for search testing
-            import simplenote_mcp.server.server as server_module
+            # Import search engine components
+            from simplenote_mcp.server.search import SearchEngine, QueryParser
             
             # Create mock notes for search
-            mock_notes = []
+            mock_notes = {}
             for i in range(1000):
-                mock_notes.append({
-                    'key': f"note_{i}",
+                note_key = f"note_{i}"
+                mock_notes[note_key] = {
+                    'key': note_key,
                     'content': f"This is test note {i} about {'programming' if i%2==0 else 'documentation'} with various keywords.",
                     'tags': [f"tag_{i%10}", f"category_{i%5}"],
-                    'createdate': time.time() - (i * 3600)
-                })
+                    'createdate': time.time() - (i * 3600),
+                    'modifydate': time.time() - (i * 1800)
+                }
             
             search_engine = SearchEngine()
-            query_parser = QueryParser()
             
             test_queries = [
                 "programming",
@@ -113,8 +114,7 @@ jobs:
             
             for query in test_queries:
                 start_time = time.time()
-                parsed_query = query_parser.parse(query)
-                search_results = search_engine.search(mock_notes, parsed_query)
+                search_results = search_engine.search(mock_notes, query)
                 end_time = time.time()
                 
                 results[query] = {
