@@ -10,7 +10,6 @@ import re
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List, Tuple
 from urllib.parse import urlparse
 
 try:
@@ -31,12 +30,12 @@ class BadgeValidator:
             {"User-Agent": "Mozilla/5.0 (compatible; BadgeValidator/1.0)"}
         )
 
-    def extract_badge_urls(self) -> List[str]:
+    def extract_badge_urls(self) -> list[str]:
         """Extract all badge URLs from README"""
         if not self.readme_path.exists():
             raise FileNotFoundError(f"README file not found: {self.readme_path}")
 
-        with open(self.readme_path, "r", encoding="utf-8") as f:
+        with open(self.readme_path, encoding="utf-8") as f:
             content = f.read()
 
         # Extract badge URLs using regex patterns
@@ -50,7 +49,7 @@ class BadgeValidator:
         all_urls = list(set(badge_urls + img_urls))
         return sorted(all_urls)
 
-    def validate_badge(self, url: str) -> Tuple[bool, int, str]:
+    def validate_badge(self, url: str) -> tuple[bool, int, str]:
         """Validate a single badge URL"""
         try:
             response = self.session.get(url, timeout=10, allow_redirects=True)
@@ -101,7 +100,7 @@ class BadgeValidator:
         else:
             return "External Service"
 
-    def validate_all_badges(self) -> Dict:
+    def validate_all_badges(self) -> dict:
         """Validate all badges and return detailed report"""
         urls = self.extract_badge_urls()
 
@@ -163,7 +162,7 @@ class BadgeValidator:
             "summary": f"{working} working, {failing} failing",
         }
 
-    def generate_report(self, validation_results: Dict) -> str:
+    def generate_report(self, validation_results: dict) -> str:
         """Generate a detailed validation report"""
         if validation_results["total"] == 0:
             return "No badges found to validate."
@@ -226,7 +225,7 @@ class BadgeValidator:
 
     def export_json_report(
         self,
-        validation_results: Dict,
+        validation_results: dict,
         output_path: str = "badge-validation-report.json",
     ):
         """Export validation results as JSON"""

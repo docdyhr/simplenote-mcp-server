@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 import mcp.types as types
 
@@ -20,7 +20,7 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
         raise ValueError("Server instance not available")
 
 
-async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> Any:
+async def handle_call_tool(name: str, arguments: dict[str, Any]) -> Any:
     """Helper to call a registered tool provider by name with arguments."""
     # Look for the main call_tool handler
     if "call_tool" in TOOL_PROVIDERS:

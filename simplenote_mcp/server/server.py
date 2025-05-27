@@ -12,7 +12,7 @@ import tempfile
 import threading
 import time
 from contextlib import suppress
-from typing import Any, List, Optional, cast
+from typing import Any, cast
 
 # Import and apply MCP patch before importing Server
 sys.path.append(
@@ -53,7 +53,6 @@ from .monitoring.metrics import (  # noqa: E402
     start_metrics_collection,
     update_cache_size,
 )
-from .utils import get_content_type_hint  # noqa: E402
 
 
 def extract_title_from_content(content: str, fallback: str = "") -> str:
@@ -107,7 +106,7 @@ def safe_set(obj: Any, key: str, value: Any) -> None:
     return
 
 
-def safe_split(obj: Any, delimiter: str = ",") -> List[str]:
+def safe_split(obj: Any, delimiter: str = ",") -> list[str]:
     """Safely split a string or return empty list for other types."""
     if isinstance(obj, str):
         return obj.split(delimiter)
@@ -195,8 +194,8 @@ PID_FILE_PATH = Path(tempfile.gettempdir()) / "simplenote_mcp_server.pid"
 ALT_PID_FILE_PATH = Path(tempfile.gettempdir()) / "simplenote_mcp_server_alt.pid"
 
 # Initialize note cache and background sync
-note_cache: Optional[NoteCache] = None
-background_sync: Optional[BackgroundSync] = None
+note_cache: NoteCache | None = None
+background_sync: BackgroundSync | None = None
 
 
 def write_pid_file() -> None:
@@ -363,7 +362,7 @@ async def initialize_cache() -> None:
                     logger.info(
                         f"Note cache initialization completed successfully with {len(current_note_cache._notes)} notes"  # Use local var
                     )
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.warning(
                         f"Note cache initialization timed out after {initialization_timeout}s, cache has {len(current_note_cache._notes)} notes"  # Use local var
                     )
@@ -389,8 +388,8 @@ async def initialize_cache() -> None:
 
 @server.list_resources()
 async def handle_list_resources(
-    tag: Optional[str] = None,
-    limit: Optional[int] = None,
+    tag: str | None = None,
+    limit: int | None = None,
     offset: int = 0,
     sort_by: str = "modifydate",
     sort_direction: str = "desc",
@@ -495,18 +494,10 @@ async def handle_list_resources(
             resource.key = note.get("key")  # type: ignore
             resource.content = content  # type: ignore
             resource.tags = tags  # type: ignore
-            resource.meta = {
-                "tags": tags,
-                "pagination": pagination_info,
-                **get_content_type_hint(content),
-            }
             resources.append(resource)
 
-        # Add pagination metadata to the first resource if available
-        if resources and len(resources) > 0:
-            meta_dict = getattr(resources[0], "meta", {})
-            meta_dict["pagination"] = pagination_info
-            resources[0].meta = meta_dict  # type: ignore
+        # Note: Pagination info is available in pagination_info variable
+        # but cannot be attached to Resource objects directly
 
         return resources
 
@@ -599,13 +590,8 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
             uri=cast(Any, note_uri),
         )
 
-        # Add metadata using setattr to avoid type checking issues
-        text_contents.meta = {
-            "tags": note_tags,
-            "modifydate": note_modifydate,
-            "createdate": note_createdate,
-            **get_content_type_hint(note_content),
-        }
+        # Note: Metadata like tags, dates available in local variables
+        # but cannot be attached to TextResourceContents objects directly
 
         return types.ReadResourceResult(contents=[text_contents])
 
@@ -1791,7 +1777,7 @@ async def handle_list_prompts() -> list[types.Prompt]:
 
 @server.get_prompt()
 async def handle_get_prompt(
-    name: str, arguments: Optional[dict[str, str]]
+    name: str, arguments: dict[str, str] | None
 ) -> types.GetPromptResult:
     """Handle the get_prompt capability.
 

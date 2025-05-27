@@ -51,8 +51,7 @@ repos:
     rev: v1.15.0
     hooks:
     -   id: mypy
-        # Apply Python 3.13+ compatibility patches before running mypy
-        entry: bash -c 'python3 ./python_patch.py >/dev/null 2>&1 || true && mypy --config-file=mypy.ini simplenote_mcp'
+        args: [--config-file=mypy.ini, simplenote_mcp]
         additional_dependencies: [
             "types-requests",
             "types-setuptools",

@@ -5,7 +5,7 @@ This module provides type definitions that are needed by the codebase but
 may be missing in the installed version of MCP.
 """
 
-from typing import Optional, Union
+from typing import Union
 
 from mcp import types as orig_mcp_types
 
@@ -14,7 +14,7 @@ from mcp import types as orig_mcp_types
 class Context:
     """Context for MCP requests."""
 
-    def __init__(self, request_id: Optional[str] = None) -> None:
+    def __init__(self, request_id: str | None = None) -> None:
         self.request_id = request_id
 
 

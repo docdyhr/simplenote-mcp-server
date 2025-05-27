@@ -24,7 +24,6 @@ import subprocess
 import sys
 import webbrowser
 from pathlib import Path
-from typing import List, Optional, Set, Tuple
 
 # Set up project paths
 SCRIPT_DIR = Path(__file__).parent
@@ -98,7 +97,7 @@ def ensure_output_dir(path: Path) -> None:
         path.mkdir(parents=True, exist_ok=True)
 
 
-def build_pytest_command(args: argparse.Namespace) -> List[str]:
+def build_pytest_command(args: argparse.Namespace) -> list[str]:
     """Build the pytest command with appropriate coverage options."""
     cmd = ["pytest"]
     # Add verbosity
@@ -129,7 +128,7 @@ def build_pytest_command(args: argparse.Namespace) -> List[str]:
     return cmd
 
 
-def run_coverage(cmd: List[str], verbose: int) -> Tuple[bool, Optional[float]]:
+def run_coverage(cmd: list[str], verbose: int) -> tuple[bool, float | None]:
     """Run the pytest command with coverage and return results."""
     if verbose:
         print(f"Running: {' '.join(cmd)}")
@@ -164,7 +163,7 @@ def open_html_report(output_dir: Path) -> None:
         print(f"HTML report not found at {index_path}")
 
 
-def get_missing_coverage() -> Set[str]:
+def get_missing_coverage() -> set[str]:
     """Get a list of files with missing coverage."""
     missing_files = set()
     # This is a simplistic implementation - a real one would parse the coverage data

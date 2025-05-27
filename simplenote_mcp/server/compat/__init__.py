@@ -36,7 +36,7 @@ def is_module_available(module_name: str) -> bool:
 T = TypeVar("T")
 
 
-def get_optional_module(module_name: str, default: Any = None) -> Optional[Any]:
+def get_optional_module(module_name: str, default: Any = None) -> Any | None:
     """Import a module that might not be available.
 
     Args:

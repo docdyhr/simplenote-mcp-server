@@ -12,13 +12,13 @@ import asyncio
 import json
 import sys
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 from simplenote_mcp.server.server import get_simplenote_client
 from simplenote_mcp.tests.test_helpers import handle_call_tool
 
 
-async def create_demo_notes() -> List[Dict[str, Any]]:
+async def create_demo_notes() -> list[dict[str, Any]]:
     """Create demonstration notes with various titles and content."""
     print("\n=== Creating Demo Notes ===")
 
@@ -89,7 +89,7 @@ async def create_demo_notes() -> List[Dict[str, Any]]:
     return created_notes
 
 
-async def demonstrate_search_functionality(created_notes: List[Dict[str, Any]]):
+async def demonstrate_search_functionality(created_notes: list[dict[str, Any]]):
     """Demonstrate various search capabilities."""
     print("\n\n=== Demonstrating Search Functionality ===")
 
@@ -169,7 +169,7 @@ async def demonstrate_search_functionality(created_notes: List[Dict[str, Any]]):
         await asyncio.sleep(0.5)
 
 
-async def cleanup_demo_notes(created_notes: List[Dict[str, Any]]):
+async def cleanup_demo_notes(created_notes: list[dict[str, Any]]):
     """Clean up the demo notes."""
     print("\n\n=== Cleaning Up Demo Notes ===")
 

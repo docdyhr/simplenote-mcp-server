@@ -550,7 +550,7 @@ class TestMetricsCollection:
 
             # Verify file was created and has content
             assert os.path.exists(temp_path)
-            with open(temp_path, "r") as f:
+            with open(temp_path) as f:
                 data = json.load(f)
                 assert "api" in data
                 assert "cache" in data

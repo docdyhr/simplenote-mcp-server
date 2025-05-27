@@ -11,7 +11,8 @@ import os
 import sys
 import time
 import uuid
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from collections.abc import AsyncGenerator
+from typing import Any
 
 # Add the parent directory to the Python path so we can import the server module
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -72,15 +73,15 @@ def test_note_content(random_string: str) -> str:
 
 
 @pytest.fixture
-def test_tags() -> List[str]:
+def test_tags() -> list[str]:
     """Generate test tags for notes."""
     return ["pytest", "test", "automated"]
 
 
 @pytest.fixture
 async def test_note(
-    simplenote_client, test_note_content: str, test_tags: List[str]
-) -> AsyncGenerator[Dict[str, Any], None]:
+    simplenote_client, test_note_content: str, test_tags: list[str]
+) -> AsyncGenerator[dict[str, Any], None]:
     """Create a test note and return it. Delete it after the test."""
     note = {"content": test_note_content, "tags": test_tags}
 
@@ -103,8 +104,8 @@ async def test_note(
 
 @pytest.fixture
 async def multiple_test_notes(
-    simplenote_client, test_note_content: str, test_tags: List[str]
-) -> AsyncGenerator[List[Dict[str, Any]], None]:
+    simplenote_client, test_note_content: str, test_tags: list[str]
+) -> AsyncGenerator[list[dict[str, Any]], None]:
     """Create multiple test notes and return them. Delete them after the test."""
     notes = []
     note_ids = []
@@ -161,7 +162,7 @@ async def global_note_cache(simplenote_client) -> AsyncGenerator[NoteCache, None
 
 
 @pytest.fixture(scope="session")
-async def server_cache() -> AsyncGenerator[Optional[NoteCache], None]:
+async def server_cache() -> AsyncGenerator[NoteCache | None, None]:
     """Initialize and return the server's global cache."""
     try:
         await initialize_cache()
@@ -177,7 +178,7 @@ async def server_cache() -> AsyncGenerator[Optional[NoteCache], None]:
 
 
 @pytest.fixture
-def mock_note() -> Dict[str, Any]:
+def mock_note() -> dict[str, Any]:
     """Create a mock note for testing without API calls."""
     return {
         "key": f"note_{uuid.uuid4().hex[:8]}",

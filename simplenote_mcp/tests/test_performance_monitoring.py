@@ -322,7 +322,7 @@ class TestPerformanceMonitoring:
             )
 
             # Try to read the file content
-            with open(test_file, "r") as f:
+            with open(test_file) as f:
                 file_content = f.read()
 
             # Check if the file content is valid JSON

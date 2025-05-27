@@ -19,7 +19,7 @@ import locale
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 # Try to import optional dependencies for enhanced visualization
 try:
@@ -57,13 +57,13 @@ class MetricsHistory:
 
     def __init__(self, max_points: int = 20):
         self.max_points = max_points
-        self.api_response_times: List[float] = []
-        self.cache_hit_rates: List[float] = []
-        self.cpu_usage: List[float] = []
-        self.memory_usage: List[float] = []
-        self.tool_calls: Dict[str, int] = {}
+        self.api_response_times: list[float] = []
+        self.cache_hit_rates: list[float] = []
+        self.cpu_usage: list[float] = []
+        self.memory_usage: list[float] = []
+        self.tool_calls: dict[str, int] = {}
 
-    def update(self, metrics: Dict[str, Any]) -> None:
+    def update(self, metrics: dict[str, Any]) -> None:
         """Update historical data with new metrics."""
         # API response times (average across all endpoints)
         if metrics.get("api", {}).get("response_times"):
@@ -103,13 +103,13 @@ class MetricsHistory:
                 self.tool_calls[tool] = data.get("count", 0)
 
 
-def load_metrics() -> Dict[str, Any]:
+def load_metrics() -> dict[str, Any]:
     """Load the most recent metrics from the metrics file."""
     try:
         if not METRICS_FILE.exists():
             return {"error": "Metrics file not found"}
 
-        with open(METRICS_FILE, "r") as f:
+        with open(METRICS_FILE) as f:
             return json.load(f)
     except (json.JSONDecodeError, OSError) as e:
         return {"error": f"Failed to load metrics: {str(e)}"}
@@ -138,7 +138,7 @@ def format_duration(seconds: float) -> str:
         return f"{int(minutes)}m {int(seconds)}s"
 
 
-def create_ascii_chart(data: List[float], height: int = 10, width: int = 40) -> str:
+def create_ascii_chart(data: list[float], height: int = 10, width: int = 40) -> str:
     """Create an ASCII chart from the data."""
     if not HAS_ASCII_CHART or not data:
         return "No chart data available"

@@ -1,4 +1,5 @@
-from typing import Any, Callable, List, Optional, TypeVar, Union
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 T = TypeVar("T")
 
@@ -9,18 +10,18 @@ class FixtureRequest:
 # Simple version compatible with Python 3.11 and 3.13
 def fixture(
     scope: str = "function",
-    params: Optional[List[Any]] = None,
+    params: list[Any] | None = None,
     autouse: bool = False,
-    ids: Optional[List[str]] = None,
+    ids: list[str] | None = None,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]: ...
-def mark() -> "Mark": ...
+def mark() -> Mark: ...
 
 class Mark:
     def parametrize(
         self,
-        argnames: Union[str, List[str]],
-        argvalues: List[Any],
-        ids: Optional[List[str]] = None,
+        argnames: str | list[str],
+        argvalues: list[Any],
+        ids: list[str] | None = None,
     ) -> Callable[[Callable[..., Any]], Callable[..., Any]]: ...
     def skip(
         self, reason: str = ""

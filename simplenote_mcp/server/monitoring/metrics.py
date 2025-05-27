@@ -15,7 +15,7 @@ from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Deque, Dict, Optional
+from typing import Any
 
 try:
     import psutil
@@ -67,7 +67,7 @@ class TimeMetric:
     total_time: float = 0.0
     min_time: float = float("inf")
     max_time: float = 0.0
-    recent_times: Deque[float] = field(
+    recent_times: deque[float] = field(
         default_factory=lambda: deque(maxlen=MAX_SAMPLES)
     )
 
@@ -98,7 +98,7 @@ class TimeMetric:
             return self.max_time
         return statistics.quantiles(self.recent_times, n=20)[-1]  # 95th percentile
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "count": self.count,
@@ -116,7 +116,7 @@ class CounterMetric:
     """Counter metric for tracking counts of events."""
 
     count: int = 0
-    timestamps: Deque[float] = field(default_factory=lambda: deque(maxlen=MAX_SAMPLES))
+    timestamps: deque[float] = field(default_factory=lambda: deque(maxlen=MAX_SAMPLES))
 
     def increment(self) -> None:
         """Increment this counter."""
@@ -139,7 +139,7 @@ class CounterMetric:
         recent = [ts for ts in self.timestamps if ts > five_min_ago]
         return len(recent) * 60 / max(now - five_min_ago, 1)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "count": self.count,
@@ -155,15 +155,15 @@ class ApiMetrics:
     calls: CounterMetric = field(default_factory=CounterMetric)
     successes: CounterMetric = field(default_factory=CounterMetric)
     failures: CounterMetric = field(default_factory=CounterMetric)
-    response_times: Dict[str, TimeMetric] = field(
+    response_times: dict[str, TimeMetric] = field(
         default_factory=lambda: defaultdict(TimeMetric)
     )
-    errors_by_type: Dict[str, CounterMetric] = field(
+    errors_by_type: dict[str, CounterMetric] = field(
         default_factory=lambda: defaultdict(CounterMetric)
     )
 
     def record_call(
-        self, _endpoint: str, success: bool = True, error_type: Optional[str] = None
+        self, _endpoint: str, success: bool = True, error_type: str | None = None
     ) -> None:
         """Record an API call with its outcome."""
         self.calls.increment()
@@ -178,7 +178,7 @@ class ApiMetrics:
         """Record the response time for an API call."""
         self.response_times[endpoint].add(duration)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "calls": self.calls.to_dict(),
@@ -228,7 +228,7 @@ class CacheMetrics:
         self.size = current_size
         self.max_size = max_size
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "hits": self.hits.to_dict(),
@@ -246,8 +246,8 @@ class CacheMetrics:
 class ResourceMetrics:
     """System resource usage metrics."""
 
-    cpu_samples: Deque[float] = field(default_factory=lambda: deque(maxlen=MAX_SAMPLES))
-    memory_samples: Deque[float] = field(
+    cpu_samples: deque[float] = field(default_factory=lambda: deque(maxlen=MAX_SAMPLES))
+    memory_samples: deque[float] = field(
         default_factory=lambda: deque(maxlen=MAX_SAMPLES)
     )
     disk_usage: float = 0.0
@@ -289,7 +289,7 @@ class ResourceMetrics:
         """Get maximum memory usage."""
         return max(self.memory_samples) if self.memory_samples else 0.0
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "cpu": {
@@ -310,10 +310,10 @@ class ResourceMetrics:
 class ToolMetrics:
     """Metrics for tool usage."""
 
-    tool_calls: Dict[str, CounterMetric] = field(
+    tool_calls: dict[str, CounterMetric] = field(
         default_factory=lambda: defaultdict(CounterMetric)
     )
-    execution_times: Dict[str, TimeMetric] = field(
+    execution_times: dict[str, TimeMetric] = field(
         default_factory=lambda: defaultdict(TimeMetric)
     )
 
@@ -325,7 +325,7 @@ class ToolMetrics:
         """Record the execution time for a tool call."""
         self.execution_times[tool_name].add(duration)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "tool_calls": {
@@ -349,7 +349,7 @@ class PerformanceMetrics:
     server_start_time: float = field(default_factory=time.time)
     last_updated: float = field(default_factory=time.time)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         now = time.time()
         uptime_seconds = now - self.server_start_time
@@ -460,12 +460,12 @@ class MetricsCollector:
             self._collection_thread.join(timeout=5)
         logger.info("Metrics collection stopped")
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get a dictionary representation of current metrics."""
         return self.metrics.to_dict()
 
     def record_api_call(
-        self, endpoint: str, success: bool = True, error_type: Optional[str] = None
+        self, endpoint: str, success: bool = True, error_type: str | None = None
     ) -> None:
         """Record an API call with outcome."""
         self.metrics.api.record_call(endpoint, success, error_type)
@@ -504,13 +504,13 @@ def start_metrics_collection(interval: int = 60) -> None:
     _metrics_collector.start_collection(interval)
 
 
-def get_metrics() -> Dict[str, Any]:
+def get_metrics() -> dict[str, Any]:
     """Get current performance metrics."""
     return _metrics_collector.get_metrics()
 
 
 def record_api_call(
-    endpoint: str, success: bool = True, error_type: Optional[str] = None
+    endpoint: str, success: bool = True, error_type: str | None = None
 ) -> None:
     """Record an API call with outcome."""
     _metrics_collector.record_api_call(endpoint, success, error_type)

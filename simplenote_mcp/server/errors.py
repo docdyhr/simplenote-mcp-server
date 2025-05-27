@@ -4,7 +4,7 @@ import logging
 import re
 import uuid
 from enum import Enum
-from typing import Any, List, Optional
+from typing import Any
 
 from .error_codes import format_error_code
 
@@ -102,14 +102,14 @@ class ServerError(Exception):
         category: ErrorCategory = ErrorCategory.UNKNOWN,
         severity: ErrorSeverity = ErrorSeverity.ERROR,
         recoverable: bool = True,
-        original_error: Optional[Exception] = None,
-        details: Optional[dict[str, Any]] = None,
-        subcategory: Optional[str] = None,
-        resource_id: Optional[str] = None,
-        operation: Optional[str] = None,
-        user_message: Optional[str] = None,
-        resolution_steps: Optional[List[str]] = None,
-        trace_id: Optional[str] = None,
+        original_error: Exception | None = None,
+        details: dict[str, Any] | None = None,
+        subcategory: str | None = None,
+        resource_id: str | None = None,
+        operation: str | None = None,
+        user_message: str | None = None,
+        resolution_steps: list[str] | None = None,
+        trace_id: str | None = None,
         **kwargs,
     ):
         """Initialize a new ServerError.
@@ -237,7 +237,7 @@ class ServerError(Exception):
             logger.info(log_message, extra=extra, exc_info=self.original_error)
 
     @property
-    def resolution_steps(self) -> List[str]:
+    def resolution_steps(self) -> list[str]:
         """Get the resolution steps for this error."""
         if self._resolution_steps is not None:
             return self._resolution_steps

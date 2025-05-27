@@ -12,7 +12,7 @@ import json
 import os
 import subprocess
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 # Define report categories
 REPORT_CATEGORIES = {
@@ -25,7 +25,7 @@ REPORT_CATEGORIES = {
 }
 
 
-def run_command(cmd: List[str], cwd: Optional[str] = None) -> Tuple[str, str, int]:
+def run_command(cmd: list[str], cwd: str | None = None) -> tuple[str, str, int]:
     """Run a command and return stdout, stderr, and return code.
 
     Args:
@@ -49,7 +49,7 @@ def run_command(cmd: List[str], cwd: Optional[str] = None) -> Tuple[str, str, in
         return "", str(e), 1
 
 
-def check_formatting(project_dir: str) -> Dict[str, Any]:
+def check_formatting(project_dir: str) -> dict[str, Any]:
     """Check code formatting using ruff.
 
     Args:
@@ -77,7 +77,7 @@ def check_formatting(project_dir: str) -> Dict[str, Any]:
     }
 
 
-def run_linting(project_dir: str) -> Dict[str, Any]:
+def run_linting(project_dir: str) -> dict[str, Any]:
     """Run linting checks using ruff.
 
     Args:
@@ -118,7 +118,7 @@ def run_linting(project_dir: str) -> Dict[str, Any]:
     }
 
 
-def run_mypy(project_dir: str) -> Dict[str, Any]:
+def run_mypy(project_dir: str) -> dict[str, Any]:
     """Run type checking using mypy.
 
     Args:
@@ -166,7 +166,7 @@ def run_mypy(project_dir: str) -> Dict[str, Any]:
     }
 
 
-def run_bandit(project_dir: str) -> Dict[str, Any]:
+def run_bandit(project_dir: str) -> dict[str, Any]:
     """Run security checks using bandit.
 
     Args:
@@ -187,7 +187,7 @@ def run_bandit(project_dir: str) -> Dict[str, Any]:
 
     if os.path.exists(results_file):
         try:
-            with open(results_file, "r") as f:
+            with open(results_file) as f:
                 bandit_result = json.load(f)
 
             result_data["status"] = "fail" if bandit_result.get("results") else "pass"
@@ -211,7 +211,7 @@ def run_bandit(project_dir: str) -> Dict[str, Any]:
     return result_data
 
 
-def run_coverage_report(project_dir: str) -> Dict[str, Any]:
+def run_coverage_report(project_dir: str) -> dict[str, Any]:
     """Generate test coverage report.
 
     Args:
@@ -268,7 +268,7 @@ def run_coverage_report(project_dir: str) -> Dict[str, Any]:
     return coverage_data
 
 
-def run_docstring_coverage(project_dir: str) -> Dict[str, Any]:
+def run_docstring_coverage(project_dir: str) -> dict[str, Any]:
     """Check docstring coverage using docstr-coverage.
 
     Args:
@@ -319,7 +319,7 @@ def run_docstring_coverage(project_dir: str) -> Dict[str, Any]:
     }
 
 
-def save_report(report: Dict[str, Any], output_dir: str) -> str:
+def save_report(report: dict[str, Any], output_dir: str) -> str:
     """Save the report to a JSON file.
 
     Args:
@@ -343,7 +343,7 @@ def save_report(report: Dict[str, Any], output_dir: str) -> str:
     return filepath
 
 
-def update_trend_data(report: Dict[str, Any], trend_file: str) -> None:
+def update_trend_data(report: dict[str, Any], trend_file: str) -> None:
     """Update trend data file with new report metrics.
 
     Args:
@@ -365,7 +365,7 @@ def update_trend_data(report: Dict[str, Any], trend_file: str) -> None:
     trend_data = []
     if os.path.exists(trend_file):
         try:
-            with open(trend_file, "r") as f:
+            with open(trend_file) as f:
                 trend_data = json.load(f)
         except json.JSONDecodeError:
             trend_data = []
@@ -389,7 +389,7 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
         Path to HTML report
     """
     try:
-        with open(report_file, "r") as f:
+        with open(report_file) as f:
             report = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         return ""

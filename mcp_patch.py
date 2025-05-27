@@ -7,7 +7,8 @@ are missing in the installed version of MCP.
 """
 
 import logging
-from typing import Any, Callable, Dict, TypeVar
+from collections.abc import Callable
+from typing import Any, TypeVar
 
 from mcp.server import Server
 
@@ -16,9 +17,9 @@ logger = logging.getLogger(__name__)
 F = TypeVar("F", bound=Callable[..., Any])
 
 # Store decorated functions
-RESOURCE_PROVIDERS: Dict[str, Callable] = {}
-TOOL_PROVIDERS: Dict[str, Callable] = {}
-PROMPT_PROVIDERS: Dict[str, Callable] = {}
+RESOURCE_PROVIDERS: dict[str, Callable] = {}
+TOOL_PROVIDERS: dict[str, Callable] = {}
+PROMPT_PROVIDERS: dict[str, Callable] = {}
 
 
 def apply_patch() -> None:

@@ -8,7 +8,7 @@ This module tests the note pinning and custom sorting features.
 import asyncio
 import os
 import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import pytest
 
@@ -41,7 +41,7 @@ class NoteOrganizer:
     """Handles note organization features like pinning and sorting."""
 
     @staticmethod
-    def pin_note(cache, note_id: str) -> Dict[str, Any]:
+    def pin_note(cache, note_id: str) -> dict[str, Any]:
         """Pin a note so it appears at the top of lists."""
         if not cache._initialized:
             raise RuntimeError("Cache not initialized")
@@ -69,7 +69,7 @@ class NoteOrganizer:
         return updated_note
 
     @staticmethod
-    def unpin_note(cache, note_id: str) -> Dict[str, Any]:
+    def unpin_note(cache, note_id: str) -> dict[str, Any]:
         """Unpin a previously pinned note."""
         if not cache._initialized:
             raise RuntimeError("Cache not initialized")
@@ -99,12 +99,12 @@ class NoteOrganizer:
     @staticmethod
     def get_sorted_notes(
         cache,
-        limit: Optional[int] = None,
-        tag_filter: Optional[str] = None,
+        limit: int | None = None,
+        tag_filter: str | None = None,
         sort_by: str = "modified_date",
         pinned_only: bool = False,
         include_pinned_first: bool = True,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """Get notes with enhanced organization options."""
         if not cache._initialized:
             raise RuntimeError("Cache not initialized")
@@ -275,7 +275,7 @@ def add_organization_to_cache(cache_instance):
 @pytest.fixture
 async def organization_test_notes(
     simplenote_client, organization_cache
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Create test notes for organization tests with different titles and lengths."""
     notes = []
     note_ids = []

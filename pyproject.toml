@@ -78,29 +78,25 @@ line-length = 88
 # D: pydocstyle
 select = ["E", "F", "W", "I", "B", "C4", "ARG", "SIM", "S", "ANN", "UP", "N", "D"]
 ignore = [
-    "E203",  # Whitespace before ':' (conflicts with Black)
-    "E501",  # Line too long (handled by formatter)
-    "ANN101",  # Missing type annotation for `self`
-    "ANN102",  # Missing type annotation for `cls`
+    "E203",    # Whitespace before ':' (conflicts with Black)
+    "E501",    # Line too long (handled by formatter)
     "ANN401",  # Dynamically typed expressions (Any) are disallowed
-    "D203",  # One blank line required before class docstring
-    "D212",  # Multi-line docstring summary should start at first line
-    "D107",  # Missing docstring in __init__
-    "S101"   # Use of assert (needed for pytest)
+    "D203",    # 1 blank line required before class docstring
+    "D212",    # Multi-line docstring summary should start at the first line
+    "D107",    # Missing docstring in __init__
+    "S101",    # Use of assert detected (allow in tests)
+    "S108",    # Probable insecure usage of temporary file (needed for PID files)
+    "S603",    # Subprocess call: check for execution of untrusted input (needed for launching)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401", "D104"]  # Unused imports, missing docstring in package
-"tests/*" = ["ARG001", "ARG002", "S101", "ANN", "D"]  # Unused args, assert, type hints in tests
-"simplenote_mcp/tests/*" = ["ARG001", "ARG002", "S101", "ANN", "D", "E402"]  # Same + imports not at top
-"**/conftest.py" = ["D", "ANN"]  # Skip docstrings and annotations in test fixtures
+"__init__.py" = ["F401", "D104"]  # Allow unused imports and missing docstrings in __init__.py
+"tests/*" = ["ARG001", "ARG002", "S101", "ANN", "D"]  # Relax rules for test files
+"simplenote_mcp/tests/*" = ["ARG001", "ARG002", "S101", "ANN", "D", "E402"]  # Allow import issues in tests
+"**/conftest.py" = ["D", "ANN"]  # Allow missing docstrings and annotations in conftest
 
 [tool.ruff.lint.isort]
 known-first-party = ["simplenote_mcp"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
-
-# Security checks configuration
-[tool.ruff.lint.bandit]
-exclude-pathnames = ["tests/*", "simplenote_mcp/tests/*"]

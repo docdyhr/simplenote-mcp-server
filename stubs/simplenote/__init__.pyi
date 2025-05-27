@@ -1,6 +1,6 @@
 """Type stubs for Simplenote library."""
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 class simplenote:
     """Simplenote module stub."""
@@ -14,15 +14,15 @@ class Simplenote:
         """Initialize with username and password."""
         pass
 
-    def get_note(self, note_id: str) -> Tuple[Optional[Dict[str, Any]], int]:
+    def get_note(self, note_id: str) -> tuple[dict[str, Any] | None, int]:
         """Get a note by ID."""
         pass
 
-    def update_note(self, note: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], int]:
+    def update_note(self, note: dict[str, Any]) -> tuple[dict[str, Any] | None, int]:
         """Update a note."""
         pass
 
-    def add_note(self, note: Dict[str, Any]) -> Tuple[Optional[Dict[str, Any]], int]:
+    def add_note(self, note: dict[str, Any]) -> tuple[dict[str, Any] | None, int]:
         """Add a new note."""
         pass
 
@@ -32,8 +32,8 @@ class Simplenote:
 
     def get_note_list(
         self,
-        since: Optional[Union[str, float]] = None,
-        tags: Optional[List[str]] = None,
-    ) -> Tuple[Union[List[Dict[str, Any]], Dict[str, Any]], int]:
+        since: str | float | None = None,
+        tags: list[str] | None = None,
+    ) -> tuple[list[dict[str, Any]] | dict[str, Any], int]:
         """Get list of notes."""
         pass

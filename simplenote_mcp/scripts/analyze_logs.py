@@ -68,7 +68,7 @@ class LogAnalyzer:
                 return False
 
             print(f"Loading logs from {self.log_path}")
-            with open(self.log_path, "r") as f:
+            with open(self.log_path) as f:
                 self.logs = f.readlines()
 
             print(f"Loaded {len(self.logs)} log lines")

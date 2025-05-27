@@ -6,7 +6,7 @@ import json
 import os
 import sys
 import time
-from typing import Any, Dict
+from typing import Any
 
 # Add parent directory to path for running the script directly
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
@@ -312,13 +312,13 @@ def example_error_handling_patterns() -> None:
     """Examples of error handling patterns."""
     print("\n=== Error Handling Patterns ===")
 
-    def simulate_api_call(should_fail: bool = False) -> Dict[str, Any]:
+    def simulate_api_call(should_fail: bool = False) -> dict[str, Any]:
         """Simulate an API call that might fail."""
         if should_fail:
             raise ConnectionError("Failed to connect to API: Connection timed out")
         return {"success": True, "data": {"notes": []}}
 
-    def get_notes_with_retry(max_retries: int = 3) -> Dict[str, Any]:
+    def get_notes_with_retry(max_retries: int = 3) -> dict[str, Any]:
         """Get notes with retry logic."""
         retry_count = 0
         while retry_count < max_retries:

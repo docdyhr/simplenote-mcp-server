@@ -1,7 +1,6 @@
 """Tests for edge cases in the advanced search functionality."""
 
 from datetime import datetime, timedelta
-from typing import Dict, List, Union
 
 import pytest
 
@@ -88,7 +87,7 @@ class TestSearchEngineEdgeCases:
     """Test edge cases for SearchEngine."""
 
     @pytest.fixture
-    def edge_case_notes(self) -> Dict[str, Dict[str, Union[str, List[str], datetime]]]:
+    def edge_case_notes(self) -> dict[str, dict[str, str | list[str] | datetime]]:
         """Sample notes for edge case testing."""
         now = datetime.now()
         yesterday = now - timedelta(days=1)

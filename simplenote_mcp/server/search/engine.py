@@ -3,7 +3,7 @@
 import asyncio
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any
 
 from ..logging import logger
 from .parser import QueryParser, QueryToken, TokenType
@@ -25,11 +25,11 @@ class SearchEngine:
 
     def search(
         self,
-        notes: Dict[str, Dict[str, Any]],
+        notes: dict[str, dict[str, Any]],
         query: str,
-        tag_filters: Optional[List[str]] = None,
-        date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]] = None,
-    ) -> List[Dict[str, Any]]:
+        tag_filters: list[str] | None = None,
+        date_range: tuple[datetime | None, datetime | None] | None = None,
+    ) -> list[dict[str, Any]]:
         """Search notes using advanced query capabilities.
 
         Args:
@@ -152,7 +152,7 @@ class SearchEngine:
         else:
             return []
 
-    def _matches_tags(self, note: Dict[str, Any], tags: Set[str]) -> bool:
+    def _matches_tags(self, note: dict[str, Any], tags: set[str]) -> bool:
         """Check if a note matches the specified tags.
 
         Args:
@@ -179,8 +179,8 @@ class SearchEngine:
 
     def _is_in_date_range(
         self,
-        note: Dict[str, Any],
-        date_range: Tuple[Optional[datetime], Optional[datetime]],
+        note: dict[str, Any],
+        date_range: tuple[datetime | None, datetime | None],
     ) -> bool:
         """Check if a note's modification date is within the specified range.
 
@@ -226,7 +226,7 @@ class SearchEngine:
         return not (to_date and note_date > to_date)
 
     def _evaluate_expression(
-        self, note: Dict[str, Any], tokens: List[QueryToken]
+        self, note: dict[str, Any], tokens: list[QueryToken]
     ) -> bool:
         """Evaluate a boolean expression against a note.
 
@@ -252,7 +252,7 @@ class SearchEngine:
         return result
 
     def _parse_or_expression(
-        self, note: Dict[str, Any], tokens: List[QueryToken], pos: List[int]
+        self, note: dict[str, Any], tokens: list[QueryToken], pos: list[int]
     ) -> bool:
         """Parse an OR expression (term OR term OR ...).
 
@@ -282,7 +282,7 @@ class SearchEngine:
         return result
 
     def _parse_and_expression(
-        self, note: Dict[str, Any], tokens: List[QueryToken], pos: List[int]
+        self, note: dict[str, Any], tokens: list[QueryToken], pos: list[int]
     ) -> bool:
         """Parse an AND expression (term AND term AND ...).
 
@@ -312,7 +312,7 @@ class SearchEngine:
         return result
 
     def _parse_not_expression(
-        self, note: Dict[str, Any], tokens: List[QueryToken], pos: List[int]
+        self, note: dict[str, Any], tokens: list[QueryToken], pos: list[int]
     ) -> bool:
         """Parse a NOT expression (NOT term).
 
@@ -339,7 +339,7 @@ class SearchEngine:
         return result
 
     def _parse_primary(
-        self, note: Dict[str, Any], tokens: List[QueryToken], pos: List[int]
+        self, note: dict[str, Any], tokens: list[QueryToken], pos: list[int]
     ) -> bool:
         """Parse a primary expression (term, phrase, or grouped expression).
 
@@ -389,7 +389,7 @@ class SearchEngine:
             return False
 
     def _content_contains(
-        self, note: Dict[str, Any], search_term: str, exact: bool = False
+        self, note: dict[str, Any], search_term: str, exact: bool = False
     ) -> bool:
         """Check if note content contains the search term.
 
@@ -436,7 +436,7 @@ class SearchEngine:
             # Case-insensitive match for regular terms
             return search_term.lower() in content.lower()
 
-    def _get_modify_date(self, note: Dict[str, Any]) -> datetime:
+    def _get_modify_date(self, note: dict[str, Any]) -> datetime:
         """Extract the modification date from a note.
 
         Args:
@@ -463,7 +463,7 @@ class SearchEngine:
             logger.warning(f"Invalid note modification date format: {modify_date}")
             return datetime.fromtimestamp(0)
 
-    def _calculate_relevance(self, note: Dict[str, Any], query: str) -> int:
+    def _calculate_relevance(self, note: dict[str, Any], query: str) -> int:
         """Calculate relevance score for a note.
 
         Args:

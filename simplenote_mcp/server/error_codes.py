@@ -13,7 +13,6 @@ Format: {PREFIX}_{SUBCAT}_{IDENTIFIER}
 Example: AUTH_CRD_a1b2 - Authentication error with credentials subcategory
 """
 
-from typing import Dict, Optional
 
 # Category prefixes mapping from enum values to code prefixes
 CATEGORY_PREFIXES = {
@@ -156,7 +155,7 @@ COMMON_ERRORS = {
 }
 
 
-def parse_error_code(code: str) -> Optional[Dict[str, str]]:
+def parse_error_code(code: str) -> dict[str, str] | None:
     """Parse an error code into its components.
 
     Args:
@@ -188,7 +187,7 @@ def parse_error_code(code: str) -> Optional[Dict[str, str]]:
     }
 
 
-def get_error_description(code: str) -> Optional[str]:
+def get_error_description(code: str) -> str | None:
     """Get the description for a common error code.
 
     Args:

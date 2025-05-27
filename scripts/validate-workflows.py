@@ -8,7 +8,7 @@ to ensure they are properly configured and follow best practices.
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 
@@ -18,9 +18,9 @@ class WorkflowValidator:
 
     def __init__(self, workflows_dir: str = ".github/workflows"):
         self.workflows_dir = Path(workflows_dir)
-        self.errors: List[str] = []
-        self.warnings: List[str] = []
-        self.validated_workflows: List[str] = []
+        self.errors: list[str] = []
+        self.warnings: list[str] = []
+        self.validated_workflows: list[str] = []
 
     def validate_all_workflows(self) -> bool:
         """Validate all workflow files in the directory"""
@@ -50,7 +50,7 @@ class WorkflowValidator:
     def validate_workflow_file(self, workflow_file: Path) -> bool:
         """Validate a single workflow file"""
         try:
-            with open(workflow_file, "r", encoding="utf-8") as f:
+            with open(workflow_file, encoding="utf-8") as f:
                 content = f.read()
                 # Fix YAML boolean parsing issue with 'on' keyword
                 workflow = yaml.safe_load(content)
@@ -82,7 +82,7 @@ class WorkflowValidator:
         )
 
     def _validate_required_fields(
-        self, file_path: Path, workflow: Dict[str, Any]
+        self, file_path: Path, workflow: dict[str, Any]
     ) -> bool:
         """Validate required workflow fields"""
         required_fields = ["name", "on", "jobs"]
@@ -95,7 +95,7 @@ class WorkflowValidator:
 
         return success
 
-    def _validate_triggers(self, file_path: Path, workflow: Dict[str, Any]) -> bool:
+    def _validate_triggers(self, file_path: Path, workflow: dict[str, Any]) -> bool:
         """Validate workflow triggers"""
         if "on" not in workflow:
             return False
@@ -116,7 +116,7 @@ class WorkflowValidator:
 
         return True
 
-    def _validate_jobs(self, file_path: Path, workflow: Dict[str, Any]) -> bool:
+    def _validate_jobs(self, file_path: Path, workflow: dict[str, Any]) -> bool:
         """Validate workflow jobs"""
         if "jobs" not in workflow:
             return False
@@ -138,7 +138,7 @@ class WorkflowValidator:
         return success
 
     def _validate_job(
-        self, file_path: Path, job_name: str, job_config: Dict[str, Any]
+        self, file_path: Path, job_name: str, job_config: dict[str, Any]
     ) -> bool:
         """Validate a single job"""
         if not isinstance(job_config, dict):
@@ -166,7 +166,7 @@ class WorkflowValidator:
         return True
 
     def _validate_step(
-        self, file_path: Path, job_name: str, step_index: int, step: Dict[str, Any]
+        self, file_path: Path, job_name: str, step_index: int, step: dict[str, Any]
     ) -> bool:
         """Validate a single step"""
         if not isinstance(step, dict):
@@ -200,7 +200,7 @@ class WorkflowValidator:
         return True
 
     def _validate_best_practices(
-        self, file_path: Path, workflow: Dict[str, Any]
+        self, file_path: Path, workflow: dict[str, Any]
     ) -> bool:
         """Validate workflow best practices"""
         workflow_name = workflow.get("name", "").lower()
@@ -252,7 +252,7 @@ class WorkflowValidator:
 
         for workflow_file in self.validated_workflows:
             try:
-                with open(workflow_file, "r", encoding="utf-8") as f:
+                with open(workflow_file, encoding="utf-8") as f:
                     workflow = yaml.safe_load(f)
 
                 if workflow and isinstance(workflow, dict):

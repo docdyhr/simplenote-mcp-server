@@ -2,7 +2,6 @@
 
 import os
 from enum import Enum
-from typing import Optional
 
 
 class LogLevel(Enum):
@@ -39,10 +38,10 @@ class Config:
 
     def __init__(self) -> None:
         # Simplenote credentials
-        self.simplenote_email: Optional[str] = os.environ.get(
+        self.simplenote_email: str | None = os.environ.get(
             "SIMPLENOTE_EMAIL"
         ) or os.environ.get("SIMPLENOTE_USERNAME")
-        self.simplenote_password: Optional[str] = os.environ.get("SIMPLENOTE_PASSWORD")
+        self.simplenote_password: str | None = os.environ.get("SIMPLENOTE_PASSWORD")
 
         # Sync configuration
         self.sync_interval_seconds: int = int(
@@ -113,7 +112,7 @@ class Config:
 
 
 # Global configuration singleton
-_config: Optional[Config] = None
+_config: Config | None = None
 
 
 def get_config() -> Config:

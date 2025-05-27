@@ -36,7 +36,7 @@ def setup_logging(level="DEBUG", format_type="json"):
 def print_log_entries(log_file, count=5):
     """Print the most recent log entries from a file."""
     try:
-        with open(log_file, "r") as f:
+        with open(log_file) as f:
             lines = f.readlines()
             print(f"\n=== Last {min(count, len(lines))} entries from {log_file} ===")
             for line in lines[-count:]:

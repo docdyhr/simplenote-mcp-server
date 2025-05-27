@@ -2,7 +2,6 @@
 
 import re
 from enum import Enum, auto
-from typing import List
 
 
 class TokenType(Enum):
@@ -60,7 +59,7 @@ class QueryParser:
         self.original_query = query_string
         self.tokens = self._tokenize(query_string)
 
-    def _tokenize(self, query: str) -> List[QueryToken]:
+    def _tokenize(self, query: str) -> list[QueryToken]:
         """Tokenize the query string into tokens.
 
         Args:

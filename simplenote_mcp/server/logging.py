@@ -11,7 +11,7 @@ import uuid
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from .config import LogLevel, get_config
 
@@ -401,7 +401,7 @@ def get_request_logger(request_id, **context):
 
 
 # API metrics tracking
-def record_api_call(name: str, success: bool, error_type: Optional[str] = None) -> None:
+def record_api_call(name: str, success: bool, error_type: str | None = None) -> None:
     """Record API call metrics for monitoring.
 
     Args:

@@ -4,7 +4,7 @@ import asyncio
 import hashlib
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Optional
 
 from simplenote import Simplenote
 
@@ -43,23 +43,23 @@ class NoteCache:
 
         """
         self._client = client
-        self._notes: Dict[str, Dict[str, Any]] = {}  # Map of note ID to note data
+        self._notes: dict[str, dict[str, Any]] = {}  # Map of note ID to note data
         self._last_sync: float = 0  # Timestamp of last sync
         self._initialized: bool = False
-        self._tags: Set[str] = set()  # Set of all unique tags
+        self._tags: set[str] = set()  # Set of all unique tags
         self._lock = asyncio.Lock()  # Lock for thread-safe access
         self._search_engine = SearchEngine()  # Search engine for advanced search
 
         # New data structures for optimized cache
-        self._tag_index: Dict[
-            str, Set[str]
+        self._tag_index: dict[
+            str, set[str]
         ] = {}  # Map of tag to set of note IDs with that tag
-        self._query_cache: Dict[
-            str, Tuple[float, List[Dict[str, Any]]]
+        self._query_cache: dict[
+            str, tuple[float, list[dict[str, Any]]]
         ] = {}  # Cache for search queries
         self._query_cache_ttl: float = 60.0  # Cache TTL in seconds
-        self._title_index: Dict[
-            str, List[str]
+        self._title_index: dict[
+            str, list[str]
         ] = {}  # Map of first word in title to note IDs (for prefix search)
 
     async def initialize(self) -> int:
@@ -82,7 +82,7 @@ class NoteCache:
         max_retries = 3
         retry_count = 0
         retry_delay = 2
-        notes_data: List[Dict[str, Any]] = []  # Initialize to empty list
+        notes_data: list[dict[str, Any]] = []  # Initialize to empty list
 
         while retry_count < max_retries:
             try:
@@ -210,11 +210,9 @@ class NoteCache:
         max_retries = 2
         retry_count = 0
         retry_delay = 1
-        result: Union[
-            List[Dict[str, Any]], Dict[str, Any]
-        ] = []  # Initialize result to avoid unbound variable
-        notes_data: List[
-            Dict[str, Any]
+        result: list[dict[str, Any]] | dict[str, Any] = []  # Initialize result to avoid unbound variable
+        notes_data: list[
+            dict[str, Any]
         ] = []  # Initialize notes_data to avoid unbound variable
 
         while retry_count < max_retries:
@@ -345,7 +343,7 @@ class NoteCache:
             # This allows the sync loop to continue rather than crashing
             return 0
 
-    def get_note(self, note_id: str) -> Optional[dict]:
+    def get_note(self, note_id: str) -> dict | None:
         """Get a note from the cache by ID.
 
         Args:
@@ -391,8 +389,8 @@ class NoteCache:
 
     def get_all_notes(
         self,
-        limit: Optional[int] = None,
-        tag_filter: Optional[str] = None,
+        limit: int | None = None,
+        tag_filter: str | None = None,
         offset: int = 0,
         sort_by: str = "modifydate",
         sort_direction: str = "desc",
@@ -484,11 +482,11 @@ class NoteCache:
     def search_notes(
         self,
         query: str,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         offset: int = 0,
-        tag_filters: Optional[List[str]] = None,
-        date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]] = None,
-    ) -> List[Dict[str, Any]]:
+        tag_filters: list[str] | None = None,
+        date_range: tuple[datetime | None, datetime | None] | None = None,
+    ) -> list[dict[str, Any]]:
         """Search for notes in the cache using advanced search capabilities.
 
         Args:
@@ -636,8 +634,8 @@ class NoteCache:
     def _generate_search_cache_key(
         self,
         query: str,
-        tag_filters: Optional[List[str]],
-        date_range: Optional[Tuple[Optional[datetime], Optional[datetime]]],
+        tag_filters: list[str] | None,
+        date_range: tuple[datetime | None, datetime | None] | None,
     ) -> str:
         """Generate a cache key for search results.
 
@@ -881,7 +879,7 @@ class NoteCache:
         return len(self._notes)
 
     def get_pagination_info(
-        self, total_items: int, limit: Optional[int], offset: int
+        self, total_items: int, limit: int | None, offset: int
     ) -> dict:
         """Generate pagination metadata for a result set.
 
@@ -970,7 +968,7 @@ class NoteCache:
 class BackgroundSync:
     """Background task for periodically synchronizing the note cache."""
 
-    def __init__(self, cache: NoteCache, config: Optional[Config] = None) -> None:
+    def __init__(self, cache: NoteCache, config: Config | None = None) -> None:
         """Initialize the background sync task.
 
         Args:
@@ -982,7 +980,7 @@ class BackgroundSync:
         self._cache = cache
         self._config = config or get_config()
         self._running = False
-        self._task: Optional[asyncio.Task] = None
+        self._task: asyncio.Task | None = None
 
     async def start(self) -> None:
         """Start the background sync task."""
@@ -1017,7 +1015,7 @@ class BackgroundSync:
                 logger.debug("Task cancelled successfully")
             except asyncio.CancelledError:
                 logger.debug("Task was cancelled as expected")
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 logger.warning("Timed out waiting for background sync task to cancel")
             except Exception as e:
                 logger.error(
@@ -1077,7 +1075,7 @@ class BackgroundSync:
                                 f"Background sync completed in {elapsed:.2f}s (no changes)"
                             )
 
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         elapsed = time.time() - start_time
                         logger.warning(f"Sync operation timed out after {elapsed:.2f}s")
                         # Count as a failure for backoff purposes

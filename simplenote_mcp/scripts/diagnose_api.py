@@ -11,7 +11,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime
-from typing import Dict, TypedDict
+from typing import TypedDict
 
 from simplenote_mcp.server.compat import Path
 
@@ -81,7 +81,7 @@ def test_internet_connectivity() -> bool:
             "✅ Internet connectivity check passed - successfully connected to Google DNS"
         )
         return True
-    except (socket.timeout, socket.error) as e:
+    except (TimeoutError, OSError) as e:
         print_and_log(f"❌ Internet connectivity check failed: {e}")
         print_and_log("  This suggests your machine has no internet connection")
         return False
@@ -141,7 +141,7 @@ def test_tls_connection() -> bool:
                 print_and_log(
                     f"  Certificate valid until: {cert.get('notAfter', 'Unknown')}"
                 )
-        except (socket.error, ssl.SSLError) as e:
+        except (OSError, ssl.SSLError) as e:
             print_and_log(f"❌ TLS connection failed to {domain}: {e}")
             print_and_log(
                 f"  This suggests TLS/SSL issues or the {domain} endpoint is unreachable"
@@ -433,7 +433,7 @@ def get_system_info() -> None:
         print_and_log("  Platform module not available")
 
 
-def provide_recommendations(test_results: Dict[str, bool]) -> None:
+def provide_recommendations(test_results: dict[str, bool]) -> None:
     """Provide recommendations based on test results."""
     print_and_log("\n=== Recommendations ===")
 

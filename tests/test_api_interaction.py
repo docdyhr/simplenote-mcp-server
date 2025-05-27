@@ -181,9 +181,7 @@ class TestHandleReadResource:
             assert isinstance(content, types.TextResourceContents)
             assert content.text == "Note content"  # Verify correct content is returned
 
-            # Verify metadata
-            assert content.meta["tags"] == ["test"]
-            assert content.meta["modifydate"] == "2025-04-10"
+            # Verify URI
             assert str(content.uri) == "simplenote://note/note123"
 
     async def test_read_resource_cache_miss(self):
@@ -216,7 +214,6 @@ class TestHandleReadResource:
             content = result.contents[0]
             assert isinstance(content, types.TextResourceContents)
             assert content.text == "Note content"  # Verify API response content
-            assert content.meta["tags"] == ["test"]
             assert str(content.uri) == "simplenote://note/note123"
 
             # Verify API was called

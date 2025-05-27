@@ -9,7 +9,7 @@ using improved pytest assertions with detailed error messages.
 import asyncio
 import os
 import sys
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -32,7 +32,7 @@ logger = get_logger("tests.note_operations")
 
 @pytest.mark.asyncio
 async def test_note_creation(
-    simplenote_client, test_note_content: str, test_tags: List[str]
+    simplenote_client, test_note_content: str, test_tags: list[str]
 ):
     """Test creating a new note with improved assertions."""
     # Arrange
@@ -68,7 +68,7 @@ async def test_note_creation(
 
 
 @pytest.mark.asyncio
-async def test_note_retrieval(test_note: Dict[str, Any]):
+async def test_note_retrieval(test_note: dict[str, Any]):
     """Test retrieving a note with improved assertions."""
     # Arrange
     note_id = test_note["key"]
@@ -99,7 +99,7 @@ async def test_note_retrieval(test_note: Dict[str, Any]):
 
 
 @pytest.mark.asyncio
-async def test_note_update(test_note: Dict[str, Any]):
+async def test_note_update(test_note: dict[str, Any]):
     """Test updating a note with improved assertions."""
     # Arrange
     simplenote_client = get_simplenote_client()
@@ -156,7 +156,7 @@ async def test_note_update(test_note: Dict[str, Any]):
 
 @pytest.mark.asyncio
 async def test_note_delete(
-    simplenote_client, test_note_content: str, test_tags: List[str]
+    simplenote_client, test_note_content: str, test_tags: list[str]
 ):
     """Test deleting a note with improved assertions."""
     # Arrange - Create a note to delete
@@ -191,7 +191,7 @@ async def test_note_delete(
 
 
 @pytest.mark.asyncio
-async def test_note_cache_operations(note_cache, test_note: Dict[str, Any]):
+async def test_note_cache_operations(note_cache, test_note: dict[str, Any]):
     """Test note cache operations with improved assertions."""
     # Arrange
     note_id = test_note["key"]
@@ -298,7 +298,7 @@ async def test_note_with_special_characters(simplenote_client):
 
 
 @pytest.mark.asyncio
-async def test_tag_operations(simplenote_client, test_note: Dict[str, Any]):
+async def test_tag_operations(simplenote_client, test_note: dict[str, Any]):
     """Test tag operations with improved assertions."""
     # Arrange
     original_tags = set(test_note.get("tags", []))

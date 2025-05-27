@@ -12,7 +12,6 @@ import os
 import sys
 import time
 from enum import Enum
-from typing import List, Optional, Tuple
 
 # Add the parent directory to the Python path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -56,7 +55,7 @@ def check_environment() -> bool:
     return True
 
 
-def discover_tests(category: TestCategory = TestCategory.ALL) -> List[str]:
+def discover_tests(category: TestCategory = TestCategory.ALL) -> list[str]:
     """Discover test modules based on category.
 
     Args:
@@ -107,7 +106,7 @@ def discover_tests(category: TestCategory = TestCategory.ALL) -> List[str]:
 
 async def run_single_test_async(
     test_path: str, verbose: bool = False
-) -> Tuple[bool, str]:
+) -> tuple[bool, str]:
     """Run a single test module asynchronously.
 
     Args:
@@ -142,7 +141,7 @@ async def run_single_test_async(
         return False, error_message
 
 
-async def run_tests_async(test_paths: List[str], verbose: bool = False) -> bool:
+async def run_tests_async(test_paths: list[str], verbose: bool = False) -> bool:
     """Run multiple test modules asynchronously.
 
     Args:
@@ -212,7 +211,7 @@ async def run_tests_async(test_paths: List[str], verbose: bool = False) -> bool:
 
 
 def run_pytest(
-    test_paths: Optional[List[str]] = None,
+    test_paths: list[str] | None = None,
     verbose: bool = False,
     coverage: bool = False,
     junit: bool = False,

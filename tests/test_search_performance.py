@@ -4,7 +4,7 @@ import random
 import string
 import time
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 import pytest
 
@@ -346,7 +346,7 @@ class TestSearchStress:
         engine = SearchEngine()
 
         # Define a list of benchmark cases with proper typing
-        benchmark_cases: List[Tuple[str, str, Optional[List[str]]]] = [
+        benchmark_cases: list[tuple[str, str, list[str] | None]] = [
             ("Simple term", "project", None),
             ("Multiple terms", "project meeting report", None),
             ("Boolean AND", "project AND meeting", None),
@@ -361,7 +361,7 @@ class TestSearchStress:
             ("Term with tag filter", "project", ["work"]),
         ]
 
-        results: Dict[str, Dict[str, Any]] = {}
+        results: dict[str, dict[str, Any]] = {}
 
         # Run each benchmark case multiple times
         runs = 5

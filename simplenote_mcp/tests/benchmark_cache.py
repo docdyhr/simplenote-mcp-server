@@ -12,7 +12,7 @@ import os
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict
+from typing import Any
 
 # Add the parent directory to the Python path
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -49,8 +49,8 @@ class BenchmarkResult:
         """
         self.name = name
         self.description = description
-        self.timings: Dict[str, float] = {}
-        self.metadata: Dict[str, Any] = {}
+        self.timings: dict[str, float] = {}
+        self.metadata: dict[str, Any] = {}
         self.start_time = datetime.now()
 
     def add_timing(self, operation: str, seconds: float) -> None:
@@ -71,7 +71,7 @@ class BenchmarkResult:
         """
         self.metadata[key] = value
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert result to dictionary.
 
         Returns:

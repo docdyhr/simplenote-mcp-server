@@ -1,6 +1,6 @@
 """Type stubs for MCP library."""
 
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 class MCP:
     """Base MCP class stub for type checking."""
@@ -20,24 +20,24 @@ class types:
 
         text: str
         uri: str
-        meta: Dict[str, Any]
+        meta: dict[str, Any]
 
     class ReadResourceResult:
         """Resource read result."""
 
-        contents: List[Any]
-        meta: Dict[str, Any]
+        contents: list[Any]
+        meta: dict[str, Any]
 
     class ToolCallResult:
         """Tool call result."""
 
         text: str
-        meta: Dict[str, Any]
+        meta: dict[str, Any]
 
     class Resource:
         """Resource representation."""
 
         uri: str
         name: str
-        description: Optional[str]
-        meta: Dict[str, Any]
+        description: str | None
+        meta: dict[str, Any]
