@@ -1094,11 +1094,10 @@ class BackgroundSync:
                     consecutive_failures += 1
 
                     # Calculate backoff delay using exponential backoff with jitter
-                    import hashlib
-                    import time
-
                     # Use deterministic jitter based on time for non-cryptographic purposes
-                    time_hash = int(hashlib.md5(str(time.time()).encode()).hexdigest()[:8], 16)
+                    time_hash = int(
+                        hashlib.sha256(str(time.time()).encode()).hexdigest()[:8], 16
+                    )
                     jitter = 0.8 + (time_hash % 1000) / 2500  # 20% jitter (0.8 to 1.2)
                     current_retry_delay = min(
                         max_retry_delay,

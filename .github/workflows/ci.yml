@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
 
 env:
   PYTHON_VERSION: "3.12"
@@ -30,12 +30,15 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
         pip install ruff mypy pytest pytest-asyncio pytest-cov
+      continue-on-error: false
     
     - name: Run Ruff linting
       run: ruff check . || echo "Linting issues found but continuing"
+      continue-on-error: true
     
     - name: Run Ruff formatting check
       run: ruff format --check . || echo "Formatting issues found but continuing"
+      continue-on-error: true
     
     - name: Type checking with MyPy
       run: mypy simplenote_mcp --config-file=mypy.ini || echo "Type checking issues found but continuing"
@@ -69,6 +72,7 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
         pip install pytest pytest-asyncio pytest-cov
+      continue-on-error: false
     
     - name: Run tests
       run: |
