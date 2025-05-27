@@ -210,7 +210,9 @@ class NoteCache:
         max_retries = 2
         retry_count = 0
         retry_delay = 1
-        result: list[dict[str, Any]] | dict[str, Any] = []  # Initialize result to avoid unbound variable
+        result: (
+            list[dict[str, Any]] | dict[str, Any]
+        ) = []  # Initialize result to avoid unbound variable
         notes_data: list[
             dict[str, Any]
         ] = []  # Initialize notes_data to avoid unbound variable

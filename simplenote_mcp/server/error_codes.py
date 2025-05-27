@@ -13,7 +13,6 @@ Format: {PREFIX}_{SUBCAT}_{IDENTIFIER}
 Example: AUTH_CRD_a1b2 - Authentication error with credentials subcategory
 """
 
-
 # Category prefixes mapping from enum values to code prefixes
 CATEGORY_PREFIXES = {
     "authentication": "AUTH",
