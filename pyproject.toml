@@ -3,7 +3,7 @@ name = "simplenote-mcp-server"
 version = "1.4.0"
 description = "A simple MCP Server that connects to Simplenote"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "Thomas Juul Dyhr", email = "docdyhr@me.com" }]
 dependencies = ["mcp[cli]>=0.4.0", "simplenote>=2.1.4"]
@@ -48,7 +48,7 @@ requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true

@@ -2,9 +2,9 @@ name: Performance Monitoring
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, develop ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, develop ]
   schedule:
     - cron: '0 2 * * 1'  # Weekly on Monday at 2 AM UTC
   workflow_dispatch:
@@ -21,7 +21,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: '3.10'
         cache: 'pip'
     
     - name: Install dependencies
@@ -165,7 +165,7 @@ jobs:
         @profile
         def memory_test():
             # Simulate typical server operations
-            from simplenote_mcp.cache.cache import NoteCache
+            from simplenote_mcp.server.cache import NoteCache
             
             cache = NoteCache()
             
@@ -313,7 +313,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: '3.10'
     
     - name: Install dependencies
       run: |
