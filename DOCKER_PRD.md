@@ -5,6 +5,7 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 1. Containerization Requirements
 
 ### 1.1 Docker Image Specifications
+
 - Base image should be lightweight and appropriate for the runtime environment (e.g., `node:20-slim` for Node.js applications)
 - Multi-architecture support required (x86_64 and ARM64)
 - Final image size should be optimized (<500MB preferred)
@@ -12,6 +13,7 @@ This document outlines the technical requirements for containerizing a Model Con
 - Proper versioning using semantic versioning (e.g., v1.0.0, v1.1.0)
 
 ### 1.2 Docker Configuration
+
 - Proper `WORKDIR` definition
 - Non-root user execution for security
 - Appropriate port exposure (default: 8000)
@@ -24,6 +26,7 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 2. MCP Protocol Compliance
 
 ### 2.1 Protocol Support
+
 - Must fully implement Model Context Protocol specification
 - Support for all required MCP endpoints:
   - `tools/list`
@@ -34,6 +37,7 @@ This document outlines the technical requirements for containerizing a Model Con
 - Support for standard MCP transports (HTTP+SSE and/or stdio)
 
 ### 2.2 MCP Server Metadata
+
 - Clear and descriptive tool and resource definitions
 - Comprehensive documentation in tool descriptions
 - Proper categorization of tools/resources
@@ -42,6 +46,7 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 3. Security Requirements
 
 ### 3.1 Container Security
+
 - No hardcoded secrets or credentials
 - Support for Docker Secrets for credential management
 - Minimal container permissions
@@ -50,6 +55,7 @@ This document outlines the technical requirements for containerizing a Model Con
 - Vulnerability monitoring and patching process
 
 ### 3.2 Authentication & Authorization
+
 - Support for OAuth 2.1 framework for authentication (for HTTP transport)
 - Implementation of proper access controls
 - Rate limiting implementation
@@ -59,6 +65,7 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 4. Performance Requirements
 
 ### 4.1 Resource Allocation
+
 - Defined CPU limits and requests
 - Defined memory limits and requests
 - Identified storage requirements
@@ -66,6 +73,7 @@ This document outlines the technical requirements for containerizing a Model Con
 - Graceful degradation under load
 
 ### 4.2 Scalability
+
 - Stateless design where possible
 - Horizontal scaling capability
 - Load balancing support
@@ -74,12 +82,14 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 5. Integration Requirements
 
 ### 5.1 Docker MCP Toolkit Compatibility
+
 - Compatible with Docker MCP Toolkit extension
 - One-click setup capability with popular MCP clients
 - Support for connection via Docker's Gateway MCP Server
 - Compatibility with the `docker mcp` CLI
 
 ### 5.2 MCP Client Support
+
 - Verified compatibility with Claude
 - Verified compatibility with Docker AI Agent (Gordon)
 - Verified compatibility with other popular MCP clients (Cursor, VS Code, etc.)
@@ -88,6 +98,7 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 6. Documentation & Metadata Requirements
 
 ### 6.1 Container Documentation
+
 - Comprehensive README with usage examples
 - Clear environment variable documentation
 - Sample docker-compose configuration
@@ -95,6 +106,7 @@ This document outlines the technical requirements for containerizing a Model Con
 - Contribution guidelines
 
 ### 6.2 Docker Hub Metadata
+
 - Comprehensive description
 - Example usage
 - Link to source repository
@@ -105,6 +117,7 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 7. Testing Requirements
 
 ### 7.1 Container Tests
+
 - Automated build testing
 - Container startup testing
 - Container health check testing
@@ -112,6 +125,7 @@ This document outlines the technical requirements for containerizing a Model Con
 - Security scanning
 
 ### 7.2 MCP Protocol Tests
+
 - Tool functionality tests
 - Resource functionality tests
 - Protocol compliance tests
@@ -121,6 +135,7 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 8. Maintenance Requirements
 
 ### 8.1 Update Procedures
+
 - Defined update process for base images
 - Dependency management strategy
 - Versioning strategy
@@ -128,6 +143,7 @@ This document outlines the technical requirements for containerizing a Model Con
 - Deprecation policy for older versions
 
 ### 8.2 Monitoring & Observability
+
 - Container health metrics
 - Log output standardization
 - Performance metrics collection
@@ -137,12 +153,14 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 9. License & Compliance Requirements
 
 ### 9.1 Licensing
+
 - Compatible open source license (e.g., MIT)
 - Proper license documentation
 - Attribution for third-party components
 - License compatibility verification
 
 ### 9.2 Compliance
+
 - Data privacy compliance considerations
 - Export control compliance
 - Appropriate disclaimers and warnings
@@ -151,12 +169,14 @@ This document outlines the technical requirements for containerizing a Model Con
 ## 10. Simplenote-Specific Requirements
 
 ### 10.1 API Integration
+
 - Secure handling of Simplenote API tokens
 - Proper error handling for API rate limits
 - Efficient caching of Simplenote data
 - Support for all required Simplenote operations
 
 ### 10.2 Feature Requirements
+
 - Implementation of all required note management features
 - Support for tags and metadata
 - Support for search functionality

@@ -25,16 +25,21 @@ except ImportError:
 
     psutil = types.ModuleType("psutil")
 
-    def cpu_percent(_interval=0.1):
+    def cpu_percent(_interval: float = 0.1) -> float:
+        """Mock CPU percent function when psutil is not available."""
         return 0.0
 
-    def virtual_memory():
+    def virtual_memory() -> Any:
+        """Mock virtual memory function when psutil is not available."""
+
         class VirtualMemory:
             percent = 0.0
 
         return VirtualMemory()
 
-    def disk_usage(_path):
+    def disk_usage(_path: str) -> Any:
+        """Mock disk usage function when psutil is not available."""
+
         class DiskUsage:
             percent = 0.0
 
@@ -264,7 +269,7 @@ class ResourceMetrics:
             self.memory_samples.append(memory_info.percent)
 
             # Disk usage for the logs directory
-            disk_usage = psutil.disk_usage(METRICS_DIR.parent)
+            disk_usage = psutil.disk_usage(str(METRICS_DIR.parent))
             self.disk_usage = disk_usage.percent
         except Exception as e:
             logger.error(f"Error updating resource metrics: {str(e)}")
@@ -401,21 +406,21 @@ class MetricsCollector:
     _instance = None
     _lock = threading.Lock()
 
-    def __new__(cls):
+    def __new__(cls) -> "MetricsCollector":
         """Create a singleton instance."""
         with cls._lock:
             if cls._instance is None:
-                cls._instance = super(MetricsCollector, cls).__new__(cls)
+                cls._instance = super().__new__(cls)
                 cls._instance._initialized = False
             return cls._instance
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the metrics collector."""
         if self._initialized:
             return
 
         self.metrics = PerformanceMetrics()
-        self._collection_thread = None
+        self._collection_thread: threading.Thread | None = None
         self._running = False
         self._collection_interval = 60  # seconds
         self._initialized = True
@@ -429,7 +434,7 @@ class MetricsCollector:
         self._collection_interval = interval
         self._running = True
 
-        def collection_task():
+        def collection_task() -> None:
             logger.info(f"Starting metrics collection (interval: {interval}s)")
             while self._running:
                 try:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GitHub Actions Workflow Validation Script
+GitHub Actions Workflow Validation Script.
 
 This script validates all GitHub Actions workflows in the repository
 to ensure they are properly configured and follow best practices.
@@ -14,16 +14,16 @@ import yaml
 
 
 class WorkflowValidator:
-    """Validates GitHub Actions workflows"""
+    """Validates GitHub Actions workflows."""
 
-    def __init__(self, workflows_dir: str = ".github/workflows"):
+    def __init__(self, workflows_dir: str = ".github/workflows") -> None:
         self.workflows_dir = Path(workflows_dir)
         self.errors: list[str] = []
         self.warnings: list[str] = []
         self.validated_workflows: list[str] = []
 
     def validate_all_workflows(self) -> bool:
-        """Validate all workflow files in the directory"""
+        """Validate all workflow files in the directory."""
         if not self.workflows_dir.exists():
             self.errors.append(
                 f"Workflows directory {self.workflows_dir} does not exist"
@@ -48,7 +48,7 @@ class WorkflowValidator:
         return success
 
     def validate_workflow_file(self, workflow_file: Path) -> bool:
-        """Validate a single workflow file"""
+        """Validate a single workflow file."""
         try:
             with open(workflow_file, encoding="utf-8") as f:
                 content = f.read()
@@ -84,7 +84,7 @@ class WorkflowValidator:
     def _validate_required_fields(
         self, file_path: Path, workflow: dict[str, Any]
     ) -> bool:
-        """Validate required workflow fields"""
+        """Validate required workflow fields."""
         required_fields = ["name", "on", "jobs"]
         success = True
 
@@ -96,7 +96,7 @@ class WorkflowValidator:
         return success
 
     def _validate_triggers(self, file_path: Path, workflow: dict[str, Any]) -> bool:
-        """Validate workflow triggers"""
+        """Validate workflow triggers."""
         if "on" not in workflow:
             return False
 
@@ -117,7 +117,7 @@ class WorkflowValidator:
         return True
 
     def _validate_jobs(self, file_path: Path, workflow: dict[str, Any]) -> bool:
-        """Validate workflow jobs"""
+        """Validate workflow jobs."""
         if "jobs" not in workflow:
             return False
 
@@ -140,7 +140,7 @@ class WorkflowValidator:
     def _validate_job(
         self, file_path: Path, job_name: str, job_config: dict[str, Any]
     ) -> bool:
-        """Validate a single job"""
+        """Validate a single job."""
         if not isinstance(job_config, dict):
             self.errors.append(f"{file_path}: Job '{job_name}' must be a dictionary")
             return False
@@ -168,7 +168,7 @@ class WorkflowValidator:
     def _validate_step(
         self, file_path: Path, job_name: str, step_index: int, step: dict[str, Any]
     ) -> bool:
-        """Validate a single step"""
+        """Validate a single step."""
         if not isinstance(step, dict):
             self.errors.append(
                 f"{file_path}: Job '{job_name}' step {step_index} must be a dictionary"
@@ -202,7 +202,7 @@ class WorkflowValidator:
     def _validate_best_practices(
         self, file_path: Path, workflow: dict[str, Any]
     ) -> bool:
-        """Validate workflow best practices"""
+        """Validate workflow best practices."""
         workflow_name = workflow.get("name", "").lower()
 
         # Check for security best practices
@@ -246,7 +246,7 @@ class WorkflowValidator:
         return True
 
     def check_workflow_consistency(self) -> bool:
-        """Check for consistency across workflows"""
+        """Check for consistency across workflows."""
         # Check Python versions consistency
         python_versions = {}
 
@@ -263,8 +263,9 @@ class WorkflowValidator:
                             python_versions.setdefault(workflow_file, set()).add("3.11")
                         if "'3.12'" in workflow_str or '"3.12"' in workflow_str:
                             python_versions.setdefault(workflow_file, set()).add("3.12")
-            except Exception:
+            except Exception as e:
                 # Skip files that can't be read for consistency check
+                print(f"Warning: Could not read {workflow_file}: {e}")
                 continue
 
         # Check for inconsistencies
@@ -282,7 +283,7 @@ class WorkflowValidator:
         return True
 
     def generate_report(self) -> str:
-        """Generate validation report"""
+        """Generate validation report."""
         report = ["🔍 GitHub Actions Workflow Validation Report", "=" * 50, ""]
 
         if self.validated_workflows:
@@ -313,8 +314,8 @@ class WorkflowValidator:
         return "\n".join(report)
 
 
-def main():
-    """Main validation function"""
+def main() -> int:
+    """Main validation function."""
     validator = WorkflowValidator()
 
     print("Validating GitHub Actions workflows...")

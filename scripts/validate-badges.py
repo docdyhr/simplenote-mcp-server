@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Badge Validation Script
+Badge Validation Script.
 
 This script validates all badges in the README.md file to ensure they are
 working correctly and provides detailed status reporting.
@@ -10,6 +10,7 @@ import re
 import sys
 import time
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 try:
@@ -21,9 +22,9 @@ except ImportError:
 
 
 class BadgeValidator:
-    """Validates badges in README files"""
+    """Validates badges in README files."""
 
-    def __init__(self, readme_path: str = "README.md"):
+    def __init__(self, readme_path: str = "README.md") -> None:
         self.readme_path = Path(readme_path)
         self.session = requests.Session()
         self.session.headers.update(
@@ -31,7 +32,7 @@ class BadgeValidator:
         )
 
     def extract_badge_urls(self) -> list[str]:
-        """Extract all badge URLs from README"""
+        """Extract all badge URLs from README."""
         if not self.readme_path.exists():
             raise FileNotFoundError(f"README file not found: {self.readme_path}")
 
@@ -49,8 +50,8 @@ class BadgeValidator:
         all_urls = list(set(badge_urls + img_urls))
         return sorted(all_urls)
 
-    def validate_badge(self, url: str) -> tuple[bool, int, str]:
-        """Validate a single badge URL"""
+    def validate_badge(self, url: str) -> dict[str, Any]:
+        """Validate a single badge URL."""
         try:
             response = self.session.get(url, timeout=10, allow_redirects=True)
 
@@ -79,7 +80,7 @@ class BadgeValidator:
             return False, 0, f"Unexpected Error: {str(e)[:50]}"
 
     def categorize_badge(self, url: str) -> str:
-        """Categorize badge by URL pattern"""
+        """Categorize badge by URL pattern."""
         if "actions/workflows" in url:
             return "GitHub Actions"
         elif "codecov" in url:
@@ -100,8 +101,8 @@ class BadgeValidator:
         else:
             return "External Service"
 
-    def validate_all_badges(self) -> dict:
-        """Validate all badges and return detailed report"""
+    def validate_all_badges(self) -> dict[str, Any]:
+        """Validate all badges and return results."""
         urls = self.extract_badge_urls()
 
         if not urls:
@@ -162,8 +163,28 @@ class BadgeValidator:
             "summary": f"{working} working, {failing} failing",
         }
 
+    def check_badge_accessibility(self, url: str) -> dict[str, Any]:
+        """Check if badge is accessible and responding."""
+        try:
+            response = self.session.get(url, timeout=10, allow_redirects=True)
+            accessible = response.status_code == 200
+        except Exception:
+            accessible = False
+
+        return {"url": url, "accessible": accessible}
+
+    def analyze_badge_status(self, url: str) -> dict[str, Any]:
+        """Analyze the status indicated by the badge."""
+        # Placeholder for future implementation
+        return {"url": url, "status": "unknown"}
+
+    def generate_detailed_report(self, results: dict[str, Any]) -> None:
+        """Generate detailed validation report."""
+        # Placeholder for future implementation
+        pass
+
     def generate_report(self, validation_results: dict) -> str:
-        """Generate a detailed validation report"""
+        """Generate a detailed validation report."""
         if validation_results["total"] == 0:
             return "No badges found to validate."
 
@@ -227,8 +248,8 @@ class BadgeValidator:
         self,
         validation_results: dict,
         output_path: str = "badge-validation-report.json",
-    ):
-        """Export validation results as JSON"""
+    ) -> None:
+        """Export validation results as JSON."""
         import json
         from datetime import datetime
 
@@ -244,8 +265,8 @@ class BadgeValidator:
         print(f"📄 JSON report exported to: {output_path}")
 
 
-def main():
-    """Main validation function"""
+def main() -> int:
+    """Main validation function."""
     import argparse
 
     parser = argparse.ArgumentParser(description="Validate badges in README.md")

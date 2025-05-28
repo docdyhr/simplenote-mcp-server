@@ -26,7 +26,7 @@ def apply_patch() -> None:
     """Apply the patch to add decorators to the Server class."""
     logger.info("Applying MCP Server patch to add missing decorators")
 
-    def resource_provider(_=None) -> Callable[[F], F]:
+    def resource_provider(_: Any = None) -> Callable[[F], F]:
         """Decorator for registering resource providers."""
 
         def decorator(func: F) -> F:
@@ -39,7 +39,7 @@ def apply_patch() -> None:
 
         return decorator
 
-    def list_resources(_=None) -> Callable[[F], F]:
+    def list_resources(_: Any = None) -> Callable[[F], F]:
         """Decorator for registering list_resources handler."""
 
         def decorator(func: F) -> F:
@@ -49,7 +49,7 @@ def apply_patch() -> None:
 
         return decorator
 
-    def read_resource(_=None) -> Callable[[F], F]:
+    def read_resource(_: Any = None) -> Callable[[F], F]:
         """Decorator for registering read_resource handler."""
 
         def decorator(func: F) -> F:
@@ -59,7 +59,7 @@ def apply_patch() -> None:
 
         return decorator
 
-    def tool(_) -> Callable[[F], F]:
+    def tool(_: Any) -> Callable[[F], F]:
         """Decorator for registering tools."""
 
         def decorator(func: F) -> F:
@@ -70,7 +70,7 @@ def apply_patch() -> None:
 
         return decorator
 
-    def call_tool(_=None) -> Callable[[F], F]:
+    def call_tool(_: Any = None) -> Callable[[F], F]:
         """Decorator for registering call_tool handlers."""
 
         def decorator(func: F) -> F:
@@ -83,7 +83,7 @@ def apply_patch() -> None:
 
         return decorator
 
-    def prompt_provider(_=None) -> Callable[[F], F]:
+    def prompt_provider(_: Any = None) -> Callable[[F], F]:
         """Decorator for registering prompt providers."""
 
         def decorator(func: F) -> F:
@@ -96,7 +96,7 @@ def apply_patch() -> None:
 
         return decorator
 
-    def list_prompts(_=None) -> Callable[[F], F]:
+    def list_prompts(_: Any = None) -> Callable[[F], F]:
         """Decorator for registering list_prompts handler."""
 
         def decorator(func: F) -> F:
@@ -106,7 +106,7 @@ def apply_patch() -> None:
 
         return decorator
 
-    def get_prompt(_=None) -> Callable[[F], F]:
+    def get_prompt(_: Any = None) -> Callable[[F], F]:
         """Decorator for registering get_prompt handler."""
 
         def decorator(func: F) -> F:

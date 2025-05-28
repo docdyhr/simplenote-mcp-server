@@ -1,4 +1,9 @@
 # simplenote_mcp/server/logging.py
+"""Logging configuration and utilities for the Simplenote MCP server.
+
+This module provides structured logging capabilities with context tracking,
+including trace IDs, request tracking, and comprehensive error handling.
+"""
 
 import inspect
 import json
@@ -8,6 +13,7 @@ import sys
 import tempfile
 import time
 import uuid
+from collections.abc import MutableMapping
 from datetime import datetime
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -67,9 +73,10 @@ def initialize_logging() -> None:
                 f"Setting logger level to: {log_level} from config.log_level: {config.log_level}\n"
             )
             f.write(f"Loading log level from environment: {config.log_level.value}\n")
-    except Exception:
+    except Exception as e:
         # If we can't write to the debug log, that's not critical
-        pass
+        # Log to stderr instead for debugging
+        print(f"Warning: Could not write to debug log: {e}", file=sys.stderr)
 
     # Always add stderr handler for Claude Desktop logs
     stderr_handler = logging.StreamHandler(sys.stderr)
@@ -217,9 +224,13 @@ def debug_to_file(message: str) -> None:
     try:
         with open(DEBUG_LOG_FILE, "a") as f:
             f.write(f"{datetime.now().isoformat()}: {message}\n")
-    except Exception:
+    except Exception as e:
         # Fail silently to ensure we don't break the MCP protocol
-        pass
+        # Only log to stderr in development (not production MCP)
+        import os
+
+        if os.getenv("MCP_DEBUG"):
+            print(f"Debug log write failed: {e}", file=sys.stderr)
 
 
 # Legacy function for backward compatibility
@@ -243,13 +254,19 @@ def log_debug(message: str) -> None:
 class StructuredLogAdapter(logging.LoggerAdapter):
     """Adapter for structured logging with context."""
 
-    def __init__(self, logger, extra=None):
+    trace_id: str | None
+
+    def __init__(
+        self, logger: logging.Logger, extra: dict[str, Any] | None = None
+    ) -> None:
         """Initialize with a logger and extra context."""
         self.trace_id = None
         extra = extra or {}
         super().__init__(logger, extra)
 
-    def process(self, msg, kwargs):
+    def process(
+        self, msg: str, kwargs: MutableMapping[str, Any]
+    ) -> tuple[str, MutableMapping[str, Any]]:
         """Process the log message and add context."""
         # Get caller information for detailed logs
         frame = inspect.currentframe()
@@ -300,42 +317,42 @@ class StructuredLogAdapter(logging.LoggerAdapter):
 
         return msg, kwargs
 
-    def debug(self, msg, *args, **kwargs):
+    def debug(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log a debug message with context."""
-        msg, kwargs = self.process(
+        processed_msg, processed_kwargs = self.process(
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
-        self.logger.debug(msg, *args, **kwargs)
+        self.logger.debug(processed_msg, *args, **processed_kwargs)
 
-    def info(self, msg, *args, **kwargs):
+    def info(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log an info message with context."""
-        msg, kwargs = self.process(
+        processed_msg, processed_kwargs = self.process(
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
-        self.logger.info(msg, *args, **kwargs)
+        self.logger.info(processed_msg, *args, **processed_kwargs)
 
-    def warning(self, msg, *args, **kwargs):
+    def warning(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log a warning message with context."""
-        msg, kwargs = self.process(
+        processed_msg, processed_kwargs = self.process(
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
-        self.logger.warning(msg, *args, **kwargs)
+        self.logger.warning(processed_msg, *args, **processed_kwargs)
 
-    def error(self, msg, *args, **kwargs):
+    def error(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log an error message with context."""
-        msg, kwargs = self.process(
+        processed_msg, processed_kwargs = self.process(
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
-        self.logger.error(msg, *args, **kwargs)
+        self.logger.error(processed_msg, *args, **processed_kwargs)
 
-    def critical(self, msg, *args, **kwargs):
+    def critical(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log a critical message with context."""
-        msg, kwargs = self.process(
+        processed_msg, processed_kwargs = self.process(
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
-        self.logger.critical(msg, *args, **kwargs)
+        self.logger.critical(processed_msg, *args, **processed_kwargs)
 
-    def with_context(self, **context):
+    def with_context(self, **context: Any) -> "StructuredLogAdapter":
         """Create a new logger with additional context."""
         if self.extra is not None and isinstance(self.extra, dict):
             new_extra = dict(self.extra)
@@ -354,7 +371,7 @@ class StructuredLogAdapter(logging.LoggerAdapter):
 
         return adapter
 
-    def trace(self, trace_id=None):
+    def trace(self, trace_id: str | None = None) -> "StructuredLogAdapter":
         """Add trace ID to logger context."""
         if trace_id is None:
             trace_id = str(uuid.uuid4())
@@ -364,7 +381,7 @@ class StructuredLogAdapter(logging.LoggerAdapter):
         return self
 
 
-def get_logger(name, **extra):
+def get_logger(name: str, **extra: Any) -> StructuredLogAdapter:
     """Get a logger with the given name and context.
 
     Args:
@@ -381,7 +398,7 @@ def get_logger(name, **extra):
     return StructuredLogAdapter(logging.getLogger(name), extra)
 
 
-def get_request_logger(request_id, **context):
+def get_request_logger(request_id: str, **context: Any) -> StructuredLogAdapter:
     """Get a logger for handling a specific request.
 
     Args:

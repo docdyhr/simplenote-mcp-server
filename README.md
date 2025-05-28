@@ -563,6 +563,21 @@ The linting setup can be verified with:
 
 For detailed information about the linting setup, see [docs/linting_guide.md](docs/linting_guide.md).
 
+## 🚨 CI/CD Status & Documentation
+
+> **Current Status (May 2025):** 🚨 **CRITICAL - Multiple workflow failures detected. Immediate attention required.**
+
+📋 **Complete CI/CD Documentation:**
+- **[CI/CD Documentation](./CICD_DOCUMENTATION.md)** ← **Single source of truth for all CI/CD information**
+
+**Key Information:**
+- ❌ **8 out of 13 workflows currently failing** (61.5% failure rate)
+- ✅ **Pipeline was fully operational in December 2024** 
+- 🔧 **Immediate action plan and troubleshooting guide included**
+- 📊 **Complete status, badge health, and recovery procedures**
+
+The CI/CD pipeline requires urgent attention to restore the reliable functionality achieved in December 2024.
+
 ## Contributing
 
 Contributions are welcome! Please open an issue first to discuss any significant changes. Read our [CONTRIBUTING.md](./CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.

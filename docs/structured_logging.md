@@ -7,6 +7,7 @@ This document provides a comprehensive guide to using structured logging in the 
 Structured logging provides a more consistent and machine-readable way to log events in the application. Instead of simple text messages, structured logs include additional context in a structured format (usually JSON), making them easier to search, filter, and analyze.
 
 Benefits of structured logging:
+
 - Improved searchability and filtering
 - Enhanced debugging capabilities
 - Better integration with log aggregation tools
@@ -161,7 +162,7 @@ When `LOG_FORMAT` is set to `json`, logs will be output in JSON format:
 
 To convert existing log calls to use structured logging:
 
-#### Before:
+#### Before
 
 ```python
 logger.info(f"Updated {notes_count} notes in cache in {elapsed:.2f}s")
@@ -169,7 +170,7 @@ logger.info(f"Updated {notes_count} notes in cache in {elapsed:.2f}s")
 logger.error(f"Failed to find note with ID {note_id}")
 ```
 
-#### After:
+#### After
 
 ```python
 logger.with_context(

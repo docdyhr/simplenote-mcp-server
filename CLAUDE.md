@@ -3,6 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Project Structure
+
 ```
 simplenote_mcp/            # Main package
 ├── logs/                  # Log files directory
@@ -14,6 +15,7 @@ simplenote_mcp/            # Main package
 ```
 
 ## Commands
+
 - **Install**: `uv pip install -e .` or `pip install -e .`
 - **Run server**: `python simplenote_mcp_server.py` or `simplenote-mcp`
 - **Restart Claude and server**: `./simplenote_mcp/scripts/restart_claude.sh`
@@ -28,16 +30,20 @@ simplenote_mcp/            # Main package
 - **Type check**: `mypy simplenote_mcp`
 
 ## Environment Setup
+
 - Set `SIMPLENOTE_EMAIL` and `SIMPLENOTE_PASSWORD` environment variables for authentication
 - For Claude Desktop integration, add these variables to `claude_desktop_config.json`
 
 ## Server Structure
+
 The Simplenote MCP server provides:
+
 1. **Resources**: `list_resources()`, `read_resource()`
 2. **Tools**: `create_note`, `update_note`, `delete_note`, `get_note`, `search_notes`
 3. **Prompts**: `create_note_prompt`, `search_notes_prompt`
 
 ## Common Issues and Solutions
+
 1. **Tool registration issues**: Run `./simplenote_mcp/scripts/verify_tools.sh` and check logs with `./simplenote_mcp/scripts/watch_logs.sh`
 2. **Authentication issues**: Check environment variables or Claude Desktop config
 3. **API format issues**: The MCP library uses JSON Schema format with `inputSchema` property
@@ -49,6 +55,7 @@ The Simplenote MCP server provides:
 ### Ruff Linting Issues
 
 #### Import Issues (E402, F401, F811)
+
 - **E402**: Module level import not at top of file
   - Move all imports to the top of the file, before any code
   - If you need to modify sys.path before imports, use conditional imports or move the code to a function
@@ -58,6 +65,7 @@ The Simplenote MCP server provides:
   - Remove duplicate imports of the same module/symbol
 
 #### Code Style Issues (W293, B904, E722)
+
 - **W293**: Blank line contains whitespace
   - Remove whitespace from blank lines in docstrings and code
 - **B904**: Raise with `from` in except clauses
@@ -68,6 +76,7 @@ The Simplenote MCP server provides:
   - Use `except Exception:` for general error handling, but prefer specific exceptions
 
 #### Unused Variables and Expressions (F841, B007, B018)
+
 - **F841**: Unused local variables
   - Remove variables that are assigned but never used
   - If needed for API compatibility, prefix with underscore `_variable`
@@ -78,6 +87,7 @@ The Simplenote MCP server provides:
   - For side effects (like `1/0` for testing), assign to `_`: `_ = 1/0`
 
 #### Simplification Issues (SIM102, SIM103, SIM212)
+
 - **SIM102**: Nested if statements
   - Combine with `and`: `if cond1 and cond2:` instead of `if cond1: if cond2:`
 - **SIM103**: Return condition directly
@@ -86,46 +96,49 @@ The Simplenote MCP server provides:
   - Use `value if value else default` instead of `default if not value else value`
 
 #### Unused Arguments (ARG001, ARG002)
+
 - **ARG001/ARG002**: Unused function/method arguments
   - Remove unused parameters or prefix with underscore: `def func(_unused):`
   - If needed for API compatibility, explicitly mark with comment: `# Required by API`
 
 ## Important Code Sections
+
 - **Tool definition** (in handle_list_tools): Defines tools using JSON Schema format
 - **Authentication** (in get_simplenote_client): Handles Simplenote authentication
 - **Server initialization** (in run): Sets up the MCP server and capabilities
 
 ## Code Style Guidelines
-- **Imports**: 
+
+- **Imports**:
   - Group imports in this order: standard library, third-party, local imports
   - Include a blank line between groups
   - All imports must be at the top of the file (E402)
   - Avoid unused imports (F401)
   - Avoid redefinition of imports (F811)
 
-- **Typing**: 
+- **Typing**:
   - Use type hints for all function arguments and return values
   - Use `Optional[Type]` for parameters that can be None
   - Use `-> None` for functions that don't return a value
 
-- **Naming**: 
+- **Naming**:
   - Use `snake_case` for variables, functions, methods, and modules
   - Use `CamelCase` for classes
   - Prefix unused loop variables with underscore (`_variable`) (B007)
   - Prefix private attributes with underscore (_)
 
-- **Error handling**: 
+- **Error handling**:
   - Use try/except blocks with specific exceptions (E722)
   - Always use `raise ... from err` or `raise ... from None` in except blocks (B904)
   - Include meaningful error messages
   - Log exceptions with appropriate level (debug, info, warning, error)
 
-- **String formatting**: 
+- **String formatting**:
   - Prefer f-strings over other formats
   - For logging, use %-formatting or str.format() instead of f-strings
   - Avoid string concatenation with + for performance reasons
 
-- **Docstrings**: 
+- **Docstrings**:
   - Use docstrings for all functions explaining purpose and parameters
   - Follow Google docstring format
   - Avoid whitespace in blank lines within docstrings (W293)
@@ -144,11 +157,12 @@ The Simplenote MCP server provides:
   - Remove or use all function parameters (ARG001, ARG002)
   - Use default parameters appropriately
 
-- **Logging**: 
+- **Logging**:
   - Use the log_debug function for debug logging to stderr
   - Include contextual information in log messages
 
 ## Branch Management
+
 - **Feature branches**: Create a new branch for each feature using the naming convention `feature/feature-name`
 - **Implementation**: Implement and test the feature in its branch
 - **Merging**: After implementation is complete, remember to merge the feature branch into `main`
