@@ -26,8 +26,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
-        cache: 'pip'
+        python-version: '3.12'
         cache: 'pip'
     
     - name: Install dependencies
@@ -36,20 +35,32 @@ jobs:
         pip install -e .
         pip install bandit safety
       continue-on-error: true
+
+    - name: ✅ Verify Installation
+      run: |
+        echo "📦 Testing package import..."
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "🔧 Checking security tools..."
+        bandit --version
+        safety --version
+      continue-on-error: false
     
     - name: Run Bandit security scan
       run: |
-        bandit -r simplenote_mcp/ || echo "Bandit scan completed with issues"
+        echo "🔒 Running Bandit security scan..."
+        bandit -r simplenote_mcp/ || echo "⚠️ Bandit scan completed with issues"
       continue-on-error: true
     
     - name: Run Safety check
       run: |
-        safety check || echo "Safety check completed with issues"
+        echo "🛡️ Running Safety vulnerability check..."
+        safety check || echo "⚠️ Safety check completed with issues"
       continue-on-error: true
     
     - name: Security scan with ruff
       run: |
-        ruff check --select=S . || echo "Security linting completed with issues"
+        echo "🔍 Running security scan with Ruff..."
+        ruff check --select=S . || echo "⚠️ Security linting completed with issues"
       continue-on-error: true
 
   codeql-analysis:

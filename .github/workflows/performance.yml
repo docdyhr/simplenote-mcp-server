@@ -21,7 +21,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.12'
         cache: 'pip'
     
     - name: Install dependencies
@@ -30,9 +30,18 @@ jobs:
         pip install -e .
         pip install pytest pytest-benchmark memory-profiler psutil
       continue-on-error: false
+
+    - name: ✅ Verify Installation
+      run: |
+        echo "📦 Testing package import..."
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "🔧 Checking performance tools..."
+        python -c "import psutil, memory_profiler; print('✅ Performance tools ready')"
+      continue-on-error: false
     
     - name: Run performance benchmarks
       run: |
+        echo "⚡ Running performance benchmarks..."
         python - <<'EOF'
         import time
         import psutil

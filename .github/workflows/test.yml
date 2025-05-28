@@ -26,23 +26,40 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e .
-        pip install pytest pytest-asyncio pytest-cov
+        pip install pytest pytest-asyncio pytest-cov pytest-mock
       continue-on-error: false
     
-    - name: Run tests
+    - name: Verify installation
+      run: |
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "✅ Test dependencies installed successfully"
+    
+    - name: Run unit tests (fast tests only)
       env:
         SIMPLENOTE_EMAIL: "test@example.com"
         SIMPLENOTE_PASSWORD: "test_password"
+        SIMPLENOTE_OFFLINE_MODE: "true"
+        PYTHONPATH: ${{ github.workspace }}
       run: |
-        pytest tests/ -v --cov=simplenote_mcp --cov-report=xml --cov-report=html
+        # Run fast unit tests only, excluding integration tests
+        pytest tests/ -v \
+          --cov=simplenote_mcp \
+          --cov-report=xml \
+          --cov-report=html \
+          --ignore=tests/test_title_search_integration.py \
+          --ignore=tests/test_search_integration.py \
+          -k "not (integration or real_api or network or slow)" \
+          --durations=10
     
     - name: Upload coverage reports
+      if: matrix.python-version == '3.12'
       uses: codecov/codecov-action@v4
       with:
         file: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     runs-on: ubuntu-latest
@@ -59,25 +76,31 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install -e .
         pip install ruff mypy
+    
+    - name: Verify installation
+      run: |
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
     
     - name: Lint with ruff
       run: |
-        ruff check . || echo "Linting issues found but continuing"
+        ruff check . || echo "⚠️ Linting issues found but continuing"
       continue-on-error: true
     
     - name: Format check with ruff
       run: |
-        ruff format --check . || echo "Format issues found but continuing"
+        ruff format --check . || echo "⚠️ Format issues found but continuing"
       continue-on-error: true
     
     - name: Type check with mypy
       run: |
-        mypy simplenote_mcp --config-file=mypy.ini || echo "Type checking issues found but continuing"
+        mypy simplenote_mcp --config-file=mypy.ini || echo "⚠️ Type checking issues found but continuing"
       continue-on-error: true
 
   build:
     runs-on: ubuntu-latest
+    needs: [test, lint]
     
     steps:
     - uses: actions/checkout@v4
@@ -91,7 +114,7 @@ jobs:
     - name: Install build dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install build
+        pip install build twine
     
     - name: Build package
       run: |
@@ -99,5 +122,10 @@ jobs:
     
     - name: Check package
       run: |
-        pip install twine
         twine check dist/*
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-dist-packages
+        path: dist/

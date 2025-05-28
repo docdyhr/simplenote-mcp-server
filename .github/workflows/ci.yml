@@ -7,7 +7,7 @@ on:
     branches: [ main, develop ]
 
 env:
-  PYTHON_VERSION: "3.10"
+  PYTHON_VERSION: "3.12"
   PYTHON_VERSIONS: "3.10,3.11,3.12"
 
 jobs:
@@ -32,20 +32,25 @@ jobs:
         pip install ruff mypy pytest pytest-asyncio pytest-cov
       continue-on-error: false
     
+    - name: Verify installation
+      run: |
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "✅ Dependencies installed successfully"
+    
     - name: Run Ruff linting
-      run: ruff check . || echo "Linting issues found but continuing"
+      run: ruff check . || echo "⚠️ Linting issues found but continuing"
       continue-on-error: true
     
     - name: Run Ruff formatting check
-      run: ruff format --check . || echo "Formatting issues found but continuing"
+      run: ruff format --check . || echo "⚠️ Formatting issues found but continuing"
       continue-on-error: true
     
     - name: Type checking with MyPy
-      run: mypy simplenote_mcp --config-file=mypy.ini || echo "Type checking issues found but continuing"
+      run: mypy simplenote_mcp --config-file=mypy.ini || echo "⚠️ Type checking issues found but continuing"
       continue-on-error: true
     
     - name: Security check
-      run: ruff check --select=S . || echo "Security issues found but continuing"
+      run: ruff check --select=S . || echo "⚠️ Security issues found but continuing"
       continue-on-error: true
 
   test:
@@ -71,15 +76,30 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e .
-        pip install pytest pytest-asyncio pytest-cov
+        pip install pytest pytest-asyncio pytest-cov pytest-mock
       continue-on-error: false
     
-    - name: Run tests
+    - name: Verify installation
       run: |
-        pytest tests/ -v --cov=simplenote_mcp --cov-report=xml --cov-report=term
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "✅ Test dependencies installed successfully"
+    
+    - name: Run unit tests (excluding integration tests)
+      run: |
+        # Run tests excluding integration tests that require real API access
+        pytest tests/ -v \
+          --cov=simplenote_mcp \
+          --cov-report=xml \
+          --cov-report=term \
+          --ignore=tests/test_title_search_integration.py \
+          --ignore=tests/test_search_integration.py \
+          -k "not (integration or real_api or network)"
       env:
         SIMPLENOTE_EMAIL: "test@example.com"
         SIMPLENOTE_PASSWORD: "test_password"
+        # Use offline mode to prevent network calls
+        SIMPLENOTE_OFFLINE_MODE: "true"
+        PYTHONPATH: ${{ github.workspace }}
     
     - name: Upload coverage to Codecov
       if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
@@ -147,4 +167,4 @@ jobs:
     - name: Test package installation
       run: |
         pip install dist/*.whl
-        python -c "import simplenote_mcp; print('Package installed successfully')"
+        python -c "import simplenote_mcp; print('✅ Package installed successfully')"

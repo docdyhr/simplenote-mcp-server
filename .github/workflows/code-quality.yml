@@ -20,18 +20,29 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.12'
         cache: 'pip'
     
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -e .
-        pip install pre-commit ruff mypy pytest pytest-asyncio pytest-cov
+        pip install pre-commit ruff mypy pytest pytest-asyncio pytest-cov pytest-mock
+        
+    - name: ✅ Verify Installation
+      run: |
+        echo "📦 Testing package import..."
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "🔧 Checking tools..."
+        ruff --version
+        mypy --version
+        pre-commit --version
+      continue-on-error: false
         
     - name: Run pre-commit
       run: |
-        pre-commit run --all-files --show-diff-on-failure | tee pre-commit-output.txt || echo "Pre-commit issues found but continuing"
+        echo "🔧 Running pre-commit hooks..."
+        pre-commit run --all-files --show-diff-on-failure | tee pre-commit-output.txt || echo "⚠️ Pre-commit issues found but continuing"
       continue-on-error: true
         
     - name: Calculate issues
@@ -66,7 +77,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.12'
         cache: 'pip'
     
     - name: Install dependencies
@@ -75,12 +86,21 @@ jobs:
         pip install -e .
         pip install ruff
         
+    - name: ✅ Verify Installation
+      run: |
+        echo "📦 Testing package import..."
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "🔧 Checking ruff..."
+        ruff --version
+      continue-on-error: false
+        
     - name: Run security check with Ruff
       run: |
+        echo "🔒 Running security checks with Ruff..."
         # Run Ruff with only security rules and output to JSON
-        python -m ruff check --select=S --output-format=json simplenote_mcp > security-results.json || echo "Security issues found"
+        python -m ruff check --select=S --output-format=json simplenote_mcp > security-results.json || echo "⚠️ Security issues found"
         # Display human-readable results
-        python -m ruff check --select=S simplenote_mcp || echo "Security issues found but continuing"
+        python -m ruff check --select=S simplenote_mcp || echo "⚠️ Security issues found but continuing"
       continue-on-error: true
     
     - name: Upload security report
@@ -99,7 +119,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.12'
         cache: 'pip'
     
     - name: Install dependencies
@@ -108,9 +128,26 @@ jobs:
         pip install -e .
         pip install mypy
     
+    - name: ✅ Verify Installation
+      run: |
+        echo "📦 Testing package import..."
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "🔧 Checking mypy..."
+        mypy --version
+      continue-on-error: false
+    
+    - name: ✅ Verify Installation
+      run: |
+        echo "📦 Testing package import..."
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "🔧 Checking mypy..."
+        mypy --version
+      continue-on-error: false
+    
     - name: Run mypy type checking
       run: |
-        mypy simplenote_mcp --config-file=mypy.ini --html-report mypy-report || echo "Type checking issues found but continuing"
+        echo "🔍 Running mypy type checking..."
+        mypy simplenote_mcp --config-file=mypy.ini --html-report mypy-report || echo "⚠️ Type checking issues found but continuing"
       continue-on-error: true
     
     - name: Upload type checking report

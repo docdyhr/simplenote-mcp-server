@@ -27,35 +27,51 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -e .
-        pip install pytest pytest-cov pytest-asyncio ruff mypy
+        pip install pytest pytest-cov pytest-asyncio pytest-mock ruff mypy
       continue-on-error: false
+    
+    - name: Verify installation
+      run: |
+        python -c "import simplenote_mcp; print('✅ Package import successful')"
+        echo "✅ Dependencies installed successfully"
         
     - name: Lint with ruff
       run: |
-        ruff check . || echo "Linting issues found but continuing"
+        ruff check . || echo "⚠️ Linting issues found but continuing"
       continue-on-error: true
         
     - name: Format with ruff
       run: |
-        ruff format --check . || echo "Formatting issues found but continuing"
+        ruff format --check . || echo "⚠️ Formatting issues found but continuing"
       continue-on-error: true
         
     - name: Security check with ruff
       run: |
-        ruff check --select=S . || echo "Security issues found but continuing"
+        ruff check --select=S . || echo "⚠️ Security issues found but continuing"
       continue-on-error: true
         
     - name: Type check with mypy
       run: |
-        mypy simplenote_mcp --config-file=mypy.ini || echo "Type checking issues found but continuing"
+        mypy simplenote_mcp --config-file=mypy.ini || echo "⚠️ Type checking issues found but continuing"
       continue-on-error: true
         
-    - name: Test with pytest
+    - name: Test with pytest (unit tests only)
       run: |
-        pytest --cov=simplenote_mcp --cov-report=xml --cov-report=term tests/
+        # Run only unit tests, exclude integration tests that require real API
+        pytest \
+          --cov=simplenote_mcp \
+          --cov-report=xml \
+          --cov-report=term \
+          tests/ \
+          --ignore=tests/test_title_search_integration.py \
+          --ignore=tests/test_search_integration.py \
+          -k "not (integration or real_api or network)" \
+          -v
       env:
         SIMPLENOTE_EMAIL: "test@example.com"
         SIMPLENOTE_PASSWORD: "test_password"
+        SIMPLENOTE_OFFLINE_MODE: "true"
+        PYTHONPATH: ${{ github.workspace }}
         
     - name: Upload coverage to Codecov
       if: matrix.python-version == '3.12'
