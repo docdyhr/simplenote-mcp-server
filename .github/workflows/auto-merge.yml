@@ -89,7 +89,7 @@ jobs:
 
       - name: Auto merge PR
         if: steps.check.outputs.result == 'true'
-        uses: pascalgn/automerge-action@v0.16.3
+        uses: pascalgn/automerge-action@v0.16.4
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MERGE_METHOD: squash
