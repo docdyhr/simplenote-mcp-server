@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Monitoring Dashboard for Simplenote MCP Server
+Monitoring Dashboard for Simplenote MCP Server.
 
 A terminal-based dashboard that displays real-time metrics from the Simplenote MCP Server
 including API performance, cache statistics, tool usage, and system resources.
@@ -55,7 +55,7 @@ locale.setlocale(locale.LC_ALL, "")
 class MetricsHistory:
     """Stores historical metrics data for charting."""
 
-    def __init__(self, max_points: int = 20):
+    def __init__(self, max_points: int = 20) -> None:
         self.max_points = max_points
         self.api_response_times: list[float] = []
         self.cache_hit_rates: list[float] = []
@@ -166,10 +166,10 @@ def display_terminal_ui(
     curses.init_pair(4, curses.COLOR_CYAN, curses.COLOR_BLACK)
     curses.init_pair(5, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
 
-    GREEN = curses.color_pair(1)
-    YELLOW = curses.color_pair(2)
-    RED = curses.color_pair(3)
-    CYAN = curses.color_pair(4)
+    green = curses.color_pair(1)
+    yellow = curses.color_pair(2)
+    red = curses.color_pair(3)
+    cyan = curses.color_pair(4)
     # MAGENTA is not used in the current code
     # MAGENTA = curses.color_pair(5)
 
@@ -204,14 +204,14 @@ def display_terminal_ui(
 
             # API Section
             api_data = metrics.get("api", {})
-            stdscr.addstr(row, 0, "API Performance", curses.A_BOLD | CYAN)
+            stdscr.addstr(row, 0, "API Performance", curses.A_BOLD | cyan)
             row += 1
 
             calls = api_data.get("calls", {}).get("count", 0)
             success_rate = api_data.get("success_rate", 0)
             stdscr.addstr(row, 0, f"Total Calls: {calls} | Success Rate: ")
             color = (
-                GREEN if success_rate > 95 else (YELLOW if success_rate > 80 else RED)
+                green if success_rate > 95 else (yellow if success_rate > 80 else red)
             )
             stdscr.addstr(f"{format_percent(success_rate)}", color)
             row += 1
@@ -237,7 +237,7 @@ def display_terminal_ui(
             # Cache Section
             row += 1
             cache_data = metrics.get("cache", {})
-            stdscr.addstr(row, 0, "Cache Performance", curses.A_BOLD | CYAN)
+            stdscr.addstr(row, 0, "Cache Performance", curses.A_BOLD | cyan)
             row += 1
 
             hit_rate = cache_data.get("hit_rate", 0)
@@ -248,7 +248,7 @@ def display_terminal_ui(
             utilization = cache_data.get("utilization", 0)
 
             stdscr.addstr(row, 0, "Hit Rate: ")
-            color = GREEN if hit_rate > 90 else (YELLOW if hit_rate > 70 else RED)
+            color = green if hit_rate > 90 else (yellow if hit_rate > 70 else red)
             stdscr.addstr(f"{format_percent(hit_rate)}", color)
             stdscr.addstr(f" ({hits} hits, {misses} misses)")
             row += 1
@@ -263,7 +263,7 @@ def display_terminal_ui(
             # Resource Section
             row += 1
             resource_data = metrics.get("resources", {})
-            stdscr.addstr(row, 0, "System Resources", curses.A_BOLD | CYAN)
+            stdscr.addstr(row, 0, "System Resources", curses.A_BOLD | cyan)
             row += 1
 
             cpu_current = resource_data.get("cpu", {}).get("current", 0)
@@ -273,13 +273,13 @@ def display_terminal_ui(
             disk_usage = resource_data.get("disk", {}).get("usage_percent", 0)
 
             cpu_color = (
-                GREEN if cpu_current < 50 else (YELLOW if cpu_current < 80 else RED)
+                green if cpu_current < 50 else (yellow if cpu_current < 80 else red)
             )
             mem_color = (
-                GREEN if mem_current < 60 else (YELLOW if mem_current < 85 else RED)
+                green if mem_current < 60 else (yellow if mem_current < 85 else red)
             )
             disk_color = (
-                GREEN if disk_usage < 70 else (YELLOW if disk_usage < 90 else RED)
+                green if disk_usage < 70 else (yellow if disk_usage < 90 else red)
             )
 
             stdscr.addstr(row, 0, "CPU: ")
@@ -299,7 +299,7 @@ def display_terminal_ui(
             # Tool Usage Section
             row += 1
             tool_data = metrics.get("tools", {})
-            stdscr.addstr(row, 0, "Tool Usage", curses.A_BOLD | CYAN)
+            stdscr.addstr(row, 0, "Tool Usage", curses.A_BOLD | cyan)
             row += 1
 
             if "tool_calls" in tool_data and tool_data["tool_calls"]:
@@ -527,7 +527,7 @@ def display_rich_ui(metrics_history: MetricsHistory, refresh_interval: int) -> N
         console.print("[yellow]Dashboard stopped.[/yellow]")
 
 
-def main():
+def main() -> int:
     """Main entry point for the monitoring dashboard."""
     parser = argparse.ArgumentParser(
         description="Simplenote MCP Server Monitoring Dashboard"

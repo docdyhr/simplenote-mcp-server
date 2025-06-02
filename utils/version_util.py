@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+"""Version utility functions for the Simplenote MCP server."""
+
 import logging
 import sys
 

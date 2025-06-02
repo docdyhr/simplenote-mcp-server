@@ -143,10 +143,10 @@ async def test_note_update(test_note: dict[str, Any]):
 
     # Verify note version was incremented
     if "version" in test_note and "version" in updated_note:
-        assert isinstance(updated_note["version"], (int, float)), (
+        assert isinstance(updated_note["version"], int | float), (
             f"Version is not a number: {type(updated_note['version'])}"
         )
-        assert isinstance(test_note["version"], (int, float)), (
+        assert isinstance(test_note["version"], int | float), (
             f"Original version is not a number: {type(test_note['version'])}"
         )
         assert updated_note["version"] > test_note["version"], (

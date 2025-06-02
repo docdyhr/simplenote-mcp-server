@@ -20,11 +20,16 @@ repos:
     hooks:
     -   id: trailing-whitespace
         exclude: '\.md$'
+        args: [--markdown-linebreak-ext=md]
     -   id: end-of-file-fixer
     -   id: check-yaml
+        args: ['--unsafe']  # Allow custom YAML tags
     -   id: check-toml
+    -   id: check-json
     -   id: check-added-large-files
         args: ['--maxkb=500']
+    -   id: check-merge-conflict
+    -   id: check-case-conflict
     -   id: debug-statements
     -   id: check-docstring-first
     -   id: detect-private-key
@@ -35,7 +40,7 @@ repos:
     rev: v0.11.5
     hooks:
     -   id: ruff
-        args: ["--fix"]
+        args: ["--fix", "--show-fixes"]
         # Allow E402 (module level import not at top) for specific import patterns needed for Python 3.13+ compatibility
         exclude: |
           (?x)^(
@@ -46,6 +51,7 @@ repos:
               simplenote_mcp/tests/.*\.py
           )$
     -   id: ruff-format
+        args: ["--line-length=88"]
 
 -   repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.15.0

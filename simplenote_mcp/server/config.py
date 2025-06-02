@@ -1,4 +1,4 @@
-# simplenote_mcp/server/config.py
+"""Configuration management for the Simplenote MCP server."""
 
 import os
 from enum import Enum
@@ -51,6 +51,21 @@ class Config:
         # Resource listing configuration
         self.default_resource_limit: int = int(
             os.environ.get("DEFAULT_RESOURCE_LIMIT", "100")
+        )
+
+        # Content display configuration
+        self.title_max_length: int = int(os.environ.get("TITLE_MAX_LENGTH", "30"))
+        self.snippet_max_length: int = int(os.environ.get("SNIPPET_MAX_LENGTH", "100"))
+
+        # Cache configuration
+        self.cache_max_size: int = int(os.environ.get("CACHE_MAX_SIZE", "1000"))
+        self.cache_initialization_timeout: int = int(
+            os.environ.get("CACHE_INITIALIZATION_TIMEOUT", "60")
+        )
+
+        # Performance monitoring configuration
+        self.metrics_collection_interval: int = int(
+            os.environ.get("METRICS_COLLECTION_INTERVAL", "60")
         )
 
         # Logging configuration - check multiple possible environment variable names
@@ -108,6 +123,31 @@ class Config:
         if self.default_resource_limit < 1:
             raise ValueError(
                 f"DEFAULT_RESOURCE_LIMIT must be at least 1 (got {self.default_resource_limit})"
+            )
+
+        if self.title_max_length < 1:
+            raise ValueError(
+                f"TITLE_MAX_LENGTH must be at least 1 (got {self.title_max_length})"
+            )
+
+        if self.snippet_max_length < 1:
+            raise ValueError(
+                f"SNIPPET_MAX_LENGTH must be at least 1 (got {self.snippet_max_length})"
+            )
+
+        if self.cache_max_size < 1:
+            raise ValueError(
+                f"CACHE_MAX_SIZE must be at least 1 (got {self.cache_max_size})"
+            )
+
+        if self.cache_initialization_timeout < 1:
+            raise ValueError(
+                f"CACHE_INITIALIZATION_TIMEOUT must be at least 1 (got {self.cache_initialization_timeout})"
+            )
+
+        if self.metrics_collection_interval < 1:
+            raise ValueError(
+                f"METRICS_COLLECTION_INTERVAL must be at least 1 (got {self.metrics_collection_interval})"
             )
 
 

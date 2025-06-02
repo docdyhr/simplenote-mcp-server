@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# simplenote-mcp-server.py
+"""Entry point for the Simplenote MCP server."""
 
 import os
 import sys

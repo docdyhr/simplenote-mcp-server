@@ -46,7 +46,7 @@ class TestGetSimpleNoteClient:
             mock_config = MagicMock()
             mock_config.has_credentials = True
             mock_config.simplenote_email = "test@example.com"
-            mock_config.simplenote_password = "password"
+            mock_config.simplenote_password = "password"  # noqa: S105
             mock_get_config.return_value = mock_config
 
             # Configure Simplenote mock
@@ -70,7 +70,7 @@ class TestGetSimpleNoteClient:
             mock_config = MagicMock()
             mock_config.has_credentials = True
             mock_config.simplenote_email = "test@example.com"
-            mock_config.simplenote_password = "password"
+            mock_config.simplenote_password = "password"  # noqa: S105
             mock_get_config.return_value = mock_config
 
             # Configure Simplenote mock

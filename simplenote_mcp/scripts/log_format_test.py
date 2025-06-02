@@ -20,7 +20,7 @@ from simplenote_mcp.server.logging import (
 )
 
 
-def setup_logging(level="DEBUG", format_type="json"):
+def setup_logging(level: str = "DEBUG", format_type: str = "json") -> None:
     """Configure logging settings for the test."""
     os.environ["LOG_LEVEL"] = level
     os.environ["LOG_FORMAT"] = format_type
@@ -33,7 +33,7 @@ def setup_logging(level="DEBUG", format_type="json"):
     print(f"Logs will be written to: {LOG_FILE} and {DEBUG_LOG_FILE}")
 
 
-def print_log_entries(log_file, count=5):
+def print_log_entries(log_file: str, count: int = 5) -> None:
     """Print the most recent log entries from a file."""
     try:
         with open(log_file) as f:
@@ -53,7 +53,7 @@ def print_log_entries(log_file, count=5):
         print(f"Error reading log file {log_file}: {e}")
 
 
-def test_basic_logging():
+def test_basic_logging() -> None:
     """Test basic logging functionality."""
     print("\n=== Testing Basic Logging ===")
     logger.debug("This is a debug message")
@@ -68,7 +68,7 @@ def test_basic_logging():
         logger.error(f"Exception occurred: {e}", exc_info=True)
 
 
-def test_contextual_logging():
+def test_contextual_logging() -> None:
     """Test contextual logging functionality."""
     print("\n=== Testing Contextual Logging ===")
 
@@ -90,7 +90,7 @@ def test_contextual_logging():
     component_logger.info("Component logger test")
 
 
-def test_request_tracing():
+def test_request_tracing() -> None:
     """Test request tracing functionality."""
     print("\n=== Testing Request Tracing ===")
 
@@ -124,18 +124,18 @@ def test_request_tracing():
     ).info("Request completed successfully")
 
 
-def test_performance_logging():
+def test_performance_logging() -> None:
     """Test performance logging patterns."""
     print("\n=== Testing Performance Logging ===")
 
     perf_logger = get_logger("performance")
 
     # Measure function execution time
-    def timed_function(name):
+    def timed_function(name: str) -> callable:
         start_time = time.time()
 
         # Return a function to end the timer
-        def end_timer(**context):
+        def end_timer(**context) -> None:
             duration_ms = (time.time() - start_time) * 1000
             perf_logger.with_context(
                 operation=name, duration_ms=duration_ms, **context
@@ -155,7 +155,7 @@ def test_performance_logging():
     timer(endpoint="/api/v1/notes", status_code=200)
 
 
-def test_all_formats():
+def test_all_formats() -> None:
     """Test both JSON and standard logging formats."""
     # Test with JSON format
     setup_logging(format_type="json")

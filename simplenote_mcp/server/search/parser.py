@@ -22,7 +22,7 @@ class TokenType(Enum):
 class QueryToken:
     """Represents a token in a parsed search query."""
 
-    def __init__(self, token_type: TokenType, value: str):
+    def __init__(self, token_type: TokenType, value: str) -> None:
         """Initialize a query token.
 
         Args:
@@ -49,7 +49,7 @@ class QueryParser:
     - Grouping with parentheses: (term1 AND term2) OR term3
     """
 
-    def __init__(self, query_string: str):
+    def __init__(self, query_string: str) -> None:
         """Initialize a query parser.
 
         Args:
@@ -83,7 +83,7 @@ class QueryParser:
         # Extract quoted phrases
         phrases = []
 
-        def replace_phrase(match):
+        def replace_phrase(match) -> str:
             phrases.append(match.group(1))
             return f" __PHRASE_{len(phrases) - 1}__ "
 
@@ -93,11 +93,11 @@ class QueryParser:
         from_dates = []
         to_dates = []
 
-        def replace_from_date(match):
+        def replace_from_date(match) -> str:
             from_dates.append(match.group(1))
             return f" __FROM_{len(from_dates) - 1}__ "
 
-        def replace_to_date(match):
+        def replace_to_date(match) -> str:
             to_dates.append(match.group(1))
             return f" __TO_{len(to_dates) - 1}__ "
 
@@ -107,7 +107,7 @@ class QueryParser:
         # Extract tag filters
         tags = []
 
-        def replace_tag(match):
+        def replace_tag(match) -> str:
             tags.append(match.group(1))
             return f" __TAG_{len(tags) - 1}__ "
 

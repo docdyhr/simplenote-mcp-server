@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Simulate CI workflow by running the same setup as in CI"""
+"""Simulate CI workflow by running the same setup as in CI."""
 
 import hashlib
 import os

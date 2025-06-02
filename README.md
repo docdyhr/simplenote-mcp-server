@@ -14,8 +14,8 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Coverage](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
 
 <!-- Project Info Badges -->
-[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](./CHANGELOG.md)
+[![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
+[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Issues](https://img.shields.io/github/issues/docdyhr/simplenote-mcp-server)](https://github.com/docdyhr/simplenote-mcp-server/issues)
 [![GitHub Repo Stars](https://img.shields.io/github/stars/docdyhr/simplenote-mcp-server?style=social)](https://github.com/docdyhr/simplenote-mcp-server)
@@ -31,11 +31,13 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 ## 🔧 Features
 
-- 📝 Read and list Simplenote notes
-- 🔍 Advanced search with boolean operators, phrase matching, and filters
-- 🔐 Token-based authentication via `.env` or manual entry
-- ⚡ Local, fast, and easy to run
-- 🧩 Compatible with Claude Desktop and other MCP clients
+- 📝 **Full Note Management**: Read, create, update, and delete Simplenote notes
+- 🔍 **Advanced Search**: Boolean operators, phrase matching, tag and date filters
+- ⚡ **High Performance**: In-memory caching with background synchronization
+- 🔐 **Secure Authentication**: Token-based authentication via environment variables
+- 🧩 **MCP Compatible**: Works with Claude Desktop and other MCP clients
+- 📊 **Monitoring**: Optional performance metrics and monitoring (install with `[monitoring]` extra)
+- 🏗️ **Modern Architecture**: Recently refactored for improved maintainability and performance
 
 ---
 
@@ -73,7 +75,7 @@ npx -y @smithery/cli install @docdyhr/simplenote-mcp-server --client claude
 
 ### Prerequisites
 
-- Python 3.11 or higher
+- Python 3.10 or higher
 - A Simplenote account
 - (Optional) [uv](https://github.com/astral-sh/uv) for faster dependency installation
 

@@ -14,13 +14,14 @@ from simplenote_mcp.server.search.engine import SearchEngine
 def generate_random_text(min_words=50, max_words=200):
     """Generate random text with a specified number of words."""
     words = []
-    word_count = random.randint(min_words, max_words)
+    word_count = random.randint(min_words, max_words)  # noqa: S311
 
     for _ in range(word_count):
         # Generate a random word length between 3 and 10 characters
-        word_length = random.randint(3, 10)
+        word_length = random.randint(3, 10)  # noqa: S311
         word = "".join(
-            random.choice(string.ascii_lowercase) for _ in range(word_length)
+            random.choice(string.ascii_lowercase)
+            for _ in range(word_length)  # noqa: S311
         )
         words.append(word)
 
@@ -34,9 +35,9 @@ def generate_random_text(min_words=50, max_words=200):
         "deadline",
         "client",
     ]
-    for _ in range(random.randint(3, 8)):  # Insert 3-8 keywords
-        position = random.randint(0, len(words) - 1)
-        keyword = random.choice(keywords)
+    for _ in range(random.randint(3, 8)):  # Insert 3-8 keywords  # noqa: S311
+        position = random.randint(0, len(words) - 1)  # noqa: S311
+        keyword = random.choice(keywords)  # noqa: S311
         words[position] = keyword
 
     return " ".join(words)
@@ -51,7 +52,7 @@ def large_note_collection():
     # Generate 500 notes
     for i in range(500):
         # Create a random date within the last year
-        days_ago = random.randint(0, 365)
+        days_ago = random.randint(0, 365)  # noqa: S311
         note_date = now - timedelta(days=days_ago)
 
         # Select random tags
@@ -64,7 +65,7 @@ def large_note_collection():
             "todo",
             "idea",
         ]
-        note_tags = random.sample(all_tags, random.randint(0, 3))
+        note_tags = random.sample(all_tags, random.randint(0, 3))  # noqa: S311
 
         # Generate note content
         note_content = generate_random_text()

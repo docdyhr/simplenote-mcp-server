@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-"""
-Test script for verifying GitHub Actions compatibility
-"""
+"""Test script for verifying GitHub Actions compatibility."""
 
 import os
 import subprocess

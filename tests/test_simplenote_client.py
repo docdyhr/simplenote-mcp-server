@@ -19,7 +19,7 @@ def test_simplenote_client_creation(simplenote_env_vars):
         mock_config = MagicMock()
         mock_config.has_credentials = True
         mock_config.simplenote_email = "test@example.com"
-        mock_config.simplenote_password = "testpass"
+        mock_config.simplenote_password = "testpass"  # noqa: S105
         mock_get_config.return_value = mock_config
 
         # Setup mock client

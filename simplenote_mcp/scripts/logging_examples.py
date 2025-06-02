@@ -20,7 +20,7 @@ os.environ["LOG_LEVEL"] = "DEBUG"
 os.environ["LOG_FORMAT"] = "json"
 
 
-def example_basic_logging():
+def example_basic_logging() -> None:
     """Basic logging examples."""
     print("\n=== Basic Logging Examples ===")
 
@@ -42,7 +42,7 @@ def example_basic_logging():
     )
 
 
-def example_contextual_logging():
+def example_contextual_logging() -> None:
     """Examples of logging with context."""
     print("\n=== Contextual Logging Examples ===")
 
@@ -58,19 +58,19 @@ def example_contextual_logging():
     for i in range(3):
         op_logger.with_context(
             iteration=i,
-            items_processed=random.randint(10, 100),
-            duration_ms=random.randint(50, 200),
+            items_processed=random.randint(10, 100),  # noqa: S311
+            duration_ms=random.randint(50, 200),  # noqa: S311
         ).info("Sync batch completed")
 
     op_logger.info("Sync operation completed")
 
 
-def example_request_tracing():
+def example_request_tracing() -> None:
     """Examples of request tracing with structured logging."""
     print("\n=== Request Tracing Examples ===")
 
     # Simulate handling multiple requests
-    def handle_request(request_id, user_id, action):
+    def handle_request(request_id: str, user_id: str, action: str) -> None:
         # Create a logger with request context
         req_logger = get_request_logger(request_id, user_id=user_id, action=action)
 
@@ -85,12 +85,13 @@ def example_request_tracing():
 
         # Simulate an operation
         try:
-            if random.random() < 0.3:  # 30% chance of error
+            if random.random() < 0.3:  # 30% chance of error  # noqa: S311
                 raise ValueError("Random processing error")
 
             time.sleep(0.2)
             req_logger.with_context(
-                result="success", processing_time_ms=random.randint(100, 500)
+                result="success",
+                processing_time_ms=random.randint(100, 500),  # noqa: S311
             ).info("Request processed successfully")
 
         except Exception as e:
@@ -111,11 +112,11 @@ def example_request_tracing():
         handle_request(req["id"], req["user_id"], req["action"])
 
 
-async def example_async_logging():
+async def example_async_logging() -> None:
     """Examples of logging in async functions."""
     print("\n=== Async Logging Examples ===")
 
-    async def process_item(item_id, logger):
+    async def process_item(item_id: str, logger) -> None:
         logger.debug(f"Processing item {item_id}")
         await asyncio.sleep(0.1)  # Simulate async work
         logger.info(f"Item {item_id} processed")
@@ -134,7 +135,7 @@ async def example_async_logging():
     task_logger.info("Batch processing completed")
 
 
-def example_performance_logging():
+def example_performance_logging() -> None:
     """Examples of logging performance metrics."""
     print("\n=== Performance Logging Examples ===")
 
@@ -165,11 +166,11 @@ def example_performance_logging():
     for i in range(3):
         timer = timed_operation(f"batch_process_{i}")
         # Simulate variable work
-        time.sleep(0.1 * random.randint(1, 5))
-        timer(items_processed=random.randint(10, 100), errors=random.randint(0, 3))
+        time.sleep(0.1 * random.randint(1, 5))  # noqa: S311
+        timer(items_processed=random.randint(10, 100), errors=random.randint(0, 3))  # noqa: S311
 
 
-async def main():
+async def main() -> None:
     """Run all examples."""
     example_basic_logging()
     example_contextual_logging()

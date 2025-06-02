@@ -1,9 +1,8 @@
-# simplenote_mcp/server/server.py
+"""Main Simplenote MCP server implementation."""
 
 # Import standard libraries
 import asyncio
 import atexit
-import contextlib
 import json
 import os
 import signal
@@ -38,8 +37,6 @@ from .compat import Path  # noqa: E402
 from .config import LogLevel, get_config  # noqa: E402
 from .errors import (  # noqa: E402
     AuthenticationError,
-    InternalError,
-    NetworkError,
     ResourceNotFoundError,
     ServerError,
     ValidationError,
@@ -265,6 +262,91 @@ def setup_signal_handlers() -> None:
     atexit.register(cleanup_pid_file)
 
 
+async def _test_simplenote_connection(sn: Any) -> None:
+    """Test Simplenote API connection."""
+    logger.debug("Testing Simplenote client connection...")
+    try:
+        test_notes, status = sn.get_note_list()
+        if status == 0:
+            logger.debug(
+                f"Simplenote API connection successful, received {len(test_notes) if isinstance(test_notes, list) else 'data'} items"
+            )
+        else:
+            logger.error(f"Simplenote API connection test failed with status {status}")
+    except Exception as e:
+        logger.error(f"Simplenote API connection test failed: {str(e)}", exc_info=True)
+
+
+async def _create_minimal_cache(sn: Any) -> NoteCache:
+    """Create a minimal cache for immediate use."""
+    logger.debug("Cache is uninitialized; initializing cache now.")
+    cache = NoteCache(sn)
+    logger.debug("Cache initialization complete.")
+    cache._initialized = True
+    cache._notes = {}
+    cache._last_sync = time.time()
+    cache._tags = set()
+    logger.debug(f"Created empty note cache with client: {sn}")
+    return cache
+
+
+async def _populate_cache_direct(cache: NoteCache, sn: Any) -> None:
+    """Populate cache directly with API call."""
+    try:
+        logger.debug("Attempting direct API call to get notes...")
+        all_notes, status = sn.get_note_list()
+        if status == 0 and isinstance(all_notes, list) and all_notes:
+            # Success! Update the cache directly
+            try:
+                await cache._lock.acquire()
+                for note in all_notes:
+                    note_id = note.get("key")
+                    if note_id:
+                        cache._notes[note_id] = note
+                        if "tags" in note and note["tags"]:
+                            cache._tags.update(note["tags"])
+            finally:
+                cache._lock.release()
+            logger.info(f"Direct API load successful, loaded {len(all_notes)} notes")
+    except Exception as e:
+        logger.warning(
+            f"Direct API load failed, falling back to cache initialize: {str(e)}"
+        )
+
+
+async def _run_full_cache_initialization(cache: NoteCache, timeout: int) -> None:
+    """Run full cache initialization with timeout."""
+    init_task = asyncio.create_task(cache.initialize())
+    try:
+        await asyncio.wait_for(init_task, timeout=timeout)
+        logger.info(
+            f"Note cache initialization completed successfully with {len(cache._notes)} notes"
+        )
+    except TimeoutError:
+        logger.warning(
+            f"Note cache initialization timed out after {timeout}s, cache has {len(cache._notes)} notes"
+        )
+
+
+async def _background_cache_initialization(
+    cache: NoteCache, sn: Any, timeout: int
+) -> None:
+    """Perform background cache initialization."""
+    if cache is None:
+        logger.error("Background initialization called but cache is None.")
+        return
+
+    try:
+        # First try direct API population
+        await _populate_cache_direct(cache, sn)
+
+        # Then run full initialization
+        await _run_full_cache_initialization(cache, timeout)
+
+    except Exception as e:
+        logger.error(f"Error during background initialization: {str(e)}", exc_info=True)
+
+
 async def initialize_cache() -> None:
     """Initialize the note cache and start background sync."""
     global note_cache, background_sync
@@ -273,107 +355,26 @@ async def initialize_cache() -> None:
     try:
         logger.info("Initializing note cache")
 
-        # Test the Simplenote client to make sure it works
+        # Get and test Simplenote client
         sn = get_simplenote_client()
-        logger.debug("Testing Simplenote client connection...")
+        await _test_simplenote_connection(sn)
 
-        # Try a simple API call to validate connection
-        try:
-            # Get note list to validate connection (no limit parameter in this API)
-            test_notes, status = sn.get_note_list()
-            if status == 0:
-                logger.debug(
-                    f"Simplenote API connection successful, received {len(test_notes) if isinstance(test_notes, list) else 'data'} items"
-                )
-            else:
-                logger.error(
-                    f"Simplenote API connection test failed with status {status}"
-                )
-        except Exception as e:
-            logger.error(
-                f"Simplenote API connection test failed: {str(e)}", exc_info=True
-            )
-
-        # Create a minimal cache immediately so we can respond to clients
+        # Create minimal cache if needed
         if note_cache is None:
-            logger.debug("Cache is uninitialized; initializing cache now.")
-            note_cache = NoteCache(
-                sn
-            )  # Ensure the NoteCache class implements required attributes
-            logger.debug("Cache initialization complete.")
-            note_cache._initialized = True
-            note_cache._notes = {}
-            note_cache._last_sync = time.time()
-            note_cache._tags = set()
-            logger.debug(f"Created empty note cache with client: {sn}")
+            note_cache = await _create_minimal_cache(sn)
 
-        # Start background sync immediately so data will start loading
+        # Start background sync
         if background_sync is None:
             background_sync = BackgroundSync(note_cache)
             await background_sync.start()
 
-        # Now actually load the data in the background without blocking
-        # Initialize cache in the background with a timeout
-        initialization_timeout = 60  # seconds - increased from 45
-
-        async def background_initialization() -> None:
-            # Assign global to local and check for None
-            current_note_cache = note_cache
-            if current_note_cache is None:
-                logger.error("Background initialization called but note_cache is None.")
-                return  # Exit early if cache is not initialized
-
-            try:
-                # Try direct API call to get notes synchronously
-                try:
-                    logger.debug("Attempting direct API call to get notes...")
-                    all_notes, status = sn.get_note_list()
-                    if status == 0 and isinstance(all_notes, list) and all_notes:
-                        # Success! Update the cache directly
-                        # Using non-context lock (lock/unlock) since the lock might not be a context manager
-                        try:
-                            await current_note_cache._lock.acquire()  # Use local var
-                            for note in all_notes:
-                                note_id = note.get("key")
-                                if note_id:
-                                    current_note_cache._notes[note_id] = (
-                                        note  # Use local var
-                                    )
-                                    if "tags" in note and note["tags"]:
-                                        current_note_cache._tags.update(
-                                            note["tags"]
-                                        )  # Use local var
-                        finally:
-                            current_note_cache._lock.release()  # Use local var
-                        logger.info(
-                            f"Direct API load successful, loaded {len(all_notes)} notes"
-                        )
-                except Exception as e:
-                    logger.warning(
-                        f"Direct API load failed, falling back to cache initialize: {str(e)}"
-                    )
-
-                # Start real initialization in background
-                init_task = asyncio.create_task(
-                    current_note_cache.initialize()
-                )  # Use local var
-                try:
-                    await asyncio.wait_for(init_task, timeout=initialization_timeout)
-                    logger.info(
-                        f"Note cache initialization completed successfully with {len(current_note_cache._notes)} notes"  # Use local var
-                    )
-                except TimeoutError:
-                    logger.warning(
-                        f"Note cache initialization timed out after {initialization_timeout}s, cache has {len(current_note_cache._notes)} notes"  # Use local var
-                    )
-                    # We already have some notes from direct API call hopefully
-            except Exception as e:
-                logger.error(
-                    f"Error during background initialization: {str(e)}", exc_info=True
-                )
-
-        # Start background initialization but don't await it
-        asyncio.create_task(background_initialization())
+        # Start background initialization
+        config = get_config()
+        asyncio.create_task(
+            _background_cache_initialization(
+                note_cache, sn, config.cache_initialization_timeout
+            )
+        )
 
     except Exception as e:
         if isinstance(e, ServerError):
@@ -421,22 +422,14 @@ async def handle_list_resources(
     )
 
     try:
+        from .cache_utils import get_cache_or_create_minimal
+
         # Check for cache initialization, but don't block waiting for it
         global note_cache
-        if note_cache is None:
-            logger.info("Cache not initialized, creating empty cache")
-            logger.debug(
-                "Attempting to create Simplenote client for cache initialization"
-            )
-            # Create a minimal cache without waiting for initialization
-            simplenote_client = get_simplenote_client()
-            note_cache = NoteCache(simplenote_client)
-            note_cache._initialized = True
-            note_cache._notes = {}
-            note_cache._last_sync = time.time()
-            note_cache._tags = set()
+        note_cache = get_cache_or_create_minimal(note_cache, get_simplenote_client)
 
-            # Start initialization in the background
+        # Start initialization in the background if not already initialized
+        if not note_cache.is_initialized:
             asyncio.create_task(initialize_cache())
 
         # Use the cache to get notes with filtering
@@ -487,7 +480,7 @@ async def handle_list_resources(
             content = note.get("content", "")
             resource = types.Resource(
                 uri=cast(Any, f"simplenote://note/{note['key']}"),
-                name=(content.splitlines()[0][:30] if content else note.get("key", "")),
+                name=extract_title_from_content(content, note.get("key", "")),
                 description=f"Note from {note.get('modifydate', 'unknown date')}",
             )
             # Store additional metadata as dynamic attributes (ignore type checking)
@@ -540,19 +533,14 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
     note_uri = f"simplenote://note/{note_id}"
 
     try:
+        from .cache_utils import get_cache_or_create_minimal
+
         # Check for cache initialization, but don't block waiting for it
         global note_cache
-        if note_cache is None:
-            logger.info("Cache not initialized, creating empty cache")
-            # Create a minimal cache without waiting for initialization
-            sn = get_simplenote_client()
-            note_cache = NoteCache(sn)
-            note_cache._initialized = True
-            note_cache._notes = {}
-            note_cache._last_sync = time.time()
-            note_cache._tags = set()
+        note_cache = get_cache_or_create_minimal(note_cache, get_simplenote_client)
 
-            # Start initialization in the background
+        # Start initialization in the background if not already initialized
+        if not note_cache.is_initialized:
             asyncio.create_task(initialize_cache())
 
         # Try to get the note from cache first if cache is initialized
@@ -580,9 +568,9 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
 
         # Extract note data - only process the note once
         note_content = safe_get(note, "content", "")
-        note_tags = safe_get(note, "tags", [])
-        note_modifydate = safe_get(note, "modifydate", "")
-        note_createdate = safe_get(note, "createdate", "")
+        safe_get(note, "tags", [])
+        safe_get(note, "modifydate", "")
+        safe_get(note, "createdate", "")
 
         # Create the resource contents object
         text_contents = types.TextResourceContents(
@@ -816,7 +804,7 @@ async def handle_list_tools() -> list[types.Tool]:
 
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-    """Handle the call_tool capability.
+    """Handle the call_tool capability using the new tool handler system.
 
     Args:
         name: The name of the tool to call
@@ -826,6 +814,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         The result of the tool call
 
     """
+    from .cache_utils import get_cache_or_create_minimal
+    from .tool_handlers import ToolHandlerRegistry
+
     logger.info(f"Tool call: {name} with arguments: {json.dumps(arguments)}")
 
     # Record tool call for performance monitoring
@@ -838,890 +829,26 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         sn = get_simplenote_client()
         record_response_time("get_simplenote_client", time.time() - api_start_time)
 
-        # Check for cache initialization, but don't block waiting for it
+        # Ensure cache is available using utility function
         global note_cache
-        if note_cache is None:
-            logger.info("Cache not initialized, creating empty cache")
-            # Create a minimal cache without waiting for initialization
-            note_cache = NoteCache(sn)
-            note_cache._initialized = True
-            note_cache._notes = {}
-            note_cache._last_sync = time.time()
-            note_cache._tags = set()
+        note_cache = get_cache_or_create_minimal(note_cache, get_simplenote_client)
 
-            # Start initialization in the background
+        # If cache wasn't initialized, start background initialization
+        if not note_cache.is_initialized:
             asyncio.create_task(initialize_cache())
 
-        if name == "create_note":
-            content = arguments.get("content", "")
-            tags_input = arguments.get("tags", "")
-
-            # Handle tags which can be either a string or a list
-            if isinstance(tags_input, list):
-                # Ensure all items in the list are strings
-                tags = [str(tag).strip() for tag in tags_input]
-            elif isinstance(tags_input, str):
-                tags = (
-                    [tag.strip() for tag in safe_split(tags_input)]
-                    if tags_input
-                    else []
-                )
-            else:
-                tags = []
-
-            # Allow empty content for notes
-
-            try:
-                note = {"content": content}
-                if tags:
-                    note["tags"] = tags
-
-                created_note, status = sn.add_note(note)
-
-                if status == 0:
-                    if isinstance(created_note, dict):
-                        # Update the cache if it's initialized
-                        if note_cache is not None and note_cache.is_initialized:
-                            note_cache.update_cache_after_create(created_note)
-                    else:
-                        logger.error(
-                            f"API call success status 0, but returned non-dict: {type(created_note)} for create_note"
-                        )
-                        # Create a safe dictionary to use instead of the error
-                        created_note = {"content": "", "key": "unknown", "tags": []}
-                        logger.error(
-                            "Using default note due to unexpected API response"
-                        )
-
-                    return [
-                        types.TextContent(
-                            type="text",
-                            text=json.dumps(
-                                {
-                                    "success": True,
-                                    "message": "Note created successfully",
-                                    "note_id": created_note.get("key"),
-                                    "key": created_note.get(
-                                        "key"
-                                    ),  # For backward compatibility
-                                    "first_line": (
-                                        content.splitlines()[0][:30] if content else ""
-                                    ),
-                                    "tags": tags,
-                                }
-                            ),
-                        )
-                    ]
-                else:
-                    error_msg = "Failed to create note"
-                    logger.error(error_msg)
-                    raise NetworkError(error_msg)
-
-            except Exception as e:
-                if isinstance(e, ServerError):
-                    error_dict = e.to_dict()
-                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
-
-                logger.error(f"Error creating note: {str(e)}", exc_info=True)
-                error = handle_exception(e, "creating note")
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
-
-        elif name == "update_note":
-            note_id = arguments.get("note_id", "")
-            content = arguments.get("content", "")
-            tags_input = arguments.get("tags", "")
-
-            if not note_id:
-                raise ValidationError(NOTE_ID_REQUIRED)
-
-            if not content:
-                raise ValidationError(NOTE_CONTENT_REQUIRED)
-
-            try:
-                # Get the existing note first
-                existing_note = None
-
-                # Try to get from cache first
-                if note_cache is not None and note_cache.is_initialized:
-                    with contextlib.suppress(ResourceNotFoundError):
-                        existing_note = note_cache.get_note(note_id)
-                        # If not found, the API will be used
-
-                # If not found in cache, get from API
-                if existing_note is None:
-                    existing_note, status = sn.get_note(note_id)
-                    if status != 0 or not isinstance(existing_note, dict):
-                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
-                        logger.error(error_msg)
-                        raise ResourceNotFoundError(error_msg)
-
-                # Update the note content
-                safe_set(existing_note, "content", content)
-
-                # Update tags if provided
-                if tags_input:
-                    # Handle tags which can be either a string or a list
-                    if isinstance(tags_input, list):
-                        tags = [tag.strip() for tag in tags_input]
-                    elif isinstance(tags_input, str):
-                        # Use safer split operation
-                        tags = [tag.strip() for tag in safe_split(tags_input)]
-                    else:
-                        tags = []
-
-                    # Set tags on the note
-                    safe_set(existing_note, "tags", tags)
-
-                updated_note, status = sn.update_note(existing_note)
-
-                if status == 0:
-                    if isinstance(updated_note, dict):
-                        # Update the cache if it's initialized
-                        if note_cache is not None and note_cache.is_initialized:
-                            note_cache.update_cache_after_update(updated_note)
-                    else:
-                        logger.error(
-                            f"API call success status 0, but returned non-dict: {type(updated_note)} for update_note"
-                        )
-                        # Create a safe dictionary to use instead of the error
-                        content = ""
-                        if isinstance(existing_note, dict):
-                            content = existing_note.get("content", "")
-                        # Create a safe dictionary to use instead of the error
-                        updated_note = {"content": content, "key": note_id, "tags": []}
-                        logger.error(
-                            f"Using default note after update due to unexpected API response for {note_id}"
-                        )
-
-                    return [
-                        types.TextContent(
-                            type="text",
-                            text=json.dumps(
-                                {
-                                    "success": True,
-                                    "message": "Note updated successfully",
-                                    "note_id": updated_note.get("key"),
-                                    "tags": updated_note.get("tags", []),
-                                }
-                            ),
-                        )
-                    ]
-                else:
-                    error_msg = "Failed to update note"
-                    logger.error(error_msg)
-                    raise NetworkError(error_msg)
-
-            except Exception as e:
-                if isinstance(e, ServerError):
-                    error_dict = e.to_dict()
-                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
-
-                logger.error(f"Error updating note: {str(e)}", exc_info=True)
-                error = handle_exception(e, f"updating note {note_id}")
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
-
-        elif name == "delete_note":
-            note_id = arguments.get("note_id", "")
-
-            if not note_id:
-                raise ValidationError(NOTE_ID_REQUIRED)
-
-            try:
-                status = sn.trash_note(
-                    note_id
-                )  # Using trash_note as it's safer than delete_note
-
-                if status == 0:
-                    # Update the cache if it's initialized
-                    if note_cache is not None and note_cache.is_initialized:
-                        note_cache.update_cache_after_delete(note_id)
-
-                    return [
-                        types.TextContent(
-                            type="text",
-                            text=json.dumps(
-                                {
-                                    "success": True,
-                                    "message": "Note moved to trash successfully",
-                                    "note_id": note_id,
-                                }
-                            ),
-                        )
-                    ]
-                else:
-                    logger.error(FAILED_TRASH_NOTE)
-                    raise NetworkError(FAILED_TRASH_NOTE)
-
-            except Exception as e:
-                if isinstance(e, ServerError):
-                    error_dict = e.to_dict()
-                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
-
-                logger.error(f"Error deleting note: {str(e)}", exc_info=True)
-                error = handle_exception(e, f"deleting note {note_id}")
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
-
-        elif name == "search_notes":
-            query = arguments.get("query", "")
-            limit = arguments.get("limit")
-            tags_input = arguments.get("tags", "")
-            from_date_str = arguments.get("from_date")
-            to_date_str = arguments.get("to_date")
-
-            logger.debug(
-                f"Advanced search called with: query='{query}', limit={limit}, "
-                + f"tags='{tags_input}', from_date='{from_date_str}', to_date='{to_date_str}'"
-            )
-
-            if not query:
-                raise ValidationError(QUERY_REQUIRED)
-
-            # Process limit parameter
-            if limit is not None:
-                try:
-                    limit = int(limit)
-                    if limit < 1:
-                        limit = None
-                except (ValueError, TypeError):
-                    limit = None
-
-            # Process tag filters
-            tag_filters = None
-            if tags_input:
-                # Handle tags which can be either a string or a list
-                if isinstance(tags_input, list):
-                    tag_filters = [tag.strip() for tag in tags_input if tag.strip()]
-                elif isinstance(tags_input, str):
-                    tag_filters = [
-                        tag.strip() for tag in safe_split(tags_input) if tag.strip()
-                    ]
-                else:
-                    tag_filters = None
-                logger.debug(f"Tag filters: {tag_filters}")
-
-            # Process date range
-            from_date = None
-            to_date = None
-            date_range = None
-
-            if from_date_str:
-                try:
-                    from datetime import datetime
-
-                    from_date = datetime.fromisoformat(from_date_str)
-                    logger.debug(f"From date: {from_date}")
-                except ValueError:
-                    logger.warning(f"Invalid from_date format: {from_date_str}")
-
-            if to_date_str:
-                try:
-                    from datetime import datetime
-
-                    to_date = datetime.fromisoformat(to_date_str)
-                    logger.debug(f"To date: {to_date}")
-                except ValueError:
-                    logger.warning(f"Invalid to_date format: {to_date_str}")
-
-            if from_date or to_date:
-                date_range = (from_date, to_date)
-
-            try:
-                # Check cache status
-                cache_initialized = note_cache is not None and note_cache.is_initialized
-                logger.debug(
-                    f"Cache status for search: available={note_cache is not None}, initialized={cache_initialized}"
-                )
-
-                # Use the cache for search if available
-                if cache_initialized:
-                    logger.debug("Using advanced search with cache")
-
-                    # Get offset parameter for pagination or default to 0
-                    offset = safe_get(arguments, "offset", 0)
-
-                    # Get total matching notes for pagination info
-                    all_matching_notes = note_cache.search_notes(
-                        query=query,
-                        tag_filters=tag_filters,
-                        date_range=date_range,
-                    )
-                    total_matching_notes = len(all_matching_notes)
-
-                    # Use the enhanced search implementation with pagination
-                    # Use the enhanced search implementation with pagination support
-                    notes = note_cache.search_notes(
-                        query=query,
-                        limit=limit,
-                        offset=offset,
-                        tag_filters=tag_filters,
-                        date_range=date_range,
-                    )
-
-                    # Format results
-                    results = []
-                    for note in notes:
-                        content = note.get("content", "")
-                        results.append(
-                            {
-                                "id": note.get("key"),
-                                "title": extract_title_from_content(
-                                    content, safe_get(note, "key", "")
-                                ),
-                                "snippet": (
-                                    content[:100] + "..."
-                                    if len(content) > 100
-                                    else content
-                                ),
-                                "tags": note.get("tags", []),
-                                "uri": f"simplenote://note/{note.get('key')}",
-                            }
-                        )
-
-                    # Add debug logging for troubleshooting
-                    logger.debug(
-                        f"Search results: {len(results)} matches found for '{query}'"
-                    )
-
-                    # Debug log the first few results if available
-                    if results:
-                        logger.debug(
-                            f"First result title: {results[0].get('title', 'No title')}"
-                        )
-
-                    # Get pagination metadata
-                    pagination_info = note_cache.get_pagination_info(
-                        total_items=total_matching_notes, limit=limit, offset=offset
-                    )
-
-                    # Create response with pagination info
-                    response = {
-                        "success": True,
-                        "results": results,
-                        "count": len(results),
-                        "total": total_matching_notes,
-                        "pagination": pagination_info,
-                        "query": query,
-                        "page": pagination_info.get("page", 1),
-                        "total_pages": pagination_info.get("total_pages", 1),
-                        "has_more": pagination_info.get("has_more", False),
-                        "next_offset": pagination_info.get("next_offset"),
-                        "prev_offset": pagination_info.get("prev_offset"),
-                    }
-
-                    # Log the response size
-                    response_json = json.dumps(response)
-                    logger.debug(f"Response size: {len(response_json)} bytes")
-
-                    return [types.TextContent(type="text", text=response_json)]
-
-                # Fall back to API if cache is not available - create a temporary search engine
-                logger.debug(
-                    "Cache not available, using API with temporary search engine"
-                )
-                from .search.engine import SearchEngine
-
-                api_search_engine = SearchEngine()
-
-                # Get all notes from the API
-                all_notes, status = sn.get_note_list()
-
-                if status != 0:
-                    logger.error(FAILED_RETRIEVE_NOTES)
-                    raise NetworkError(FAILED_RETRIEVE_NOTES)
-
-                # Convert list to dictionary for search engine
-                notes_dict = {
-                    note.get("key"): note for note in all_notes if note.get("key")
-                }
-
-                logger.debug(f"API search: Got {len(notes_dict)} notes from API")
-
-                # Use the search engine
-                matching_notes = api_search_engine.search(
-                    notes=notes_dict,
-                    query=query,
-                    tag_filters=tag_filters,
-                    date_range=date_range,
-                )
-                # Apply limit to results
-                if limit is not None and limit > 0:
-                    matching_notes = matching_notes[:limit]
-
-                # Format results
-                results = []
-                for note in matching_notes:
-                    content = note.get("content", "")
-                    results.append(
-                        {
-                            "id": note.get("key"),
-                            "title": extract_title_from_content(
-                                content, safe_get(note, "key", "")
-                            ),
-                            "snippet": (
-                                content[:100] + "..." if len(content) > 100 else content
-                            ),
-                            "tags": note.get("tags", []),
-                            "uri": f"simplenote://note/{note.get('key')}",
-                        }
-                    )
-
-                # Debug logging
-                logger.debug(
-                    f"API search results: {len(results)} matches found for '{query}'"
-                )
-                if results:
-                    logger.debug(
-                        f"First API result title: {results[0].get('title', 'No title')}"
-                    )
-
-                # Create the response
-                response = {
-                    "success": True,
-                    "results": results,
-                    "count": len(results),
-                    "query": query,
-                }
-
-                # Log the response size
-                response_json = json.dumps(response)
-                logger.debug(f"API response size: {len(response_json)} bytes")
-
-                return [types.TextContent(type="text", text=response_json)]
-
-            except Exception as e:
-                if isinstance(e, ServerError):
-                    error_dict = e.to_dict()
-                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
-
-                logger.error(f"Error searching notes: {str(e)}", exc_info=True)
-                error = handle_exception(e, f"searching notes for '{query}'")
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
-
-        elif name == "get_note":
-            note_id = arguments.get("note_id", "")
-
-            if not note_id:
-                raise ValidationError(NOTE_ID_REQUIRED)
-
-            try:
-                # Try to get from cache first
-                note = None
-                if note_cache is not None and note_cache.is_initialized:
-                    with contextlib.suppress(ResourceNotFoundError):
-                        note = note_cache.get_note(note_id)
-                        # If not found, the API will be used
-
-                # If not found in cache, get from API
-                if note is None:
-                    note, status = sn.get_note(note_id)
-                    if status != 0:
-                        error_msg = f"Failed to get note with ID {note_id}"
-                        logger.error(error_msg)
-                        raise ResourceNotFoundError(error_msg)
-
-                    # Verify that we have a dictionary before proceeding
-                    if not isinstance(note, dict):
-                        error_msg = f"API returned non-dictionary for note {note_id}"
-                        logger.error(error_msg)
-                        raise InternalError(error_msg)
-
-                # Prepare response
-                content = safe_get(note, "content", "")
-                first_line = content.splitlines()[0][:30] if content else ""
-
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=json.dumps(
-                            {
-                                "success": True,
-                                "note_id": note.get("key"),
-                                "content": note.get("content", ""),
-                                "title": first_line,
-                                "tags": note.get("tags", []),
-                                "createdate": note.get("createdate", ""),
-                                "modifydate": note.get("modifydate", ""),
-                                "uri": f"simplenote://note/{note.get('key')}",
-                            }
-                        ),
-                    )
-                ]
-
-            except Exception as e:
-                if isinstance(e, ServerError):
-                    error_dict = e.to_dict()
-                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
-
-                logger.error(f"Error getting note: {str(e)}", exc_info=True)
-                error = handle_exception(e, f"getting note {note_id}")
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
-
-        elif name == "add_tags":
-            note_id = arguments.get("note_id", "")
-            tags_input = arguments.get("tags", "")
-
-            if not note_id:
-                raise ValidationError(NOTE_ID_REQUIRED)
-
-            if not tags_input:
-                raise ValidationError(TAGS_REQUIRED)
-
-            # Handle tags which can be either a string or a list
-            if isinstance(tags_input, list):
-                tags = [tag.strip() for tag in tags_input]
-            elif isinstance(tags_input, str):
-                tags = (
-                    [tag.strip() for tag in safe_split(tags_input)]
-                    if tags_input
-                    else []
-                )
-            else:
-                tags = []
-            try:
-                # Get the existing note first
-                existing_note = None
-
-                # Try to get from cache first
-                if note_cache is not None and note_cache.is_initialized:
-                    with contextlib.suppress(ResourceNotFoundError):
-                        existing_note = note_cache.get_note(note_id)
-                        # If not found, the API will be used
-
-                # If not found in cache, get from API
-                if existing_note is None:
-                    existing_note, status = sn.get_note(note_id)
-                    if status != 0 or not isinstance(existing_note, dict):
-                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
-                        logger.error(error_msg)
-                        raise ResourceNotFoundError(error_msg)
-
-                # Parse the tags to add
-                tags_to_add = [
-                    tag.strip() for tag in safe_split(tags_input) if tag.strip()
-                ]
-
-                # Get current tags or initialize empty list
-                current_tags = safe_get(existing_note, "tags", [])
-                if current_tags is None:
-                    current_tags = []
-
-                # Add new tags that aren't already present
-                added_tags = []
-                for tag in tags_to_add:
-                    if tag not in current_tags:
-                        current_tags.append(tag)
-                        added_tags.append(tag)
-
-                # Only update if tags were actually added
-                if added_tags:
-                    # Update the note
-                    existing_note["tags"] = current_tags
-                    updated_note, status = sn.update_note(existing_note)
-
-                    if status == 0:
-                        # Check if the result is actually a dictionary
-                        if not isinstance(updated_note, dict):
-                            logger.error(
-                                f"API call success status 0, but returned non-dict: {type(updated_note)} for add_tags"
-                            )
-                            raise InternalError(
-                                "Unexpected API response type after adding tags."
-                            )
-
-                        # Update the cache if it's initialized
-                        if note_cache is not None and note_cache.is_initialized:
-                            note_cache.update_cache_after_update(updated_note)
-
-                        return [
-                            types.TextContent(
-                                type="text",
-                                text=json.dumps(
-                                    {
-                                        "success": True,
-                                        "message": f"Added tags: {', '.join(added_tags)}",
-                                        "note_id": updated_note.get("key"),
-                                        "tags": updated_note.get("tags", []),
-                                    }
-                                ),
-                            )
-                        ]
-                    else:
-                        logger.error(FAILED_UPDATE_TAGS)
-                        raise NetworkError(FAILED_UPDATE_TAGS)
-                else:
-                    # No tags were added (all already present)
-                    return [
-                        types.TextContent(
-                            type="text",
-                            text=json.dumps(
-                                {
-                                    "success": True,
-                                    "message": "No new tags to add (all tags already present)",
-                                    "note_id": note_id,
-                                    "tags": current_tags,
-                                }
-                            ),
-                        )
-                    ]
-
-            except Exception as e:
-                if isinstance(e, ServerError):
-                    error_dict = e.to_dict()
-                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
-
-                logger.error(f"Error adding tags: {str(e)}", exc_info=True)
-                error = handle_exception(e, f"adding tags to note {note_id}")
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
-
-        elif name == "remove_tags":
-            note_id = arguments.get("note_id", "")
-            tags_input = arguments.get("tags", "")
-
-            if not note_id:
-                raise ValidationError(NOTE_ID_REQUIRED)
-
-            if not tags_input:
-                raise ValidationError(TAGS_REQUIRED)
-
-            # Handle tags which can be either a string or a list
-            if isinstance(tags_input, list):
-                tags = [tag.strip() for tag in tags_input]
-            elif isinstance(tags_input, str):
-                tags = (
-                    [tag.strip() for tag in safe_split(tags_input)]
-                    if tags_input
-                    else []
-                )
-            else:
-                tags = []
-            try:
-                # Get the existing note first
-                existing_note = None
-
-                # Try to get from cache first
-                if note_cache is not None and note_cache.is_initialized:
-                    with contextlib.suppress(ResourceNotFoundError):
-                        existing_note = note_cache.get_note(note_id)
-                        # If not found, the API will be used
-
-                # If not found in cache, get from API
-                if existing_note is None:
-                    existing_note, status = sn.get_note(note_id)
-                    if status != 0:
-                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
-                        logger.error(error_msg)
-                        raise ResourceNotFoundError(error_msg)
-
-                # Parse the tags to remove
-                tags_to_remove = [
-                    tag.strip() for tag in safe_split(tags_input) if tag.strip()
-                ]
-
-                # Get current tags or initialize empty list
-                current_tags = safe_get(existing_note, "tags", [])
-                if current_tags is None:
-                    current_tags = []
-
-                # If the note has no tags, nothing to do
-                if not current_tags:
-                    return [
-                        types.TextContent(
-                            type="text",
-                            text=json.dumps(
-                                {
-                                    "success": True,
-                                    "message": "Note had no tags to remove",
-                                    "note_id": note_id,
-                                    "tags": [],
-                                }
-                            ),
-                        )
-                    ]
-
-                # Remove specified tags that are present
-                removed_tags = []
-                new_tags = []
-                for tag in current_tags:
-                    if tag in tags_to_remove:
-                        removed_tags.append(tag)
-                    else:
-                        new_tags.append(tag)
-
-                # Only update if tags were actually removed
-                if removed_tags:
-                    # Update the note
-                    safe_set(existing_note, "tags", new_tags)
-                    updated_note, status = sn.update_note(existing_note)
-
-                    if status == 0:
-                        # Check if the result is actually a dictionary
-                        if not isinstance(updated_note, dict):
-                            logger.error(
-                                f"API call success status 0, but returned non-dict: {type(updated_note)} for remove_tags"
-                            )
-                            raise InternalError(
-                                "Unexpected API response type after removing tags."
-                            )
-
-                        # Update the cache if it's initialized
-                        if note_cache is not None and note_cache.is_initialized:
-                            note_cache.update_cache_after_update(updated_note)
-
-                        return [
-                            types.TextContent(
-                                type="text",
-                                text=json.dumps(
-                                    {
-                                        "success": True,
-                                        "message": f"Removed tags: {', '.join(removed_tags)}",
-                                        "note_id": updated_note.get("key"),
-                                        "tags": updated_note.get("tags", []),
-                                    }
-                                ),
-                            )
-                        ]
-                    else:
-                        logger.error(FAILED_UPDATE_TAGS)
-                        raise NetworkError(FAILED_UPDATE_TAGS)
-                else:
-                    # No tags were removed (none were present)
-                    return [
-                        types.TextContent(
-                            type="text",
-                            text=json.dumps(
-                                {
-                                    "success": True,
-                                    "message": "No tags were removed (specified tags not present on note)",
-                                    "note_id": note_id,
-                                    "tags": current_tags,
-                                }
-                            ),
-                        )
-                    ]
-
-            except Exception as e:
-                if isinstance(e, ServerError):
-                    error_dict = e.to_dict()
-                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
-
-                logger.error(f"Error removing tags: {str(e)}", exc_info=True)
-                error = handle_exception(e, f"removing tags from note {note_id}")
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
-
-        elif name == "replace_tags":
-            note_id = arguments.get("note_id", "")
-            tags_input = arguments.get("tags", "")
-
-            if not note_id:
-                raise ValidationError(NOTE_ID_REQUIRED)
-
-            try:
-                # Get the existing note first
-                existing_note = None
-
-                # Try to get from cache first
-                if note_cache is not None and note_cache.is_initialized:
-                    with contextlib.suppress(ResourceNotFoundError):
-                        existing_note = note_cache.get_note(note_id)
-                        # If not found, the API will be used
-
-                # If not found in cache, get from API
-                if existing_note is None:
-                    existing_note, status = sn.get_note(note_id)
-                    if status != 0:
-                        error_msg = FAILED_GET_NOTE.format(note_id=note_id)
-                        logger.error(error_msg)
-                        raise ResourceNotFoundError(error_msg)
-
-                # Parse the new tags
-                if isinstance(tags_input, list):
-                    new_tags = [tag.strip() for tag in tags_input if tag.strip()]
-                elif isinstance(tags_input, str):
-                    new_tags = (
-                        [tag.strip() for tag in safe_split(tags_input) if tag.strip()]
-                        if tags_input
-                        else []
-                    )
-                else:
-                    new_tags = []
-
-                # Get current tags
-                current_tags = safe_get(existing_note, "tags", [])
-                if current_tags is None:
-                    current_tags = []
-
-                # Update the note with new tags
-                safe_set(existing_note, "tags", new_tags)
-                updated_note, status = sn.update_note(existing_note)
-
-                if status == 0:
-                    # Check if the result is actually a dictionary
-                    if not isinstance(updated_note, dict):
-                        logger.error(
-                            f"API call success status 0, but returned non-dict: {type(updated_note)} for replace_tags"
-                        )
-                        raise InternalError(
-                            "Unexpected API response type after replacing tags."
-                        )
-
-                    # Update the cache if it's initialized
-                    if note_cache is not None and note_cache.is_initialized:
-                        note_cache.update_cache_after_update(updated_note)
-
-                    # Generate appropriate message based on whether tags were changed
-                    if set(current_tags) == set(new_tags):
-                        message = "Tags unchanged (new tags same as existing tags)"
-                    else:
-                        message = f"Replaced tags: {', '.join(current_tags)} → {', '.join(new_tags)}"
-
-                    return [
-                        types.TextContent(
-                            type="text",
-                            text=json.dumps(
-                                {
-                                    "success": True,
-                                    "message": message,
-                                    "note_id": updated_note.get("key"),
-                                    "tags": updated_note.get("tags", []),
-                                }
-                            ),
-                        )
-                    ]
-                else:
-                    error_msg = "Failed to update note tags"
-                    logger.error(error_msg)
-                    raise NetworkError(error_msg)
-
-            except Exception as e:
-                if isinstance(e, ServerError):
-                    error_dict = e.to_dict()
-                    return [types.TextContent(type="text", text=json.dumps(error_dict))]
-
-                logger.error(f"Error replacing tags: {str(e)}", exc_info=True)
-                error = handle_exception(e, f"replacing tags on note {note_id}")
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
-
-        else:
+        # Get handler from registry
+        registry = ToolHandlerRegistry()
+        handler = registry.get_handler(name, sn, note_cache)
+
+        if handler is None:
             error_msg = UNKNOWN_TOOL_ERROR.format(name=name)
             logger.error(error_msg)
             error = ValidationError(error_msg)
             return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+
+        # Execute the tool handler
+        return await handler.handle(arguments)
 
     except Exception as e:
         if isinstance(e, ServerError):
@@ -1850,9 +977,113 @@ async def handle_get_prompt(
         raise ValidationError(error_msg)
 
 
+async def _start_server_components() -> None:
+    """Start server monitoring and cache initialization."""
+    logger.info("Starting performance monitoring")
+    config = get_config()
+    start_metrics_collection(interval=config.metrics_collection_interval)
+
+    # Start cache initialization in background but don't wait
+    asyncio.create_task(initialize_cache())
+    logger.info("Started cache initialization in background")
+
+
+def _get_server_capabilities() -> Any:
+    """Get and log server capabilities."""
+    capabilities = server.get_capabilities(
+        notification_options=NotificationOptions(),
+        experimental_capabilities={},
+    )
+    capabilities_json = json.dumps(
+        {
+            "has_prompts": bool(capabilities.prompts),
+            "has_resources": bool(capabilities.resources),
+            "has_tools": bool(capabilities.tools),
+        }
+    )
+    logger.info(f"Server capabilities: {capabilities_json}")
+    return capabilities
+
+
+async def _create_shutdown_monitor() -> asyncio.Future:
+    """Create shutdown monitoring task."""
+    global shutdown_requested
+    shutdown_future = asyncio.get_running_loop().create_future()
+
+    async def monitor_shutdown() -> None:
+        while not shutdown_requested:
+            await asyncio.sleep(0.1)
+        logger.info("Shutdown requested, stopping server gracefully")
+        shutdown_future.set_result(None)
+
+    asyncio.create_task(monitor_shutdown())
+    return shutdown_future
+
+
+async def _run_server_task(
+    read_stream: Any, write_stream: Any, capabilities: Any
+) -> asyncio.Task:
+    """Create and start server task."""
+    from simplenote_mcp import __version__ as version
+
+    return asyncio.create_task(
+        server.run(
+            read_stream,
+            write_stream,
+            InitializationOptions(
+                server_name="simplenote-mcp-server",
+                server_version=version,
+                capabilities=capabilities,
+            ),
+        )
+    )
+
+
+async def _handle_server_completion(
+    server_task: asyncio.Task, done: set, pending: set
+) -> None:
+    """Handle server task completion."""
+    # Cancel any pending tasks
+    for task in pending:
+        task.cancel()
+
+    # Check server task result
+    if server_task in done:
+        try:
+            await server_task
+            logger.info("MCP server run completed normally")
+        except Exception as e:
+            logger.error(f"MCP server run failed: {str(e)}", exc_info=True)
+            raise
+    else:
+        logger.info("MCP server run cancelled due to shutdown request")
+
+
+async def _stop_background_sync() -> None:
+    """Stop background sync gracefully."""
+    global background_sync
+    if background_sync is not None:
+        logger.info("Stopping background sync")
+        try:
+            # Create a temporary event loop if necessary
+            if not asyncio.get_event_loop().is_running():
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                loop.run_until_complete(background_sync.stop())
+                if "start_time" in locals():
+                    loop.close()
+            else:
+                # Use the existing event loop
+                stop_task = asyncio.get_event_loop().create_task(background_sync.stop())
+                # Give it a moment to complete (use asyncio.sleep in async context)
+                await asyncio.sleep(0.5)
+
+        except Exception as e:
+            logger.error(f"Error stopping background sync: {str(e)}", exc_info=True)
+
+
 async def run() -> None:
     """Run the server using STDIO transport."""
-    global shutdown_requested
     logger.info("Starting MCP server STDIO transport")
 
     try:
@@ -1860,77 +1091,27 @@ async def run() -> None:
             logger.info("STDIO server created, initializing MCP server")
 
             try:
-                # Start performance monitoring
-                logger.info("Starting performance monitoring")
-                start_metrics_collection(interval=60)  # Collect metrics every minute
+                # Start server components
+                await _start_server_components()
 
-                # Start cache initialization in background but don't wait
-                asyncio.create_task(initialize_cache())
+                # Get server capabilities
+                capabilities = _get_server_capabilities()
 
-                # Log that we're continuing without waiting
-                logger.info("Started cache initialization in background")
+                # Create shutdown monitoring
+                shutdown_future = await _create_shutdown_monitor()
 
-                # Get capabilities and log them
-                capabilities = server.get_capabilities(
-                    notification_options=NotificationOptions(),
-                    experimental_capabilities={},
-                )
-                capabilities_json = json.dumps(
-                    {
-                        "has_prompts": bool(capabilities.prompts),
-                        "has_resources": bool(capabilities.resources),
-                        "has_tools": bool(capabilities.tools),
-                    }
-                )
-                logger.info(f"Server capabilities: {capabilities_json}")
-
-                # Get the server version
-                from simplenote_mcp import __version__ as version
-
-                # Create a done future that will be set when shutdown is requested
-                shutdown_future = asyncio.get_running_loop().create_future()
-
-                # Create a background task to monitor the shutdown flag
-                async def monitor_shutdown() -> None:
-                    while not shutdown_requested:
-                        await asyncio.sleep(0.1)
-                    logger.info("Shutdown requested, stopping server gracefully")
-                    shutdown_future.set_result(None)
-
-                asyncio.create_task(monitor_shutdown())
-
-                # Run the server with an option to cancel if shutdown is requested
-                server_task = asyncio.create_task(
-                    server.run(
-                        read_stream,
-                        write_stream,
-                        InitializationOptions(
-                            server_name="simplenote-mcp-server",
-                            server_version=version,
-                            capabilities=capabilities,
-                        ),
-                    )
+                # Start server task
+                server_task = await _run_server_task(
+                    read_stream, write_stream, capabilities
                 )
 
-                # Wait for either server completion or shutdown
+                # Wait for completion or shutdown
                 done, pending = await asyncio.wait(
                     [server_task, shutdown_future], return_when=asyncio.FIRST_COMPLETED
                 )
 
-                # Cancel any pending tasks
-                for task in pending:
-                    task.cancel()
-
-                # If the server task is done, check its result
-                if server_task in done:
-                    try:
-                        await server_task
-                        logger.info("MCP server run completed normally")
-                    except Exception as e:
-                        logger.error(f"MCP server run failed: {str(e)}", exc_info=True)
-                        raise
-                else:
-                    logger.info("MCP server run cancelled due to shutdown request")
+                # Handle completion
+                await _handle_server_completion(server_task, done, pending)
 
             except Exception as e:
                 logger.error(f"Error running MCP server: {str(e)}", exc_info=True)
@@ -1941,28 +1122,7 @@ async def run() -> None:
         raise
 
     finally:
-        # Stop the background sync when the server stops
-        global background_sync
-        if background_sync is not None:
-            logger.info("Stopping background sync")
-            try:
-                # Create a temporary event loop if necessary
-                if not asyncio.get_event_loop().is_running():
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    loop.run_until_complete(background_sync.stop())
-                    if "start_time" in locals():
-                        loop.close()
-                else:
-                    # Use the existing event loop
-                    asyncio.get_event_loop().create_task(background_sync.stop())
-                    # Give it a moment to complete
-                    time.sleep(0.5)
-
-                # No need to record tool execution time here as it's already tracked elsewhere
-                pass
-            except Exception as e:
-                logger.error(f"Error stopping background sync: {str(e)}", exc_info=True)
+        await _stop_background_sync()
 
 
 def run_main() -> None:
@@ -2012,7 +1172,8 @@ def run_main() -> None:
         try:
             # Update cache metrics
             if note_cache:
-                max_size = getattr(note_cache, "_max_size", 1000)  # Default max size
+                config = get_config()
+                max_size = getattr(note_cache, "_max_size", config.cache_max_size)
                 update_cache_size(len(note_cache._notes), max_size)
             asyncio.run(run())
         except KeyboardInterrupt:

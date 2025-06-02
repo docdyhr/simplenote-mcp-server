@@ -55,7 +55,7 @@ def simplenote_env_vars():
     if not old_email:
         os.environ["SIMPLENOTE_EMAIL"] = "test@example.com"
     if not old_password:
-        os.environ["SIMPLENOTE_PASSWORD"] = "test_password"
+        os.environ["SIMPLENOTE_PASSWORD"] = "test_password"  # noqa: S105
 
     yield
 

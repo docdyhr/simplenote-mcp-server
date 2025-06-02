@@ -103,10 +103,10 @@ class TestPerformance:
         # Update the time threshold to match real-world performance expectations
         # System resources and test environments may vary significantly
         # The important thing is that the test passes with reasonable performance
-        CACHE_READ_THRESHOLD = (
+        cache_read_threshold = (
             0.5  # Increased threshold for cache reads in test environment
         )
-        API_READ_THRESHOLD = (
+        api_read_threshold = (
             1.0  # Increased threshold for API reads in test environment
         )
 
@@ -144,7 +144,7 @@ class TestPerformance:
             result = await handle_read_resource("simplenote://note/large_note")
             cache_read_time = time.time() - start_time
             print(f"Reading large note from cache took {cache_read_time:.4f} seconds")
-            assert cache_read_time < CACHE_READ_THRESHOLD, (
+            assert cache_read_time < cache_read_threshold, (
                 "Reading from cache should be reasonably fast"
             )
             assert len(result.contents[0].text) > 10000
@@ -160,7 +160,7 @@ class TestPerformance:
             result = await handle_read_resource("simplenote://note/large_note")
             api_read_time = time.time() - start_time
             print(f"Reading large note from API took {api_read_time:.4f} seconds")
-            assert api_read_time < API_READ_THRESHOLD, (
+            assert api_read_time < api_read_threshold, (
                 "Reading from API should be reasonably fast"
             )
 

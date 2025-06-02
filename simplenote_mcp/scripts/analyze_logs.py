@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# analyze_logs.py - Log analyzer for Simplenote MCP server logs
+"""Log analyzer for Simplenote MCP server logs."""
 
 import argparse
 import os
@@ -40,7 +40,7 @@ ERROR_PATTERNS = [
 class LogAnalyzer:
     """Analyzer for Simplenote MCP server logs."""
 
-    def __init__(self, log_path: str = DEFAULT_LOG_PATH):
+    def __init__(self, log_path: str = DEFAULT_LOG_PATH) -> None:
         self.log_path = log_path
         self.logs = []
         self.errors = []
@@ -417,7 +417,7 @@ class LogAnalyzer:
         print(f"\nReport saved to {REPORT_PATH}")
 
 
-def main():
+def main() -> None:
     """Main function."""
     parser = argparse.ArgumentParser(description="Analyze Simplenote MCP server logs")
     parser.add_argument(

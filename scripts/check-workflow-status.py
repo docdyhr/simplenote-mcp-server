@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-GitHub Actions Workflow Status Checker
+GitHub Actions Workflow Status Checker.
 
 This script checks the status of GitHub Actions workflows and provides
 a comprehensive report on CI/CD pipeline health.
@@ -20,9 +20,9 @@ except ImportError:
 
 
 class WorkflowStatusChecker:
-    """Checks GitHub Actions workflow status"""
+    """Checks GitHub Actions workflow status."""
 
-    def __init__(self, owner: str, repo: str, token: str | None = None):
+    def __init__(self, owner: str, repo: str, token: str | None = None) -> None:
         self.owner = owner
         self.repo = repo
         self.base_url = "https://api.github.com"
@@ -40,7 +40,7 @@ class WorkflowStatusChecker:
             self.session.headers.update({"Accept": "application/vnd.github.v3+json"})
 
     def get_workflows(self) -> list[dict]:
-        """Get list of workflows in the repository"""
+        """Get list of workflows in the repository."""
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}/actions/workflows"
 
         try:
@@ -53,7 +53,7 @@ class WorkflowStatusChecker:
             return []
 
     def get_workflow_runs(self, workflow_id: int, limit: int = 10) -> list[dict]:
-        """Get recent runs for a specific workflow"""
+        """Get recent runs for a specific workflow."""
         url = f"{self.base_url}/repos/{self.owner}/{self.repo}/actions/workflows/{workflow_id}/runs"
         params = {"per_page": limit, "page": 1}
 
@@ -67,7 +67,7 @@ class WorkflowStatusChecker:
             return []
 
     def get_badge_status(self, workflow_filename: str) -> str:
-        """Check workflow badge status"""
+        """Check workflow badge status."""
         badge_url = f"https://github.com/{self.owner}/{self.repo}/actions/workflows/{workflow_filename}/badge.svg"
 
         try:
@@ -87,7 +87,7 @@ class WorkflowStatusChecker:
             return "error"
 
     def analyze_workflow_health(self, runs: list[dict]) -> dict:
-        """Analyze workflow health based on recent runs"""
+        """Analyze workflow health based on recent runs."""
         if not runs:
             return {
                 "status": "no_data",
@@ -155,7 +155,7 @@ class WorkflowStatusChecker:
         }
 
     def check_all_workflows(self) -> dict:
-        """Check status of all workflows"""
+        """Check status of all workflows."""
         workflows = self.get_workflows()
         results = {
             "timestamp": datetime.now().isoformat(),
@@ -222,7 +222,7 @@ class WorkflowStatusChecker:
         return results
 
     def generate_report(self, results: dict) -> str:
-        """Generate a human-readable report"""
+        """Generate a human-readable report."""
         report = []
         report.append("🔍 GITHUB ACTIONS WORKFLOW STATUS REPORT")
         report.append("=" * 60)
@@ -310,8 +310,8 @@ class WorkflowStatusChecker:
         return "\n".join(report)
 
 
-def main():
-    """Main function"""
+def main() -> None:
+    """Main function."""
     import argparse
 
     parser = argparse.ArgumentParser(description="Check GitHub Actions workflow status")

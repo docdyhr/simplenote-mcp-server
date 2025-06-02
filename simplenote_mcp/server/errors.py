@@ -1,4 +1,4 @@
-# simplenote_mcp/server/errors.py
+"""Error handling and exception classes for the Simplenote MCP server."""
 
 import logging
 import re
@@ -111,7 +111,7 @@ class ServerError(Exception):
         resolution_steps: list[str] | None = None,
         trace_id: str | None = None,
         **kwargs,
-    ):
+    ) -> None:
         """Initialize a new ServerError.
 
         Args:

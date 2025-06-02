@@ -19,7 +19,7 @@ class SearchEngine:
     - Date range filtering
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the search engine."""
         self._lock = asyncio.Lock()
 

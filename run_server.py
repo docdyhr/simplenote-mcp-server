@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-run_server.py - Simplenote MCP Server Launcher for Python 3.12
+run_server.py - Simplenote MCP Server Launcher for Python 3.12.
 
 This script launches the Simplenote MCP server designed for Python 3.12.
 
@@ -42,7 +42,12 @@ os.chdir(script_dir)
 logger.info("✅ pathlib.Path is available")
 
 
-def parse_arguments():
+def parse_arguments() -> argparse.Namespace:
+    """Parse command line arguments.
+
+    Returns:
+        Parsed command line arguments.
+    """
     parser = argparse.ArgumentParser(
         description="Launch Simplenote MCP Server for Python 3.12"
     )
@@ -62,7 +67,7 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def check_credentials():
+def check_credentials() -> bool:
     """Check if Simplenote credentials are set in the environment."""
     email = os.environ.get("SIMPLENOTE_EMAIL") or os.environ.get("SIMPLENOTE_USERNAME")
     password = os.environ.get("SIMPLENOTE_PASSWORD")
@@ -80,7 +85,7 @@ def check_credentials():
     return True
 
 
-def check_server_status():
+def check_server_status() -> bool:
     """Check if the server is already running."""
     pid_file = Path("/tmp/simplenote_mcp_server.pid")
     alt_pid_file = Path("/tmp/simplenote_mcp_server_alt.pid")
@@ -104,7 +109,7 @@ def check_server_status():
     return False
 
 
-def run_server():
+def run_server() -> None:
     """Run the Simplenote MCP server."""
     args = parse_arguments()
 
@@ -165,7 +170,7 @@ def run_server():
         )
 
         # Register cleanup function
-        def cleanup():
+        def cleanup() -> None:
             if process and process.poll() is None:
                 logger.info("\nStopping server...")
                 try:

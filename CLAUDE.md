@@ -107,14 +107,76 @@ The Simplenote MCP server provides:
 - **Authentication** (in get_simplenote_client): Handles Simplenote authentication
 - **Server initialization** (in run): Sets up the MCP server and capabilities
 
-## Code Style Guidelines
+## Code Formatting & Linting Standards
 
-- **Imports**:
+### Python Code Standards (Black + Ruff Compatible)
+
+- **Line Length**: Maximum 88 characters (Black default)
+- **Imports**: Use `isort` ordering (standard library → third-party → local)
   - Group imports in this order: standard library, third-party, local imports
   - Include a blank line between groups
   - All imports must be at the top of the file (E402)
   - Avoid unused imports (F401)
   - Avoid redefinition of imports (F811)
+- **Quotes**: Prefer double quotes for strings (Black default)
+- **Trailing Commas**: Always use in multi-line structures
+- **Blank Lines**: 2 after imports, 2 between top-level definitions
+- **Indentation**: 4 spaces for Python code (never tabs)
+
+### Markdown Standards
+
+- **Line Length**: Maximum 80 characters for documentation
+- **Headers**: Use ATX-style (#) with blank lines before/after
+- **Lists**: Consistent indentation (2 spaces)
+- **Code Blocks**: Always specify language identifier
+- **Trailing Whitespace**: Not allowed in markdown files
+
+### YAML/JSON Standards
+
+- **Indentation**: 2 spaces for YAML, 2 or 4 for JSON
+- **Trailing Newline**: Always end files with a newline
+- **No Trailing Spaces**: Remove all trailing whitespace
+
+### Pre-commit Compliance Rules
+
+Generated code must pass these checks:
+
+- **ruff**: Python linting and formatting
+- **ruff-format**: Code formatting (Black-compatible)
+- **mypy**: Type checking (if type hints are used)
+- **trailing-whitespace**: No trailing whitespace
+- **end-of-file-fixer**: Files must end with newline
+- **check-yaml**: Valid YAML syntax
+- **check-toml**: Valid TOML syntax
+
+## Pre-Commit Formatting Checklist
+
+Before committing, ensure:
+
+- [ ] No trailing whitespace (auto-fixed by pre-commit)
+- [ ] Files end with newline (auto-fixed by pre-commit)
+- [ ] Python code formatted with Ruff/Black (88 char line length)
+- [ ] Imports sorted correctly (standard → third-party → local)
+- [ ] No ruff violations (run `ruff check . --fix`)
+- [ ] No mypy type checking errors
+- [ ] YAML/TOML files are valid
+- [ ] Markdown files follow style guide (80 char line length)
+
+**Quick Commands:**
+
+```bash
+# Check all formatting issues
+pre-commit run --all-files
+
+# Fix most Python formatting issues automatically  
+ruff check . --fix
+ruff format .
+
+# Run type checking
+mypy simplenote_mcp --config-file=mypy.ini
+```
+
+## Code Style Guidelines
 
 - **Typing**:
   - Use type hints for all function arguments and return values

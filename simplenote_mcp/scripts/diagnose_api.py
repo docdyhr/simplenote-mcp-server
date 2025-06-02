@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# diagnose_api.py - Diagnostic tool for Simplenote API connectivity
+"""Diagnostic tool for Simplenote API connectivity."""
 
 import argparse
 import asyncio
@@ -48,6 +48,8 @@ DIAGNOSTIC_REPORT_PATH = (
 
 # Type definitions
 class ApiResult(TypedDict, total=False):
+    """API result type definition for diagnostic testing."""
+
     attempt: int
     status: int
     elapsed: float
