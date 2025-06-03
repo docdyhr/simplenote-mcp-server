@@ -1,0 +1,60 @@
+services:
+  simplenote-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: simplenote-mcp-server:latest
+    container_name: simplenote-mcp-server
+    restart: unless-stopped
+
+    # Environment variables for Simplenote authentication
+    environment:
+      - SIMPLENOTE_EMAIL=${SIMPLENOTE_EMAIL}
+      - SIMPLENOTE_PASSWORD=${SIMPLENOTE_PASSWORD}
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+
+    # Resource limits as per PRD requirements
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Volumes for persistent logs (optional)
+    volumes:
+      - ./logs:/app/simplenote_mcp/logs
+
+    # Port mapping for HTTP transport (if needed)
+    ports:
+      - "8000:8000"
+
+    # Security options
+    user: "1000:1000"  # Use host user ID to avoid permission issues
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=100m
+
+    # Network configuration
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/24

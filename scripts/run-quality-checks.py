@@ -419,7 +419,7 @@ class QualityChecker:
             report.append("🔧 RECOMMENDATIONS")
             report.append("-" * 40)
 
-            for check_key, check_name in check_details.items():
+            for check_key, _check_name in check_details.items():
                 if check_key in self.results and not self.results[check_key].get(
                     "success", False
                 ):

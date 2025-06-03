@@ -1,0 +1,126 @@
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# Environment and IDE
+.env
+.env.*
+.venv/
+venv/
+ENV/
+env/
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Documentation build
+docs/_build/
+.sphinx/
+
+# Development tools
+.pre-commit-config.yaml
+.pre-commit-hooks.yaml
+mypy.ini
+pytest.ini
+
+# Logs and temporary files
+*.log
+logs/
+simplenote_mcp/logs/
+tmp/
+temp/
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker files (don't include in the image)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD and workflows
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+
+# Development and testing scripts
+scripts/
+test_*.py
+*_test.py
+tests/
+debug_*.py
+benchmark_*.py
+
+# Documentation that's not needed in container
+README.md
+CHANGELOG.md
+CONTRIBUTING.md
+LICENSE
+TODO.md
+ROADMAP.md
+*.md
+docs/
+
+# Development configuration
+.flake8
+.pylintrc
+tox.ini
+Makefile
+
+# Node.js (if any)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Jupyter notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Local development files
+local_*
+dev_*

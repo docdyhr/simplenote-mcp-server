@@ -1,0 +1,32 @@
+services:
+  simplenote-mcp-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: builder  # Use builder stage for development
+    image: simplenote-mcp-server:dev
+    container_name: simplenote-mcp-server-dev
+
+    environment:
+      - SIMPLENOTE_EMAIL=${SIMPLENOTE_EMAIL}
+      - SIMPLENOTE_PASSWORD=${SIMPLENOTE_PASSWORD}
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+      - PYTHONPATH=/app
+
+    volumes:
+      - .:/app:ro  # Mount source code for development
+      - ./logs:/app/simplenote_mcp/logs
+
+    ports:
+      - "8000:8000"
+
+    # Override entrypoint for development
+    command: ["python", "-m", "simplenote_mcp.server"]
+
+    networks:
+      - mcp-network
+
+networks:
+  mcp-network:
+    driver: bridge
