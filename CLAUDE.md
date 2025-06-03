@@ -16,6 +16,17 @@ simplenote_mcp/            # Main package
 
 ## Commands
 
+### Docker Commands (Recommended)
+
+- **Build image**: `docker build -t simplenote-mcp-server .`
+- **Run with Docker Compose**: `docker-compose up -d`
+- **Development mode**: `docker-compose -f docker-compose.dev.yml up`
+- **View logs**: `docker-compose logs -f`
+- **Stop services**: `docker-compose down`
+- **Rebuild and run**: `docker-compose up --build`
+
+### Traditional Commands
+
 - **Install**: `uv pip install -e .` or `pip install -e .`
 - **Run server**: `python simplenote_mcp_server.py` or `simplenote-mcp`
 - **Restart Claude and server**: `./simplenote_mcp/scripts/restart_claude.sh`
@@ -25,8 +36,11 @@ simplenote_mcp/            # Main package
 - **Verify tools**: `./simplenote_mcp/scripts/verify_tools.sh`
 - **Test tool visibility**: `./simplenote_mcp/scripts/test_tool_visibility.sh`
 - **Test client**: `python simplenote_mcp/tests/test_mcp_client.py`
+
+### Code Quality
+
 - **Lint**: `ruff check .`
-- **Format**: `black .`
+- **Format**: `ruff format .`
 - **Type check**: `mypy simplenote_mcp`
 
 ## Environment Setup
