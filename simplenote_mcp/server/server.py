@@ -13,14 +13,7 @@ import time
 from contextlib import suppress
 from typing import Any, cast
 
-# Import and apply MCP patch before importing Server
-sys.path.append(
-    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-)
-import mcp_patch  # type: ignore  # noqa: E402
-
-mcp_patch.apply_patch()
-
+# MCP imports
 import mcp.server.stdio  # type: ignore  # noqa: E402
 import mcp.types as types  # type: ignore  # noqa: E402
 from mcp.server import NotificationOptions, Server  # type: ignore  # noqa: E402
