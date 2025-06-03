@@ -53,15 +53,16 @@ jobs:
         # Mock Simplenote for benchmarking
         class MockSimplenote:
             def __init__(self):
-                self.notes = {}
+                self.notes = []
                 for i in range(1000):
-                    self.notes[f"note_{i}"] = {
+                    note = {
                         'key': f"note_{i}",
                         'content': f"This is test note {i} with some content to search through.",
                         'tags': [f"tag_{i%10}", f"category_{i%5}"],
                         'createdate': time.time() - (i * 3600),
                         'modifydate': time.time() - (i * 1800)
                     }
+                    self.notes.append(note)
             
             def get_note_list(self, **kwargs):
                 return (self.notes, 0)
@@ -69,16 +70,19 @@ jobs:
         # Benchmark cache initialization
         def benchmark_cache_init():
             from simplenote_mcp.server.cache import NoteCache
-            cache = NoteCache()
+            
+            # Create mock client for cache
+            mock_client = MockSimplenote()
+            cache = NoteCache(mock_client)
             
             start_time = time.time()
             start_memory = psutil.Process().memory_info().rss / 1024 / 1024
             
             # Simulate cache initialization with mock data
-            mock_client = MockSimplenote()
             notes, _ = mock_client.get_note_list()
             
-            for note_key, note_data in notes.items():
+            for note_data in notes:
+                note_key = note_data['key']
                 cache._notes[note_key] = note_data
                 for tag in note_data.get('tags', []):
                     cache._tags.add(tag)
@@ -95,7 +99,7 @@ jobs:
         # Benchmark search performance
         def benchmark_search():
             # Import search engine components
-            from simplenote_mcp.server.search import SearchEngine, QueryParser
+            from simplenote_mcp.server.search import SearchEngine
             
             # Create mock notes for search
             mock_notes = {}
@@ -176,7 +180,12 @@ jobs:
             # Simulate typical server operations
             from simplenote_mcp.server.cache import NoteCache
             
-            cache = NoteCache()
+            # Create mock client
+            class MockClient:
+                def get_note_list(self):
+                    return ([], 0)
+            
+            cache = NoteCache(MockClient())
             
             # Simulate loading notes
             for i in range(100):

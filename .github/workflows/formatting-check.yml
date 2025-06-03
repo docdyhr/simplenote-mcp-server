@@ -27,7 +27,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pre-commit ruff mypy
+          pip install -e .
+          pip install pre-commit ruff mypy types-requests types-setuptools types-PyYAML pytest
         continue-on-error: false
 
       - name: ✅ Verify Installation
@@ -37,6 +38,8 @@ jobs:
           pre-commit --version
           ruff --version
           mypy --version
+          echo "📦 Testing package import..."
+          python -c "import simplenote_mcp; print('✅ Package import successful')"
         continue-on-error: false
 
       - name: 🔧 Cache pre-commit hooks
@@ -50,6 +53,7 @@ jobs:
       - name: 🧹 Run pre-commit hooks
         run: |
           echo "🔧 Running pre-commit hooks on all files..."
+          rm -rf .mypy_cache || true
           pre-commit run --all-files --show-diff-on-failure
         continue-on-error: false
 
@@ -130,5 +134,6 @@ jobs:
       - name: 🔍 Run MyPy type checking
         run: |
           echo "🔍 Running MyPy type checking..."
+          rm -rf .mypy_cache || true
           mypy simplenote_mcp --config-file=mypy.ini --show-error-codes
         continue-on-error: true
