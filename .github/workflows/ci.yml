@@ -46,7 +46,9 @@ jobs:
       continue-on-error: true
     
     - name: Type checking with MyPy
-      run: mypy simplenote_mcp --config-file=mypy.ini || echo "⚠️ Type checking issues found but continuing"
+      run: |
+        rm -rf .mypy_cache || true
+        mypy simplenote_mcp --config-file=mypy.ini || echo "⚠️ Type checking issues found but continuing"
       continue-on-error: true
     
     - name: Security check

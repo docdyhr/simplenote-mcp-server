@@ -58,9 +58,12 @@ repos:
     hooks:
     -   id: mypy
         args: [--config-file=mypy.ini, simplenote_mcp]
+        pass_filenames: false
+        always_run: true
         additional_dependencies: [
             "types-requests",
             "types-setuptools",
             "types-PyYAML",
             "pytest",
+            "mcp",
         ]

@@ -136,17 +136,10 @@ jobs:
         mypy --version
       continue-on-error: false
     
-    - name: ✅ Verify Installation
-      run: |
-        echo "📦 Testing package import..."
-        python -c "import simplenote_mcp; print('✅ Package import successful')"
-        echo "🔧 Checking mypy..."
-        mypy --version
-      continue-on-error: false
-    
     - name: Run mypy type checking
       run: |
         echo "🔍 Running mypy type checking..."
+        rm -rf .mypy_cache || true
         mypy simplenote_mcp --config-file=mypy.ini --html-report mypy-report || echo "⚠️ Type checking issues found but continuing"
       continue-on-error: true
     
