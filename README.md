@@ -37,7 +37,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 - 🔐 **Secure Authentication**: Token-based authentication via environment variables
 - 🧩 **MCP Compatible**: Works with Claude Desktop and other MCP clients
 - 📊 **Monitoring**: Optional performance metrics and monitoring (install with `[monitoring]` extra)
-- 🏗️ **Modern Architecture**: Recently refactored for improved maintainability and performance
+- 🏗️ **Modern Architecture**: v1.5.0 features major refactoring with modular tool handlers and comprehensive test coverage
 
 ---
 

@@ -2,6 +2,17 @@
 
 This file outlines the tasks needed to implement the Simplenote MCP Server according to the requirements in [PRD.md](./PRD.md).
 
+## ✅ COMPLETED: Major Technical Debt Refactoring (v1.5.0)
+
+- [x] **Major Architecture Refactoring** (Completed 2025-06-02)
+  - [x] Refactored 900+ line monolithic `handle_call_tool()` function into modular tool handler system
+  - [x] Created comprehensive error handling decorators and utilities
+  - [x] Centralized cache access patterns and eliminated code duplication
+  - [x] Fixed async/sync mixing issues throughout codebase
+  - [x] Added 150+ unit tests for new modular architecture
+  - [x] Fixed all pytest test failures and import mismatches
+  - [x] Updated documentation and project files to reflect v1.5.0 changes
+
 ## 1. Server Enhancements
 
 - [x] **Improve Existing MCP Implementation**

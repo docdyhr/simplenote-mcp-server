@@ -96,7 +96,9 @@ FAILED_RETRIEVE_NOTES = "Failed to retrieve notes for search"
 class ToolHandlerBase:
     """Base class for tool handlers with common functionality."""
 
-    def __init__(self, simplenote_client: Any, note_cache: NoteCache | None = None) -> None:
+    def __init__(
+        self, simplenote_client: Any, note_cache: NoteCache | None = None
+    ) -> None:
         """Initialize the handler.
 
         Args:
