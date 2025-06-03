@@ -59,9 +59,13 @@ docker-compose up -d
 
 ### Option 2: Smithery (One-click install)
 
+Install automatically via [Smithery](https://smithery.ai/server/@docdyhr/simplenote-mcp-server):
+
 ```bash
 npx -y @smithery/cli install @docdyhr/simplenote-mcp-server --client claude
 ```
+
+This method automatically configures Claude Desktop with the MCP server.
 
 ### Option 3: Traditional Python Install
 

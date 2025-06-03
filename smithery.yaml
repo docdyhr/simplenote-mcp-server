@@ -1,4 +1,5 @@
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+# Compatible with both traditional Python installation and Docker deployment
 
 startCommand:
   type: stdio
