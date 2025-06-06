@@ -200,7 +200,7 @@ class QualityChecker:
 
         # Run Ruff check
         check_success, check_stdout, check_stderr = self.run_command(
-            ["ruff", "check", ".", "--output-format=text"],
+            ["ruff", "check", ".", "--output-format=concise"],
             "lint",
             "Ruff linting check",
         )
@@ -278,7 +278,7 @@ class QualityChecker:
 
         # Try Ruff security rules first
         ruff_success, ruff_stdout, ruff_stderr = self.run_command(
-            ["ruff", "check", ".", "--select=S", "--output-format=text"],
+            ["ruff", "check", ".", "--select=S", "--output-format=concise"],
             "security",
             "Ruff security checks",
         )
@@ -394,8 +394,10 @@ class QualityChecker:
 
                 # Add specific details
                 if check_key == "unit_tests" and "test_count" in result:
+                    tests_passed = result["test_count"]
+                    tests_failed = result.get("failures", 0)
                     report.append(
-                        f"  Tests: {result['test_count']} passed, {result.get('failures', 0)} failed"
+                        f"  Tests: {tests_passed} passed, {tests_failed} failed"
                     )
                     if result.get("coverage", 0) > 0:
                         report.append(f"  Coverage: {result['coverage']}%")

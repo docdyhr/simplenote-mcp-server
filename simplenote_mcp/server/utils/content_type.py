@@ -255,7 +255,7 @@ def _is_likely_json(content: str) -> bool:
 
         json.loads(content)
         return True
-    except Exception:  # Use specific Exception instead of bare except
+    except (json.JSONDecodeError, ValueError, TypeError):
         # Look for JSON patterns
         json_patterns = [
             r'"[^"]+"\s*:',  # Key-value pairs

@@ -2,72 +2,71 @@ name: Debug CI Issues
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   debug-environment:
     name: Debug Environment
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.10'
-        cache: 'pip'
-        cache: 'pip'
-    
-    - name: Debug Python environment
-      run: |
-        python --version
-        pip --version
-        which python
-        which pip
-        
-    - name: Check project files
-      run: |
-        ls -la
-        ls -la simplenote_mcp/
-        cat pyproject.toml
-        
-    - name: Install basic dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install wheel setuptools
-        
-    - name: Try installing package
-      run: |
-        pip install -e . -v
-        
-    - name: Check installation
-      run: |
-        python -c "import simplenote_mcp; print('Package imported successfully')"
-        pip list | grep simplenote
-        
-    - name: Install development tools
-      run: |
-        pip install ruff mypy pytest pytest-asyncio pytest-cov
-        
-    - name: Run basic checks
-      run: |
-        echo "=== Ruff check ==="
-        ruff --version
-        ruff check . || echo "Ruff check failed but continuing"
-        
-        echo "=== MyPy check ==="
-        mypy --version
-        mypy simplenote_mcp --config-file=mypy.ini || echo "MyPy check failed but continuing"
-        
-        echo "=== Test discovery ==="
-        pytest --collect-only tests/ || echo "Test discovery failed but continuing"
-        
-    - name: Run simple test
-      run: |
-        pytest tests/test_cache.py::TestNoteCache::test_initialize -v || echo "Test failed but continuing"
-      env:
-        SIMPLENOTE_EMAIL: "test@example.com"
-        SIMPLENOTE_PASSWORD: "test_password"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Debug Python environment
+        run: |
+          python --version
+          pip --version
+          which python
+          which pip
+
+      - name: Check project files
+        run: |
+          ls -la
+          ls -la simplenote_mcp/
+          cat pyproject.toml
+
+      - name: Install basic dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install wheel setuptools
+
+      - name: Try installing package
+        run: |
+          pip install -e . -v
+
+      - name: Check installation
+        run: |
+          python -c "import simplenote_mcp; print('Package imported successfully')"
+          pip list | grep simplenote
+
+      - name: Install development tools
+        run: |
+          pip install ruff mypy pytest pytest-asyncio pytest-cov
+
+      - name: Run basic checks
+        run: |
+          echo "=== Ruff check ==="
+          ruff --version
+          ruff check . || echo "Ruff check failed but continuing"
+
+          echo "=== MyPy check ==="
+          mypy --version
+          mypy simplenote_mcp --config-file=mypy.ini || echo "MyPy check failed but continuing"
+
+          echo "=== Test discovery ==="
+          pytest --collect-only tests/ || echo "Test discovery failed but continuing"
+
+      - name: Run simple test
+        run: |
+          pytest tests/test_cache.py::TestNoteCache::test_initialize -v || echo "Test failed but continuing"
+        env:
+          SIMPLENOTE_EMAIL: "test@example.com"
+          SIMPLENOTE_PASSWORD: "test_password"

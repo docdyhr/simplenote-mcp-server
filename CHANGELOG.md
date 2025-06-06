@@ -5,6 +5,33 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] - 1.5.1
+
+### 🛠️ **Technical Debt Improvements**
+
+#### **Code Quality Enhancements**
+- **REFACTORED**: Eliminated code duplication by creating `simplenote_mcp/server/utils/common.py` module
+- **CENTRALIZED**: Common utility functions (`safe_get()`, `safe_set()`, `safe_split()`, `extract_title_from_content()`)
+- **IMPROVED**: Exception handling - replaced broad `except Exception:` with specific exception types
+- **CREATED**: Dependency injection foundation with `ServerContext` and `ContextManager` classes
+- **FIXED**: All ruff linting violations and applied consistent code formatting
+- **UPDATED**: Type annotations to use modern Python syntax (e.g., `dict[str, Any]` instead of `Dict[str, Any]`)
+
+#### **Exception Handling Improvements**
+- **FIXED**: File I/O operations now catch specific exceptions (`OSError`, `IOError`, `PermissionError`)
+- **IMPROVED**: JSON parsing catches `JSONDecodeError`, `ValueError`, `TypeError` instead of broad `Exception`
+- **ENHANCED**: Cache operations use specific exception types for better error diagnosis
+
+#### **Dependency Injection Foundation**
+- **NEW**: `simplenote_mcp/server/context.py` module for managing application dependencies
+- **ADDED**: `ServerContext` dataclass to replace global state pattern
+- **IMPLEMENTED**: `ContextManager` for creating and managing server contexts
+- **PREPARED**: Foundation for future refactoring to eliminate global singletons
+
+### **Dependencies**
+- **VERIFIED**: All dependencies are actively used - no unused packages to remove
+- **CONFIRMED**: `pytest-mock` is used implicitly through pytest fixture system
+
 ## [1.5.0] - 2025-06-02
 
 ### 🔧 **Major Technical Debt Refactoring**

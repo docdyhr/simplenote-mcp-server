@@ -9,6 +9,7 @@ python scripts/setup-dev-environment.py
 ```
 
 Sets up the complete development environment including:
+
 - Python environment verification
 - Development dependency installation
 - Tool verification (Ruff, MyPy, pytest, pre-commit)
@@ -25,6 +26,7 @@ python scripts/run-quality-checks.py
 ```
 
 Runs a comprehensive suite of quality checks including:
+
 - Environment setup validation
 - Package import testing
 - Unit tests with coverage
@@ -34,6 +36,7 @@ Runs a comprehensive suite of quality checks including:
 - Pre-commit hook validation
 
 Options:
+
 - `--verbose, -v`: Enable detailed output
 - `--output, -o FILE`: Save JSON results to file
 - `--skip-tests`: Skip unit tests
@@ -48,6 +51,7 @@ python scripts/check-workflow-status.py
 Checks the status of all GitHub Actions workflows and provides detailed health reports.
 
 Options:
+
 - `--owner`: Repository owner (default: docdyhr)
 - `--repo`: Repository name (default: simplenote-mcp-server)
 - `--token`: GitHub personal access token for API access
@@ -97,6 +101,7 @@ Generates a code quality report by analyzing lint results, test coverage, and ot
 ## Quick Reference
 
 ### Setup New Environment
+
 ```bash
 # Complete environment setup
 python scripts/setup-dev-environment.py
@@ -106,6 +111,7 @@ python scripts/run-quality-checks.py --verbose
 ```
 
 ### Daily Development Workflow
+
 ```bash
 # Before committing changes
 ruff format .                                    # Fix formatting
@@ -115,6 +121,7 @@ pre-commit run --all-files                     # Run pre-commit hooks
 ```
 
 ### CI/CD Monitoring
+
 ```bash
 # Check workflow health
 python scripts/check-workflow-status.py

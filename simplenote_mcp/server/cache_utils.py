@@ -345,7 +345,7 @@ class CacheManager:
         if self.is_cache_ready():
             try:
                 return cache.get_note(note_id)
-            except Exception:
+            except (KeyError, AttributeError, ValueError):
                 pass  # Fall through to API
 
         # Fall back to API

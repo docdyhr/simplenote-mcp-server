@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """
-Badge Validation Script.
+This module provides functionality to validate badges in README files.
 
-This script validates all badges in the README.md file to ensure they are
-working correctly and provides detailed status reporting.
+It checks if badge URLs are accessible and working correctly, categorizes them
+by type (GitHub Actions, Coverage, PyPI, etc.), and generates detailed reports.
+
+Usage:
+    python badge_validator.py [--readme README.md] [--json output.json] [--quiet]
 """
 
 import re
@@ -57,27 +60,47 @@ class BadgeValidator:
 
             # Check HTTP status
             if response.status_code != 200:
-                return False, response.status_code, f"HTTP {response.status_code}"
+                return {
+                    "valid": False,
+                    "status_code": response.status_code,
+                    "message": f"HTTP {response.status_code}",
+                }
 
             # Check content type for SVG badges
             content_type = response.headers.get("content-type", "").lower()
             if "svg" in url and "svg" not in content_type and "xml" not in content_type:
-                return False, response.status_code, "Not SVG content"
+                return {
+                    "valid": False,
+                    "status_code": response.status_code,
+                    "message": "Not SVG content",
+                }
 
             # Check response size (empty responses might indicate issues)
             if len(response.content) < 100:
-                return False, response.status_code, "Response too small"
+                return {
+                    "valid": False,
+                    "status_code": response.status_code,
+                    "message": "Response too small",
+                }
 
-            return True, response.status_code, "OK"
+            return {"valid": True, "status_code": response.status_code, "message": "OK"}
 
         except requests.exceptions.Timeout:
-            return False, 0, "Timeout"
+            return {"valid": False, "status_code": 0, "message": "Timeout"}
         except requests.exceptions.ConnectionError:
-            return False, 0, "Connection Error"
+            return {"valid": False, "status_code": 0, "message": "Connection Error"}
         except requests.exceptions.RequestException as e:
-            return False, 0, f"Request Error: {str(e)[:50]}"
+            return {
+                "valid": False,
+                "status_code": 0,
+                "message": f"Request Error: {str(e)[:50]}",
+            }
         except Exception as e:
-            return False, 0, f"Unexpected Error: {str(e)[:50]}"
+            return {
+                "valid": False,
+                "status_code": 0,
+                "message": f"Unexpected Error: {str(e)[:50]}",
+            }
 
     def categorize_badge(self, url: str) -> str:
         """Categorize badge by URL pattern."""
@@ -123,7 +146,10 @@ class BadgeValidator:
         for i, url in enumerate(urls, 1):
             print(f"  [{i}/{len(urls)}] Checking {urlparse(url).netloc}...", end=" ")
 
-            is_valid, status_code, message = self.validate_badge(url)
+            validation_result = self.validate_badge(url)
+            is_valid = validation_result["valid"]
+            status_code = validation_result["status_code"]
+            message = validation_result["message"]
             category = self.categorize_badge(url)
 
             result = {

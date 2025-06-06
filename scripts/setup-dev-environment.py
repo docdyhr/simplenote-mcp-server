@@ -31,7 +31,7 @@ def run_command(command: list[str], description: str) -> tuple[bool, str]:
             print(f"   Error: {result.stderr}")
             return False, result.stderr
 
-    except Exception as e:
+    except (subprocess.SubprocessError, FileNotFoundError, PermissionError) as e:
         print(f"❌ {description} failed with exception: {e}")
         return False, str(e)
 
@@ -110,7 +110,7 @@ LOG_LEVEL=DEBUG
             env_file.write_text(env_content)
             print(f"✅ Created local environment template: {env_file}")
             return True
-        except Exception as e:
+        except (OSError, PermissionError) as e:
             print(f"❌ Failed to create {env_file}: {e}")
             return False
     else:

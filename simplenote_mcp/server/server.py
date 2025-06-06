@@ -10,7 +10,6 @@ import sys
 import tempfile
 import threading
 import time
-from contextlib import suppress
 from typing import Any, cast
 
 # MCP imports
@@ -43,6 +42,12 @@ from .monitoring.metrics import (  # noqa: E402
     start_metrics_collection,
     update_cache_size,
 )
+from .utils.common import (  # noqa: E402
+    extract_title_from_content as extract_title_common,
+)
+from .utils.common import (
+    safe_get,
+)
 
 
 def extract_title_from_content(content: str, fallback: str = "") -> str:
@@ -55,55 +60,13 @@ def extract_title_from_content(content: str, fallback: str = "") -> str:
     Returns:
         First non-empty line (up to 30 chars) or fallback
     """
-    if not content:
-        return fallback
-
-    lines = content.splitlines()
-    for line in lines:
-        stripped_line = line.strip()
-        if stripped_line:
-            return stripped_line[:30]
-
+    title = extract_title_common(content)
+    if title:
+        return title[:30]  # Limit to 30 chars as per original behavior
     return fallback
 
 
-# Utility functions for safe access to potentially exception objects
-def safe_get(obj: Any, key: str, default: Any = None) -> Any:
-    """Safely get a value from an object that might be a dict or an exception."""
-    if obj is None:
-        return default
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    if hasattr(obj, "get"):
-        with suppress(Exception):
-            return obj.get(key, default)
-    if hasattr(obj, "__getitem__"):
-        with suppress(Exception):
-            return obj[key]
-    return default
-
-
-def safe_set(obj: Any, key: str, value: Any) -> None:
-    """Safely set a value on an object that might be a dict or an exception."""
-    if obj is None:
-        return
-    if isinstance(obj, dict):
-        obj[key] = value
-        return
-    if hasattr(obj, "__setitem__"):
-        with suppress(Exception):
-            obj[key] = value
-    return
-
-
-def safe_split(obj: Any, delimiter: str = ",") -> list[str]:
-    """Safely split a string or return empty list for other types."""
-    if isinstance(obj, str):
-        return obj.split(delimiter)
-    elif isinstance(obj, list):
-        return [str(x) for x in obj]
-    else:
-        return []
+# Utility functions imported from common module for consistency
 
 
 # Remove this function since we're not using it
@@ -198,9 +161,9 @@ def write_pid_file() -> None:
         try:
             ALT_PID_FILE_PATH.write_text(str(pid))
             logger.info(f"PID {pid} written to {PID_FILE_PATH} and {ALT_PID_FILE_PATH}")
-        except Exception:
+        except (OSError, PermissionError):
             logger.info(f"PID {pid} written to {PID_FILE_PATH}")
-    except Exception as e:
+    except (OSError, PermissionError) as e:
         logger.error(f"Error writing PID file: {str(e)}", exc_info=True)
 
 
@@ -213,7 +176,7 @@ def cleanup_pid_file() -> None:
         # Also remove the alternative PID file if it exists
         if ALT_PID_FILE_PATH.exists():
             ALT_PID_FILE_PATH.unlink()
-    except Exception:
+    except (OSError, FileNotFoundError, PermissionError):
         # Silently ignore errors during cleanup to avoid logging issues during shutdown
         pass
 

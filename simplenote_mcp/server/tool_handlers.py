@@ -25,60 +25,26 @@ from .errors import (
     ValidationError,
 )
 from .logging import logger
+from .utils.common import (
+    extract_title_from_content as extract_title_common,
+)
+from .utils.common import (
+    safe_get,
+    safe_set,
+    safe_split,
+)
 
-
-def safe_get(obj: Any, key: str, default: Any = None) -> Any:
-    """Safely get a value from an object that might be a dict or an exception."""
-    if obj is None:
-        return default
-    if isinstance(obj, dict):
-        return obj.get(key, default)
-    if hasattr(obj, "get"):
-        with contextlib.suppress(Exception):
-            return obj.get(key, default)
-    if hasattr(obj, "__getitem__"):
-        with contextlib.suppress(Exception):
-            return obj[key]
-    return default
-
-
-def safe_set(obj: Any, key: str, value: Any) -> None:
-    """Safely set a value on an object that might be a dict or an exception."""
-    if obj is None:
-        return
-    if isinstance(obj, dict):
-        obj[key] = value
-        return
-    if hasattr(obj, "__setitem__"):
-        with contextlib.suppress(Exception):
-            obj[key] = value
-    return
-
-
-def safe_split(obj: Any, delimiter: str = ",") -> list[str]:
-    """Safely split a string or return empty list for other types."""
-    if isinstance(obj, str):
-        return obj.split(delimiter)
-    elif isinstance(obj, list):
-        return [str(x) for x in obj]
-    else:
-        return []
+# Utility functions imported from common module
 
 
 def extract_title_from_content(content: str, fallback: str = "") -> str:
     """Extract the first non-empty line from content as title."""
     from .config import get_config
 
-    if not content:
-        return fallback
-
-    config = get_config()
-    lines = content.splitlines()
-    for line in lines:
-        stripped_line = line.strip()
-        if stripped_line:
-            return stripped_line[: config.title_max_length]
-
+    title = extract_title_common(content)
+    if title:
+        config = get_config()
+        return title[: config.title_max_length]
     return fallback
 
 

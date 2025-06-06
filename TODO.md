@@ -245,3 +245,49 @@ All requirements for version 1.0 have been completed! 🎉
 ✅ **Dependency cleanup** and version standardization  
 
 The codebase is now significantly more maintainable, testable, and extensible while maintaining 100% backward compatibility.
+
+## 🛠️ **Version 1.5.1 Technical Debt Improvements** (In Progress)
+
+### Code Quality Enhancements
+
+- [x] **Eliminated Code Duplication**
+  - [x] Created `simplenote_mcp/server/utils/common.py` module
+  - [x] Centralized `safe_get()`, `safe_set()`, `safe_split()`, and `extract_title_from_content()` functions
+  - [x] Refactored `server.py` and `tool_handlers.py` to use common utilities
+
+- [x] **Improved Exception Handling**
+  - [x] Replaced broad `except Exception:` with specific exception types
+  - [x] Fixed file I/O exception handling to catch `OSError`, `IOError`, `PermissionError`
+  - [x] Updated JSON parsing to catch `JSONDecodeError`, `ValueError`, `TypeError`
+  - [x] Enhanced cache exception handling with specific error types
+
+- [x] **Dependency Injection Foundation**
+  - [x] Created `simplenote_mcp/server/context.py` for dependency management
+  - [x] Implemented `ServerContext` dataclass to replace global state
+  - [x] Added `ContextManager` for creating and managing server contexts
+  - [x] Foundation laid for future refactoring to eliminate global singletons
+
+- [x] **Linting and Formatting**
+  - [x] Fixed all ruff linting violations
+  - [x] Applied consistent code formatting with ruff
+  - [x] Removed trailing whitespace and fixed line endings
+  - [x] Updated type annotations to use modern Python syntax
+
+### Remaining Technical Debt
+
+- [ ] **Complete Global State Removal**
+  - [ ] Refactor `get_config()` to use dependency injection
+  - [ ] Eliminate global `_cache_instance` in cache.py
+  - [ ] Update all modules to use `ServerContext`
+
+- [ ] **Break Down Large Files**
+  - [ ] Split `server.py` (1191 lines) into smaller modules
+  - [ ] Refactor `cache.py` (1146 lines) into focused components
+  - [ ] Modularize `tool_handlers.py` (1001 lines) further
+
+- [ ] **Performance Optimizations**
+  - [ ] Implement connection pooling for API calls
+  - [ ] Optimize search algorithms for large datasets
+  - [ ] Review and improve async/await patterns
+
+All dependencies verified as actively used. No unused packages to remove.
