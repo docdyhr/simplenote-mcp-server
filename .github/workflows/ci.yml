@@ -111,7 +111,7 @@ jobs:
         flags: unittests
         name: codecov-umbrella
         fail_ci_if_error: false
-        token: ${{ secrets.CODECOV_TOKEN }}
+        # token: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     name: Build Package
