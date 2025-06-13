@@ -22,7 +22,7 @@ class QualityChecker:
         """Initialize the quality checker."""
         self.project_root = project_root
         self.verbose = verbose
-        self.results: dict[str, dict] = {}
+        self.results: dict[str, dict[str, object]] = {}
         self.start_time = time.time()
 
     def run_command(
@@ -339,7 +339,7 @@ class QualityChecker:
         """Generate a comprehensive quality report."""
         duration = time.time() - self.start_time
 
-        report = []
+        report: list[str] = []
         report.append("=" * 80)
         report.append("🏆 SIMPLENOTE-MCP-SERVER QUALITY ASSESSMENT REPORT")
         report.append("=" * 80)
