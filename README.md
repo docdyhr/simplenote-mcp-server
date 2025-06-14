@@ -1,5 +1,3 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/docdyhr-simplenote-mcp-server-badge.png)](https://mseep.ai/app/docdyhr-simplenote-mcp-server)
-
 # Simplenote MCP Server
 
 ![Simplenote MCP Server Logo](assets/logo.png)
@@ -293,3 +291,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - [MCP Example Servers](https://modelcontextprotocol.io/examples)
+
+
+---
+
+
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/docdyhr-simplenote-mcp-server-badge.png)](https://mseep.ai/app/docdyhr-simplenote-mcp-server)
