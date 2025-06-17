@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 env:
   PYTHON_VERSION: "3.12"
@@ -14,49 +14,49 @@ jobs:
   lint:
     name: Code Quality & Linting
     runs-on: ubuntu-latest
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install ruff mypy pytest pytest-asyncio pytest-cov requests
-      continue-on-error: false
-    
-    - name: Verify installation
-      run: |
-        python -c "import simplenote_mcp; print('✅ Package import successful')"
-        echo "✅ Dependencies installed successfully"
-    
-    - name: Run Ruff linting
-      run: ruff check . || echo "⚠️ Linting issues found but continuing"
-      continue-on-error: true
-    
-    - name: Run Ruff formatting check
-      run: ruff format --check . || echo "⚠️ Formatting issues found but continuing"
-      continue-on-error: true
-    
-    - name: Type checking with MyPy
-      run: |
-        rm -rf .mypy_cache || true
-        mypy simplenote_mcp --config-file=mypy.ini || echo "⚠️ Type checking issues found but continuing"
-      continue-on-error: true
-    
-    - name: Security check
-      run: ruff check --select=S . || echo "⚠️ Security issues found but continuing"
-      continue-on-error: true
 
-    - name: Validate README badges
-      run: python scripts/validate-badges.py
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install ruff==0.11.5 mypy==1.15.0 pytest pytest-asyncio pytest-cov requests
+        continue-on-error: false
+
+      - name: Verify installation
+        run: |
+          python -c "import simplenote_mcp; print('✅ Package import successful')"
+          echo "✅ Dependencies installed successfully"
+
+      - name: Run Ruff linting
+        run: ruff check . || echo "⚠️ Linting issues found but continuing"
+        continue-on-error: true
+
+      - name: Run Ruff formatting check
+        run: ruff format --check . || echo "⚠️ Formatting issues found but continuing"
+        continue-on-error: true
+
+      - name: Type checking with MyPy
+        run: |
+          rm -rf .mypy_cache || true
+          mypy simplenote_mcp --config-file=mypy.ini || echo "⚠️ Type checking issues found but continuing"
+        continue-on-error: true
+
+      - name: Security check
+        run: ruff check --select=S . || echo "⚠️ Security issues found but continuing"
+        continue-on-error: true
+
+      - name: Validate README badges
+        run: python scripts/validate-badges.py
 
   test:
     name: Tests
@@ -66,110 +66,110 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ["3.10", "3.11", "3.12"]
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ matrix.python-version }}
-        cache: 'pip'
-    
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install -e .
-        pip install pytest pytest-asyncio pytest-cov pytest-mock
-      continue-on-error: false
-    
-    - name: Verify installation
-      run: |
-        python -c "import simplenote_mcp; print('✅ Package import successful')"
-        echo "✅ Test dependencies installed successfully"
-    
-    - name: Run unit tests (excluding integration tests)
-      run: |
-        # Run tests excluding integration tests that require real API access
-        pytest tests/ -v \
-          --cov=simplenote_mcp \
-          --cov-report=xml \
-          --cov-report=term \
-          --ignore=tests/test_title_search_integration.py \
-          --ignore=tests/test_search_integration.py \
-          -k "not (integration or real_api or network)"
-      env:
-        SIMPLENOTE_EMAIL: "test@example.com"
-        SIMPLENOTE_PASSWORD: "test_password"
-        # Use offline mode to prevent network calls
-        SIMPLENOTE_OFFLINE_MODE: "true"
-        PYTHONPATH: ${{ github.workspace }}
-    
-    - name: Upload coverage to Codecov
-      if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-      uses: codecov/codecov-action@v4
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-        # token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+          pip install pytest pytest-asyncio pytest-cov pytest-mock
+        continue-on-error: false
+
+      - name: Verify installation
+        run: |
+          python -c "import simplenote_mcp; print('✅ Package import successful')"
+          echo "✅ Test dependencies installed successfully"
+
+      - name: Run unit tests (excluding integration tests)
+        run: |
+          # Run tests excluding integration tests that require real API access
+          pytest tests/ -v \
+            --cov=simplenote_mcp \
+            --cov-report=xml \
+            --cov-report=term \
+            --ignore=tests/test_title_search_integration.py \
+            --ignore=tests/test_search_integration.py \
+            -k "not (integration or real_api or network)"
+        env:
+          SIMPLENOTE_EMAIL: "test@example.com"
+          SIMPLENOTE_PASSWORD: "test_password"
+          # Use offline mode to prevent network calls
+          SIMPLENOTE_OFFLINE_MODE: "true"
+          PYTHONPATH: ${{ github.workspace }}
+
+      - name: Upload coverage to Codecov
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false
+          # token: ${{ secrets.CODECOV_TOKEN }}
 
   build:
     name: Build Package
     runs-on: ubuntu-latest
     needs: [lint, test]
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-        cache: 'pip'
-    
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install build twine
-    
-    - name: Build package
-      run: python -m build
-    
-    - name: Check package
-      run: twine check dist/*
-    
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: dist-packages
-        path: dist/
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package
+        run: twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
 
   integration:
     name: Integration Tests
     runs-on: ubuntu-latest
     needs: [build]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-    
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: dist-packages
-        path: dist/
-    
-    - name: Test package installation
-      run: |
-        pip install dist/*.whl
-        python -c "import simplenote_mcp; print('✅ Package installed successfully')"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-packages
+          path: dist/
+
+      - name: Test package installation
+        run: |
+          pip install dist/*.whl
+          python -c "import simplenote_mcp; print('✅ Package installed successfully')"
