@@ -17,6 +17,7 @@ permissions:
 jobs:
   security-scan:
     name: Basic Security Scan
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     
     steps:
@@ -64,6 +65,8 @@ jobs:
       continue-on-error: true
 
   codeql-analysis:
+
+    timeout-minutes: 8
     name: CodeQL Security Analysis
     runs-on: ubuntu-latest
     permissions:

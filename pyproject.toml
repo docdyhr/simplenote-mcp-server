@@ -9,24 +9,17 @@ authors = [{ name = "Thomas Juul Dyhr", email = "docdyhr@me.com" }]
 dependencies = ["mcp[cli]>=0.4.0", "simplenote>=2.1.4"]
 
 [project.optional-dependencies]
-dev = [
-    "ruff>=0.1.0",
-    "mypy>=1.5.0",
-    "pre-commit>=3.0.0",
-    "black>=23.0.0",
-]
+dev = ["ruff==0.12.0", "mypy==1.16.1", "pre-commit>=3.0.0", "black>=23.0.0"]
 test = [
     "pytest>=7.0.0",
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.0.0",
     "pytest-mock>=3.10.0",
 ]
-monitoring = [
-    "psutil>=5.9.0",
-]
+monitoring = ["psutil>=5.9.0"]
 all = [
-    "ruff>=0.1.0",
-    "mypy>=1.5.0",
+    "ruff==0.12.0",
+    "mypy==1.16.1",
     "pre-commit>=3.0.0",
     "black>=23.0.0",
     "pytest>=7.0.0",
@@ -74,25 +67,28 @@ line-length = 88
 # D: pydocstyle
 select = ["E", "F", "W", "I", "B", "C4", "SIM", "UP"]
 ignore = [
-    "E203",    # Whitespace before ':' (conflicts with Black)
-    "E501",    # Line too long (handled by formatter)
-    "E402",    # Module level import not at top of file (needed for dynamic imports)
-    "SIM105",  # Use contextlib.suppress (sometimes try/except is clearer)
-    "SIM102",  # Use single if-statement (sometimes nested is clearer)
-    "SIM103",  # Return condition directly (sometimes explicit is clearer)
-    "SIM212",  # Simplify conditionals (sometimes explicit is clearer)
-    "UP035",   # typing.Type deprecation (compatibility with older Python)
+    "E203",   # Whitespace before ':' (conflicts with Black)
+    "E501",   # Line too long (handled by formatter)
+    "E402",   # Module level import not at top of file (needed for dynamic imports)
+    "SIM105", # Use contextlib.suppress (sometimes try/except is clearer)
+    "SIM102", # Use single if-statement (sometimes nested is clearer)
+    "SIM103", # Return condition directly (sometimes explicit is clearer)
+    "SIM212", # Simplify conditionals (sometimes explicit is clearer)
+    "UP035",  # typing.Type deprecation (compatibility with older Python)
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["F401"]  # Allow unused imports in __init__.py
-"tests/*" = ["S101"]  # Allow assert in test files
-"simplenote_mcp/tests/*" = ["S101", "E402"]  # Allow assert and import issues in tests
-"**/conftest.py" = ["F401"]  # Allow unused imports in conftest
-"scripts/*" = ["SIM", "S"]  # Relax simplify and security rules for scripts
-"simplenote_mcp/scripts/*" = ["SIM", "S"]  # Relax rules for internal scripts
-"stubs/*" = ["ALL"]  # Ignore all rules in type stubs
-"test_workflows_locally.py" = ["S602"]  # Allow shell=True in local test script
+"__init__.py" = ["F401"] # Allow unused imports in __init__.py
+"tests/*" = ["S101"] # Allow assert in test files
+"simplenote_mcp/tests/*" = [
+    "S101",
+    "E402",
+] # Allow assert and import issues in tests
+"**/conftest.py" = ["F401"] # Allow unused imports in conftest
+"scripts/*" = ["SIM", "S"] # Relax simplify and security rules for scripts
+"simplenote_mcp/scripts/*" = ["SIM", "S"] # Relax rules for internal scripts
+"stubs/*" = ["ALL"] # Ignore all rules in type stubs
+"test_workflows_locally.py" = ["S602"] # Allow shell=True in local test script
 
 [tool.ruff.lint.isort]
 known-first-party = ["simplenote_mcp"]

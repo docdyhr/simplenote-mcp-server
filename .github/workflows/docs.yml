@@ -27,6 +27,7 @@ concurrency:
 jobs:
   build-docs:
     name: Build Documentation
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     
     steps:
@@ -296,6 +297,8 @@ jobs:
         path: ./site
 
   deploy-docs:
+
+    timeout-minutes: 12
     name: Deploy Documentation
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -310,6 +313,8 @@ jobs:
       uses: actions/deploy-pages@v4
 
   link-check:
+
+    timeout-minutes: 8
     name: Check Documentation Links
     runs-on: ubuntu-latest
     needs: build-docs

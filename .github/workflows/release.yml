@@ -25,6 +25,7 @@ on:
 jobs:
   prepare-release:
     name: Prepare Release
+    timeout-minutes: 12
     runs-on: ubuntu-latest
     outputs:
       current_version: ${{ steps.get_version.outputs.current_version }}
@@ -182,6 +183,8 @@ jobs:
         run: echo "release_created=true" >> $GITHUB_OUTPUT
 
   build-and-publish:
+
+    timeout-minutes: 10
     name: Build and Publish Package
     needs: prepare-release
     if: ${{ needs.prepare-release.outputs.release_created == 'true' }}
@@ -222,6 +225,8 @@ jobs:
           skip_existing: false
 
   notify:
+
+    timeout-minutes: 5
     name: Notification
     needs: [prepare-release, build-and-publish]
     if: ${{ always() && needs.prepare-release.outputs.release_created == 'true' }}

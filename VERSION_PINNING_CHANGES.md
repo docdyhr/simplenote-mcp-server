@@ -10,8 +10,8 @@ This document summarizes the changes made to pin tool versions in CI/CD workflow
 
 The following versions are specified in `.pre-commit-config.yaml`:
 
-- **Ruff**: `v0.11.5` (from `astral-sh/ruff-pre-commit`)
-- **MyPy**: `v1.15.0` (from `pre-commit/mirrors-mypy`)
+- **Ruff**: `v0.12.0` (from `astral-sh/ruff-pre-commit`)
+- **MyPy**: `v1.16.1` (from `pre-commit/mirrors-mypy`)
 
 ### Updated Workflows
 
@@ -24,7 +24,7 @@ pip install ruff mypy pytest pytest-asyncio pytest-cov requests
 
 **After:**
 ```yaml
-pip install ruff==0.11.5 mypy==1.15.0 pytest pytest-asyncio pytest-cov requests
+pip install ruff==0.12.0 mypy==1.16.1 pytest pytest-asyncio pytest-cov requests
 ```
 
 #### 2. Code Quality (`.github/workflows/code-quality.yml`)
@@ -33,17 +33,17 @@ pip install ruff==0.11.5 mypy==1.15.0 pytest pytest-asyncio pytest-cov requests
 
 - **pre-commit job:**
   ```yaml
-  pip install pre-commit ruff==0.11.5 mypy==1.15.0 pytest pytest-asyncio pytest-cov pytest-mock
+  pip install pre-commit ruff==0.12.0 mypy==1.16.1 pytest pytest-asyncio pytest-cov pytest-mock
   ```
 
 - **security job:**
   ```yaml
-  pip install ruff==0.11.5
+  pip install ruff==0.12.0
   ```
 
 - **type-check job:**
   ```yaml
-  pip install mypy==1.15.0
+  pip install mypy==1.16.1
   ```
 
 #### 3. Formatting Check (`.github/workflows/formatting-check.yml`)
@@ -52,38 +52,38 @@ pip install ruff==0.11.5 mypy==1.15.0 pytest pytest-asyncio pytest-cov requests
 
 - **format-check job:**
   ```yaml
-  pip install pre-commit ruff==0.11.5 mypy==1.15.0 types-requests types-setuptools types-PyYAML pytest
+  pip install pre-commit ruff==0.12.0 mypy==1.16.1 types-requests types-setuptools types-PyYAML pytest
   ```
 
 - **quick-lint job:**
   ```yaml
-  pip install ruff==0.11.5
+  pip install ruff==0.12.0
   ```
 
 - **type-check job:**
   ```yaml
-  pip install mypy==1.15.0 types-requests types-setuptools types-PyYAML
+  pip install mypy==1.16.1 types-requests types-setuptools types-PyYAML
   ```
 
 #### 4. Test Workflow (`.github/workflows/test.yml`)
 
 **lint job:**
 ```yaml
-pip install ruff==0.11.5 mypy==1.15.0
+pip install ruff==0.12.0 mypy==1.16.1
 ```
 
 #### 5. Python Tests (`.github/workflows/python-tests.yml`)
 
 **test job:**
 ```yaml
-pip install pytest pytest-cov pytest-asyncio pytest-mock ruff==0.11.5 mypy==1.15.0
+pip install pytest pytest-cov pytest-asyncio pytest-mock ruff==0.12.0 mypy==1.16.1
 ```
 
 #### 6. Debug CI (`.github/workflows/debug-ci.yml`)
 
 **debug-environment job:**
 ```yaml
-pip install ruff==0.11.5 mypy==1.15.0 pytest pytest-asyncio pytest-cov
+pip install ruff==0.12.0 mypy==1.16.1 pytest pytest-asyncio pytest-cov
 ```
 
 ### Workflows Not Changed
@@ -170,12 +170,12 @@ When updating tool versions in the future:
    ```yaml
    # .pre-commit-config.yaml
    - repo: https://github.com/astral-sh/ruff-pre-commit
-     rev: v0.12.0  # New version
-   ```
+     rev: v0.13.0  # New version
+```
 
 2. **Update all CI workflows:**
-   - Search for `ruff==0.11.5` and replace with new version
-   - Search for `mypy==1.15.0` and replace with new version
+   - Search for `ruff==0.12.0` and replace with new version
+   - Search for `mypy==1.16.1` and replace with new version
 
 3. **Test locally before committing:**
    ```bash
@@ -237,4 +237,4 @@ This script should be run after any changes to tool versions or workflow files.
 
 **Last Updated**: January 2025  
 **Next Review**: When updating tool versions or adding new workflows  
-**Validation Status**: ✅ All versions pinned and consistent (last checked: January 2025)
+**Validation Status**: ✅ All versions pinned and consistent (ruff 0.12.0, mypy 1.16.1 - last checked: January 2025)

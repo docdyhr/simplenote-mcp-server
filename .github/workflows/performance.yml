@@ -12,6 +12,7 @@ on:
 jobs:
   benchmark:
     name: Performance Benchmarks
+    timeout-minutes: 25
     runs-on: ubuntu-latest
     
     steps:
@@ -321,6 +322,8 @@ jobs:
         EOF
 
   resource-usage:
+
+    timeout-minutes: 8
     name: Resource Usage Analysis
     runs-on: ubuntu-latest
     

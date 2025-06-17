@@ -11,6 +11,7 @@ on:
 
 jobs:
   auto-merge:
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
@@ -102,6 +103,8 @@ jobs:
           MERGE_DELETE_BRANCH: true
 
   dependabot-auto-merge:
+
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]'
     permissions:

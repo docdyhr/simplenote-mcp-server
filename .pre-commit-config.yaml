@@ -1,4 +1,4 @@
-exclude: '.git|.venv|venv|__pycache__|.pytest_cache'
+exclude: ".git|.venv|venv|__pycache__|.pytest_cache"
 
 # Specify Python version to use for all hooks
 default_language_version:
@@ -15,31 +15,31 @@ ci:
     For more information, see https://pre-commit.ci
 
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
     hooks:
-    -   id: trailing-whitespace
+      - id: trailing-whitespace
         exclude: '\.md$'
         args: [--markdown-linebreak-ext=md]
-    -   id: end-of-file-fixer
-    -   id: check-yaml
-        args: ['--unsafe']  # Allow custom YAML tags
-    -   id: check-toml
-    -   id: check-json
-    -   id: check-added-large-files
-        args: ['--maxkb=500']
-    -   id: check-merge-conflict
-    -   id: check-case-conflict
-    -   id: debug-statements
-    -   id: check-docstring-first
-    -   id: detect-private-key
-    -   id: detect-aws-credentials
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ["--unsafe"] # Allow custom YAML tags
+      - id: check-toml
+      - id: check-json
+      - id: check-added-large-files
+        args: ["--maxkb=500"]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: debug-statements
+      - id: check-docstring-first
+      - id: detect-private-key
+      - id: detect-aws-credentials
         args: ["--allow-missing-credentials"]
 
--   repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.5
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.0
     hooks:
-    -   id: ruff
+      - id: ruff
         args: ["--fix", "--show-fixes"]
         # Allow E402 (module level import not at top) for specific import patterns needed for Python 3.13+ compatibility
         exclude: |
@@ -50,20 +50,21 @@ repos:
               simplenote_mcp/scripts/.*\.py|
               simplenote_mcp/tests/.*\.py
           )$
-    -   id: ruff-format
+      - id: ruff-format
         args: ["--line-length=88"]
 
--   repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.16.1
     hooks:
-    -   id: mypy
+      - id: mypy
         args: [--config-file=mypy.ini, simplenote_mcp]
         pass_filenames: false
         always_run: true
-        additional_dependencies: [
+        additional_dependencies:
+          [
             "types-requests",
             "types-setuptools",
             "types-PyYAML",
             "pytest",
             "mcp",
-        ]
+          ]

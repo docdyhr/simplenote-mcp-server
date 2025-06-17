@@ -11,6 +11,7 @@ on:
 jobs:
   check-badges:
     name: Verify Badge Status
+    timeout-minutes: 5
     runs-on: ubuntu-latest
     
     steps:
