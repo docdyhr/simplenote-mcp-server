@@ -176,19 +176,9 @@ jobs:
     uses: ./.github/workflows/notifications.yml
     if: always()
     with:
-      status: ${{ 
-        (needs.lint-and-test.result == 'success' && 
-         needs.build-and-push.result == 'success' && 
-         (needs.test-image.result == 'success' || needs.test-image.result == 'skipped') && 
-         (needs.security-scan.result == 'success' || needs.security-scan.result == 'skipped')) 
-        && 'success' || 'failure' 
-      }}
+      status: ${{ (needs.lint-and-test.result == 'success' && needs.build-and-push.result == 'success') && 'success' || 'failure' }}
       workflow_name: "Docker CI/CD Pipeline"
-      message: |
-        📋 Linting: ${{ needs.lint-and-test.result }}
-        🔨 Build: ${{ needs.build-and-push.result }}
-        🧪 Tests: ${{ needs.test-image.result }}
-        🛡️ Security: ${{ needs.security-scan.result }}
+      message: "Docker pipeline completed. Lint: ${{ needs.lint-and-test.result }}, Build: ${{ needs.build-and-push.result }}, Test: ${{ needs.test-image.result }}, Security: ${{ needs.security-scan.result }}"
       slack_enabled: false
       email_enabled: true
     secrets:

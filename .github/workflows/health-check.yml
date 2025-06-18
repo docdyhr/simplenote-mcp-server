@@ -93,15 +93,7 @@ jobs:
     with:
       status: ${{ needs.health-check.result }}
       workflow_name: "Health Check Monitoring"
-      message: |
-        Health check monitoring completed for Docker images:
-        - Latest tag: ${{ needs.health-check.result == 'success' && '✅ Healthy' || '❌ Failed' }}
-        - Main tag: ${{ needs.health-check.result == 'success' && '✅ Healthy' || '❌ Failed' }}
-        
-        Checks performed:
-        🐳 Container startup verification
-        🛠️ Basic functionality test  
-        🛡️ Security vulnerability scan
+      message: "Health check monitoring completed for Docker images (latest and main tags). Checks: container startup, functionality test, security scan."
       slack_enabled: false
       email_enabled: true
     secrets:
