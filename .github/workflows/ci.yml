@@ -253,15 +253,61 @@ jobs:
       - name: Verify version consistency
         run: |
           echo "🔍 Verifying version consistency..."
-          version_file=$(cat VERSION)
-          pyproject_version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])" 2>/dev/null || echo "unknown")
-          echo "VERSION file: $version_file"
-          echo "pyproject.toml: $pyproject_version"
-          if [ "$version_file" != "$pyproject_version" ]; then
-            echo "❌ Version mismatch detected!"
+          
+          # Check if VERSION file exists
+          if [ ! -f VERSION ]; then
+            echo "❌ VERSION file not found!"
             exit 1
           fi
-          echo "✅ Version consistency verified"
+          
+          version_file=$(cat VERSION)
+          echo "VERSION file: $version_file"
+          
+          # Use compatible Python version check with fallback
+          pyproject_version=$(python -c "
+          import sys
+          try:
+              if sys.version_info >= (3, 11):
+                  import tomllib
+              else:
+                  try:
+                      import tomli as tomllib
+                  except ImportError:
+                      import toml as tomllib
+                      # For toml library, use different loading method
+                      with open('pyproject.toml', 'r') as f:
+                          data = tomllib.load(f)
+                      print(data['project']['version'])
+                      sys.exit(0)
+              
+              with open('pyproject.toml', 'rb') as f:
+                  data = tomllib.load(f)
+              print(data['project']['version'])
+          except ImportError:
+              # Fallback to parsing manually if no toml library available
+              with open('pyproject.toml', 'r') as f:
+                  for line in f:
+                      if line.strip().startswith('version = '):
+                          version = line.split('=')[1].strip().strip('\"')
+                          print(version)
+                          break
+          " 2>/dev/null)
+          
+          echo "pyproject.toml: $pyproject_version"
+          
+          if [ -z "$pyproject_version" ]; then
+            echo "❌ Could not extract version from pyproject.toml!"
+            exit 1
+          fi
+          
+          if [ "$version_file" != "$pyproject_version" ]; then
+            echo "❌ Version mismatch detected!"
+            echo "  VERSION file: '$version_file'"
+            echo "  pyproject.toml: '$pyproject_version'"
+            exit 1
+          fi
+          
+          echo "✅ Version consistency verified ($version_file)"
 
       - name: Build package
         run: |

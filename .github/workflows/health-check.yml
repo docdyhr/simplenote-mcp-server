@@ -2,8 +2,8 @@ name: Health Check Monitoring
 
 on:
   schedule:
-    # Run health checks every 15 minutes
-    - cron: '*/15 * * * *'
+    # Run health checks every hour to reduce resource usage
+    - cron: '0 * * * *'
   workflow_dispatch:
 
 env:
@@ -13,6 +13,7 @@ env:
 jobs:
   health-check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
       matrix:
         tag: [latest, main]
@@ -72,7 +73,7 @@ jobs:
           fi
 
       - name: Health check - Image security scan
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
           format: 'json'

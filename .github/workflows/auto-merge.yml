@@ -88,19 +88,50 @@ jobs:
             
             return canMerge;
 
-      - name: Auto merge PR
+      - name: Enable auto-merge
         if: steps.check.outputs.result == 'true'
-        uses: pascalgn/automerge-action@v0.16.4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MERGE_METHOD: squash
-          MERGE_COMMIT_MESSAGE: pull-request-title
-          UPDATE_LABELS: ""
-          MERGE_LABELS: "auto-merge"
-          MERGE_REMOVE_LABELS: "auto-merge"
-          MERGE_RETRIES: 3
-          MERGE_RETRY_SLEEP: 10000
-          MERGE_DELETE_BRANCH: true
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+            
+            try {
+              // Enable auto-merge using the correct API
+              await github.rest.pulls.enableAutoMerge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                merge_method: 'squash'
+              });
+              
+              console.log(`✅ Auto-merge enabled for PR #${pr.number}`);
+              
+              // Remove auto-merge label
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  name: 'auto-merge'
+                });
+              } catch (labelError) {
+                console.log('Label auto-merge not found or already removed');
+              }
+              
+            } catch (error) {
+              console.error(`❌ Failed to enable auto-merge: ${error.message}`);
+              
+              // Fallback: Use gh CLI for auto-merge
+              const { exec } = require('child_process');
+              exec(`gh pr merge ${pr.number} --auto --squash`, (err, stdout, stderr) => {
+                if (err) {
+                  console.error(`CLI fallback failed: ${err}`);
+                  throw err;
+                }
+                console.log(`✅ Auto-merge enabled via CLI for PR #${pr.number}`);
+              });
+            }
 
   dependabot-auto-merge:
 

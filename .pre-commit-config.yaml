@@ -2,7 +2,7 @@ exclude: ".git|.venv|venv|__pycache__|.pytest_cache"
 
 # Specify Python version to use for all hooks
 default_language_version:
-  python: python3.12
+  python: python3
 
 # Custom CI-specific environment variables
 ci:

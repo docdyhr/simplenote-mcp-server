@@ -235,17 +235,66 @@ helm install my-simplenote simplenote-mcp/simplenote-mcp-server \
 
 ### Notifications
 
-Configure Slack or email notifications:
+**Status**: ✅ **CONFIGURED AND INTEGRATED**
+
+The notification system is now fully integrated into all CI/CD workflows:
+
+#### Email Notifications Setup ✅
+
+**Required GitHub Secrets**:
+- `NOTIFICATION_EMAIL` - Gmail address for sending/receiving notifications
+- `EMAIL_PASSWORD` - Gmail app password for SMTP authentication  
+
+**Integration Status**:
+- ✅ Docker CI/CD Pipeline (`docker-publish.yml`) - sends email on completion
+- ✅ Health Check Monitoring (`health-check.yml`) - sends email on status change
+- ✅ Test Notifications (`test-notifications.yml`) - manual testing workflow
+
+#### How Email Notifications Work
+
+1. **Centralized System**: All workflows use `.github/workflows/notifications.yml`
+2. **Email Provider**: Gmail SMTP (smtp.gmail.com:587)
+3. **Content**: HTML-formatted emails with workflow details, links, and status
+4. **Triggers**: Automatic on workflow completion (success/failure)
+
+#### Email Content Includes
+- 📧 **Subject**: Workflow name and status with emoji
+- 🔗 **Links**: Direct links to workflow run and commit
+- 📋 **Details**: Repository, branch, commit SHA
+- 💬 **Message**: Custom status information per workflow
+
+#### Slack Notifications (Optional)
 
 ```yaml
-# In workflow files, set:
+# To enable Slack notifications, add:
 slack_enabled: true
-email_enabled: true
 
-# Add GitHub secrets:
+# Add GitHub secret:
 # - SLACK_WEBHOOK_URL
-# - NOTIFICATION_EMAIL
-# - EMAIL_PASSWORD
+```
+
+#### Manual Testing
+
+```bash
+# Test email notifications manually
+gh workflow run test-notifications.yml --ref main -f test_type=success
+```
+
+#### Configuration Example
+
+```yaml
+# In workflow files:
+notify:
+  uses: ./.github/workflows/notifications.yml
+  with:
+    status: success
+    workflow_name: "My Workflow"
+    message: "Custom status message"
+    email_enabled: true
+    slack_enabled: false
+  secrets:
+    NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+    EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
 ```
 
 ### Dependency Management
