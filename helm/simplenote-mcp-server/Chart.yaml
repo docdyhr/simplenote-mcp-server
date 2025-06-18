@@ -10,6 +10,7 @@ sources:
 maintainers:
   - name: Thomas Juul Dyhr
     email: docdyhr@me.com
+icon: https://raw.githubusercontent.com/docdyhr/simplenote-mcp-server/main/assets/logo.png
 keywords:
   - simplenote
   - mcp
