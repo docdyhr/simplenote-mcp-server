@@ -36,6 +36,11 @@ simplenote-mcp-server = "simplenote_mcp.server:run_main"
 requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["simplenote_mcp*"]
+exclude = ["tests*", "simplenote_mcp.tests*", "*.tests*"]
+
 [tool.mypy]
 python_version = "3.10"
 warn_return_any = true

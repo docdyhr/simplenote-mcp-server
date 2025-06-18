@@ -4,3 +4,7 @@ include CHANGELOG.md
 include VERSION
 include pyproject.toml
 recursive-include simplenote_mcp/scripts *.sh
+global-exclude tests/*
+global-exclude simplenote_mcp/tests/*
+prune tests
+prune simplenote_mcp/tests
