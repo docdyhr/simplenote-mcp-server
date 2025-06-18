@@ -1,5 +1,5 @@
 # Multi-stage build for optimal image size
-FROM python:3.11-slim AS builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir -e .
 
 # Production stage
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Create non-root user for security
 RUN groupadd -r mcp && useradd -r -g mcp mcp
