@@ -97,8 +97,8 @@ jobs:
           echo "SIMPLENOTE_EMAIL=test@example.com" > .env
           echo "SIMPLENOTE_PASSWORD=testpassword" >> .env
           
-          # Test docker-compose configuration
-          docker-compose config
+          # Test docker-compose configuration (use docker compose v2)
+          docker compose config
           
           # Clean up
           rm .env
