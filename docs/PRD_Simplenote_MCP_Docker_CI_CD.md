@@ -93,6 +93,7 @@ jobs:
 | `DOCKER_TOKEN`    | Docker Hub Access Token (RW access) |
 
 To create the token:
+
 - Go to [hub.docker.com → Security](https://hub.docker.com/settings/security)
 - Generate a new **Access Token**
 - Save the token in GitHub repo → Settings → Secrets → Actions
