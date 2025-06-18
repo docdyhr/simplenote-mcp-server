@@ -2,9 +2,11 @@ name: Health Check Monitoring
 
 on:
   schedule:
-    # Run health checks every hour to reduce resource usage
-    - cron: '0 * * * *'
+    # Run health checks weekly on Sunday mornings to optimize resource usage
+    - cron: '0 8 * * 0'
   workflow_dispatch:
+  release:
+    types: [published]
 
 env:
   REGISTRY: docker.io

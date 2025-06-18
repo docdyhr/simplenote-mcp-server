@@ -228,10 +228,12 @@ helm install my-simplenote simplenote-mcp/simplenote-mcp-server \
 
 ### Health Monitoring
 
-- **Automated health checks**: Runs every 15 minutes
+- **Automated health checks**: Runs weekly on Sunday mornings (optimized resource usage)
 - **Container startup verification**: Tests image integrity
-- **Security scanning**: Continuous vulnerability monitoring
+- **Security scanning**: Regular vulnerability monitoring
 - **Multi-tag monitoring**: Tests both `latest` and `main` tags
+- **Release validation**: Automatic checks on new releases
+- **Manual triggering**: Available via workflow_dispatch
 
 ### Notifications
 

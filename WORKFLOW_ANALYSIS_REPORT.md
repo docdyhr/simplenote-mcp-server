@@ -18,8 +18,8 @@ All critical issues have been resolved and the CI/CD pipeline is now **productio
 
 #### 2. Health Check Resource Usage ✅  
 - **Issue**: Health checks ran every 15 minutes (2,880x/month)
-- **Fix**: Reduced frequency to hourly (720x/month)
-- **Result**: 75% reduction in GitHub Actions resource usage
+- **Fix**: Reduced frequency to weekly (52x/month)
+- **Result**: 98% reduction in GitHub Actions resource usage
 
 #### 3. Auto-Merge Security ✅
 - **Issue**: Deprecated `pascalgn/automerge-action@v0.16.4` with potential security risks
@@ -99,7 +99,7 @@ All critical issues have been resolved and the CI/CD pipeline is now **productio
 ## ⚡ Performance Metrics
 
 ### Resource Usage Optimization
-- **Health Checks**: 75% reduction (15min → 1hr intervals)
+- **Health Checks**: 98% reduction (15min → weekly intervals)
 - **Workflow Consolidation**: 3 duplicate workflows removed
 - **Timeout Settings**: All workflows have appropriate limits
 - **Caching**: Optimized for faster builds
@@ -181,7 +181,8 @@ All critical issues have been resolved and the CI/CD pipeline is now **productio
 
 | Metric | Before | After | Improvement |
 |--------|--------|-------|-------------|
-| **Health Check Frequency** | 15min | 1hr | 75% reduction |
+| **Health Check Frequency** | 15min | Weekly | 98% reduction |
+| **Monthly Workflow Runs** | 2,880 | 52 | 98% reduction |
 | **Workflow Count** | 17 | 14 | 3 duplicates removed |
 | **Security Issues** | 5 critical | 0 | 100% resolved |
 | **Timeout Coverage** | 60% | 100% | 40% improvement |
