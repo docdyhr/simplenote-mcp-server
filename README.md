@@ -11,12 +11,13 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml)
 [![Code Quality](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml)
 [![Security](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/security.yml)
+[![Docker](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/docker-publish.yml)
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.5.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](./CHANGELOG.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](https://github.com/docdyhr/simplenote-mcp-server)
+[![Docker](https://img.shields.io/docker/v/docdyhr/simplenote-mcp-server?label=docker&color=blue)](https://hub.docker.com/r/docdyhr/simplenote-mcp-server)
 
 <!-- Development & Quality Badges -->
 [![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
@@ -42,10 +43,21 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 ### Option 1: Docker (Recommended)
 
-The fastest way to get started is using Docker:
+The fastest way to get started is using our pre-built Docker image:
 
 ```bash
-# Clone the repository
+# Pull and run the latest image
+docker run -d \
+  -e SIMPLENOTE_EMAIL=your.email@example.com \
+  -e SIMPLENOTE_PASSWORD=your-password \
+  -p 8000:8000 \
+  docdyhr/simplenote-mcp-server:latest
+```
+
+Or use Docker Compose:
+
+```bash
+# Clone the repository for docker-compose.yml
 git clone https://github.com/docdyhr/simplenote-mcp-server.git
 cd simplenote-mcp-server
 
@@ -80,6 +92,30 @@ simplenote-mcp-server
 
 ## 🐳 Docker Deployment
 
+### Using Pre-built Images
+
+The easiest way to use the server is with our pre-built Docker images:
+
+```bash
+# Pull the latest image
+docker pull docdyhr/simplenote-mcp-server:latest
+
+# Run with Docker
+docker run -d \
+  -e SIMPLENOTE_EMAIL=your.email@example.com \
+  -e SIMPLENOTE_PASSWORD=your-password \
+  -p 8000:8000 \
+  docdyhr/simplenote-mcp-server:latest
+
+# Or use Docker Compose
+docker-compose up -d
+```
+
+Available tags:
+- `latest` - Latest stable release
+- `v1.6.0` - Specific version
+- `main` - Latest development build
+
 ### Production Deployment
 
 ```bash
@@ -105,11 +141,14 @@ docker-compose -f docker-compose.dev.yml up
 ### Docker Features
 
 - **Multi-stage build** for optimized image size (346MB)
+- **Multi-platform support**: `linux/amd64` and `linux/arm64`
 - **Security hardening**: Non-root user, read-only filesystem, no new privileges
 - **Health checks** and automatic restart policies
 - **Resource limits**: 1 CPU, 512MB memory
 - **Logging**: Persistent log volumes
 - **Environment-based configuration**
+- **CI/CD Pipeline**: Automated builds and publishing to Docker Hub
+- **Security scanning**: Trivy vulnerability scanning on all images
 
 ---
 

@@ -1,11 +1,10 @@
 services:
   simplenote-mcp:
-    # Use pre-built image from Docker Hub
-    image: docdyhr/simplenote-mcp-server:latest
-    # Uncomment below to build locally instead
-    # build:
-    #   context: .
-    #   dockerfile: Dockerfile
+    # Build from local source
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: simplenote-mcp-server:local
     container_name: simplenote-mcp-server
     restart: unless-stopped
 
