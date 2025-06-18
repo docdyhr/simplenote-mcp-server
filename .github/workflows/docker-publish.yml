@@ -173,20 +173,20 @@ jobs:
 
   notify:
     needs: [lint-and-test, build-and-push, test-image, security-scan]
-    uses: ./.github/workflows/notifications.yml
+    runs-on: ubuntu-latest
     if: always()
-    with:
-      status: ${{ (needs.lint-and-test.result == 'success' && needs.build-and-push.result == 'success' && needs.security-scan.result == 'success') && 'success' || 'failure' }}
-      workflow_name: "Docker CI/CD Pipeline"
-      message: |
-        Docker image built and published successfully!
-        🐳 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-        📋 Linting: ${{ needs.lint-and-test.result }}
-        🔨 Build: ${{ needs.build-and-push.result }}
-        🧪 Tests: ${{ needs.test-image.result }}
-        🛡️ Security: ${{ needs.security-scan.result }}
-      slack_enabled: false  # Set to true and add SLACK_WEBHOOK_URL secret to enable
-      email_enabled: false  # Set to true and add email secrets to enable
-    secrets:
-      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-      NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+    
+    steps:
+      - name: Workflow notification
+        run: |
+          echo "🐳 Docker CI/CD Pipeline Completed"
+          echo "📋 Linting: ${{ needs.lint-and-test.result }}"
+          echo "🔨 Build: ${{ needs.build-and-push.result }}"
+          echo "🧪 Tests: ${{ needs.test-image.result }}"
+          echo "🛡️ Security: ${{ needs.security-scan.result }}"
+          
+          if [[ "${{ needs.lint-and-test.result }}" == "success" && "${{ needs.build-and-push.result }}" == "success" ]]; then
+            echo "✅ Pipeline completed successfully!"
+          else
+            echo "❌ Pipeline failed - check logs above"
+          fi
