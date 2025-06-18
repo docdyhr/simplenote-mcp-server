@@ -16,7 +16,6 @@ on:
 jobs:
   test-notification:
     uses: ./.github/workflows/notifications.yml
-    timeout-minutes: 10
     with:
       status: ${{ inputs.test_type }}
       workflow_name: "Email Notification Test"
