@@ -16,7 +16,45 @@ env:
   IMAGE_NAME: docdyhr/simplenote-mcp-server
 
 jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,test]
+
+      - name: Run linting
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Run type checking
+        run: |
+          mypy simplenote_mcp --config-file=mypy.ini
+
+      - name: Run tests
+        run: |
+          pytest tests/ --cov=simplenote_mcp --cov-report=xml
+
+      - name: Upload coverage to Codecov
+        if: github.event_name != 'pull_request'
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+
   build-and-push:
+    needs: lint-and-test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -78,6 +116,17 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
+      - name: Install cosign
+        if: github.event_name != 'pull_request'
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign container image
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: 1
+        run: |
+          echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build.outputs.digest }}
+
   test-image:
     needs: build-and-push
     runs-on: ubuntu-latest
@@ -121,3 +170,23 @@ jobs:
         if: always()
         with:
           sarif_file: 'trivy-results.sarif'
+
+  notify:
+    needs: [lint-and-test, build-and-push, test-image, security-scan]
+    uses: ./.github/workflows/notifications.yml
+    if: always()
+    with:
+      status: ${{ (needs.lint-and-test.result == 'success' && needs.build-and-push.result == 'success' && needs.security-scan.result == 'success') && 'success' || 'failure' }}
+      workflow_name: "Docker CI/CD Pipeline"
+      message: |
+        Docker image built and published successfully!
+        🐳 Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        📋 Linting: ${{ needs.lint-and-test.result }}
+        🔨 Build: ${{ needs.build-and-push.result }}
+        🧪 Tests: ${{ needs.test-image.result }}
+        🛡️ Security: ${{ needs.security-scan.result }}
+      slack_enabled: false  # Set to true and add SLACK_WEBHOOK_URL secret to enable
+      email_enabled: false  # Set to true and add email secrets to enable
+    secrets:
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}

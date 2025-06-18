@@ -1,30 +1,75 @@
 version: 2
 updates:
+  # Python dependencies
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "sunday"
+      time: "09:00"
     open-pull-requests-limit: 10
-    labels:
-      - "dependencies"
-      - "python"
     assignees:
       - "docdyhr"
     reviewers:
       - "docdyhr"
     commit-message:
       prefix: "deps"
+      prefix-development: "deps-dev"
       include: "scope"
-
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 5
     labels:
       - "dependencies"
-      - "github_actions"
+      - "python"
+    allow:
+      - dependency-type: "all"
+    groups:
+      production-dependencies:
+        dependency-type: "production"
+        patterns:
+          - "mcp*"
+          - "simplenote*"
+      development-dependencies:
+        dependency-type: "development"
+        patterns:
+          - "ruff*"
+          - "mypy*"
+          - "pytest*"
+          - "black*"
+          - "pre-commit*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/.github/workflows"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+    open-pull-requests-limit: 5
     assignees:
       - "docdyhr"
     reviewers:
       - "docdyhr"
+    commit-message:
+      prefix: "ci"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "github-actions"
+
+  # Docker
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "tuesday"
+      time: "09:00"
+    open-pull-requests-limit: 3
+    assignees:
+      - "docdyhr"
+    reviewers:
+      - "docdyhr"
+    commit-message:
+      prefix: "docker"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "docker"

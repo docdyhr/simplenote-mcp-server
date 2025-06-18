@@ -149,6 +149,58 @@ docker-compose -f docker-compose.dev.yml up
 - **Environment-based configuration**
 - **CI/CD Pipeline**: Automated builds and publishing to Docker Hub
 - **Security scanning**: Trivy vulnerability scanning on all images
+- **Container signing**: Sigstore cosign signatures for supply chain security
+- **Kubernetes ready**: Production-grade Helm chart with security hardening
+- **Automated updates**: Dependabot for dependencies, auto-versioning workflows
+- **Health monitoring**: Continuous health checks and alerting
+- **Enterprise notifications**: Slack and email integration for CI/CD status
+
+---
+
+## ☸️ Kubernetes Deployment
+
+### Using Helm (Recommended)
+
+Deploy to Kubernetes with our production-ready Helm chart:
+
+```bash
+# Install from local chart
+helm install my-simplenote ./helm/simplenote-mcp-server \
+  --set simplenote.email="your-email@example.com" \
+  --set simplenote.password="your-password"
+
+# Or with external secrets (recommended for production)
+helm install my-simplenote ./helm/simplenote-mcp-server \
+  --set externalSecrets.enabled=true \
+  --set externalSecrets.secretStore.name="vault-backend"
+```
+
+### Kubernetes Features
+
+- **Security hardening**: Non-root user, read-only filesystem, dropped capabilities
+- **Resource management**: CPU/memory limits and requests configured
+- **Auto-scaling**: Horizontal Pod Autoscaler support
+- **Health checks**: Liveness and readiness probes
+- **External secrets**: Integration with external secret management
+- **Service mesh ready**: Compatible with Istio and other service meshes
+
+### Production Configuration
+
+```yaml
+# values.yaml for production
+replicaCount: 3
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 500m
+    memory: 256Mi
+```
 
 ---
 

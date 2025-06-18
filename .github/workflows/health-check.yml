@@ -1,0 +1,95 @@
+name: Health Check Monitoring
+
+on:
+  schedule:
+    # Run health checks every 15 minutes
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+env:
+  REGISTRY: docker.io
+  IMAGE_NAME: docdyhr/simplenote-mcp-server
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        tag: [latest, main]
+    
+    steps:
+      - name: Pull Docker image
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
+
+      - name: Health check - Container startup
+        run: |
+          # Start container in background and check if it starts successfully
+          container_id=$(docker run -d \
+            -e SIMPLENOTE_EMAIL=healthcheck@example.com \
+            -e SIMPLENOTE_PASSWORD=dummy-password \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }})
+          
+          # Wait for container to initialize
+          sleep 10
+          
+          # Check if container is still running
+          if docker ps -q --filter "id=$container_id" | grep -q .; then
+            echo "✅ Container ${{ matrix.tag }} started successfully"
+            docker logs $container_id
+          else
+            echo "❌ Container ${{ matrix.tag }} failed to start"
+            docker logs $container_id
+            exit 1
+          fi
+          
+          # Clean up
+          docker stop $container_id
+          docker rm $container_id
+
+      - name: Health check - Basic functionality
+        run: |
+          # Test container response to help command
+          container_output=$(docker run --rm \
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }} --help 2>&1 || true)
+          
+          if echo "$container_output" | grep -q "Simplenote MCP Server"; then
+            echo "✅ Container ${{ matrix.tag }} responds correctly to --help"
+          else
+            echo "❌ Container ${{ matrix.tag }} help command failed"
+            echo "Output: $container_output"
+            exit 1
+          fi
+
+      - name: Health check - Image security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
+          format: 'json'
+          output: 'trivy-results-${{ matrix.tag }}.json'
+          exit-code: '0'  # Don't fail on vulnerabilities, just report
+
+      - name: Upload security scan results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-results-${{ matrix.tag }}
+          path: trivy-results-${{ matrix.tag }}.json
+
+  notify-status:
+    needs: health-check
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Notify on success
+        if: needs.health-check.result == 'success'
+        run: |
+          echo "✅ All health checks passed"
+          
+      - name: Notify on failure
+        if: needs.health-check.result == 'failure'
+        run: |
+          echo "❌ Health checks failed"
+          echo "Check the logs for details"
+          # Future: Add Slack/email notifications here

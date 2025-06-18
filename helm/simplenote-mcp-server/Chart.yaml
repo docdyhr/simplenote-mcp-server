@@ -1,0 +1,28 @@
+apiVersion: v2
+name: simplenote-mcp-server
+description: A Helm chart for Simplenote MCP Server
+type: application
+version: 1.6.0
+appVersion: "1.6.0"
+home: https://github.com/docdyhr/simplenote-mcp-server
+sources:
+  - https://github.com/docdyhr/simplenote-mcp-server
+maintainers:
+  - name: Thomas Juul Dyhr
+    email: docdyhr@me.com
+keywords:
+  - simplenote
+  - mcp
+  - server
+  - ai
+  - claude
+annotations:
+  category: AI/ML
+  artifacthub.io/license: MIT
+  artifacthub.io/prerelease: "false"
+  artifacthub.io/containsSecurityUpdates: "false"
+  artifacthub.io/changes: |
+    - Initial Helm chart release
+    - Multi-platform Docker support
+    - Security hardening
+    - Resource limits and health checks
