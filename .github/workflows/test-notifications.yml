@@ -1,0 +1,69 @@
+name: Test Email Notifications
+
+on:
+  workflow_dispatch:
+    inputs:
+      test_type:
+        description: 'Type of notification test'
+        required: true
+        default: 'success'
+        type: choice
+        options:
+          - success
+          - failure
+          - cancelled
+      custom_message:
+        description: 'Custom message to include'
+        required: false
+        default: 'This is a test notification to verify email delivery works correctly.'
+
+jobs:
+  simulate-job:
+    runs-on: ubuntu-latest
+    outputs:
+      result: ${{ steps.simulate.outputs.result }}
+    steps:
+      - name: Simulate workflow result
+        id: simulate
+        run: |
+          case "${{ inputs.test_type }}" in
+            "success")
+              echo "✅ Simulating successful workflow"
+              echo "result=success" >> $GITHUB_OUTPUT
+              ;;
+            "failure")
+              echo "❌ Simulating failed workflow"
+              echo "result=failure" >> $GITHUB_OUTPUT
+              exit 1
+              ;;
+            "cancelled")
+              echo "⚠️ Simulating cancelled workflow"
+              echo "result=cancelled" >> $GITHUB_OUTPUT
+              # Note: actual cancellation would need manual intervention
+              ;;
+          esac
+      
+  test-notification:
+    needs: simulate-job
+    uses: ./.github/workflows/notifications.yml
+    if: always()
+    with:
+      status: ${{ inputs.test_type }}
+      workflow_name: "Email Notification Test"
+      message: |
+        🧪 **Test Notification**
+        
+        This is a test of the email notification system.
+        
+        **Test Type**: ${{ inputs.test_type }}
+        **Custom Message**: ${{ inputs.custom_message }}
+        **Triggered By**: ${{ github.actor }}
+        **Repository**: ${{ github.repository }}
+        **Branch**: ${{ github.ref_name }}
+        
+        If you're receiving this email, the notification system is working correctly! ✅
+      slack_enabled: false
+      email_enabled: true
+    secrets:
+      NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}

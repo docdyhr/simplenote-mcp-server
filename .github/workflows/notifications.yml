@@ -30,6 +30,8 @@ on:
         required: false
       NOTIFICATION_EMAIL:
         required: false
+      EMAIL_PASSWORD:
+        required: false
 
 jobs:
   notify:

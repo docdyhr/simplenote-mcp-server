@@ -256,6 +256,54 @@ Automated updates via Dependabot:
 - **Docker base images**: Weekly on Tuesdays
 - **Grouped updates**: Production and development dependencies
 
+## Lessons Learned - CI/CD Troubleshooting
+
+### Common CI/CD Issues and Solutions
+
+#### Version Consistency Problems
+**Issue**: Version mismatch between VERSION file and pyproject.toml causing CI/CD failures
+- **Symptom**: "❌ Version mismatch detected!" in CI logs
+- **Root Cause**: VERSION file (1.5.0) != pyproject.toml version (1.6.0)
+- **Solution**: Ensure VERSION file and pyproject.toml version field always match
+- **Prevention**: Add version consistency check to pre-commit hooks
+
+#### Docker Build Path Issues  
+**Issue**: Dockerfile failing with "python3.11/site-packages: not found" 
+- **Symptom**: Multi-stage build copy commands failing during production stage
+- **Root Cause**: Python version mismatch between base image (3.13) and copy paths (3.11)
+- **Solution**: Update all Python paths to match base image version
+- **Prevention**: Use variables for Python version in Dockerfile
+
+#### Wheel Package Contamination
+**Issue**: "W009: Wheel contains multiple toplevel library entries" during CI
+- **Symptom**: Tests directory included in wheel distribution
+- **Root Cause**: setuptools including test files by default
+- **Solution**: Add explicit exclusions in pyproject.toml and MANIFEST.in
+- **Prevention**: Test wheel contents locally before pushing
+
+#### Health Check False Positives
+**Issue**: Health check monitoring failing with dummy credentials
+- **Symptom**: Expected authentication failures treated as errors
+- **Root Cause**: Health check logic not accounting for credential validation
+- **Solution**: Update logic to expect and validate auth error messages
+- **Prevention**: Use realistic test scenarios in health checks
+
+### Debugging Workflow
+
+1. **Check CI/CD Logs**: Always start with GitHub Actions workflow logs
+2. **Test Locally**: Reproduce Docker builds locally before pushing
+3. **Verify Versions**: Ensure consistency across VERSION, pyproject.toml, and README
+4. **Check Paths**: Validate all file paths in Docker multi-stage builds
+5. **Test Wheel**: Check wheel contents with `unzip -l dist/*.whl`
+
+### Best Practices Learned
+
+- **Version Management**: Keep VERSION file as single source of truth
+- **Docker Paths**: Use Python version variables in Dockerfiles
+- **Package Distribution**: Explicitly exclude test files from wheels
+- **Health Monitoring**: Design health checks for realistic failure scenarios
+- **Local Testing**: Always test Docker builds locally before CI/CD
+
 ## Future Enhancements
 
 - [ ] Add OCI artifact attestations
@@ -263,3 +311,4 @@ Automated updates via Dependabot:
 - [ ] Add GitOps deployment pipelines
 - [ ] Create operator for Kubernetes
 - [ ] Add metrics and observability stack
+- [ ] Add pre-commit hook for version consistency checks

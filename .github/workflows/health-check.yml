@@ -88,18 +88,22 @@ jobs:
 
   notify-status:
     needs: health-check
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/notifications.yml
     if: always()
-    
-    steps:
-      - name: Notify on success
-        if: needs.health-check.result == 'success'
-        run: |
-          echo "✅ All health checks passed"
-          
-      - name: Notify on failure
-        if: needs.health-check.result == 'failure'
-        run: |
-          echo "❌ Health checks failed"
-          echo "Check the logs for details"
-          # Future: Add Slack/email notifications here
+    with:
+      status: ${{ needs.health-check.result }}
+      workflow_name: "Health Check Monitoring"
+      message: |
+        Health check monitoring completed for Docker images:
+        - Latest tag: ${{ needs.health-check.result == 'success' && '✅ Healthy' || '❌ Failed' }}
+        - Main tag: ${{ needs.health-check.result == 'success' && '✅ Healthy' || '❌ Failed' }}
+        
+        Checks performed:
+        🐳 Container startup verification
+        🛠️ Basic functionality test  
+        🛡️ Security vulnerability scan
+      slack_enabled: false
+      email_enabled: true
+    secrets:
+      NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
