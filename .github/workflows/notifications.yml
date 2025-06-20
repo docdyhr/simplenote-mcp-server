@@ -6,25 +6,25 @@ on:
       status:
         required: true
         type: string
-        description: 'The status of the workflow (success, failure, cancelled)'
+        description: "The status of the workflow (success, failure, cancelled)"
       workflow_name:
         required: true
         type: string
-        description: 'The name of the calling workflow'
+        description: "The name of the calling workflow"
       message:
         required: false
         type: string
-        description: 'Additional message to include'
+        description: "Additional message to include"
       slack_enabled:
         required: false
         type: boolean
         default: false
-        description: 'Whether to send Slack notifications'
+        description: "Whether to send Slack notifications"
       email_enabled:
         required: false
         type: boolean
         default: false
-        description: 'Whether to send email notifications'
+        description: "Whether to send email notifications"
     secrets:
       SLACK_WEBHOOK_URL:
         required: false
@@ -63,13 +63,13 @@ jobs:
               echo "title=Info" >> $GITHUB_OUTPUT
               ;;
           esac
-          
+
           echo "workflow_url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> $GITHUB_OUTPUT
           echo "commit_url=https://github.com/${{ github.repository }}/commit/${{ github.sha }}" >> $GITHUB_OUTPUT
           echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: Send Slack notification
-        if: inputs.slack_enabled && secrets.SLACK_WEBHOOK_URL
+        if: inputs.slack_enabled
         uses: 8398a7/action-slack@v3
         with:
           status: custom
@@ -115,7 +115,7 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Send email notification
-        if: inputs.email_enabled && secrets.NOTIFICATION_EMAIL
+        if: inputs.email_enabled
         uses: dawidd6/action-send-mail@v6
         with:
           server_address: smtp.gmail.com
@@ -127,15 +127,15 @@ jobs:
           from: "GitHub Actions <${{ secrets.NOTIFICATION_EMAIL }}>"
           html_body: |
             <h2>${{ steps.vars.outputs.emoji }} ${{ inputs.workflow_name }} ${{ steps.vars.outputs.title }}</h2>
-            
+
             <p><strong>Repository:</strong> ${{ github.repository }}</p>
             <p><strong>Branch:</strong> ${{ github.ref_name }}</p>
             <p><strong>Commit:</strong> <a href="${{ steps.vars.outputs.commit_url }}">${{ steps.vars.outputs.short_sha }}</a></p>
             <p><strong>Workflow:</strong> <a href="${{ steps.vars.outputs.workflow_url }}">View Details</a></p>
-            
+
             <h3>Message:</h3>
             <p>${{ inputs.message || 'No additional message' }}</p>
-            
+
             <hr>
             <p><small>This is an automated notification from GitHub Actions.</small></p>
 
@@ -144,5 +144,5 @@ jobs:
           echo "📬 Notification sent:"
           echo "  Status: ${{ inputs.status }}"
           echo "  Workflow: ${{ inputs.workflow_name }}"
-          echo "  Slack: ${{ inputs.slack_enabled && secrets.SLACK_WEBHOOK_URL && 'enabled' || 'disabled' }}"
-          echo "  Email: ${{ inputs.email_enabled && secrets.NOTIFICATION_EMAIL && 'enabled' || 'disabled' }}"
+          echo "  Slack: ${{ inputs.slack_enabled && 'enabled' || 'disabled' }}"
+          echo "  Email: ${{ inputs.email_enabled && 'enabled' || 'disabled' }}"
