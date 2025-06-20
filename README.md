@@ -8,7 +8,6 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Status & Build Badges -->
 [![CI/CD Pipeline](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/ci.yml)
-[![Tests](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/python-tests.yml)
 [![Code Quality](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml)
 [![Security](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/security.yml)
 [![Docker](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/docker-publish.yml)

@@ -55,7 +55,7 @@ The CI/CD pipeline has experienced significant degradation since December 2024 w
 4. Check for configuration conflicts
 ```
 
-#### 1.2 Python Tests & Coverage (`python-tests.yml`)
+#### 1.2 Python Tests & Coverage (integrated in `ci.yml`)
 
 ```bash
 # Debug steps:
@@ -355,11 +355,11 @@ Based on workflow status, many badges are likely showing red/failing status:
 
 | Badge          | Status    | URL                                           | Purpose                  |
 | -------------- | --------- | --------------------------------------------- | ------------------------ |
-| CI/CD Pipeline | ❌ Failing | `workflows/ci.yml/badge.svg`                  | Main CI pipeline status  |
-| Tests          | ❌ Failing | `workflows/python-tests.yml/badge.svg`        | Test suite results       |
-| Code Quality   | ⚠️ Mixed   | `workflows/code-quality.yml/badge.svg`        | Linting & quality checks |
-| Security       | ⚠️ Mixed   | `workflows/security.yml/badge.svg`            | Security scan results    |
-| Coverage       | ❌ Failing | `codecov.io/gh/docdyhr/simplenote-mcp-server` | Code coverage percentage |
+| CI/CD Pipeline | ✅ Working | `workflows/ci.yml/badge.svg`                  | Main CI pipeline status with integrated tests |
+| Code Quality   | ✅ Working | `workflows/code-quality.yml/badge.svg`        | Linting & quality checks |
+| Security       | ✅ Working | `workflows/security.yml/badge.svg`            | Security scan results    |
+| Docker         | ✅ Working | `workflows/docker-publish.yml/badge.svg`      | Docker image build status |
+| Coverage       | ⚠️ Mixed   | `codecov.io/gh/docdyhr/simplenote-mcp-server` | Code coverage percentage |
 
 #### Project Info Badges (4)
 

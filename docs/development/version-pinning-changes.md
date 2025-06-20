@@ -72,7 +72,7 @@ pip install ruff==0.12.0 mypy==1.16.1 pytest pytest-asyncio pytest-cov requests
 pip install ruff==0.12.0 mypy==1.16.1
 ```
 
-#### 5. Python Tests (`.github/workflows/python-tests.yml`)
+#### 5. Python Tests (integrated in `.github/workflows/ci.yml`)
 
 **test job:**
 ```yaml

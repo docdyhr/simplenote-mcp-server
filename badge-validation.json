@@ -1,0 +1,130 @@
+{
+  "timestamp": "2025-06-20T10:14:44.109265",
+  "readme_path": "README.md",
+  "validation_results": {
+    "total": 13,
+    "working": 13,
+    "failing": 0,
+    "results": [
+      {
+        "url": "https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/ci.yml/badge.svg?branch=main",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "GitHub Actions"
+      },
+      {
+        "url": "https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml/badge.svg?branch=main",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "GitHub Actions"
+      },
+      {
+        "url": "https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/docker-publish.yml/badge.svg",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "GitHub Actions"
+      },
+      {
+        "url": "https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/security.yml/badge.svg?branch=main",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "GitHub Actions"
+      },
+      {
+        "url": "https://img.shields.io/badge/License-MIT-yellow.svg",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "Development Tool"
+      },
+      {
+        "url": "https://img.shields.io/badge/MCP-Server-purple.svg",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "Development Tool"
+      },
+      {
+        "url": "https://img.shields.io/badge/code%20style-black-000000.svg",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "Development Tool"
+      },
+      {
+        "url": "https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "Project Info"
+      },
+      {
+        "url": "https://img.shields.io/badge/version-1.6.0-blue.svg",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "Project Info"
+      },
+      {
+        "url": "https://img.shields.io/docker/v/docdyhr/simplenote-mcp-server?label=docker&color=blue",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "Development Tool"
+      },
+      {
+        "url": "https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "Development Tool"
+      },
+      {
+        "url": "https://mseep.net/pr/docdyhr-simplenote-mcp-server-badge.png",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "External Service"
+      },
+      {
+        "url": "https://smithery.ai/badge/@docdyhr/simplenote-mcp-server",
+        "valid": true,
+        "status_code": 200,
+        "message": "OK",
+        "category": "MCP Registry"
+      }
+    ],
+    "categories": {
+      "GitHub Actions": {
+        "total": 4,
+        "working": 4,
+        "failing": 0
+      },
+      "Development Tool": {
+        "total": 5,
+        "working": 5,
+        "failing": 0
+      },
+      "Project Info": {
+        "total": 2,
+        "working": 2,
+        "failing": 0
+      },
+      "External Service": {
+        "total": 1,
+        "working": 1,
+        "failing": 0
+      },
+      "MCP Registry": {
+        "total": 1,
+        "working": 1,
+        "failing": 0
+      }
+    },
+    "summary": "13 working, 0 failing"
+  }
+}

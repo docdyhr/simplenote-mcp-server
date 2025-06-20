@@ -175,11 +175,11 @@ Ensures version consistency with:
 ├── .pre-commit-config.yaml     # Tool versions and hook configuration
 ├── pyproject.toml              # Dependency pinning and tool settings
 ├── .github/workflows/
-│   ├── ci.yml                  # Enhanced main CI pipeline
-│   ├── formatting-check.yml    # Improved code quality checks
+│   ├── ci.yml                  # Consolidated CI pipeline with testing, linting, and building
 │   ├── code-quality.yml        # Enhanced quality analysis
-│   ├── python-tests.yml        # Optimized testing workflow
-│   └── [all others]           # Timeout settings added
+│   ├── security.yml            # Security scanning workflow
+│   ├── docker-publish.yml      # Docker image building and publishing
+│   └── [all others]           # Additional specialized workflows
 └── scripts/
     ├── validate-cicd-health.py      # Health monitoring
     ├── add-timeouts-to-workflows.py # Timeout management

@@ -449,9 +449,9 @@ class CICDHealthValidator:
         # Workflows that should have caching
         important_workflows = [
             "ci.yml",
-            "formatting-check.yml",
-            "python-tests.yml",
             "code-quality.yml",
+            "security.yml",
+            "docker-publish.yml",
         ]
         missing_cache = []
 
@@ -847,23 +847,31 @@ class CICDHealthValidator:
                 continue
 
             try:
+                config = None
                 if config_name.endswith(".toml"):
                     try:
-                        import tomllib
-
-                        with open(config_path, "rb") as f:
-                            config = tomllib.load(f)
-                    except ImportError:
+                        # Try standard library first (Python 3.11+)
                         try:
-                            import tomli as tomllib
+                            import tomllib
 
                             with open(config_path, "rb") as f:
                                 config = tomllib.load(f)
                         except ImportError:
-                            import toml
-
-                            with open(config_path) as f:
-                                config = toml.load(f)
+                            # Fallback to manual parsing for basic TOML validation
+                            with open(config_path, encoding="utf-8") as f:
+                                content = f.read()
+                            # Basic validation - check if it looks like valid TOML
+                            if "[tool" in content:
+                                config = {"tool": {}}
+                                if "[tool.ruff]" in content:
+                                    config["tool"]["ruff"] = {}
+                                if "[tool.mypy]" in content:
+                                    config["tool"]["mypy"] = {}
+                            else:
+                                config = {}
+                    except Exception as e:
+                        config_issues.append(f"{config_name}: Error reading TOML - {e}")
+                        continue
                 elif config_name.endswith(".ini"):
                     import configparser
 
@@ -871,24 +879,32 @@ class CICDHealthValidator:
                     config.read(config_path)
 
                 # Specific checks for each config type
-                if config_name == "pyproject.toml":
-                    # Check for tool configurations
-                    if "tool" not in config:
-                        config_issues.append("pyproject.toml: Missing [tool] section")
-                    else:
-                        if "ruff" not in config["tool"]:
-                            config_issues.append(
-                                "pyproject.toml: Missing [tool.ruff] configuration"
-                            )
-                        if "mypy" not in config["tool"]:
-                            config_issues.append(
-                                "pyproject.toml: Missing [tool.mypy] configuration"
-                            )
+                if config is not None:
+                    if config_name == "pyproject.toml":
+                        # Check for tool configurations
+                        if isinstance(config, dict):
+                            if "tool" not in config:
+                                config_issues.append(
+                                    "pyproject.toml: Missing [tool] section"
+                                )
+                            else:
+                                if "ruff" not in config["tool"]:
+                                    config_issues.append(
+                                        "pyproject.toml: Missing [tool.ruff] configuration"
+                                    )
+                                if "mypy" not in config["tool"]:
+                                    config_issues.append(
+                                        "pyproject.toml: Missing [tool.mypy] configuration"
+                                    )
 
-                elif config_name == "mypy.ini":
-                    # Check MyPy configuration
-                    if not config.has_section("mypy"):
-                        config_issues.append("mypy.ini: Missing [mypy] section")
+                    elif config_name == "mypy.ini":
+                        # Check MyPy configuration
+                        import configparser
+
+                        if isinstance(
+                            config, configparser.ConfigParser
+                        ) and not config.has_section("mypy"):
+                            config_issues.append("mypy.ini: Missing [mypy] section")
 
             except Exception as e:
                 config_issues.append(f"{config_name}: Error reading file - {e}")

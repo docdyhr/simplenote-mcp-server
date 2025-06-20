@@ -73,7 +73,7 @@ The configuration for all linting tools is in the following files:
 GitHub Actions workflows automatically run linting checks:
 
 - `code-quality.yml` - Runs pre-commit hooks and security checks
-- `python-tests.yml` - Runs linting as part of the test workflow
+- `ci.yml` - Runs comprehensive linting, testing, and quality checks in a consolidated workflow
 
 ## Benefits of the Unified Approach
 
