@@ -18,7 +18,7 @@ class TestProcessManagement:
     def test_write_pid_file(self):
         """Test writing the PID file."""
         # Mock PID file path
-        test_pid_path = Path("/tmp/test_server.pid")
+        test_pid_path = Path("/tmp/test_server.pid")  # noqa: S108
 
         with (
             patch("simplenote_mcp.server.server.PID_FILE_PATH", test_pid_path),
@@ -47,8 +47,8 @@ class TestProcessManagement:
     def test_cleanup_pid_file(self):
         """Test cleaning up the PID file."""
         # Create a temporary PID file
-        test_pid_path = Path("/tmp/test_server.pid")
-        test_alt_pid_path = Path("/tmp/test_server_alt.pid")
+        test_pid_path = Path("/tmp/test_server.pid")  # noqa: S108
+        test_alt_pid_path = Path("/tmp/test_server_alt.pid")  # noqa: S108
         test_pid_path.write_text("12345", encoding="utf-8")
         test_alt_pid_path.write_text("12345", encoding="utf-8")
 
@@ -64,8 +64,8 @@ class TestProcessManagement:
 
     def test_cleanup_pid_file_nonexistent(self):
         """Test cleaning up a nonexistent PID file."""
-        test_pid_path = Path("/tmp/nonexistent_pid_file.pid")
-        test_alt_pid_path = Path("/tmp/nonexistent_alt_pid_file.pid")
+        test_pid_path = Path("/tmp/nonexistent_pid_file.pid")  # noqa: S108
+        test_alt_pid_path = Path("/tmp/nonexistent_alt_pid_file.pid")  # noqa: S108
 
         # Ensure the files don't exist
         if test_pid_path.exists():

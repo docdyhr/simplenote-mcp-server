@@ -202,9 +202,9 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.12'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v4
         with:
-          file: ./coverage.xml
+          files: ./coverage.xml
           flags: unittests
           name: codecov-umbrella
           fail_ci_if_error: false
@@ -380,9 +380,10 @@ jobs:
           echo "🧪 Testing basic functionality..."
           python -c "
           import simplenote_mcp
-          from simplenote_mcp.server import app
+          from simplenote_mcp.server import run_main
           print('✅ All imports successful')
           print(f'✅ Package version: {getattr(simplenote_mcp, \"__version__\", \"unknown\")}')
+          print('✅ Entry point available')
           "
 
       - name: Generate integration report
