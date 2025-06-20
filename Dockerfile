@@ -1,23 +1,24 @@
 # Multi-stage build for optimal image size
-FROM python:3.13-slim AS builder
+FROM python:3.12-slim AS builder
 
 WORKDIR /app
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy only dependency files first for better caching
-COPY pyproject.toml setup.py setup.cfg MANIFEST.in ./
-COPY simplenote_mcp/__init__.py simplenote_mcp/
+COPY pyproject.toml setup.py setup.cfg MANIFEST.in VERSION ./
+COPY simplenote_mcp/ simplenote_mcp/
 
 # Install dependencies
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -e .
+    && pip install --no-cache-dir -e .[all]
 
 # Production stage
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 # Create non-root user for security
 RUN groupadd -r mcp && useradd -r -g mcp mcp
@@ -26,10 +27,11 @@ WORKDIR /app
 
 # Install runtime dependencies only
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin/simplenote-mcp-server /usr/local/bin/
 
 # Copy application code
@@ -46,7 +48,7 @@ EXPOSE 8000
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)" || exit 1
+    CMD python -c "import simplenote_mcp; print('Health check passed')" || exit 1
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
