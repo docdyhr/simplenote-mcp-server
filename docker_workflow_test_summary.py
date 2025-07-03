@@ -213,7 +213,20 @@ class DockerWorkflowSummary:
         """Generate comprehensive test summary."""
         print_header("Docker Workflow Test Summary")
 
-        # Prerequisites
+        # Run all checks
+        prereqs = self._check_and_report_prerequisites()
+        dockerfile_results = self._check_and_report_dockerfile()
+        build_results = self._check_and_report_build()
+        workflow_results = self._check_and_report_workflow()
+        self._check_and_report_compose()
+
+        # Generate overall assessment
+        self._generate_overall_assessment(
+            prereqs, dockerfile_results, build_results, workflow_results
+        )
+
+    def _check_and_report_prerequisites(self) -> dict[str, Any]:
+        """Check and report prerequisites."""
         print_info("Checking Prerequisites...")
         prereqs = self.check_prerequisites()
 
@@ -223,7 +236,10 @@ class DockerWorkflowSummary:
             else:
                 print_error(f"{name.replace('_', ' ').title()}: Missing")
 
-        # Dockerfile validation
+        return prereqs
+
+    def _check_and_report_dockerfile(self) -> dict[str, Any]:
+        """Check and report Dockerfile validation."""
         print_info("\nValidating Dockerfile...")
         dockerfile_results = self.validate_dockerfile()
 
@@ -238,7 +254,10 @@ class DockerWorkflowSummary:
         else:
             print_error("Dockerfile not found")
 
-        # Docker build test
+        return dockerfile_results
+
+    def _check_and_report_build(self) -> dict[str, Any]:
+        """Check and report Docker build."""
         print_info("\nTesting Docker Build...")
         build_results = self.test_docker_build()
 
@@ -251,7 +270,10 @@ class DockerWorkflowSummary:
                 f"Docker build: FAILED ({build_results.get('reason', 'unknown')})"
             )
 
-        # Workflow validation
+        return build_results
+
+    def _check_and_report_workflow(self) -> dict[str, Any]:
+        """Check and report workflow validation."""
         print_info("\nValidating GitHub Workflow...")
         workflow_results = self.validate_workflow()
 
@@ -266,7 +288,10 @@ class DockerWorkflowSummary:
         else:
             print_error("GitHub workflow not found")
 
-        # Docker Compose test
+        return workflow_results
+
+    def _check_and_report_compose(self) -> dict[str, Any]:
+        """Check and report Docker Compose."""
         print_info("\nTesting Docker Compose...")
         compose_results = self.test_compose_config()
 
@@ -278,11 +303,34 @@ class DockerWorkflowSummary:
         else:
             print_error("Docker Compose file not found")
 
-        # Overall assessment
+        return compose_results
+
+    def _generate_overall_assessment(
+        self,
+        prereqs: dict[str, Any],
+        dockerfile_results: dict[str, Any],
+        build_results: dict[str, Any],
+        workflow_results: dict[str, Any],
+    ) -> None:
+        """Generate overall assessment and recommendations."""
         print_header("Overall Assessment")
 
+        critical_issues = self._collect_critical_issues(
+            prereqs, dockerfile_results, build_results
+        )
+        warnings = self._collect_warnings(dockerfile_results, workflow_results)
+
+        self._report_issues_and_warnings(critical_issues, warnings)
+        self._print_final_verdict(critical_issues, warnings)
+
+    def _collect_critical_issues(
+        self,
+        prereqs: dict[str, Any],
+        dockerfile_results: dict[str, Any],
+        build_results: dict[str, Any],
+    ) -> list[str]:
+        """Collect critical issues."""
         critical_issues = []
-        warnings = []
 
         if not prereqs.get("docker"):
             critical_issues.append("Docker not available")
@@ -291,6 +339,16 @@ class DockerWorkflowSummary:
         if not build_results.get("success"):
             critical_issues.append("Docker build fails")
 
+        return critical_issues
+
+    def _collect_warnings(
+        self,
+        dockerfile_results: dict[str, Any],
+        workflow_results: dict[str, Any],
+    ) -> list[str]:
+        """Collect warnings and recommendations."""
+        warnings = []
+
         if not dockerfile_results.get("multi_stage"):
             warnings.append("Single-stage build (consider multi-stage)")
         if not dockerfile_results.get("non_root_user"):
@@ -298,6 +356,12 @@ class DockerWorkflowSummary:
         if not workflow_results.get("has_security"):
             warnings.append("Security scanning not configured")
 
+        return warnings
+
+    def _report_issues_and_warnings(
+        self, critical_issues: list[str], warnings: list[str]
+    ) -> None:
+        """Report critical issues and warnings."""
         if critical_issues:
             print_error("Critical Issues Found:")
             for issue in critical_issues:
@@ -310,7 +374,10 @@ class DockerWorkflowSummary:
             for warning in warnings:
                 print_warning(f"  • {warning}")
 
-        # Final verdict
+    def _print_final_verdict(
+        self, critical_issues: list[str], warnings: list[str]
+    ) -> None:
+        """Print final verdict based on issues and warnings."""
         if not critical_issues:
             if not warnings:
                 print_success("\n🎉 Docker workflow is ready for production!")

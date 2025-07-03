@@ -44,6 +44,7 @@ command_exists() {
 # Function to check Python requirements
 check_python_requirements() {
     print_info "Checking Python requirements..."
+    [[ "$verbose" == true ]] && print_info "Verbose mode: Checking for Python 3.7+"
 
     if ! command_exists python3; then
         print_error "Python 3 is required but not installed"
@@ -65,6 +66,7 @@ check_python_requirements() {
 # Function to validate environment variables
 validate_environment() {
     print_info "Validating environment variables..."
+    [[ "$verbose" == true ]] && print_info "Verbose mode: Checking required environment variables"
 
     local missing_vars=()
 

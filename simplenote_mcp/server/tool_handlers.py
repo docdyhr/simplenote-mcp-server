@@ -385,20 +385,30 @@ class SearchNotesHandler(ToolHandlerBase):
     async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Handle search_notes tool call."""
         query = arguments.get("query", "")
-        limit = arguments.get("limit")
-        tags_input = arguments.get("tags", "")
-        from_date_str = arguments.get("from_date")
-        to_date_str = arguments.get("to_date")
-
-        logger.debug(
-            f"Advanced search called with: query='{query}', limit={limit}, "
-            + f"tags='{tags_input}', from_date='{from_date_str}', to_date='{to_date_str}'"
-        )
-
         if not query:
             raise ValidationError(QUERY_REQUIRED)
 
-        # Process limit parameter
+        # Extract and process parameters
+        limit = self._process_limit(arguments.get("limit"))
+        tag_filters = self._process_tag_filters(arguments.get("tags", ""))
+        date_range = self._process_date_range(
+            arguments.get("from_date"), arguments.get("to_date")
+        )
+
+        logger.debug(
+            f"Advanced search called with: query='{query}', limit={limit}, "
+            + f"tags='{tag_filters}', date_range={date_range}"
+        )
+
+        try:
+            return await self._execute_search(
+                query, limit, tag_filters, date_range, arguments
+            )
+        except Exception as e:
+            return self._handle_search_error(e, query)
+
+    def _process_limit(self, limit: Any) -> int | None:
+        """Process and validate limit parameter."""
         if limit is not None:
             try:
                 limit = int(limit)
@@ -406,74 +416,81 @@ class SearchNotesHandler(ToolHandlerBase):
                     limit = None
             except (ValueError, TypeError):
                 limit = None
+        return limit
 
-        # Process tag filters
+    def _process_tag_filters(self, tags_input: Any) -> list[str] | None:
+        """Process tag filters from input."""
+        if not tags_input:
+            return None
+
         tag_filters = None
-        if tags_input:
-            if isinstance(tags_input, list):
-                tag_filters = [tag.strip() for tag in tags_input if tag.strip()]
-            elif isinstance(tags_input, str):
-                tag_filters = [
-                    tag.strip() for tag in safe_split(tags_input) if tag.strip()
-                ]
-            else:
-                tag_filters = None
-            logger.debug(f"Tag filters: {tag_filters}")
+        if isinstance(tags_input, list):
+            tag_filters = [tag.strip() for tag in tags_input if tag.strip()]
+        elif isinstance(tags_input, str):
+            tag_filters = [tag.strip() for tag in safe_split(tags_input) if tag.strip()]
 
-        # Process date range
-        from_date = None
-        to_date = None
-        date_range = None
+        logger.debug(f"Tag filters: {tag_filters}")
+        return tag_filters
 
-        if from_date_str:
-            try:
-                from datetime import datetime
-
-                from_date = datetime.fromisoformat(from_date_str)
-                logger.debug(f"From date: {from_date}")
-            except ValueError:
-                logger.warning(f"Invalid from_date format: {from_date_str}")
-
-        if to_date_str:
-            try:
-                from datetime import datetime
-
-                to_date = datetime.fromisoformat(to_date_str)
-                logger.debug(f"To date: {to_date}")
-            except ValueError:
-                logger.warning(f"Invalid to_date format: {to_date_str}")
+    def _process_date_range(
+        self, from_date_str: str | None, to_date_str: str | None
+    ) -> tuple | None:
+        """Process date range from string inputs."""
+        from_date = self._parse_date(from_date_str, "from_date")
+        to_date = self._parse_date(to_date_str, "to_date")
 
         if from_date or to_date:
-            date_range = (from_date, to_date)
+            return (from_date, to_date)
+        return None
+
+    def _parse_date(self, date_str: str | None, field_name: str) -> Any:
+        """Parse a date string, return None if invalid."""
+        if not date_str:
+            return None
 
         try:
-            # Check cache status
-            cache_initialized = (
-                self.note_cache is not None and self.note_cache.is_initialized
+            from datetime import datetime
+
+            parsed_date = datetime.fromisoformat(date_str)
+            logger.debug(f"{field_name}: {parsed_date}")
+            return parsed_date
+        except ValueError:
+            logger.warning(f"Invalid {field_name} format: {date_str}")
+            return None
+
+    async def _execute_search(
+        self,
+        query: str,
+        limit: int | None,
+        tag_filters: list[str] | None,
+        date_range: tuple | None,
+        arguments: dict[str, Any],
+    ) -> list[types.TextContent]:
+        """Execute search using cache or API."""
+        cache_initialized = (
+            self.note_cache is not None and self.note_cache.is_initialized
+        )
+        logger.debug(
+            f"Cache status for search: available={self.note_cache is not None}, initialized={cache_initialized}"
+        )
+
+        if cache_initialized:
+            return await self._search_with_cache(
+                query, limit, tag_filters, date_range, arguments
             )
-            logger.debug(
-                f"Cache status for search: available={self.note_cache is not None}, initialized={cache_initialized}"
-            )
+        else:
+            return await self._search_with_api(query, limit, tag_filters, date_range)
 
-            # Use the cache for search if available
-            if cache_initialized:
-                return await self._search_with_cache(
-                    query, limit, tag_filters, date_range, arguments
-                )
-            else:
-                return await self._search_with_api(
-                    query, limit, tag_filters, date_range
-                )
+    def _handle_search_error(self, e: Exception, query: str) -> list[types.TextContent]:
+        """Handle search errors and return appropriate response."""
+        if isinstance(e, ServerError):
+            return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
 
-        except Exception as e:
-            if isinstance(e, ServerError):
-                return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
+        logger.error(f"Error searching notes: {str(e)}", exc_info=True)
+        from .errors import handle_exception
 
-            logger.error(f"Error searching notes: {str(e)}", exc_info=True)
-            from .errors import handle_exception
-
-            error = handle_exception(e, f"searching notes for '{query}'")
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+        error = handle_exception(e, f"searching notes for '{query}'")
+        return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
 
     async def _search_with_cache(
         self,
