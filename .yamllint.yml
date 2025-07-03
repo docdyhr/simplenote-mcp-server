@@ -1,0 +1,48 @@
+---
+# yamllint configuration for Simplenote MCP Server
+# Excludes Helm templates since they contain Go template syntax
+
+extends: default
+
+# Ignore Helm template files since they contain Go template syntax
+# that standard YAML parsers cannot understand
+ignore: |
+  helm/*/templates/*.yaml
+  helm/*/templates/*.yml
+  **/templates/*.yaml
+  **/templates/*.yml
+
+rules:
+  # Allow longer lines for some cases
+  line-length:
+    max: 120
+    level: warning
+
+  # Be more lenient with indentation in some cases
+  indentation:
+    spaces: 2
+    indent-sequences: true
+    check-multi-line-strings: false
+
+  # Allow empty values which are common in templates
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false
+
+  # Allow duplicate keys in some contexts (common with templating)
+  key-duplicates:
+    level: warning
+
+  # Document start is optional for our use case
+  document-start:
+    present: false
+
+  # Comments can be more flexible
+  comments:
+    min-spaces-from-content: 1
+    require-starting-space: true
+
+  # Truthy values are okay in our context
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no']
+    check-keys: false
