@@ -1,0 +1,65 @@
+{
+  "timestamp": "2025-07-03T16:55:27.678019",
+  "server_info": {
+    "start_time": "2025-07-03T16:53:27.349428",
+    "uptime_seconds": 120.32857346534729,
+    "uptime": "0d 0h 2m 0s",
+    "platform": "Linux",
+    "python_version": "3.13.5"
+  },
+  "api": {
+    "calls": {
+      "count": 0,
+      "rate_1min": 0.0,
+      "rate_5min": 0.0
+    },
+    "successes": {
+      "count": 0,
+      "rate_1min": 0.0,
+      "rate_5min": 0.0
+    },
+    "failures": {
+      "count": 0,
+      "rate_1min": 0.0,
+      "rate_5min": 0.0
+    },
+    "success_rate": 100.0,
+    "response_times": {},
+    "errors_by_type": {}
+  },
+  "cache": {
+    "hits": {
+      "count": 0,
+      "rate_1min": 0.0,
+      "rate_5min": 0.0
+    },
+    "misses": {
+      "count": 0,
+      "rate_1min": 0.0,
+      "rate_5min": 0.0
+    },
+    "hit_rate": 0.0,
+    "size": 0,
+    "max_size": 0,
+    "utilization": 0.0
+  },
+  "resources": {
+    "cpu": {
+      "current": 0.0,
+      "avg": 0.9,
+      "max": 2.7
+    },
+    "memory": {
+      "current": 21.3,
+      "avg": 21.966666666666665,
+      "max": 22.4
+    },
+    "disk": {
+      "usage_percent": 83.3
+    }
+  },
+  "tools": {
+    "tool_calls": {},
+    "execution_times": {}
+  }
+}

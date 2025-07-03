@@ -11,6 +11,7 @@ provides a centralized way to manage and dispatch tool calls.
 
 import contextlib
 import json
+from abc import ABC, abstractmethod
 from typing import Any
 
 import mcp.types as types
@@ -59,7 +60,7 @@ FAILED_TRASH_NOTE = "Failed to move note to trash"
 FAILED_RETRIEVE_NOTES = "Failed to retrieve notes for search"
 
 
-class ToolHandlerBase:
+class ToolHandlerBase(ABC):
     """Base class for tool handlers with common functionality."""
 
     def __init__(
@@ -73,6 +74,17 @@ class ToolHandlerBase:
         """
         self.sn = simplenote_client
         self.note_cache = note_cache
+
+    @abstractmethod
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle the tool call with the given arguments.
+
+        Args:
+            arguments: Tool arguments
+
+        Returns:
+            List of text content responses
+        """
 
     def _get_note_from_cache_or_api(self, note_id: str) -> dict[str, Any]:
         """Get a note from cache first, then API if not found.
@@ -118,8 +130,12 @@ class ToolHandlerBase:
             elif operation == "update":
                 self.note_cache.update_cache_after_update(note)
             elif operation == "delete":
-                note_id = note.get("key") if isinstance(note, dict) else str(note)
-                self.note_cache.update_cache_after_delete(note_id)
+                if isinstance(note, dict):
+                    note_id = note.get("key")
+                    if note_id is not None:
+                        self.note_cache.update_cache_after_delete(str(note_id))
+                else:
+                    self.note_cache.update_cache_after_delete(str(note))
 
 
 class CreateNoteHandler(ToolHandlerBase):
@@ -474,6 +490,9 @@ class SearchNotesHandler(ToolHandlerBase):
         offset = safe_get(arguments, "offset", 0)
 
         # Get total matching notes for pagination info
+        if self.note_cache is None:
+            return [types.TextContent(type="text", text="Note cache not available")]
+
         all_matching_notes = self.note_cache.search_notes(
             query=query,
             tag_filters=tag_filters,
@@ -520,9 +539,12 @@ class SearchNotesHandler(ToolHandlerBase):
             logger.debug(f"First result title: {results[0].get('title', 'No title')}")
 
         # Get pagination metadata
-        pagination_info = self.note_cache.get_pagination_info(
-            total_items=total_matching_notes, limit=limit, offset=offset
-        )
+        if self.note_cache is None:
+            pagination_info = {}
+        else:
+            pagination_info = self.note_cache.get_pagination_info(
+                total_items=total_matching_notes, limit=limit, offset=offset
+            )
 
         # Create response with pagination info
         response = {

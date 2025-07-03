@@ -7,7 +7,7 @@ across multiple modules, now centralized following the DRY principle.
 from typing import Any
 
 
-def safe_get(data: dict[str, Any], key: str, default: Any = None) -> Any:
+def safe_get(data: dict[str, Any] | None, key: str, default: Any = None) -> Any:
     """Safely get a value from a dictionary.
 
     Args:
@@ -18,7 +18,7 @@ def safe_get(data: dict[str, Any], key: str, default: Any = None) -> Any:
     Returns:
         Value from dictionary or default
     """
-    if not isinstance(data, dict):
+    if data is None or not isinstance(data, dict):
         return default
     return data.get(key, default)
 

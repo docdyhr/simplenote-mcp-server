@@ -1,6 +1,11 @@
 # Multi-stage build for optimal image size
 FROM python:3.13-slim AS builder
 
+# Build arguments for metadata
+ARG BUILDTIME
+ARG VERSION
+ARG REVISION
+
 WORKDIR /app
 
 # Install build dependencies
@@ -20,6 +25,11 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
 # Production stage
 FROM python:3.13-slim
 
+# Build arguments for metadata
+ARG BUILDTIME
+ARG VERSION
+ARG REVISION
+
 # Create non-root user for security
 RUN groupadd -r mcp && useradd -r -g mcp mcp
 
@@ -31,7 +41,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin/simplenote-mcp-server /usr/local/bin/
 
 # Copy application code
@@ -53,6 +63,15 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
+
+# Add metadata labels
+LABEL org.opencontainers.image.created="${BUILDTIME}"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.revision="${REVISION}"
+LABEL org.opencontainers.image.title="Simplenote MCP Server"
+LABEL org.opencontainers.image.description="A Model Context Protocol server for Simplenote integration"
+LABEL org.opencontainers.image.vendor="Thomas Juul Dyhr"
+LABEL org.opencontainers.image.licenses="MIT"
 
 # Use exec form for proper signal handling
 ENTRYPOINT ["simplenote-mcp-server"]

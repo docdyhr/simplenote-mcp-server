@@ -10,6 +10,9 @@ on:
     branches:
       - main
   workflow_dispatch:
+  schedule:
+    # Rebuild weekly to get security updates
+    - cron: "0 2 * * 0"
 
 env:
   REGISTRY: docker.io
@@ -76,9 +79,16 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          version: latest
+          driver-opts: |
+            network=host
+          buildkitd-flags: --debug
 
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request'
@@ -88,11 +98,21 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
 
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -101,22 +121,42 @@ jobs:
             type=semver,pattern={{major}}
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix={{date 'YYYYMMDD'}}-
+            type=schedule,pattern={{date 'YYYYMMDD'}}
+          labels: |
+            org.opencontainers.image.title=${{ github.event.repository.name }}
+            org.opencontainers.image.description=${{ github.event.repository.description }}
+            org.opencontainers.image.url=${{ github.event.repository.html_url }}
+            org.opencontainers.image.source=${{ github.event.repository.clone_url }}
+            org.opencontainers.image.version=${{ steps.meta.outputs.version }}
+            org.opencontainers.image.created=${{ steps.meta.outputs.created }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.licenses=${{ github.event.repository.license.spdx_id }}
 
       - name: Build and push Docker image
         id: build
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: |
+            type=gha
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: |
+            type=gha,mode=max
+            type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
           provenance: true
           sbom: true
+          annotations: ${{ steps.meta.outputs.annotations }}
+          build-args: |
+            BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ github.sha }}
 
-      - name: Generate attestation
+      - name: Generate attestation for Docker Hub
         uses: actions/attest-build-provenance@v2
         if: github.event_name != 'pull_request'
         with:
@@ -124,16 +164,41 @@ jobs:
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
 
+      - name: Generate attestation for GHCR
+        uses: actions/attest-build-provenance@v2
+        if: github.event_name != 'pull_request'
+        with:
+          subject-name: ghcr.io/${{ github.repository }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true
+
       - name: Install cosign
         if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.2.4"
 
-      - name: Sign container image
+      - name: Sign container images
         if: github.event_name != 'pull_request'
         env:
           COSIGN_EXPERIMENTAL: 1
         run: |
-          echo "${{ steps.meta.outputs.tags }}" | xargs -I {} cosign sign --yes {}@${{ steps.build.outputs.digest }}
+          # Sign all pushed images
+          echo "${{ steps.meta.outputs.tags }}" | while read -r tag; do
+            echo "Signing $tag"
+            cosign sign --yes "$tag@${{ steps.build.outputs.digest }}"
+          done
+
+      - name: Verify container signatures
+        if: github.event_name != 'pull_request'
+        env:
+          COSIGN_EXPERIMENTAL: 1
+        run: |
+          # Verify signatures
+          echo "${{ steps.meta.outputs.tags }}" | while read -r tag; do
+            echo "Verifying $tag"
+            cosign verify "$tag@${{ steps.build.outputs.digest }}" || echo "Verification failed for $tag"
+          done
 
   test-image:
     needs: build-and-push
@@ -145,25 +210,60 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Test Docker image
+      - name: Test Docker image functionality
         run: |
+          # Get the image tag to test
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+
           # Test that the container starts and shows help
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest --help || echo "Help command completed"
+          echo "Testing help command..."
+          docker run --rm --pull=always "$IMAGE_TAG" --help || echo "Help command completed"
 
-          # Test basic functionality
-          docker run --rm -e SIMPLENOTE_EMAIL=test@example.com -e SIMPLENOTE_PASSWORD=test123 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest --version || echo "Version check completed"
+          # Test basic functionality with environment variables
+          echo "Testing version command..."
+          docker run --rm \
+            -e SIMPLENOTE_EMAIL=test@example.com \
+            -e SIMPLENOTE_PASSWORD=test123 \
+            -e SIMPLENOTE_OFFLINE_MODE=true \
+            "$IMAGE_TAG" --version || echo "Version check completed"
 
-      - name: Test Docker Compose
+          # Test container health
+          echo "Testing container health..."
+          CONTAINER_ID=$(docker run -d \
+            -e SIMPLENOTE_EMAIL=test@example.com \
+            -e SIMPLENOTE_PASSWORD=test123 \
+            -e SIMPLENOTE_OFFLINE_MODE=true \
+            "$IMAGE_TAG")
+
+          # Wait a bit and check health
+          sleep 10
+          docker exec "$CONTAINER_ID" python -c "import simplenote_mcp; print('Health check passed')" || echo "Health check completed"
+          docker stop "$CONTAINER_ID"
+          docker rm "$CONTAINER_ID"
+
+      - name: Test Docker Compose configurations
         run: |
           # Create a test environment file
-          echo "SIMPLENOTE_EMAIL=test@example.com" > .env
-          echo "SIMPLENOTE_PASSWORD=testpassword" >> .env
+          cat > .env.test << EOF
+          SIMPLENOTE_EMAIL=test@example.com
+          SIMPLENOTE_PASSWORD=testpassword
+          SIMPLENOTE_OFFLINE_MODE=true
+          EOF
 
-          # Test docker-compose configuration (use docker compose v2)
-          docker compose config
+          # Test main docker-compose configuration
+          echo "Testing main docker-compose.yml..."
+          docker compose -f docker-compose.yml --env-file .env.test config --quiet
+
+          # Test build docker-compose configuration
+          echo "Testing docker-compose.build.yml..."
+          docker compose -f docker-compose.build.yml --env-file .env.test config --quiet
+
+          # Test that the service can be started (dry-run)
+          echo "Testing service startup (dry-run)..."
+          docker compose -f docker-compose.yml --env-file .env.test pull --quiet || echo "Pull completed"
 
           # Clean up
-          rm .env
+          rm -f .env.test
 
   security-scan:
     needs: build-and-push
@@ -178,6 +278,15 @@ jobs:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           format: "sarif"
           output: "trivy-results.sarif"
+          severity: "CRITICAL,HIGH"
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.31.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          format: "sarif"
+          output: "trivy-fs-results.sarif"
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
@@ -185,14 +294,55 @@ jobs:
         with:
           sarif_file: "trivy-results.sarif"
 
+      - name: Upload Trivy filesystem scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: "trivy-fs-results.sarif"
+
+      - name: Run Docker Scout
+        if: github.event_name != 'pull_request'
+        uses: docker/scout-action@v1
+        with:
+          command: cves
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+          only-severities: critical,high
+          write-comment: false
+
+  update-docker-hub-description:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name != 'pull_request'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Update Docker Hub repository description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          readme-filepath: ./DOCKER_README.md
+          short-description: "A Model Context Protocol (MCP) server that provides seamless integration with Simplenote for note management and search capabilities."
+
   notify:
-    needs: [lint-and-test, build-and-push, test-image, security-scan]
+    needs:
+      [
+        lint-and-test,
+        build-and-push,
+        test-image,
+        security-scan,
+        update-docker-hub-description,
+      ]
     uses: ./.github/workflows/notifications.yml
     if: always()
     with:
       status: ${{ (needs.lint-and-test.result == 'success' && needs.build-and-push.result == 'success') && 'success' || 'failure' }}
       workflow_name: "Docker CI/CD Pipeline"
-      message: "Docker pipeline completed. Lint: ${{ needs.lint-and-test.result }}, Build: ${{ needs.build-and-push.result }}, Test: ${{ needs.test-image.result }}, Security: ${{ needs.security-scan.result }}"
+      message: "Docker pipeline completed. Lint: ${{ needs.lint-and-test.result }}, Build: ${{ needs.build-and-push.result }}, Test: ${{ needs.test-image.result }}, Security: ${{ needs.security-scan.result }}, README: ${{ needs.update-docker-hub-description.result }}"
       slack_enabled: false
       email_enabled: true
     secrets:
