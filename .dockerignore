@@ -76,10 +76,12 @@ temp/
 ehthumbs.db
 Thumbs.db
 
-# Docker files (don't include in the image)
+# Docker files (don't include in the image, except entrypoint)
 Dockerfile*
 docker-compose*.yml
 .dockerignore
+# Keep docker-entrypoint.sh - it's needed in the image
+!docker-entrypoint.sh
 
 # CI/CD and workflows
 .github/
