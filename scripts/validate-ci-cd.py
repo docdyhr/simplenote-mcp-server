@@ -312,14 +312,16 @@ class CICDValidator:
         # Basic YAML validation
         try:
             import yaml
+        except ImportError:
+            print_warning("PyYAML not available (skipping workflow YAML validation)")
+            self.warnings.append("PyYAML not available for workflow validation")
+            return True
 
+        try:
             for workflow_file in workflow_files:
                 with open(workflow_file, encoding="utf-8") as f:
                     yaml.safe_load(f)
                 print_success(f"Valid YAML: {workflow_file.name}")
-        except ImportError:
-            print_warning("PyYAML not available (skipping workflow YAML validation)")
-            self.warnings.append("PyYAML not available for workflow validation")
         except yaml.YAMLError as e:
             print_error(f"Invalid YAML in workflow: {e}")
             self.critical_errors.append("Invalid YAML in GitHub workflow")
@@ -363,14 +365,9 @@ class CICDValidator:
         try:
             import tomllib
         except ImportError:
-            try:
-                import tomli as tomllib  # Fallback for Python < 3.11
-            except ImportError:
-                print_warning(
-                    "TOML parser not available (skipping dependency validation)"
-                )
-                self.warnings.append("TOML parser not available")
-                return True
+            print_warning("TOML parser not available (skipping dependency validation)")
+            self.warnings.append("TOML parser not available")
+            return True
 
         pyproject_path = self.project_root / "pyproject.toml"
         try:
