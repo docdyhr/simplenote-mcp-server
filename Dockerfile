@@ -1,5 +1,5 @@
 # Multi-stage build for optimal image size and security
-FROM python:3.11-slim AS builder
+FROM python:3.13-slim AS builder
 
 # Build arguments for metadata
 ARG BUILDTIME
@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir -e .[all]
 
 # Production stage
-FROM python:3.11-slim
+FROM python:3.13-slim
 
 # Build arguments for metadata
 ARG BUILDTIME
