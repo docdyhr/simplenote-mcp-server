@@ -1,7 +1,7 @@
 # Smoke tests for basic functionality - quick validation (< 2 minutes total)
 model:
   provider: openai
-  name: gpt-4o-mini  # Cost-effective for frequent testing
+  name: gpt-4o-mini # Cost-effective for frequent testing
 
 evals:
   - name: smoke_note_creation_minimal

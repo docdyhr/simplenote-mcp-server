@@ -2,7 +2,7 @@
 # Updated for realistic scenarios, proper tool usage, and measurable outcomes
 model:
   provider: openai
-  name: gpt-4o-mini  # Cost-effective for comprehensive testing
+  name: gpt-4o-mini # Cost-effective for comprehensive testing
 
 evals:
   # === CORE TOOL VALIDATION ===
