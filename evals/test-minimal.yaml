@@ -1,0 +1,15 @@
+# Minimal test evaluation for mcp-evals
+model:
+  provider: openai
+  name: gpt-4o-mini  # Use cheaper model for testing
+
+evals:
+  - name: server_health_check
+    description: Basic server health and responsiveness test
+    prompt: "Check if the Simplenote MCP server is running and can respond to basic requests"
+    expected_result: "Should confirm the server is operational and responding to commands"
+
+  - name: basic_functionality_test
+    description: Test basic server functionality without making actual API calls
+    prompt: "Test the server's basic functionality and available tools"
+    expected_result: "Should list available tools and confirm server is functioning"

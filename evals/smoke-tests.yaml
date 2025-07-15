@@ -1,0 +1,30 @@
+# Smoke tests for basic functionality - quick validation
+model:
+  provider: openai
+  name: gpt-4o-mini  # Cost-effective for frequent testing
+
+evals:
+  - name: smoke_server_startup
+    description: Verify server starts and responds to basic commands
+    prompt: "Test if the Simplenote MCP server is running and responsive"
+    expected_result: "Should confirm server is operational and can process requests"
+
+  - name: smoke_authentication
+    description: Quick authentication test
+    prompt: "Verify authentication is working with current credentials"
+    expected_result: "Should authenticate successfully or provide clear error message"
+
+  - name: smoke_basic_note_ops
+    description: Test basic note operations work
+    prompt: "Create a simple note, read it back, and delete it"
+    expected_result: "Should complete basic CRUD cycle without errors"
+
+  - name: smoke_search_functionality
+    description: Quick search test
+    prompt: "Search for any existing notes to verify search is working"
+    expected_result: "Should return search results or indicate no notes found"
+
+  - name: smoke_error_handling
+    description: Test basic error handling
+    prompt: "Try an invalid operation to test error responses"
+    expected_result: "Should return proper error message in correct format"

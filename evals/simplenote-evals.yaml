@@ -1,0 +1,67 @@
+# Model configuration
+model:
+  provider: openai
+  name: gpt-4o
+  # Uses OPENAI_API_KEY environment variable by default
+
+# List of evaluations to run for Simplenote MCP Server
+evals:
+  - name: note_creation_basic
+    description: Test basic note creation functionality
+    prompt: "Create a new note with the title 'Test Note' and content 'This is a test note created by the evaluation system.'"
+    expected_result: "Should successfully create a new note with the specified title and content, returning the note ID"
+
+  - name: note_retrieval_by_id
+    description: Test note retrieval by ID
+    prompt: "Get the note with ID 'test-note-id' and show me its content"
+    expected_result: "Should retrieve the note content if it exists, or handle gracefully if the note doesn't exist"
+
+  - name: note_search_basic
+    description: Test basic note search functionality
+    prompt: "Search for notes containing the word 'meeting'"
+    expected_result: "Should return a list of notes that contain the word 'meeting' in their title or content"
+
+  - name: note_search_with_filters
+    description: Test advanced search with filters
+    prompt: "Search for notes tagged with 'work' that were created in the last 30 days"
+    expected_result: "Should return filtered results based on tags and date criteria"
+
+  - name: note_update_content
+    description: Test note content update functionality
+    prompt: "Update the note with ID 'existing-note-id' to add the text 'Updated by evaluation system' to the end"
+    expected_result: "Should successfully update the note content while preserving existing content"
+
+  - name: note_tagging
+    description: Test note tagging functionality
+    prompt: "Add the tags 'important' and 'work' to the note with ID 'test-note-id'"
+    expected_result: "Should successfully add the specified tags to the note"
+
+  - name: note_deletion
+    description: Test note deletion functionality
+    prompt: "Delete the note with ID 'test-note-to-delete'"
+    expected_result: "Should successfully delete the note if it exists, or handle gracefully if it doesn't exist"
+
+  - name: error_handling_invalid_credentials
+    description: Test handling of authentication errors
+    prompt: "Try to access notes when authentication credentials are invalid"
+    expected_result: "Should return appropriate error message about authentication failure"
+
+  - name: error_handling_network_issues
+    description: Test handling of network connectivity issues
+    prompt: "Attempt to sync notes when there are network connectivity problems"
+    expected_result: "Should handle network errors gracefully and provide meaningful error messages"
+
+  - name: performance_large_note_list
+    description: Test performance with large number of notes
+    prompt: "Retrieve and display a list of all notes when there are many notes in the account"
+    expected_result: "Should handle large note collections efficiently without timeout or memory issues"
+
+  - name: search_edge_cases
+    description: Test search with edge cases
+    prompt: "Search for notes with special characters like '@#$%' and unicode characters"
+    expected_result: "Should handle special characters in search queries without errors"
+
+  - name: concurrent_operations
+    description: Test handling of concurrent note operations
+    prompt: "Create multiple notes simultaneously and then search for them"
+    expected_result: "Should handle concurrent operations without data corruption or race conditions"

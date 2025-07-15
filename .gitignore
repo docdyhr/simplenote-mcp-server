@@ -10,6 +10,8 @@ build/
 
 # Virtual environments
 .env
+.env.local
+.env.test
 .venv
 env/
 venv/
@@ -20,6 +22,19 @@ ENV/
 .vscode/
 *.swp
 *.swo
+
+# Node.js dependencies and build artifacts
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.npm/
+
+# MCP Evals outputs
+evals-results/
+eval-output.json
+*.eval.log
 
 # Logs
 simplenote_mcp/logs/*

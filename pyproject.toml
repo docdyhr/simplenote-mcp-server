@@ -25,6 +25,10 @@ test = [
     "tomli>=1.2.0;python_version<'3.11'",
 ]
 monitoring = ["psutil>=5.9.0"]
+evals = [
+    # Node.js dependencies are managed separately via package.json
+    # This is just for documentation and local development setup
+]
 all = [
     "ruff==0.12.3",
     "mypy==1.16.1",

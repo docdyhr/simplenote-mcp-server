@@ -1,0 +1,34 @@
+{
+  "name": "simplenote-mcp-server-evals",
+  "version": "1.0.0",
+  "description": "MCP evaluations for Simplenote MCP Server",
+  "private": true,
+  "scripts": {
+    "eval:smoke": "npx mcp-eval evals/smoke-tests.yaml mcp-server-wrapper.ts",
+    "eval:basic": "npx mcp-eval evals/simplenote-evals.yaml mcp-server-wrapper.ts",
+    "eval:comprehensive": "npx mcp-eval evals/comprehensive-evals.yaml mcp-server-wrapper.ts",
+    "eval:all": "npm run eval:smoke && npm run eval:basic && npm run eval:comprehensive",
+    "validate:evals": "node -e \"require('fs').readdirSync('./evals').filter(f => f.endsWith('.yaml')).forEach(f => { try { require('yaml').parse(require('fs').readFileSync('./evals/' + f, 'utf8')); console.log('✅', f); } catch(e) { console.error('❌', f, e.message); process.exit(1); } })\"",
+    "setup": "npm install && npm run validate:evals",
+    "test:wrapper": "tsx mcp-server-wrapper.ts"
+  },
+  "devDependencies": {
+    "mcp-evals": "^2.0.1",
+    "yaml": "^2.3.4",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@types/node": "^22.10.1",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/docdyhr/simplenote-mcp-server.git"
+  },
+  "author": "Thomas Juul Dyhr <docdyhr@me.com>",
+  "license": "MIT",
+  "dependencies": {
+    "tsx": "^4.20.3"
+  }
+}

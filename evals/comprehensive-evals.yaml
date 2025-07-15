@@ -1,0 +1,120 @@
+# Model configuration for comprehensive testing
+model:
+  provider: openai
+  name: gpt-4o-mini  # More cost-effective for comprehensive testing
+  # Uses OPENAI_API_KEY environment variable by default
+
+# Comprehensive evaluation suite for Simplenote MCP Server
+evals:
+  # Core CRUD Operations
+  - name: crud_create_note
+    description: Verify note creation with various content types
+    prompt: "Create a note with title 'Eval Test' containing markdown text, links, and special characters: # Header\n[Link](https://example.com)\nSpecial: àáâãäå"
+    expected_result: "Should create note preserving all formatting and special characters"
+
+  - name: crud_read_note
+    description: Verify note reading and content retrieval
+    prompt: "Read the note I just created and display its full content including any formatting"
+    expected_result: "Should retrieve and display complete note content with proper formatting"
+
+  - name: crud_update_note
+    description: Verify note content modification
+    prompt: "Update the test note by appending '\n\nUpdated: $(date)' to track modifications"
+    expected_result: "Should successfully modify note content while preserving existing content"
+
+  - name: crud_delete_note
+    description: Verify note deletion functionality
+    prompt: "Delete the test note and confirm it no longer exists"
+    expected_result: "Should successfully delete note and confirm removal"
+
+  # Search and Query Operations
+  - name: search_text_basic
+    description: Test basic text search across note content
+    prompt: "Search for all notes containing the exact phrase 'meeting notes'"
+    expected_result: "Should return notes containing the exact phrase with proper relevance scoring"
+
+  - name: search_text_boolean
+    description: Test boolean search operators
+    prompt: "Search for notes containing 'project' AND 'deadline' but NOT 'completed'"
+    expected_result: "Should apply boolean logic correctly and return matching notes"
+
+  - name: search_by_tags
+    description: Test tag-based filtering
+    prompt: "Find all notes tagged with 'work' or 'business'"
+    expected_result: "Should return notes with either tag, demonstrating tag search capability"
+
+  - name: search_by_date
+    description: Test date-based filtering
+    prompt: "Find notes created in the last 7 days"
+    expected_result: "Should return recent notes with accurate date filtering"
+
+  # Performance and Scale Testing
+  - name: performance_bulk_operations
+    description: Test handling of bulk note operations
+    prompt: "Create 5 notes quickly, then search across all of them for a common term"
+    expected_result: "Should handle bulk operations efficiently without performance degradation"
+
+  - name: performance_large_content
+    description: Test handling of large note content
+    prompt: "Create a note with very long content (simulate a detailed document) and then retrieve it"
+    expected_result: "Should handle large content without truncation or memory issues"
+
+  # Error Handling and Edge Cases
+  - name: error_invalid_note_id
+    description: Test handling of invalid note IDs
+    prompt: "Try to retrieve a note with ID 'non-existent-note-12345'"
+    expected_result: "Should return appropriate error message for non-existent note"
+
+  - name: error_empty_search
+    description: Test handling of empty search queries
+    prompt: "Perform a search with an empty query string"
+    expected_result: "Should handle empty searches gracefully with appropriate response"
+
+  - name: error_malformed_requests
+    description: Test handling of malformed requests
+    prompt: "Try to create a note with missing required fields"
+    expected_result: "Should validate input and return clear error messages for missing fields"
+
+  # Authentication and Security
+  - name: auth_token_validation
+    description: Test authentication token handling
+    prompt: "Verify that all operations require valid authentication"
+    expected_result: "Should enforce authentication for all operations and handle invalid tokens"
+
+  - name: security_input_sanitization
+    description: Test input sanitization for security
+    prompt: "Create a note with potentially malicious content like script tags or SQL injection attempts"
+    expected_result: "Should sanitize inputs and prevent security vulnerabilities"
+
+  # Integration and Sync
+  - name: sync_note_consistency
+    description: Test note synchronization and consistency
+    prompt: "Create a note, modify it, and verify all changes are properly synchronized"
+    expected_result: "Should maintain data consistency across operations"
+
+  - name: sync_conflict_resolution
+    description: Test handling of sync conflicts
+    prompt: "Simulate concurrent modifications to the same note"
+    expected_result: "Should handle conflicts gracefully with appropriate resolution strategy"
+
+  # API Compliance and Standards
+  - name: mcp_protocol_compliance
+    description: Test MCP protocol standard compliance
+    prompt: "Verify that all tool responses follow MCP protocol specifications"
+    expected_result: "Should return properly formatted MCP responses for all operations"
+
+  - name: mcp_error_formats
+    description: Test MCP error response formatting
+    prompt: "Trigger various error conditions and verify response formats"
+    expected_result: "Should return properly formatted MCP error responses"
+
+  # Monitoring and Observability
+  - name: metrics_tool_calls
+    description: Test tool call metrics collection
+    prompt: "Perform various operations and verify metrics are being collected"
+    expected_result: "Should track tool usage metrics accurately"
+
+  - name: logging_operation_traces
+    description: Test operation logging and tracing
+    prompt: "Execute operations and verify comprehensive logging"
+    expected_result: "Should log operations with sufficient detail for debugging"
