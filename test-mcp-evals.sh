@@ -36,27 +36,27 @@ echo -e "${BLUE}🎯 Running ${TEST_TYPE} evaluations...${NC}"
 echo
 
 case $TEST_TYPE in
-    smoke)
-        echo -e "${GREEN}🚀 Running smoke tests (fast, basic validation) ✅ VERIFIED WORKING${NC}"
-        npm run eval:smoke
-        ;;
-    basic)
-        echo -e "${YELLOW}🔄 Running basic evaluation suite${NC}"
-        npm run eval:basic
-        ;;
-    comprehensive)
-        echo -e "${RED}⏰ Running comprehensive evaluation suite (this may take 15-30 minutes)${NC}"
-        npm run eval:comprehensive
-        ;;
-    all)
-        echo -e "${BLUE}🌊 Running all evaluation suites${NC}"
-        npm run eval:all
-        ;;
-    *)
-        echo -e "${RED}❌ Invalid test type: $TEST_TYPE${NC}"
-        echo "Valid options: smoke, basic, comprehensive, all"
-        exit 1
-        ;;
+smoke)
+    echo -e "${GREEN}🚀 Running smoke tests (fast, basic validation) ✅ VERIFIED WORKING${NC}"
+    npm run eval:smoke
+    ;;
+basic)
+    echo -e "${YELLOW}🔄 Running basic evaluation suite${NC}"
+    npm run eval:basic
+    ;;
+comprehensive)
+    echo -e "${RED}⏰ Running comprehensive evaluation suite (this may take 15-30 minutes)${NC}"
+    npm run eval:comprehensive
+    ;;
+all)
+    echo -e "${BLUE}🌊 Running all evaluation suites${NC}"
+    npm run eval:all
+    ;;
+*)
+    echo -e "${RED}❌ Invalid test type: $TEST_TYPE${NC}"
+    echo "Valid options: smoke, basic, comprehensive, all"
+    exit 1
+    ;;
 esac
 
 echo

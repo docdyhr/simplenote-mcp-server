@@ -6,7 +6,6 @@
  */
 
 import { spawn } from 'child_process';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 

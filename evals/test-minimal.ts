@@ -1,6 +1,5 @@
-import { EvalConfig, EvalFunction } from 'mcp-evals';
 import { openai } from "@ai-sdk/openai";
-import { grade } from "mcp-evals";
+import { EvalConfig, EvalFunction, grade } from 'mcp-evals';
 
 const serverHealthCheck: EvalFunction = {
     name: 'server_health_check',
