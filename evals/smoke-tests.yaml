@@ -1,30 +1,25 @@
-# Smoke tests for basic functionality - quick validation
+# Smoke tests for basic functionality - quick validation (< 2 minutes total)
 model:
   provider: openai
   name: gpt-4o-mini  # Cost-effective for frequent testing
 
 evals:
-  - name: smoke_server_startup
-    description: Verify server starts and responds to basic commands
-    prompt: "Test if the Simplenote MCP server is running and responsive"
-    expected_result: "Should confirm server is operational and can process requests"
+  - name: smoke_note_creation_minimal
+    description: Verify basic note creation works
+    prompt: "Create a simple note with content 'Smoke test note' and immediately delete it to clean up"
+    expected_result: "Should create and delete note successfully, returning proper JSON responses with success: true"
 
-  - name: smoke_authentication
-    description: Quick authentication test
-    prompt: "Verify authentication is working with current credentials"
-    expected_result: "Should authenticate successfully or provide clear error message"
+  - name: smoke_search_basic
+    description: Quick search functionality test
+    prompt: "Search for notes containing 'nonexistent12345' to test search without finding results"
+    expected_result: "Should return empty results array or message indicating no notes found, not crash"
 
-  - name: smoke_basic_note_ops
-    description: Test basic note operations work
-    prompt: "Create a simple note, read it back, and delete it"
-    expected_result: "Should complete basic CRUD cycle without errors"
+  - name: smoke_error_handling_invalid_id
+    description: Test error handling with invalid note ID
+    prompt: "Try to get a note with ID 'invalid-smoke-test-id-12345'"
+    expected_result: "Should return error response with success: false and appropriate error message"
 
-  - name: smoke_search_functionality
-    description: Quick search test
-    prompt: "Search for any existing notes to verify search is working"
-    expected_result: "Should return search results or indicate no notes found"
-
-  - name: smoke_error_handling
-    description: Test basic error handling
-    prompt: "Try an invalid operation to test error responses"
-    expected_result: "Should return proper error message in correct format"
+  - name: smoke_tool_availability
+    description: Verify all expected tools are available
+    prompt: "List or verify that these tools are available: create_note, get_note, search_notes, update_note, delete_note"
+    expected_result: "Should confirm all core tools are accessible and properly configured"

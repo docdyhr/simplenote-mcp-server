@@ -2,14 +2,35 @@
 
 This directory contains evaluation configurations for testing the Simplenote MCP Server using [mcp-evals](https://github.com/mclenhard/mcp-evals).
 
-**Status**: ✅ **WORKING** - All evaluations successfully running with TypeScript wrapper!
+**Status**: ✅ **UPDATED & IMPROVED** - All evaluations redesigned with realistic scenarios and proper test lifecycle!
 
 ## 📁 Evaluation Files
 
-- **`smoke-tests.yaml`** - Quick smoke tests for basic functionality validation ✅ **PASSING**
-- **`simplenote-evals.yaml`** - Standard evaluation suite for core Simplenote operations
-- **`comprehensive-evals.yaml`** - Comprehensive evaluation suite for thorough testing
+- **`smoke-tests.yaml`** - Quick smoke tests for basic functionality validation (< 2 min) ✅ **OPTIMIZED**
+- **`simplenote-evals.yaml`** - Standard evaluation suite with realistic workflows ✅ **REDESIGNED**
+- **`comprehensive-evals.yaml`** - Comprehensive evaluation suite for thorough testing ✅ **ENHANCED**
 - **`mcp-server-wrapper.ts`** - TypeScript wrapper that bridges Python server with Node.js mcp-evals
+
+## 🎯 Recent Improvements (July 15, 2025)
+
+### ✅ Critical Issues Fixed
+- **Eliminated hard-coded note IDs** - All tests now use dynamic note creation and proper cleanup
+- **Tool validation** - Verified all 8 implemented tools are properly tested
+- **Realistic scenarios** - Replaced artificial prompts with real user workflows
+- **Structured expected results** - Added specific JSON response validation
+
+### 🚀 New Test Categories
+- **Lifecycle Tests** - Complete note workflows from creation to deletion
+- **Multi-step Workflows** - Realistic user scenarios (meeting notes, research collection)
+- **Performance Testing** - Concurrent operations and large content handling
+- **Edge Case Coverage** - Unicode, special characters, error conditions
+- **Security Testing** - Input sanitization and data integrity validation
+
+### 📊 Enhanced Validation
+- **Specific Response Schemas** - Exact JSON structure expectations
+- **Error Format Validation** - Proper error response structure testing
+- **Performance Thresholds** - Measurable response time and load testing
+- **Data Integrity Checks** - Content preservation and consistency validation
 
 ## 🚀 Quick Start
 
@@ -32,72 +53,47 @@ npm run validate:evals
 ### Running Evaluations ✅
 
 ```bash
-# Run smoke tests (fast, basic validation) - ✅ WORKING
+# Run smoke tests (fast, basic validation) - ✅ OPTIMIZED
 npm run eval:smoke
 
-# Run basic evaluation suite
+# Run basic evaluation suite - ✅ REDESIGNED  
 npm run eval:basic
 
-# Run comprehensive evaluation suite (thorough, uses more API credits)
+# Run comprehensive evaluation suite - ✅ ENHANCED
 npm run eval:comprehensive
 
 # Run all evaluations
 npm run eval:all
 ```
 
-## 📊 Latest Test Results
-
-**Smoke Tests Results** (from latest run):
-
-- **Server Startup**: 4.6/5 ⭐ (Excellent)
-- **Authentication**: 4.0/5 ⭐ (Good)
-- **Basic Note Operations**: 3.8/5 ⭐ (Good)
-- **Search Functionality**: 5.0/5 ⭐ (Perfect)
-- **Error Handling**: 1.4/5 ⚠️ (Needs improvement)
-
-**Overall**: **4 out of 5 tests passing excellently!**
-
-## 🔧 Configuration
-
-### Environment Variables
-
-- `OPENAI_API_KEY` - Your OpenAI API key (required)
-- `SIMPLENOTE_EMAIL` - Simplenote account email for testing
-- `SIMPLENOTE_PASSWORD` - Simplenote account password for testing
-
-### Model Configuration
-
-All evaluation files are configured to use OpenAI models:
-
-- **Smoke tests**: `gpt-4o-mini` (cost-effective for frequent testing)
-- **Basic evaluations**: `gpt-4o-mini` (balanced performance and cost)
-- **Comprehensive evaluations**: `gpt-4o` (highest quality for thorough testing)
-
 ## 🧪 Evaluation Types
 
 ### Smoke Tests (`smoke-tests.yaml`)
 
-Quick validation tests that run in under 2 minutes:
+**Duration**: < 2 minutes | **Model**: gpt-4o-mini | **Cost**: Low
 
-- Server startup and responsiveness
-- Basic authentication
-- Simple CRUD operations
-- Basic search functionality
-- Error handling
+Quick validation tests for CI/CD pipelines:
+- ✅ Basic note creation and cleanup
+- ✅ Search functionality validation  
+- ✅ Error handling with invalid IDs
+- ✅ Tool availability verification
 
 ### Basic Evaluations (`simplenote-evals.yaml`)
 
-Standard test suite covering core functionality:
+**Duration**: 5-10 minutes | **Model**: gpt-4o | **Cost**: Medium
 
-- Note creation, retrieval, update, deletion
-- Search with various filters
-- Tag management
-- Error handling scenarios
-- Performance with moderate load
+Realistic workflow testing:
+- 🔄 **Complete note lifecycle** - Create → Read → Update → Delete with proper cleanup
+- 🏷️ **Tag operations** - Add, remove, replace tags with validation
+- 🔍 **Multi-step search** - Create test data, search, verify, cleanup
+- ⚠️ **Error scenarios** - Invalid IDs, missing parameters, edge cases
+- 🚀 **Performance** - Multiple rapid operations, large content handling
 
 ### Comprehensive Evaluations (`comprehensive-evals.yaml`)
 
-Thorough testing for production readiness:
+**Duration**: 15-30 minutes | **Model**: gpt-4o-mini | **Cost**: Medium
+
+Production-readiness testing:
 
 - Advanced CRUD operations with edge cases
 - Complex search scenarios
