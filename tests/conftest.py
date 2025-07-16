@@ -88,3 +88,29 @@ async def cleanup_asyncio_tasks():
         task.cancel()
         with contextlib.suppress(asyncio.CancelledError, asyncio.TimeoutError):
             await asyncio.wait_for(task, timeout=0.5)
+
+
+@pytest.fixture
+def server_context():
+    """Create a basic ServerContext for testing."""
+    from simplenote_mcp.server.config import Config
+    from simplenote_mcp.server.context import ServerContext
+
+    config = Config()
+    return ServerContext(config=config)
+
+
+@pytest.fixture
+def authenticated_context(mock_simplenote_client):
+    """Create an authenticated ServerContext for testing."""
+    from simplenote_mcp.server.cache import NoteCache
+    from simplenote_mcp.server.config import Config
+    from simplenote_mcp.server.context import ServerContext
+
+    config = Config()
+    note_cache = NoteCache(mock_simplenote_client)
+    return ServerContext(
+        config=config,
+        simplenote_client=mock_simplenote_client,
+        note_cache=note_cache,
+    )
