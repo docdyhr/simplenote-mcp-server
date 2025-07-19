@@ -63,6 +63,18 @@ jobs:
           ruff check .
           ruff format --check .
 
+      - name: Run security scanning
+        run: |
+          bandit -r simplenote_mcp -f json -o bandit-report.json || true
+          bandit -r simplenote_mcp -f txt
+
+      - name: Upload security scan results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+
       - name: Run type checking
         continue-on-error: true
         run: |
