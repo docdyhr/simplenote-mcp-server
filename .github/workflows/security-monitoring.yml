@@ -9,7 +9,7 @@ on:
       fail_on_issues:
         description: "Fail workflow on security issues"
         required: false
-        default: "true"
+        default: true
         type: boolean
   push:
     branches: [main]

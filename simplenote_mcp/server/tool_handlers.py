@@ -18,6 +18,13 @@ import mcp.types as types
 
 from .cache import NoteCache
 from .config import get_config
+from .decorators import (
+    validate_content_required,
+    validate_note_id_required,
+    validate_query_required,
+    validate_tags_required,
+    with_input_validation,
+)
 from .errors import (
     InternalError,
     NetworkError,
@@ -141,6 +148,7 @@ class ToolHandlerBase(ABC):
 class CreateNoteHandler(ToolHandlerBase):
     """Handler for create_note tool."""
 
+    @with_input_validation(validate_content_required)
     async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Handle create_note tool call."""
         content = arguments.get("content", "")
@@ -208,6 +216,7 @@ class CreateNoteHandler(ToolHandlerBase):
 class UpdateNoteHandler(ToolHandlerBase):
     """Handler for update_note tool."""
 
+    @with_input_validation(validate_note_id_required, validate_content_required)
     async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Handle update_note tool call."""
         note_id = arguments.get("note_id", "")
@@ -287,6 +296,7 @@ class UpdateNoteHandler(ToolHandlerBase):
 class DeleteNoteHandler(ToolHandlerBase):
     """Handler for delete_note tool."""
 
+    @with_input_validation(validate_note_id_required)
     async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Handle delete_note tool call."""
         note_id = arguments.get("note_id", "")
@@ -330,6 +340,7 @@ class DeleteNoteHandler(ToolHandlerBase):
 class GetNoteHandler(ToolHandlerBase):
     """Handler for get_note tool."""
 
+    @with_input_validation(validate_note_id_required)
     async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Handle get_note tool call."""
         note_id = arguments.get("note_id", "")
@@ -382,6 +393,7 @@ class GetNoteHandler(ToolHandlerBase):
 class SearchNotesHandler(ToolHandlerBase):
     """Handler for search_notes tool."""
 
+    @with_input_validation(validate_query_required)
     async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Handle search_notes tool call."""
         query = arguments.get("query", "")
@@ -680,6 +692,7 @@ class TagOperationHandler(ToolHandlerBase):
 class AddTagsHandler(TagOperationHandler):
     """Handler for add_tags tool."""
 
+    @with_input_validation(validate_note_id_required, validate_tags_required)
     async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Handle add_tags tool call."""
         note_id = arguments.get("note_id", "")
@@ -775,6 +788,7 @@ class AddTagsHandler(TagOperationHandler):
 class RemoveTagsHandler(TagOperationHandler):
     """Handler for remove_tags tool."""
 
+    @with_input_validation(validate_note_id_required, validate_tags_required)
     async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Handle remove_tags tool call."""
         note_id = arguments.get("note_id", "")
@@ -890,6 +904,7 @@ class RemoveTagsHandler(TagOperationHandler):
 class ReplaceTagsHandler(TagOperationHandler):
     """Handler for replace_tags tool."""
 
+    @with_input_validation(validate_note_id_required, validate_tags_required)
     async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
         """Handle replace_tags tool call."""
         note_id = arguments.get("note_id", "")

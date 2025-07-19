@@ -27,6 +27,7 @@ from .cache import BackgroundSync, NoteCache  # noqa: E402
 # Use our compatibility module for cross-version support
 from .compat import Path  # noqa: E402
 from .config import LogLevel, get_config  # noqa: E402
+from .decorators import rate_limit
 from .errors import (  # noqa: E402
     AuthenticationError,
     ResourceNotFoundError,
@@ -758,8 +759,11 @@ async def handle_list_tools() -> list[types.Tool]:
         ]
 
 
+@rate_limit(60, 60)
 @server.call_tool()
 async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+    if not isinstance(arguments, dict):
+        raise ValidationError("Invalid arguments: expected an object")
     """Handle the call_tool capability using the new tool handler system.
 
     Args:

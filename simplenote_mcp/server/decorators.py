@@ -204,6 +204,39 @@ def with_retry(
     return decorator
 
 
+def rate_limit(max_requests: int, period_seconds: float):
+    """Decorator to limit the rate of function calls.
+
+    Args:
+        max_requests: Maximum number of calls allowed within period_seconds.
+        period_seconds: Time window in seconds for rate limiting.
+    """
+    import time
+    from functools import wraps
+
+    calls: list[float] = []
+
+    def decorator(func):
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            nonlocal calls
+            now = time.monotonic()
+            # Remove timestamps outside the time window
+            calls = [
+                timestamp for timestamp in calls if now - timestamp < period_seconds
+            ]
+            if len(calls) >= max_requests:
+                raise Exception(
+                    f"Rate limit exceeded: {max_requests} calls per {period_seconds} seconds"
+                )
+            calls.append(now)
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
 def with_input_validation(*validators: Callable[[dict[str, Any]], None]):
     """Decorator for input validation.
 
@@ -307,7 +340,7 @@ def with_safe_json_response(fallback_response: dict[str, Any] | None = None):
                     # Fallback to string representation
                     return [types.TextContent(type="text", text=str(result))]
 
-            except json.JSONEncodeError as e:
+            except TypeError as e:
                 logger.error(f"JSON encoding error in {func.__name__}: {str(e)}")
                 fallback = fallback_response or {
                     "error": "JSON encoding failed",

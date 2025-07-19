@@ -42,6 +42,7 @@ simplenote_mcp/logs/*
 /tmp/simplenote_mcp_debug.log
 /tmp/simplenote_monitoring.log
 *.log
+bandit-report.json
 error_logs.txt
 
 # Runtime files
