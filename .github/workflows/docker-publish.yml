@@ -22,6 +22,8 @@ jobs:
   check-secrets:
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     outputs:
       has-docker-secrets: ${{ steps.check.outputs.has-docker-secrets }}
     steps:
@@ -39,6 +41,8 @@ jobs:
   lint-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

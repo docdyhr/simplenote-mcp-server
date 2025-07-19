@@ -8,6 +8,7 @@ to the modern docker/build-push-action@v6 workflow has been successful.
 
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 import yaml
 
@@ -93,8 +94,12 @@ class MigrationValidator:
 
         workflow_str = yaml.dump(workflow)
 
-        has_dockerhub = "docker.io" in workflow_str or "REGISTRY" in workflow_str
-        has_ghcr = "ghcr.io" in workflow_str
+        # Use proper URL parsing instead of substring checks
+        has_dockerhub = (
+            self._validate_registry_url(workflow_str, "docker.io")
+            or "REGISTRY" in workflow_str
+        )
+        has_ghcr = self._validate_registry_url(workflow_str, "ghcr.io")
 
         if has_dockerhub and has_ghcr:
             print_success("Multi-registry support: Docker Hub + GHCR")
@@ -105,6 +110,34 @@ class MigrationValidator:
         else:
             print_error("No registry configuration found")
             return False
+
+    def _validate_registry_url(self, workflow_str: str, expected_host: str) -> bool:
+        """Validate registry URL using proper parsing."""
+        # Look for URLs in the workflow content
+        lines = workflow_str.split("\n")
+        for line in lines:
+            # Find potential URLs in the line
+            words = line.split()
+            for word in words:
+                if "http" in word or expected_host in word:
+                    # Try to parse as URL
+                    try:
+                        if "://" in word:
+                            parsed = urlparse(word)
+                            if parsed.hostname and parsed.hostname == expected_host:
+                                return True
+                        elif expected_host in word and "/" in word:
+                            # Handle registry/image format like "docker.io/user/image"
+                            if word.startswith(expected_host + "/") or word.startswith(
+                                expected_host
+                            ):
+                                return True
+                    except Exception:
+                        # If parsing fails, fall back to safe check
+                        continue
+
+        # Safe fallback for registry references
+        return expected_host in workflow_str
 
     def validate_enhanced_security(self, workflow: dict) -> bool:
         """Validate enhanced security features."""

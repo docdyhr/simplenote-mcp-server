@@ -382,9 +382,9 @@ SIMPLENOTE_PASSWORD=testpassword
             secrets = ["DOCKER_USERNAME", "DOCKER_TOKEN"]
             for secret in secrets:
                 if secret in workflow_content:
-                    print_success(f"Secret {secret} referenced")
+                    print_success(f"Secret {secret[:6]}*** referenced")
                 else:
-                    print_error(f"Secret {secret} not found")
+                    print_error(f"Secret {secret[:6]}*** not found")
 
             return True
 

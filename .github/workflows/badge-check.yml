@@ -13,6 +13,8 @@ jobs:
     name: Verify Badge Status
     timeout-minutes: 5
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout code

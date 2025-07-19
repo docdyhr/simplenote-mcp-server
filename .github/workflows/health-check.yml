@@ -3,7 +3,7 @@ name: Health Check Monitoring
 on:
   schedule:
     # Run health checks weekly on Sunday mornings to optimize resource usage
-    - cron: '0 8 * * 0'
+    - cron: "0 8 * * 0"
   workflow_dispatch:
   release:
     types: [published]
@@ -16,10 +16,12 @@ jobs:
   health-check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
     strategy:
       matrix:
         tag: [latest, main]
-    
+
     steps:
       - name: Pull Docker image
         run: |
@@ -28,21 +30,21 @@ jobs:
       - name: Health check - Container startup
         run: |
           # Start container in background and check if it starts successfully
-          # Note: We expect authentication to fail with dummy credentials, 
+          # Note: We expect authentication to fail with dummy credentials,
           # but the container should start and show proper error messages
           container_id=$(docker run -d \
             -e SIMPLENOTE_EMAIL=healthcheck@example.com \
             -e SIMPLENOTE_PASSWORD=dummy-password \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }})
-          
+
           # Wait for container to initialize and show logs
           sleep 15
           container_logs=$(docker logs $container_id 2>&1)
-          
+
           echo "=== Container Logs ==="
           echo "$container_logs"
           echo "====================="
-          
+
           # Check if container shows expected startup behavior
           if echo "$container_logs" | grep -q "Starting Simplenote MCP Server"; then
             if echo "$container_logs" | grep -q "Missing Simplenote credentials\|AUTHENTICATION.*environment variables must be set"; then
@@ -55,7 +57,7 @@ jobs:
             echo "❌ Container ${{ matrix.tag }} failed to start properly"
             exit 1
           fi
-          
+
           # Clean up
           docker stop $container_id
           docker rm $container_id
@@ -65,7 +67,7 @@ jobs:
           # Test container response to help command
           container_output=$(docker run --rm \
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }} --help 2>&1 || true)
-          
+
           if echo "$container_output" | grep -q "Simplenote MCP Server"; then
             echo "✅ Container ${{ matrix.tag }} responds correctly to --help"
           else
@@ -78,9 +80,9 @@ jobs:
         uses: aquasecurity/trivy-action@0.32.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ matrix.tag }}
-          format: 'json'
-          output: 'trivy-results-${{ matrix.tag }}.json'
-          exit-code: '0'  # Don't fail on vulnerabilities, just report
+          format: "json"
+          output: "trivy-results-${{ matrix.tag }}.json"
+          exit-code: "0" # Don't fail on vulnerabilities, just report
 
       - name: Upload security scan results
         uses: actions/upload-artifact@v4
