@@ -370,12 +370,17 @@ def validate_note_id_required(arguments: dict[str, Any]) -> None:
 
 
 def validate_content_required(arguments: dict[str, Any]) -> None:
-    """Validate that content is present."""
+    """Validate that content is present (empty content is allowed)."""
     from .errors import ValidationError
 
+    # Check that content key exists, but allow empty strings
+    if "content" not in arguments:
+        raise ValidationError("Note content parameter is required")
+
     content = arguments.get("content", "")
-    if not content:
-        raise ValidationError("Note content is required")
+    # Allow empty content - this is a valid use case for notes
+    if content is None:
+        raise ValidationError("Note content cannot be None")
 
 
 def validate_query_required(arguments: dict[str, Any]) -> None:

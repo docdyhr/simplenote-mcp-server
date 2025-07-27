@@ -24,25 +24,33 @@ class SecurityValidator:
     MAX_NOTE_ID_LENGTH = 100
     MAX_QUERY_LENGTH = 1000
 
-    # Dangerous patterns to detect
+    # Dangerous patterns to detect - refined to reduce false positives
     DANGEROUS_PATTERNS = [
-        # SQL injection patterns
-        r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE)\b)",
+        # SQL injection patterns - more specific
+        r"(\b(union\s+select|drop\s+table|insert\s+into|delete\s+from)\b)",
+        r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE)\s+(FROM|INTO|TABLE|DATABASE)\b)",
         r'([\'"];\s*(DROP|DELETE|UPDATE|INSERT))',
         r"(\bOR\s+1\s*=\s*1\b)",
+        r"(\'\s*OR\s*\'\w*\'\s*=\s*\')",
         # XSS patterns
         r"(<script[^>]*>.*?</script>)",
         r"(javascript:)",
-        r"(on\w+\s*=)",
+        r"(on\w+\s*=\s*['\"])",
         r"(<iframe[^>]*>)",
+        r"(eval\s*\()",
         # Path traversal
         r"(\.\./|\.\.\\)",
-        r"(/etc/passwd|/etc/shadow)",
-        # Command injection
-        r"([;&|`$])",
+        r"(/etc/passwd|/etc/shadow|/proc/)",
+        # Command injection - more specific to avoid false positives
+        r"(;\s*(rm|cat|ls|chmod|wget|curl|bash|sh)\s+)",
         r"(\$\([^)]*\))",
+        r"(`\s*(rm|cat|ls|chmod|wget|curl|bash|sh)\s+[^`]*`)",
+        r"(\|\s*(rm|cat|ls|chmod|wget|curl|bash|sh)\s+)",
+        r"(&&\s*(rm|cat|ls|chmod|wget|curl|bash|sh)\s+)",
         # LDAP injection
         r"(\*\)|(\)\(|\(\*))",
+        # Code injection
+        r"(__import__|exec\(|eval\()",
     ]
 
     # Compile patterns for performance

@@ -248,7 +248,12 @@ class RequestValidator:
 
     def __init__(self, security_validator=None):
         """Initialize request validator."""
-        self.security_validator = security_validator or security_validator
+        if security_validator is None:
+            # Import here to avoid circular imports
+            from .security import SecurityValidator
+
+            security_validator = SecurityValidator()
+        self.security_validator = security_validator
         self.request_history = defaultdict(list)
 
     def validate_request(
@@ -600,16 +605,30 @@ def with_request_validation(require_auth: bool = False):
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapper(*args, **kwargs):
-            # Extract tool name and arguments
-            tool_name = kwargs.get("tool_name", "unknown")
-            arguments = kwargs.get("arguments", {})
-            context = kwargs.get("context", {})
+            # Extract tool name and arguments from both positional and keyword args
+            if len(args) >= 2:
+                # Called with positional arguments: handle_call_tool(name, arguments)
+                tool_name = args[0]
+                arguments = args[1]
+                context = kwargs.get("context", {})
+            else:
+                # Called with keyword arguments
+                tool_name = kwargs.get("tool_name", "unknown")
+                arguments = kwargs.get("arguments", {})
+                context = kwargs.get("context", {})
 
             # Validate request
             validated_args = request_validator.validate_request(
                 tool_name, arguments, context
             )
-            kwargs["arguments"] = validated_args
+
+            # Update arguments with validated ones
+            if len(args) >= 2:
+                # Called with positional arguments - update the args tuple
+                args = (args[0], validated_args) + args[2:]
+            else:
+                # Called with keyword arguments
+                kwargs["arguments"] = validated_args
 
             # Authentication check if required
             if require_auth:
