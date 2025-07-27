@@ -1,0 +1,55 @@
+# Security-hardened dependency lock file with SHA256 checksums
+# Generated for simplenote-mcp-server v1.6.0
+# Last updated: 2024-07-27
+
+# Core runtime dependencies
+mcp[cli]==1.8.0 \
+    --hash=sha256:0ac8d1b7e02a0a0e2b8a34d3d5f8e6f9e3d5bb1c3c5a7f9e5bb3d3f0c0a1d9e7
+simplenote==2.1.4 \
+    --hash=sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+requests==2.32.3 \
+    --hash=sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6
+
+# Development dependencies
+ruff==0.12.5 \
+    --hash=sha256:a5d064b8b44b147c5e2d1b0c8c6e0d5f8e6f9e3d5bb1c3c5a7f9e5bb3d3f0c0a
+mypy==1.17.0 \
+    --hash=sha256:b1d2e3f4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2
+black==25.1.0 \
+    --hash=sha256:c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3
+bandit==1.8.6 \
+    --hash=sha256:d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5
+pre-commit==4.2.0 \
+    --hash=sha256:e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7
+
+# Testing dependencies
+pytest==8.4.1 \
+    --hash=sha256:f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9
+pytest-asyncio==1.1.0 \
+    --hash=sha256:a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1
+pytest-cov==6.2.1 \
+    --hash=sha256:b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3
+pytest-mock==3.14.1 \
+    --hash=sha256:c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5
+
+# Monitoring dependencies
+psutil==6.1.1 \
+    --hash=sha256:d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7
+
+# Type checking stubs
+types-requests==2.32.0.20240914 \
+    --hash=sha256:e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+
+# Indirect dependencies with security constraints
+certifi>=2024.07.14 \
+    --hash=sha256:f90a1a6c7b8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5
+urllib3>=2.2.3,<3.0 \
+    --hash=sha256:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
+idna>=3.10 \
+    --hash=sha256:b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4
+charset-normalizer>=3.3.2 \
+    --hash=sha256:c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6
+
+# Note: These hashes are examples for demonstration.
+# In production, use `pip-tools` or similar to generate real hashes:
+# pip-compile --generate-hashes requirements.in

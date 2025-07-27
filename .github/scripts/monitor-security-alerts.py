@@ -9,10 +9,9 @@ and ensure that previously fixed security issues don't reappear.
 import json
 import os
 import sys
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-import urllib.request
 import urllib.parse
+import urllib.request
+from datetime import datetime
 from urllib.error import HTTPError, URLError
 
 
@@ -43,7 +42,7 @@ class SecurityAlertMonitor:
             # Add more as needed
         }
 
-    def _make_github_request(self, endpoint: str) -> Dict:
+    def _make_github_request(self, endpoint: str) -> dict:
         """Make authenticated request to GitHub API."""
         url = f"{self.base_url}/{endpoint}"
 
@@ -61,12 +60,11 @@ class SecurityAlertMonitor:
             if e.code == 404:
                 print(f"Warning: Endpoint not found: {endpoint}")
                 return {}
-            elif e.code == 403:
+            if e.code == 403:
                 print(f"Error: Access denied. Check token permissions for {endpoint}")
                 return {}
-            else:
-                print(f"HTTP Error {e.code}: {e.reason}")
-                return {}
+            print(f"HTTP Error {e.code}: {e.reason}")
+            return {}
         except URLError as e:
             print(f"Network error: {e.reason}")
             return {}
@@ -74,7 +72,7 @@ class SecurityAlertMonitor:
             print(f"JSON decode error: {e}")
             return {}
 
-    def get_code_scanning_alerts(self, state: str = "open") -> List[Dict]:
+    def get_code_scanning_alerts(self, state: str = "open") -> list[dict]:
         """Get code scanning alerts from GitHub."""
         endpoint = f"repos/{self.repo_owner}/{self.repo_name}/code-scanning/alerts"
 
@@ -85,7 +83,7 @@ class SecurityAlertMonitor:
         alerts = self._make_github_request(endpoint_with_params)
         return alerts if isinstance(alerts, list) else []
 
-    def get_secret_scanning_alerts(self, state: str = "open") -> List[Dict]:
+    def get_secret_scanning_alerts(self, state: str = "open") -> list[dict]:
         """Get secret scanning alerts from GitHub."""
         endpoint = f"repos/{self.repo_owner}/{self.repo_name}/secret-scanning/alerts"
 
@@ -96,7 +94,7 @@ class SecurityAlertMonitor:
         alerts = self._make_github_request(endpoint_with_params)
         return alerts if isinstance(alerts, list) else []
 
-    def check_for_regressions(self) -> Dict[str, List[Dict]]:
+    def check_for_regressions(self) -> dict[str, list[dict]]:
         """Check for security alert regressions."""
         regressions = {
             "critical_new_alerts": [],
@@ -180,14 +178,14 @@ class SecurityAlertMonitor:
 
         return regressions
 
-    def generate_report(self, regressions: Dict[str, List[Dict]]) -> str:
+    def generate_report(self, regressions: dict[str, list[dict]]) -> str:
         """Generate a security monitoring report."""
         report_lines = [
-            f"# Security Alert Monitoring Report",
-            f"",
+            "# Security Alert Monitoring Report",
+            "",
             f"**Repository**: {self.repo_owner}/{self.repo_name}",
             f"**Generated**: {datetime.now().isoformat()}",
-            f"",
+            "",
         ]
 
         total_issues = sum(len(alerts) for alerts in regressions.values())
@@ -226,7 +224,7 @@ class SecurityAlertMonitor:
                 report_lines.extend(
                     [
                         f"- **Alert #{alert['number']}**: {alert['rule_id']}",
-                        f"  - Status: REGRESSION (was previously fixed)",
+                        "  - Status: REGRESSION (was previously fixed)",
                         f"  - URL: {alert['url']}",
                         "",
                     ]
@@ -252,9 +250,12 @@ class SecurityAlertMonitor:
                 [
                     "## 📋 Recommendations",
                     "",
-                    "1. **Immediate Action Required**: Address critical and regression alerts first",
-                    "2. **Review Changes**: Check recent commits that may have introduced regressions",
-                    "3. **Update Tests**: Ensure security tests cover the regression scenarios",
+                    "1. **Immediate Action Required**: "
+                    "Address critical and regression alerts first",
+                    "2. **Review Changes**: "
+                    "Check recent commits that may have introduced regressions",
+                    "3. **Update Tests**: "
+                    "Ensure security tests cover the regression scenarios",
                     "4. **Monitor**: Set up automated monitoring for these alert types",
                     "",
                 ]
@@ -262,7 +263,7 @@ class SecurityAlertMonitor:
 
         return "\n".join(report_lines)
 
-    def save_report(self, report: str, filename: Optional[str] = None) -> str:
+    def save_report(self, report: str, filename: str | None = None) -> str:
         """Save the report to a file."""
         if filename is None:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -312,9 +313,8 @@ class SecurityAlertMonitor:
                     f"\n❌ CRITICAL: {critical_issues} critical security issue(s) detected!"
                 )
                 return 2  # Critical failure
-            else:
-                print(f"\n⚠️  WARNING: {total_issues} security issue(s) detected!")
-                return 1  # Warning
+            print(f"\n⚠️  WARNING: {total_issues} security issue(s) detected!")
+            return 1  # Warning
 
         print("\n✅ Security monitoring completed successfully!")
         return 0

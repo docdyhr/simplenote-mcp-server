@@ -21,7 +21,6 @@ COPY setup.py ./
 
 # Copy source code
 COPY simplenote_mcp/ simplenote_mcp/
-COPY README.md ./
 COPY VERSION ./
 
 # Install the package in development mode for building
@@ -47,12 +46,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code with proper ownership
 COPY --chown=mcp:mcp simplenote_mcp/ ./simplenote_mcp/
-COPY --chown=mcp:mcp pyproject.toml setup.py VERSION README.md ./
+COPY --chown=mcp:mcp pyproject.toml setup.py VERSION ./
 
 # Create logs directory with proper permissions
 RUN mkdir -p /app/logs /home/mcp/.local/share/simplenote-mcp \

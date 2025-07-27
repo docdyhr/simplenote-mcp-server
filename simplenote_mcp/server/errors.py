@@ -20,6 +20,7 @@ class ErrorCategory(Enum):
     NOT_FOUND = "not_found"  # Resource not found
     PERMISSION = "permission"  # Permission/access denied
     VALIDATION = "validation"  # Input validation errors
+    SECURITY = "security"  # Security-related errors
     INTERNAL = "internal"  # Internal server errors
     UNKNOWN = "unknown"  # Uncategorized errors
 
@@ -343,6 +344,16 @@ class ValidationError(ServerError):
         kwargs.setdefault("category", ErrorCategory.VALIDATION)
         kwargs.setdefault("severity", ErrorSeverity.WARNING)
         kwargs.setdefault("recoverable", True)
+        super().__init__(message, **kwargs)
+
+
+class SecurityError(ServerError):
+    """Security-related errors."""
+
+    def __init__(self, message: str, **kwargs: Any) -> None:
+        kwargs.setdefault("category", ErrorCategory.SECURITY)
+        kwargs.setdefault("severity", ErrorSeverity.ERROR)
+        kwargs.setdefault("recoverable", False)
         super().__init__(message, **kwargs)
 
 

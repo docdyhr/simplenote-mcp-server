@@ -36,6 +36,11 @@ from .errors import (  # noqa: E402
     handle_exception,
 )
 from .logging import logger  # noqa: E402
+from .middleware import (
+    with_rate_limiting,
+    with_request_validation,
+    with_security_monitoring,
+)
 from .monitoring.metrics import (  # noqa: E402
     record_api_call,
     record_response_time,
@@ -761,9 +766,10 @@ async def handle_list_tools() -> list[types.Tool]:
 
 @rate_limit(60, 60)
 @server.call_tool()
+@with_security_monitoring()
+@with_rate_limiting(max_requests=100, window_seconds=300)  # 100 requests per 5 minutes
+@with_request_validation()
 async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
-    if not isinstance(arguments, dict):
-        raise ValidationError("Invalid arguments: expected an object")
     """Handle the call_tool capability using the new tool handler system.
 
     Args:
@@ -774,6 +780,8 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         The result of the tool call
 
     """
+    if not isinstance(arguments, dict):
+        raise ValidationError("Invalid arguments: expected an object")
     from .cache_utils import get_cache_or_create_minimal
     from .tool_handlers import ToolHandlerRegistry
 
