@@ -65,8 +65,8 @@ jobs:
 
       - name: Run security scanning
         run: |
-          bandit -r simplenote_mcp -f json -o bandit-report.json || true
-          bandit -r simplenote_mcp -f txt
+          bandit -r simplenote_mcp -c .bandit -f json -o bandit-report.json --exit-zero
+          bandit -r simplenote_mcp -c .bandit -f txt --exit-zero
 
       - name: Upload security scan results
         if: always()

@@ -1,0 +1,16 @@
+# Bandit configuration file in YAML format
+exclude_dirs:
+  - '*/tests/*'
+  - '*/test_*'
+
+skips:
+  - B101  # Skip assert_used checks (common in tests)
+
+# Only report medium and high severity issues
+# confidence:
+#   - medium
+#   - high
+
+# severity:
+#   - medium
+#   - high

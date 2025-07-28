@@ -20,6 +20,11 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/docker/v/docdyhr/simplenote-mcp-server?label=docker&color=blue)](https://hub.docker.com/r/docdyhr/simplenote-mcp-server)
 
+<!-- Download & Stats Badges -->
+[![PyPI Downloads](https://img.shields.io/pypi/dm/simplenote-mcp-server?label=PyPI%20downloads)](https://pypi.org/project/simplenote-mcp-server/)
+[![Docker Pulls](https://img.shields.io/docker/pulls/docdyhr/simplenote-mcp-server?label=Docker%20pulls)](https://hub.docker.com/r/docdyhr/simplenote-mcp-server)
+[![GitHub Stars](https://img.shields.io/github/stars/docdyhr/simplenote-mcp-server?style=social)](https://github.com/docdyhr/simplenote-mcp-server)
+
 <!-- Development & Quality Badges -->
 [![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
