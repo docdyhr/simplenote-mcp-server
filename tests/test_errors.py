@@ -152,6 +152,7 @@ class TestErrorEnums:
             "validation",
             "internal",
             "unknown",
+            "security",
         }
         actual_categories = {cat.value for cat in ErrorCategory}
         assert actual_categories == expected_categories

@@ -166,12 +166,12 @@ class TestValidationFunctions:
         """Test validate_content_required with missing content."""
         arguments = {}
 
-        with pytest.raises(ValidationError, match="Note content is required"):
+        with pytest.raises(ValidationError, match="Note content parameter is required"):
             validate_content_required(arguments)
 
     def test_validate_content_required_empty(self):
-        """Test validate_content_required with empty content."""
+        """Test validate_content_required with empty content (now allowed)."""
         arguments = {"content": ""}
 
-        with pytest.raises(ValidationError, match="Note content is required"):
-            validate_content_required(arguments)
+        # Should not raise any exception - empty content is now allowed
+        validate_content_required(arguments)

@@ -24,29 +24,33 @@ class SecurityValidator:
     MAX_NOTE_ID_LENGTH = 100
     MAX_QUERY_LENGTH = 1000
 
-    # Dangerous patterns to detect - refined to reduce false positives
+    # Dangerous patterns to detect - refined to reduce false positives while maintaining security
     DANGEROUS_PATTERNS = [
-        # SQL injection patterns - more specific
+        # SQL injection patterns - keep both broad and specific patterns for comprehensive protection
         r"(\b(union\s+select|drop\s+table|insert\s+into|delete\s+from)\b)",
-        r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE)\s+(FROM|INTO|TABLE|DATABASE)\b)",
+        r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE)\s+(FROM|INTO|TABLE|DATABASE|WHERE)\b)",
+        r"(\b(SELECT|DROP|INSERT|UPDATE|DELETE)\s+\*?\s*(FROM|TABLE|INTO)?\s+\w+)",
         r'([\'"];\s*(DROP|DELETE|UPDATE|INSERT))',
-        r"(\bOR\s+1\s*=\s*1\b)",
+        r"(\bOR\s+\d+\s*=\s*\d+\b)",
         r"(\'\s*OR\s*\'\w*\'\s*=\s*\')",
         # XSS patterns
         r"(<script[^>]*>.*?</script>)",
         r"(javascript:)",
-        r"(on\w+\s*=\s*['\"])",
+        r"(on\w+\s*=\s*['\"]?[^'\">]*['\">])",
+        r"(on\w+\s*=)",
         r"(<iframe[^>]*>)",
         r"(eval\s*\()",
         # Path traversal
         r"(\.\./|\.\.\\)",
         r"(/etc/passwd|/etc/shadow|/proc/)",
-        # Command injection - more specific to avoid false positives
-        r"(;\s*(rm|cat|ls|chmod|wget|curl|bash|sh)\s+)",
+        # Command injection - balance between security and false positives
+        r"(;\s*(rm|cat|ls|chmod|wget|curl|bash|sh|whoami|id)(\s+|$))",
+        r"(\$\w+;\s*(rm|cat|ls|chmod|wget|curl|bash|sh))",
         r"(\$\([^)]*\))",
-        r"(`\s*(rm|cat|ls|chmod|wget|curl|bash|sh)\s+[^`]*`)",
-        r"(\|\s*(rm|cat|ls|chmod|wget|curl|bash|sh)\s+)",
-        r"(&&\s*(rm|cat|ls|chmod|wget|curl|bash|sh)\s+)",
+        r"(`(rm|cat|ls|chmod|wget|curl|bash|sh|whoami|id|echo|pwd)[^`]*`)",  # Backticks with dangerous commands
+        r"(\|\s*(rm|cat|ls|chmod|wget|curl|bash|sh|whoami|id)(\s+|$))",
+        r"(&&\s*(rm|cat|ls|chmod|wget|curl|bash|sh)(\s+|$))",
+        r"(&\s+(rm|cat|ls|chmod|wget|curl|bash|sh|whoami|id)(\s+|$))",
         # LDAP injection
         r"(\*\)|(\)\(|\(\*))",
         # Code injection

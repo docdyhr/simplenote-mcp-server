@@ -16,7 +16,7 @@ from simplenote_mcp.server.alerting import (
     alert_suspicious_pattern,
     get_alerter,
 )
-from simplenote_mcp.server.errors import ValidationError
+from simplenote_mcp.server.errors import SecurityError
 
 
 class TestSecurityAlert:
@@ -379,7 +379,7 @@ class TestAlertIntegration:
         from simplenote_mcp.server.security import security_validator
 
         # Test dangerous content detection triggers alert
-        with pytest.raises(ValidationError):  # SecurityError expected
+        with pytest.raises(SecurityError):  # SecurityError expected
             security_validator.validate_note_content(
                 "SELECT * FROM users WHERE 1=1", "test content"
             )

@@ -1,6 +1,6 @@
 """Tests for the cache utilities module."""
 
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -24,7 +24,7 @@ class TestEnsureCacheInitialized:
         """Test when cache already exists."""
         cache = NoteCache(mock_simplenote_client)
         get_client = MagicMock()
-        init_func = MagicMock()
+        init_func = AsyncMock()
 
         result = await ensure_cache_initialized(cache, get_client, init_func)
 
@@ -36,7 +36,7 @@ class TestEnsureCacheInitialized:
     async def test_cache_is_none(self, mock_simplenote_client):
         """Test when cache is None."""
         get_client = MagicMock(return_value=mock_simplenote_client)
-        init_func = MagicMock()
+        init_func = AsyncMock()
 
         result = await ensure_cache_initialized(None, get_client, init_func)
 
@@ -68,18 +68,20 @@ class TestGetCacheWithFallback:
         cache = NoteCache(mock_simplenote_client)
         get_client = MagicMock()
 
-        result = get_cache_with_fallback(cache, get_client)
+        result_cache, is_initialized = get_cache_with_fallback(cache, get_client)
 
-        assert result is cache
+        assert result_cache is cache
+        assert isinstance(is_initialized, bool)
         get_client.assert_not_called()
 
     def test_cache_none(self, mock_simplenote_client):
         """Test when cache is None."""
         get_client = MagicMock(return_value=mock_simplenote_client)
 
-        result = get_cache_with_fallback(None, get_client)
+        result_cache, is_initialized = get_cache_with_fallback(None, get_client)
 
-        assert isinstance(result, NoteCache)
+        assert isinstance(result_cache, NoteCache)
+        assert isinstance(is_initialized, bool)
         get_client.assert_called_once()
 
 
