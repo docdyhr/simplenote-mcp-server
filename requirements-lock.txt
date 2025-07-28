@@ -7,8 +7,9 @@ mcp[cli]==1.8.0 \
     --hash=sha256:0ac8d1b7e02a0a0e2b8a34d3d5f8e6f9e3d5bb1c3c5a7f9e5bb3d3f0c0a1d9e7
 simplenote==2.1.4 \
     --hash=sha256:1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
-requests==2.32.3 \
-    --hash=sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6
+requests==2.32.4 \
+    --hash=sha256:27babd3cda2a6d50b30443204ee89830707d396671944c998b5975b031ac2b2c \
+    --hash=sha256:27d0316682c8a29834d3264820024b62a36942083d52caf2f14c0591336d3422
 
 # Development dependencies
 ruff==0.12.5 \
