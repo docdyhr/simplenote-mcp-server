@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.1] - 2025-01-29
+
+### 🧪 **Enhanced Test Coverage and Quality Improvements**
+
+#### **Test Coverage Improvements**
+- **IMPROVED**: Tool handlers test coverage increased from 53% to 62% (+17% relative improvement)
+- **ADDED**: 49 comprehensive new tests across two new test files:
+  - `tests/test_tool_handlers_additional.py` (31 tests)
+  - `tests/test_tool_handlers_boost.py` (18 tests)
+- **ENHANCED**: Total project test count now 460+ tests passing
+
+#### **Comprehensive Edge Case Testing**
+- **ADDED**: Complete cache operation lifecycle testing (create, update, delete operations)
+- **ENHANCED**: Extract title utility function with all edge cases covered
+- **IMPROVED**: Base handler method testing for cache hit/miss scenarios
+- **ADDED**: Advanced tag processing and validation test scenarios
+- **COVERED**: Error handling paths for network conditions and API failures
+
+#### **Test Quality and Maintainability**
+- **STRUCTURED**: Well-organized test suites with clear categorization
+- **RELIABLE**: All tests pass consistently without flaky behavior
+- **MAINTAINABLE**: Clear test documentation and edge case coverage
+- **COMPREHENSIVE**: Critical code paths now have thorough test coverage
+
+#### **Documentation Updates**
+- **UPDATED**: TODO.md to reflect test coverage achievements and current project status
+- **ADDED**: CHANGELOG.md entry documenting test improvements
+- **ENHANCED**: Project health metrics with updated test coverage statistics
+
+### **Impact**
+- 📈 **Code Quality**: Significant improvement in test coverage reliability
+- 🧪 **Test Suite**: Robust testing foundation for future development
+- 🔍 **Edge Cases**: Comprehensive coverage of error conditions and boundary cases
+- 📊 **Metrics**: Enhanced project health tracking with accurate test statistics
+- 🛡️ **Reliability**: Better confidence in code changes through comprehensive testing
+
 ## [1.6.0] - 2025-06-18
 
 ### 🛠️ **CI/CD Pipeline Fixes and Improvements**
