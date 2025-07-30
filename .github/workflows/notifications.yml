@@ -34,7 +34,34 @@ on:
         required: false
 
 jobs:
+  check-secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      has-email-secrets: ${{ steps.check.outputs.has-email-secrets }}
+      has-slack-secrets: ${{ steps.check.outputs.has-slack-secrets }}
+    steps:
+      - name: Check notification secrets
+        id: check
+        run: |
+          if [[ -n "${{ secrets.NOTIFICATION_EMAIL }}" && -n "${{ secrets.EMAIL_PASSWORD }}" ]]; then
+            echo "has-email-secrets=true" >> $GITHUB_OUTPUT
+            echo "✅ Email secrets are available"
+          else
+            echo "has-email-secrets=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Email secrets are not available"
+          fi
+
+          if [[ -n "${{ secrets.SLACK_WEBHOOK_URL }}" ]]; then
+            echo "has-slack-secrets=true" >> $GITHUB_OUTPUT
+            echo "✅ Slack secrets are available"
+          else
+            echo "has-slack-secrets=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Slack secrets are not available"
+          fi
+
   notify:
+    needs: check-secrets
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -71,8 +98,9 @@ jobs:
           echo "short_sha=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
 
       - name: Send Slack notification
-        if: inputs.slack_enabled
+        if: inputs.slack_enabled && needs.check-secrets.outputs.has-slack-secrets == 'true'
         uses: 8398a7/action-slack@v3
+        continue-on-error: true
         with:
           status: custom
           custom_payload: |
@@ -117,8 +145,9 @@ jobs:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
 
       - name: Send email notification
-        if: inputs.email_enabled
+        if: inputs.email_enabled && needs.check-secrets.outputs.has-email-secrets == 'true'
         uses: dawidd6/action-send-mail@v6
+        continue-on-error: true
         with:
           server_address: smtp.gmail.com
           server_port: 587
@@ -141,10 +170,34 @@ jobs:
             <hr>
             <p><small>This is an automated notification from GitHub Actions.</small></p>
 
-      - name: Log notification sent
+      - name: Notify when secrets missing
+        if: (inputs.slack_enabled && needs.check-secrets.outputs.has-slack-secrets == 'false') || (inputs.email_enabled && needs.check-secrets.outputs.has-email-secrets == 'false')
         run: |
-          echo "📬 Notification sent:"
+          echo "⚠️ Notification Warning:"
+          if [[ "${{ inputs.slack_enabled }}" == "true" && "${{ needs.check-secrets.outputs.has-slack-secrets }}" == "false" ]]; then
+            echo "  - Slack notifications requested but SLACK_WEBHOOK_URL secret not configured"
+          fi
+          if [[ "${{ inputs.email_enabled }}" == "true" && "${{ needs.check-secrets.outputs.has-email-secrets }}" == "false" ]]; then
+            echo "  - Email notifications requested but NOTIFICATION_EMAIL/EMAIL_PASSWORD secrets not configured"
+          fi
+
+      - name: Log notification summary
+        if: always()
+        run: |
+          echo "📬 Notification Summary:"
           echo "  Status: ${{ inputs.status }}"
           echo "  Workflow: ${{ inputs.workflow_name }}"
-          echo "  Slack: ${{ inputs.slack_enabled && 'enabled' || 'disabled' }}"
-          echo "  Email: ${{ inputs.email_enabled && 'enabled' || 'disabled' }}"
+          echo "  Slack: ${{ inputs.slack_enabled && 'requested' || 'disabled' }} (secrets: ${{ needs.check-secrets.outputs.has-slack-secrets }})"
+          echo "  Email: ${{ inputs.email_enabled && 'requested' || 'disabled' }} (secrets: ${{ needs.check-secrets.outputs.has-email-secrets }})"
+
+          if [[ "${{ inputs.slack_enabled }}" == "true" && "${{ needs.check-secrets.outputs.has-slack-secrets }}" == "true" ]]; then
+            echo "  ✅ Slack notification attempted"
+          elif [[ "${{ inputs.slack_enabled }}" == "true" ]]; then
+            echo "  ⚠️ Slack notification skipped (missing secrets)"
+          fi
+
+          if [[ "${{ inputs.email_enabled }}" == "true" && "${{ needs.check-secrets.outputs.has-email-secrets }}" == "true" ]]; then
+            echo "  ✅ Email notification attempted"
+          elif [[ "${{ inputs.email_enabled }}" == "true" ]]; then
+            echo "  ⚠️ Email notification skipped (missing secrets)"
+          fi

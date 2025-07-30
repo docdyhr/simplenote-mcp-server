@@ -81,5 +81,11 @@ Thumbs.db
 **/.aider*
 CLAUDE.md
 
+# Documentation build output
+site/
+
+# Workflow status files
+workflow-status*.json
+
 # PRVATE
 private*

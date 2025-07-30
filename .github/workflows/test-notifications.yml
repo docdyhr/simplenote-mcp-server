@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       test_type:
-        description: 'Type of notification test'
+        description: "Type of notification test"
         required: true
-        default: 'success'
+        default: "success"
         type: choice
         options:
           - success
@@ -15,13 +15,57 @@ on:
 
 jobs:
   test-notification:
-    uses: ./.github/workflows/notifications.yml
-    with:
-      status: ${{ inputs.test_type }}
-      workflow_name: "Email Notification Test"
-      message: "This is a test of the email notification system. Test type: ${{ inputs.test_type }}"
-      slack_enabled: false
-      email_enabled: true
-    secrets:
-      NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
-      EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check notification secrets
+        id: check-secrets
+        run: |
+          if [[ -n "${{ secrets.NOTIFICATION_EMAIL }}" && -n "${{ secrets.EMAIL_PASSWORD }}" ]]; then
+            echo "has-email-secrets=true" >> $GITHUB_OUTPUT
+            echo "✅ Email secrets are available"
+          else
+            echo "has-email-secrets=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Email secrets are not configured"
+          fi
+
+      - name: Call notification workflow
+        if: steps.check-secrets.outputs.has-email-secrets == 'true'
+        uses: ./.github/workflows/notifications.yml
+        with:
+          status: ${{ inputs.test_type }}
+          workflow_name: "Email Notification Test"
+          message: "This is a test of the email notification system. Test type: ${{ inputs.test_type }}"
+          slack_enabled: false
+          email_enabled: true
+        secrets:
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
+          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+
+      - name: Manual email test
+        if: steps.check-secrets.outputs.has-email-secrets == 'true'
+        uses: dawidd6/action-send-mail@v6
+        continue-on-error: true
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.NOTIFICATION_EMAIL }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ Direct Email Test - ${{ inputs.test_type }}"
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: "GitHub Actions <${{ secrets.NOTIFICATION_EMAIL }}>"
+          html_body: |
+            <h2>✅ Direct Email Test</h2>
+            <p>This is a direct email test bypassing the notification workflow.</p>
+            <p><strong>Test Type:</strong> ${{ inputs.test_type }}</p>
+            <p><strong>Repository:</strong> ${{ github.repository }}</p>
+            <p><strong>Workflow:</strong> <a href="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}">View Details</a></p>
+
+      - name: Report results
+        if: always()
+        run: |
+          echo "📧 Email Notification Test Results:"
+          echo "  Secrets Available: ${{ steps.check-secrets.outputs.has-email-secrets }}"
+          echo "  Test Type: ${{ inputs.test_type }}"
+          echo "  Repository: ${{ github.repository }}"
+          echo "  Run ID: ${{ github.run_id }}"
