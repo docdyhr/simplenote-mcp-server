@@ -9,7 +9,7 @@ class TestMainModule:
 
     def test_help_argument_subprocess(self):
         """Test that --help works when run as subprocess."""
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [sys.executable, "-m", "simplenote_mcp", "--help"],
             capture_output=True,
             text=True,
@@ -25,7 +25,7 @@ class TestMainModule:
 
     def test_h_argument_subprocess(self):
         """Test that -h works when run as subprocess."""
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             [sys.executable, "-m", "simplenote_mcp", "-h"],
             capture_output=True,
             text=True,

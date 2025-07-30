@@ -8,6 +8,10 @@ on:
   schedule:
     - cron: "0 5 * * 1" # Run every Monday at 5 AM UTC for trend analysis
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pre-commit:
     name: Pre-commit Hooks

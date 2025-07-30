@@ -14,6 +14,10 @@ on:
     # Rebuild weekly to get security updates
     - cron: "0 2 * * 0"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name != 'schedule' }}
+
 env:
   REGISTRY: docker.io
   IMAGE_NAME: docdyhr/simplenote-mcp-server
@@ -367,12 +371,14 @@ jobs:
         if: always() && github.event_name != 'pull_request'
         with:
           sarif_file: "trivy-results.sarif"
+          category: "trivy-container-scan"
 
       - name: Upload Trivy filesystem scan results
         uses: github/codeql-action/upload-sarif@v3
         if: always() && github.event_name != 'pull_request'
         with:
           sarif_file: "trivy-fs-results.sarif"
+          category: "trivy-filesystem-scan"
 
       - name: Run Docker Scout
         if: github.event_name != 'pull_request' && needs.check-secrets.outputs.has-docker-secrets == 'true'
@@ -402,7 +408,7 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
           repository: ${{ env.IMAGE_NAME }}
           readme-filepath: ./DOCKER_README.md
-          short-description: "A Model Context Protocol (MCP) server that provides seamless integration with Simplenote for note management and search capabilities."
+          short-description: "MCP server for Simplenote integration with note management and search capabilities."
 
   notify:
     needs:

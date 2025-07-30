@@ -123,6 +123,23 @@ def get_simplenote_client() -> Simplenote:
             # Get credentials from config
             config = get_config()
 
+            # Check if running in offline mode
+            if config.offline_mode:
+                logger.info("Running in offline mode - using mock Simplenote client")
+                from unittest.mock import MagicMock
+
+                # Create a mock client for offline mode
+                mock_client = MagicMock()
+                mock_client.get_note_list.return_value = ([], 0)
+                mock_client.get_note.return_value = ({}, 0)
+                mock_client.add_note.return_value = ({}, 0)
+                mock_client.update_note.return_value = ({}, 0)
+                mock_client.trash_note.return_value = 0
+
+                simplenote_client = mock_client
+                logger.info("Mock Simplenote client created for offline mode")
+                return simplenote_client
+
             if not config.has_credentials:
                 logger.error("Missing Simplenote credentials in environment variables")
                 raise AuthenticationError(AUTH_ERROR_MSG)

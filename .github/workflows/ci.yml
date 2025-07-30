@@ -9,6 +9,10 @@ on:
     # Run daily at 2 AM UTC to catch dependency issues early
     - cron: "0 2 * * *"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   PYTHON_VERSION: "3.12"
   PYTHON_VERSIONS: "3.10,3.11,3.12"

@@ -103,6 +103,16 @@ class Config:
         if debug_mode and self.log_level != LogLevel.DEBUG:
             self.log_level = LogLevel.DEBUG
 
+        # Offline mode configuration
+        self.offline_mode: bool = os.environ.get(
+            "SIMPLENOTE_OFFLINE_MODE", "false"
+        ).lower() in (
+            "true",
+            "1",
+            "t",
+            "yes",
+        )
+
     @property
     def has_credentials(self) -> bool:
         """Check if Simplenote credentials are configured."""
@@ -110,7 +120,7 @@ class Config:
 
     def validate(self) -> None:
         """Validate the configuration and raise ValueError if invalid."""
-        if not self.has_credentials:
+        if not self.offline_mode and not self.has_credentials:
             raise ValueError(
                 "SIMPLENOTE_EMAIL (or SIMPLENOTE_USERNAME) and SIMPLENOTE_PASSWORD environment variables must be set"
             )

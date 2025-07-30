@@ -13,9 +13,14 @@ on:
     # Run weekly to catch issues early
     - cron: "0 2 * * 1" # Mondays at 2 AM UTC
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   evaluate-mcp-server:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: write
@@ -154,6 +159,7 @@ jobs:
 
   evaluate-pr-changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     permissions:
       contents: read

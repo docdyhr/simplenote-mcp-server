@@ -80,7 +80,7 @@ class TestConfig:
         """Test creating Config with environment variables."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
             "SYNC_INTERVAL_SECONDS": "300",
             "DEFAULT_RESOURCE_LIMIT": "200",
             "TITLE_MAX_LENGTH": "50",
@@ -98,7 +98,7 @@ class TestConfig:
             config = Config()
 
             assert config.simplenote_email == "test@example.com"
-            assert config.simplenote_password == "test_password"
+            assert config.simplenote_password == "test_password"  # noqa: S105
             assert config.sync_interval_seconds == 300
             assert config.default_resource_limit == 200
             assert config.title_max_length == 50
@@ -115,7 +115,7 @@ class TestConfig:
         """Test that SIMPLENOTE_USERNAME falls back if SIMPLENOTE_EMAIL not set."""
         env_vars = {
             "SIMPLENOTE_USERNAME": "test_user@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
@@ -127,7 +127,7 @@ class TestConfig:
         env_vars = {
             "SIMPLENOTE_EMAIL": "email@example.com",
             "SIMPLENOTE_USERNAME": "username@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
@@ -198,7 +198,7 @@ class TestConfig:
         """Test has_credentials returns True when both email and password are set."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
@@ -207,7 +207,7 @@ class TestConfig:
 
     def test_has_credentials_false_no_email(self):
         """Test has_credentials returns False when email is missing."""
-        env_vars = {"SIMPLENOTE_PASSWORD": "test_password"}
+        env_vars = {"SIMPLENOTE_PASSWORD": "test_password"}  # noqa: S105
 
         with patch.dict(os.environ, env_vars, clear=True):
             config = Config()
@@ -237,7 +237,7 @@ class TestConfigValidation:
         """Test successful validation with valid config."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
         }
 
         with patch.dict(os.environ, env_vars, clear=True):
@@ -259,7 +259,7 @@ class TestConfigValidation:
         """Test validation fails with invalid sync interval."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
             "SYNC_INTERVAL_SECONDS": "5",
         }
 
@@ -274,7 +274,7 @@ class TestConfigValidation:
         """Test validation fails with invalid resource limit."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
             "DEFAULT_RESOURCE_LIMIT": "0",
         }
 
@@ -289,7 +289,7 @@ class TestConfigValidation:
         """Test validation fails with invalid title max length."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
             "TITLE_MAX_LENGTH": "0",
         }
 
@@ -302,7 +302,7 @@ class TestConfigValidation:
         """Test validation fails with invalid snippet max length."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
             "SNIPPET_MAX_LENGTH": "0",
         }
 
@@ -317,7 +317,7 @@ class TestConfigValidation:
         """Test validation fails with invalid cache max size."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
             "CACHE_MAX_SIZE": "0",
         }
 
@@ -330,7 +330,7 @@ class TestConfigValidation:
         """Test validation fails with invalid cache timeout."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
             "CACHE_INITIALIZATION_TIMEOUT": "0",
         }
 
@@ -345,7 +345,7 @@ class TestConfigValidation:
         """Test validation fails with invalid metrics interval."""
         env_vars = {
             "SIMPLENOTE_EMAIL": "test@example.com",
-            "SIMPLENOTE_PASSWORD": "test_password",
+            "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
             "METRICS_COLLECTION_INTERVAL": "0",
         }
 
@@ -460,7 +460,7 @@ class TestConfigIntegration:
 
             # Test all values are set correctly
             assert config.simplenote_email == "comprehensive@example.com"
-            assert config.simplenote_password == "comprehensive_password"
+            assert config.simplenote_password == "comprehensive_password"  # noqa: S105
             assert config.sync_interval_seconds == 180
             assert config.default_resource_limit == 150
             assert config.title_max_length == 40
@@ -477,4 +477,44 @@ class TestConfigIntegration:
             assert config.has_credentials is True
 
             # Test validation passes
+            config.validate()
+
+    def test_offline_mode_configuration(self):
+        """Test offline mode configuration."""
+        with patch.dict(
+            os.environ,
+            {
+                "SIMPLENOTE_OFFLINE_MODE": "true",
+                "SIMPLENOTE_EMAIL": "",
+                "SIMPLENOTE_PASSWORD": "",
+            },
+            clear=True,
+        ):
+            config = Config()
+
+            # Test offline mode is enabled
+            assert config.offline_mode is True
+            assert config.has_credentials is False
+
+            # Test validation passes without credentials in offline mode
+            config.validate()
+
+    def test_offline_mode_disabled(self):
+        """Test offline mode disabled by default."""
+        with patch.dict(
+            os.environ,
+            {
+                "SIMPLENOTE_OFFLINE_MODE": "false",
+                "SIMPLENOTE_EMAIL": "test@example.com",
+                "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
+            },
+            clear=True,
+        ):
+            config = Config()
+
+            # Test offline mode is disabled
+            assert config.offline_mode is False
+            assert config.has_credentials is True
+
+            # Test validation passes with credentials
             config.validate()  # Should not raise

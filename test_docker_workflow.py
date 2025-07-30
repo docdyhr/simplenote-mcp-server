@@ -64,7 +64,7 @@ def run_command(
     print_step(f"Running: {' '.join(cmd)}")
 
     try:
-        result = subprocess.run(
+        result = subprocess.run(  # noqa: S603
             cmd,
             cwd=cwd,
             capture_output=capture_output,
