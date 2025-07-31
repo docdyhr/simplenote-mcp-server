@@ -17,58 +17,58 @@ jobs:
       pull-requests: write
       contents: write
       checks: read
-    
+
     steps:
       - name: Check if PR is ready for merge
         id: check
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
-            
+
             // Skip if PR is already merged or is a draft
             if (!pr || pr.merged || pr.draft) {
               console.log('PR is not eligible for auto-merge');
               return false;
             }
-            
+
             // Get PR details
             const { data: pullRequest } = await github.rest.pulls.get({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: pr.number
             });
-            
+
             // Check if PR has auto-merge label
             const hasAutoMergeLabel = pullRequest.labels.some(
               label => label.name === 'auto-merge'
             );
-            
+
             // Check target branch (only auto-merge to develop or main)
             const validTargetBranches = ['develop', 'main'];
             const isValidTarget = validTargetBranches.includes(pullRequest.base.ref);
-            
+
             // Get reviews
             const { data: reviews } = await github.rest.pulls.listReviews({
               owner: context.repo.owner,
               repo: context.repo.repo,
               pull_number: pr.number
             });
-            
+
             // Check for approved reviews
             const approvedReviews = reviews.filter(
               review => review.state === 'APPROVED'
             );
             const hasApproval = approvedReviews.length > 0;
-            
+
             // Get check runs
             const { data: checkRuns } = await github.rest.checks.listForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: pullRequest.head.sha
             });
-            
+
             // Check if all required checks passed
             const requiredChecks = ['test', 'lint', 'build'];
             const allChecksPassed = requiredChecks.every(checkName => {
@@ -77,15 +77,15 @@ jobs:
               );
               return check && check.conclusion === 'success';
             });
-            
+
             const canMerge = hasAutoMergeLabel && isValidTarget && hasApproval && allChecksPassed;
-            
+
             console.log(`Auto-merge eligibility: ${canMerge}`);
             console.log(`- Has auto-merge label: ${hasAutoMergeLabel}`);
             console.log(`- Valid target branch: ${isValidTarget}`);
             console.log(`- Has approval: ${hasApproval}`);
             console.log(`- All checks passed: ${allChecksPassed}`);
-            
+
             return canMerge;
 
       - name: Enable auto-merge
@@ -95,18 +95,18 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const pr = context.payload.pull_request;
-            
+
             try {
               // Enable auto-merge using the correct API
               await github.rest.pulls.enableAutoMerge({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number,
-                merge_method: 'squash'
+                merge-method: squash
               });
-              
+
               console.log(`✅ Auto-merge enabled for PR #${pr.number}`);
-              
+
               // Remove auto-merge label
               try {
                 await github.rest.issues.removeLabel({
@@ -118,10 +118,10 @@ jobs:
               } catch (labelError) {
                 console.log('Label auto-merge not found or already removed');
               }
-              
+
             } catch (error) {
               console.error(`❌ Failed to enable auto-merge: ${error.message}`);
-              
+
               // Fallback: Use gh CLI for auto-merge
               const { exec } = require('child_process');
               exec(`gh pr merge ${pr.number} --auto --squash`, (err, stdout, stderr) => {
@@ -134,28 +134,27 @@ jobs:
             }
 
   dependabot-auto-merge:
-
     timeout-minutes: 5
     runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]'
     permissions:
       pull-requests: write
       contents: write
-    
+
     steps:
       - name: Dependabot metadata
         id: metadata
         uses: dependabot/fetch-metadata@v2
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
-      
+
       - name: Auto-approve Dependabot PRs
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
         run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Auto-merge Dependabot PRs
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
         run: gh pr merge --auto --squash "$PR_URL"
