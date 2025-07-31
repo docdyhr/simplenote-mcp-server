@@ -17,8 +17,8 @@ env:
   PYTHON_VERSION: "3.12"
   PYTHON_VERSIONS: "3.10,3.11,3.12"
   # Tool versions - single source of truth
-  RUFF_VERSION: "0.12.0"
-  MYPY_VERSION: "1.16.1"
+  RUFF_VERSION: "0.12.5"
+  MYPY_VERSION: "1.17.0"
 
 jobs:
   lint:
