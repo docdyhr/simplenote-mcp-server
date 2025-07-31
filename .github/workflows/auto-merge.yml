@@ -102,7 +102,7 @@ jobs:
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 pull_number: pr.number,
-                merge-method: squash
+                merge_method: "squash"
               });
 
               console.log(`✅ Auto-merge enabled for PR #${pr.number}`);
