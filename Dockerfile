@@ -1,5 +1,5 @@
 # Multi-stage build for optimal image size and security
-FROM python:3.13-slim AS builder
+FROM python:3.12-slim AS builder
 
 # Build arguments for metadata
 ARG BUILDTIME
@@ -18,17 +18,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Copy dependency files first for better caching
 COPY pyproject.toml ./
 COPY setup.py ./
+COPY VERSION ./
+
+# Install build dependencies first
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel build
 
 # Copy source code
 COPY simplenote_mcp/ simplenote_mcp/
-COPY VERSION ./
 
-# Install the package in development mode for building
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir -e .[all]
+# Build and install the package properly
+RUN pip install --no-cache-dir .[all]
 
 # Production stage
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 # Build arguments for metadata
 ARG BUILDTIME
@@ -46,7 +48,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code with proper ownership

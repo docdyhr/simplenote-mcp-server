@@ -7,7 +7,7 @@ This allows the package to be executed with:
 
 import sys
 
-from .server import run_main
+from .server.server import run_main
 
 if __name__ == "__main__":
     # Handle command line arguments
