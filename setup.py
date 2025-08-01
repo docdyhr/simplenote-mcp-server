@@ -8,13 +8,13 @@ setup(
     description="Simplenote MCP Server for Claude Desktop",
     packages=find_packages(),
     install_requires=[
-        "mcp[cli]>=0.4.0",
+        "mcp[cli]>=1.10.0",
         "simplenote>=2.1.4",
-        "requests>=2.31.0",
+        "requests>=2.32.4",
     ],
     entry_points={
         "console_scripts": [
-            "simplenote-mcp-server=simplenote_mcp.server:run_main",
+            "simplenote-mcp-server=simplenote_mcp.server.server:run_main",
         ],
     },
     classifiers=[
