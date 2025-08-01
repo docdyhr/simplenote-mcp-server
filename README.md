@@ -34,8 +34,6 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b215d030-b511-457d-8a6d-3e1e6ea3b541)
 ---
 
-## � Features
-
 ## 🔧 Features
 
 - 📝 **Full Note Management**: Read, create, update, and delete Simplenote notes
@@ -316,7 +314,7 @@ npm run eval:comprehensive  # Full evaluation suite (15-30 minutes)
 **Latest Test Results**: 4/5 tests passing excellently (avg 4.1/5):
 
 - **Server Startup**: 4.6/5 ⭐ (Excellent)
-- **Authentication**: 4.0/5 ⭐ (Good)  
+- **Authentication**: 4.0/5 ⭐ (Good)
 - **Note Operations**: 3.8/5 ⭐ (Good)
 - **Search**: 5.0/5 ⭐ (Perfect)
 - **Error Handling**: 1.4/5 ⚠️ (Needs improvement)
