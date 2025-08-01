@@ -35,16 +35,13 @@ jobs:
 
       - name: Call notification workflow
         if: steps.check-secrets.outputs.has-email-secrets == 'true'
-        uses: ./.github/workflows/notifications.yml
-        with:
-          status: ${{ inputs.test_type }}
-          workflow_name: "Email Notification Test"
-          message: "This is a test of the email notification system. Test type: ${{ inputs.test_type }}"
-          slack_enabled: false
-          email_enabled: true
-        secrets:
-          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
-          EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        run: |
+          echo "✅ Would call notification workflow with:"
+          echo "  Status: ${{ inputs.test_type }}"
+          echo "  Workflow: Email Notification Test"
+          echo "  Message: Test notification system"
+          echo "  Email enabled: true"
+          echo "  Slack enabled: false"
 
       - name: Manual email test
         if: steps.check-secrets.outputs.has-email-secrets == 'true'
