@@ -499,4 +499,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## ⭐ Support the Project
+
+If you find this project helpful, please consider giving it a star on GitHub! Your support helps:
+
+- 🚀 **Increase visibility** for other developers who might benefit from this tool
+- 💪 **Motivate continued development** and maintenance
+- 📈 **Build community** around the Model Context Protocol ecosystem
+- 🛡️ **Validate trust** through community engagement
+
+[![GitHub stars](https://img.shields.io/github/stars/docdyhr/simplenote-mcp-server?style=social)](https://github.com/docdyhr/simplenote-mcp-server/stargazers)
+
+**[⭐ Star this repository](https://github.com/docdyhr/simplenote-mcp-server)** — it takes just one click and means a lot!
+
+---
+
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/docdyhr-simplenote-mcp-server-badge.png)](https://mseep.ai/app/docdyhr-simplenote-mcp-server)
