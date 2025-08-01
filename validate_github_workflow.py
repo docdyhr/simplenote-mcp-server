@@ -281,9 +281,9 @@ class GitHubWorkflowValidator:
 
         for secret in required_secrets:
             if f"secrets.{secret}" in workflow_str:
-                print_success(f"Secret [REDACTED] referenced")
+                print_success("Secret [REDACTED] referenced")
             else:
-                print_error(f"Required secret [REDACTED] not found")
+                print_error("Required secret [REDACTED] not found")
                 success = False
 
         # Check for environment variables
