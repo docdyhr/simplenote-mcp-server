@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/docdyhr-simplenote-mcp-server-badge.png)](https://mseep.ai/app/docdyhr-simplenote-mcp-server)
+
 # Simplenote MCP Server
 
 ![Simplenote MCP Server Logo](assets/logo.png)
@@ -31,6 +33,8 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b215d030-b511-457d-8a6d-3e1e6ea3b541)
 ---
+
+## � Features
 
 ## 🔧 Features
 
@@ -117,6 +121,7 @@ docker-compose up -d
 ```
 
 Available tags:
+
 - `latest` - Latest stable release
 - `v1.6.0` - Specific version
 - `main` - Latest development build
