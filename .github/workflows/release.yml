@@ -22,6 +22,11 @@ on:
         default: false
         type: boolean
 
+permissions:
+  contents: write
+  packages: write
+  actions: read
+
 jobs:
   prepare-release:
     name: Prepare Release

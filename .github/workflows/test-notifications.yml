@@ -13,6 +13,10 @@ on:
           - failure
           - cancelled
 
+permissions:
+  contents: read
+  actions: read
+
 jobs:
   test-notification:
     runs-on: ubuntu-latest

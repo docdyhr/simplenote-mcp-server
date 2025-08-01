@@ -18,6 +18,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name != 'schedule' }}
 
+permissions:
+  contents: read
+  packages: write
+  security-events: write
+  actions: read
+
 env:
   REGISTRY: docker.io
   IMAGE_NAME: docdyhr/simplenote-mcp-server
@@ -47,6 +53,7 @@ jobs:
     timeout-minutes: 20
     permissions:
       contents: read
+      actions: read
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -110,10 +117,11 @@ jobs:
   build-and-push:
     needs: [check-secrets, lint-and-test]
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     permissions:
       contents: read
       packages: write
+      actions: read
+    timeout-minutes: 45
       attestations: write
       id-token: write
 
@@ -284,6 +292,9 @@ jobs:
   test-image:
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     timeout-minutes: 10
     if: github.event_name != 'pull_request' && (needs.build-and-push.result == 'success' || needs.build-and-push.outputs.fallback == 'true')
 
@@ -344,6 +355,10 @@ jobs:
   security-scan:
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
     timeout-minutes: 15
     if: github.event_name != 'pull_request' && (needs.build-and-push.result == 'success' || needs.build-and-push.outputs.fallback == 'true')
 
@@ -393,6 +408,9 @@ jobs:
   update-docker-hub-description:
     needs: [build-and-push, check-secrets]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
     timeout-minutes: 5
     if: github.event_name != 'pull_request' && needs.check-secrets.outputs.has-docker-secrets == 'true' && (needs.build-and-push.result == 'success' || needs.build-and-push.outputs.fallback == 'true')
 
@@ -411,6 +429,9 @@ jobs:
           short-description: "MCP server for Simplenote integration with note management and search capabilities."
 
   notify:
+    permissions:
+      contents: read
+      actions: read
     needs:
       [
         check-secrets,

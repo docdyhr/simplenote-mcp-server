@@ -8,6 +8,10 @@ on:
   release:
     types: [published]
 
+permissions:
+  contents: read
+  actions: read
+
 env:
   REGISTRY: docker.io
   IMAGE_NAME: docdyhr/simplenote-mcp-server
@@ -93,6 +97,9 @@ jobs:
 
   notify-status:
     needs: health-check
+    permissions:
+      contents: read
+      actions: read
     uses: ./.github/workflows/notifications.yml
     if: always()
     with:
