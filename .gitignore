@@ -86,6 +86,7 @@ site/
 
 # Workflow status files
 workflow-status*.json
+ci-diagnostics-report.json
 
 # PRVATE
 private*
