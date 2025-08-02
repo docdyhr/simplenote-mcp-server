@@ -232,7 +232,7 @@ jobs:
           echo "Security and Quality: ${{ needs.security-and-quality.result }}"
           echo "Docker Test: ${{ needs.docker-test.result }}"
           echo "========================"
-          
+
           if [[ "${{ needs.build-and-test.result }}" == "success" ]]; then
             echo "🎉 Core functionality: PASSED"
           else
