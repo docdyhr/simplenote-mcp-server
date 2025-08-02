@@ -183,13 +183,23 @@ def main():
     print("\n📦 Import Tests:")
     import_results = check_imports()
     # Only count core import failures as critical issues
-    core_import_failures = [r for r in import_results if not r["success"] and ("sys" in r["import"] or "os" in r["import"])]
-    optional_import_failures = [r for r in import_results if not r["success"] and not ("sys" in r["import"] or "os" in r["import"])]
+    core_import_failures = [
+        r
+        for r in import_results
+        if not r["success"] and ("sys" in r["import"] or "os" in r["import"])
+    ]
+    optional_import_failures = [
+        r
+        for r in import_results
+        if not r["success"] and not ("sys" in r["import"] or "os" in r["import"])
+    ]
 
     if core_import_failures:
         print(f"❌ {len(core_import_failures)} critical import failures")
     elif optional_import_failures:
-        print(f"⚠️  {len(optional_import_failures)} optional import failures (expected during diagnostics)")
+        print(
+            f"⚠️  {len(optional_import_failures)} optional import failures (expected during diagnostics)"
+        )
     else:
         print("✅ All imports successful")
 
@@ -214,15 +224,28 @@ def main():
 
     # Summary - only count critical issues
     print("\n📋 DIAGNOSTIC SUMMARY:")
-    critical_dep_failures = [r for r in failed_deps if not any(x in r["cmd"] for x in ["ruff", "mypy", "import simplenote_mcp", "import mcp"])]
-    total_critical_issues = len(critical_dep_failures) + len(core_import_failures) + missing_files
+    critical_dep_failures = [
+        r
+        for r in failed_deps
+        if not any(
+            x in r["cmd"]
+            for x in ["ruff", "mypy", "import simplenote_mcp", "import mcp"]
+        )
+    ]
+    total_critical_issues = (
+        len(critical_dep_failures) + len(core_import_failures) + missing_files
+    )
 
     if total_critical_issues == 0:
         print("🎉 NO CRITICAL ISSUES DETECTED - Environment looks healthy!")
         if optional_import_failures:
-            print(f"ℹ️  Note: {len(optional_import_failures)} optional packages not yet installed (normal for diagnostics phase)")
+            print(
+                f"ℹ️  Note: {len(optional_import_failures)} optional packages not yet installed (normal for diagnostics phase)"
+            )
     else:
-        print(f"❌ {total_critical_issues} CRITICAL ISSUES DETECTED - See details above")
+        print(
+            f"❌ {total_critical_issues} CRITICAL ISSUES DETECTED - See details above"
+        )
 
     # Create diagnostic report
     report = {
