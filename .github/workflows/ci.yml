@@ -100,7 +100,7 @@ jobs:
         continue-on-error: true
         run: |
           echo "📋 Validating README badges..."
-          python scripts/validate-badges.py || echo "Badge validation failed with exit code $?"
+          python scripts/validate-badges.py || echo "Badge validation failed"
 
       - name: Generate lint report
         if: always()
@@ -369,7 +369,9 @@ jobs:
         run: |
           echo "📦 Testing package installation..."
           pip install dist/*.whl || { echo "❌ Package installation failed"; exit 1; }
-          python -c "import simplenote_mcp; print('✅ Package installed successfully')" || { echo "❌ Import failed"; exit 1; }
+          python -c "import simplenote_mcp; print('✅ Package installed successfully')" || {
+            echo "❌ Import failed"; exit 1;
+          }
 
           # Test CLI entry point
           if command -v simplenote-mcp-server >/dev/null 2>&1; then
