@@ -117,18 +117,18 @@ def check_imports():
         "import sys",
         "import os",
     ]
-    
+
     # Package imports that might not be available during diagnostics
     optional_imports = [
         "import simplenote_mcp",
-        "import mcp", 
+        "import mcp",
         "import ruff",
         "from simplenote_mcp.server.server import run_main",
         "from simplenote_mcp import __version__",
     ]
 
     results = []
-    
+
     # Test core imports - these should always succeed
     for import_test in core_imports:
         try:
@@ -138,7 +138,7 @@ def check_imports():
         except Exception as e:
             results.append({"import": import_test, "success": False, "error": str(e)})
             print(f"❌ {import_test}: {e}")
-    
+
     # Test optional imports - these may fail in CI diagnostics phase
     for import_test in optional_imports:
         try:
@@ -185,7 +185,7 @@ def main():
     # Only count core import failures as critical issues
     core_import_failures = [r for r in import_results if not r["success"] and ("sys" in r["import"] or "os" in r["import"])]
     optional_import_failures = [r for r in import_results if not r["success"] and not ("sys" in r["import"] or "os" in r["import"])]
-    
+
     if core_import_failures:
         print(f"❌ {len(core_import_failures)} critical import failures")
     elif optional_import_failures:
@@ -216,7 +216,7 @@ def main():
     print("\n📋 DIAGNOSTIC SUMMARY:")
     critical_dep_failures = [r for r in failed_deps if not any(x in r["cmd"] for x in ["ruff", "mypy", "import simplenote_mcp", "import mcp"])]
     total_critical_issues = len(critical_dep_failures) + len(core_import_failures) + missing_files
-    
+
     if total_critical_issues == 0:
         print("🎉 NO CRITICAL ISSUES DETECTED - Environment looks healthy!")
         if optional_import_failures:
