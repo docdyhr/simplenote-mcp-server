@@ -38,8 +38,9 @@ psutil==6.1.1 \
     --hash=sha256:d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7
 
 # Type checking stubs
-types-requests==2.32.0.20240914 \
-    --hash=sha256:e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9
+types-requests==2.32.4.20250611 \
+    --hash=sha256:741c8777ed6425830bf51e54d6abe245f79b4dcb9019f1622b773463946bf826 \
+    --hash=sha256:ad2fe5d3b0cb3c2c902c8815a70e7fb2302c4b8c1f77bdcd738192cdb3878072
 
 # Indirect dependencies with security constraints
 certifi>=2024.07.14 \
