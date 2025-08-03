@@ -32,7 +32,7 @@ evals = [
 ]
 all = [
     "ruff==0.12.7",
-    "mypy==1.17.0",
+    "mypy==1.17.1",
     "pre-commit>=3.0.0",
     "black>=23.0.0",
     "bandit[toml]>=1.7.5",
