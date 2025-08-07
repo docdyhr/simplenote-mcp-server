@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install pre-commit ruff==0.12.5 mypy==1.17.0 pytest pytest-asyncio pytest-cov pytest-mock
+          pip install pre-commit ruff==0.12.7 mypy==1.17.1 pytest pytest-asyncio pytest-cov pytest-mock
 
       - name: ✅ Verify Installation
         run: |
@@ -90,7 +90,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install ruff==0.12.5
+          pip install ruff==0.12.7
 
       - name: ✅ Verify Installation
         run: |
@@ -133,7 +133,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install mypy==1.17.0
+          pip install mypy==1.17.1
 
       - name: ✅ Verify Installation
         run: |

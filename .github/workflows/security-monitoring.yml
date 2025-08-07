@@ -2,8 +2,8 @@ name: Security Alert Monitoring
 
 on:
   schedule:
-    # Run daily at 8 AM UTC to check for security regressions
-    - cron: "0 8 * * *"
+    # Run weekly on Sundays to avoid conflicts and reduce resource usage
+    - cron: "0 8 * * 0"
   workflow_dispatch:
     inputs:
       fail_on_issues:
@@ -39,7 +39,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Run security alert monitoring
         env:

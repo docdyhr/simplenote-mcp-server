@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main, develop]
   schedule:
-    - cron: "0 2 * * 1" # Weekly on Monday at 2 AM UTC
+    - cron: "0 4 * * 1" # Weekly on Monday at 4 AM UTC (moved from 2 AM to avoid conflicts)
   workflow_dispatch:
 
 concurrency:
@@ -341,7 +341,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
 
       - name: Install dependencies
         run: |
