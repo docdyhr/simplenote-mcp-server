@@ -19,7 +19,7 @@ def test_simplenote_client_creation(simplenote_env_vars):
         mock_config = MagicMock()
         mock_config.has_credentials = True
         mock_config.simplenote_email = "test@example.com"
-        mock_config.simplenote_password = "testpass"  # noqa: S105
+        mock_config.simplenote_password = "test-password-for-testing-only"
         mock_get_config.return_value = mock_config
 
         # Setup mock client
@@ -36,7 +36,9 @@ def test_simplenote_client_creation(simplenote_env_vars):
         assert client == mock_client
 
         # Verify client was created with credentials from environment
-        mock_simplenote.assert_called_once_with("test@example.com", "testpass")
+        mock_simplenote.assert_called_once_with(
+            "test@example.com", "test-password-for-testing-only"
+        )
 
 
 def test_missing_credentials():

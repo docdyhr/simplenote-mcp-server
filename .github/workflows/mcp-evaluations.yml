@@ -24,6 +24,8 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+    outputs:
+      has-openai-key: ${{ steps.check-openai.outputs.has-openai-key }}
 
     steps:
       - name: Checkout repository
@@ -32,7 +34,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: "pip"
 
       - name: Setup Node.js for mcp-evals
@@ -76,6 +78,7 @@ jobs:
       - name: Run smoke tests
         if: steps.check-openai.outputs.has-openai-key == 'true'
         uses: mclenhard/mcp-evals@v1.0.14
+        timeout-minutes: 10
         with:
           evals_path: "evals/smoke-tests.yaml"
           server_path: "simplenote_mcp_server.py"
@@ -161,6 +164,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     if: github.event_name == 'pull_request'
+    needs: evaluate-mcp-server
     permissions:
       contents: read
       pull-requests: write
