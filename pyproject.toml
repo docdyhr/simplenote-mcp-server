@@ -10,7 +10,7 @@ dependencies = ["mcp[cli]>=1.10.0", "simplenote>=2.1.4", "requests>=2.32.4"]
 
 [project.optional-dependencies]
 dev = [
-    "ruff==0.12.7",
+    "ruff==0.12.8",
     "mypy==1.17.1",
     "pre-commit>=3.0.0",
     "black>=23.0.0",
@@ -31,7 +31,7 @@ evals = [
     # This is just for documentation and local development setup
 ]
 all = [
-    "ruff==0.12.7",
+    "ruff==0.12.8",
     "mypy==1.17.1",
     "pre-commit>=3.0.0",
     "black>=23.0.0",
