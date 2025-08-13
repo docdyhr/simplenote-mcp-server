@@ -159,7 +159,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add pyproject.toml simplenote_mcp/__init__.py || true
+          git add pyproject.toml simplenote_mcp/__init__.py changelog.md || true
           git commit -m "Bump version to ${{ steps.bump_version.outputs.new_version }}" || echo "No changes to commit"
           git tag -a v${{ steps.bump_version.outputs.new_version }} -m "Version ${{ steps.bump_version.outputs.new_version }}"
           echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
@@ -181,6 +181,14 @@ jobs:
           prerelease: ${{ github.event.inputs.pre_release != '' }}
           draft: false
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload changelog artifact
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: changelog-${{ steps.bump_version.outputs.new_version }}
+          path: changelog.md
+          retention-days: 30
 
       - name: Set release creation output
         if: ${{ github.event.inputs.dry_run != 'true' }}
@@ -209,6 +217,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine pre-commit
 
+      - name: Detect PyPI token
+        id: detect_pypi
+        run: |
+          if [ -n "${PYPI_API_TOKEN}" ]; then
+            echo "has_token=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_token=false" >> $GITHUB_OUTPUT
+          fi
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
       - name: Run pre-commit checks
         run: |
           pre-commit run --all-files
@@ -218,14 +237,18 @@ jobs:
 
       - name: Check package
         run: twine check dist/*
-
       - name: Publish to PyPI
         if: ${{ github.event.inputs.dry_run != 'true' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
-          skip_existing: false
+          skip-existing: false
+
+      - name: Post-publish summary
+        if: ${{ github.event.inputs.dry_run != 'true' }}
+        run: |
+          echo "Publish step executed. Verify on PyPI to confirm success."
 
   notify:
     timeout-minutes: 5

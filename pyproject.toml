@@ -15,6 +15,7 @@ dev = [
     "pre-commit>=3.0.0",
     "black>=23.0.0",
     "bandit[toml]>=1.7.5",
+    "pip-audit>=2.7.3",
     "tomli>=1.2.0;python_version<'3.11'",
 ]
 test = [
@@ -36,6 +37,7 @@ all = [
     "pre-commit>=3.0.0",
     "black>=23.0.0",
     "bandit[toml]>=1.7.5",
+    "pip-audit>=2.7.3",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.1.0",
     "pytest-cov>=6.2.1",

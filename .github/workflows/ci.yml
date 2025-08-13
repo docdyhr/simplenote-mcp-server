@@ -143,9 +143,17 @@ jobs:
 
       - name: Run tests
         run: |
-          echo "🧪 Running tests..."
-          python -m pytest tests/test_main_module.py -v --tb=short
+          echo "🧪 Running full test suite with coverage..."
+          python -m pytest -v --tb=short --cov=simplenote_mcp --cov-report=xml --cov-report=term
           echo "✅ Tests passed"
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.python-version }}
+          path: coverage.xml
+          retention-days: 7
 
       - name: Build package
         run: |
@@ -186,6 +194,21 @@ jobs:
           echo "🔒 Running security checks on main package..."
           ruff check --select=S simplenote_mcp/ --output-format=github || true
           echo "✅ Security scan completed"
+
+      - name: Dependency vulnerability scan (pip-audit)
+        run: |
+          echo "🔍 Running pip-audit (informational)..."
+          pip install pip-audit==2.7.3
+          pip-audit -r requirements-lock.txt -f json -o pip-audit-report.json || true
+          echo "✅ pip-audit completed (non-blocking)"
+
+      - name: Upload pip-audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pip-audit-report
+          path: pip-audit-report.json
+          retention-days: 7
 
       - name: Validate badges
         run: |
