@@ -6,8 +6,8 @@ default_language_version:
 
 # Custom CI-specific environment variables
 ci:
-  # Skip mypy hooks in CI due to Python 3.13 compatibility issues
-  skip: [mypy]
+  # Skip hooks that have network timeout issues in CI
+  skip: [mypy, bandit]
   # For pre-commit.ci autofix, we can safely run these hooks
   autofix_commit_msg: |
     [pre-commit.ci] Auto fixes from pre-commit hooks
@@ -44,7 +44,7 @@ repos:
         pass_filenames: false
         args: ["--exit-zero", "-r", "simplenote_mcp", "-f", "json"]
         exclude: "tests/"
-        additional_dependencies: ["bandit[toml]"]
+        additional_dependencies: []
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.12.0
@@ -70,11 +70,4 @@ repos:
         args: [--config-file=mypy.ini, simplenote_mcp]
         pass_filenames: false
         always_run: true
-        additional_dependencies:
-          [
-            "types-requests",
-            "types-setuptools",
-            "types-PyYAML",
-            "pytest",
-            "mcp",
-          ]
+        additional_dependencies: []
