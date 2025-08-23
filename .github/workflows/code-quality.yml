@@ -18,7 +18,7 @@ jobs:
     timeout-minutes: 12
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0 # Fetch all history for trend analysis
 
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [pre-commit]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -121,7 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [pre-commit]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -163,7 +163,7 @@ jobs:
     runs-on: ubuntu-latest
     if: always()
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Download linting report
         uses: actions/download-artifact@v5
