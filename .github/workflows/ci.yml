@@ -3,8 +3,22 @@ name: CI/CD Pipeline (Bulletproof)
 on:
   push:
     branches: [main, develop]
+    paths:
+      - 'simplenote_mcp/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+      - '.github/workflows/ci.yml'
   pull_request:
     branches: [main, develop]
+    paths:
+      - 'simplenote_mcp/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+      - '.github/workflows/ci.yml'
   workflow_dispatch:
     inputs:
       debug_mode:
@@ -79,7 +93,16 @@ jobs:
           cache: pip
           cache-dependency-path: |
             pyproject.toml
-            setup.py
+            requirements*.txt
+
+      - name: Cache pre-commit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: ${{ runner.os }}-precommit-${{ matrix.python-version }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-precommit-${{ matrix.python-version }}-
+            ${{ runner.os }}-precommit-
 
       - name: Upgrade pip and install build tools
         run: |

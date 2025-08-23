@@ -1,0 +1,233 @@
+name: Auto-Fix Common Issues
+
+on:
+  workflow_run:
+    workflows: ["CI/CD Pipeline (Bulletproof)", "Code Quality"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to apply auto-fixes'
+        required: true
+        default: 'main'
+      fix_types:
+        description: 'Types of fixes to apply (comma-separated: formatting,imports,trailing-whitespace)'
+        required: true
+        default: 'formatting,imports,trailing-whitespace'
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+
+jobs:
+  auto-fix:
+    if: >
+      (github.event.workflow_run.conclusion == 'failure' && 
+       contains(github.event.workflow_run.name, 'Quality')) ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Determine target branch
+        id: branch-info
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "target_branch=${{ github.event.inputs.target_branch }}" >> $GITHUB_OUTPUT
+            echo "fix_types=${{ github.event.inputs.fix_types }}" >> $GITHUB_OUTPUT
+          else
+            echo "target_branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
+            echo "fix_types=formatting,imports,trailing-whitespace" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.branch-info.outputs.target_branch }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff==0.12.9 black isort
+
+      - name: Check for auto-fixable issues
+        id: check-issues
+        run: |
+          echo "Checking for common auto-fixable issues..."
+          
+          # Check formatting issues
+          if ruff check --select=W291,W292,W293 --fix --quiet . > /dev/null 2>&1; then
+            echo "whitespace_fixes=true" >> $GITHUB_OUTPUT
+          else
+            echo "whitespace_fixes=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check formatting with ruff
+          if ! ruff format --check --quiet . > /dev/null 2>&1; then
+            echo "format_fixes_needed=true" >> $GITHUB_OUTPUT
+          else
+            echo "format_fixes_needed=false" >> $GITHUB_OUTPUT
+          fi
+          
+          # Check import sorting
+          if ! ruff check --select=I --fix --quiet . > /dev/null 2>&1; then
+            echo "import_fixes=true" >> $GITHUB_OUTPUT
+          else
+            echo "import_fixes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Apply formatting fixes
+        if: contains(steps.branch-info.outputs.fix_types, 'formatting') && steps.check-issues.outputs.format_fixes_needed == 'true'
+        run: |
+          echo "🔧 Applying code formatting fixes..."
+          ruff format .
+          echo "✅ Code formatting applied"
+
+      - name: Apply import sorting fixes
+        if: contains(steps.branch-info.outputs.fix_types, 'imports') && steps.check-issues.outputs.import_fixes == 'true'
+        run: |
+          echo "📦 Applying import sorting fixes..."
+          ruff check --select=I --fix .
+          echo "✅ Import sorting applied"
+
+      - name: Apply whitespace fixes
+        if: contains(steps.branch-info.outputs.fix_types, 'trailing-whitespace') && steps.check-issues.outputs.whitespace_fixes == 'true'
+        run: |
+          echo "🧹 Applying whitespace fixes..."
+          ruff check --select=W291,W292,W293 --fix .
+          echo "✅ Whitespace fixes applied"
+
+      - name: Check if changes were made
+        id: git-check
+        run: |
+          if git diff --quiet; then
+            echo "changes_made=false" >> $GITHUB_OUTPUT
+            echo "No auto-fixes were needed"
+          else
+            echo "changes_made=true" >> $GITHUB_OUTPUT
+            echo "Auto-fixes were applied"
+            git diff --stat
+          fi
+
+      - name: Commit auto-fixes
+        if: steps.git-check.outputs.changes_made == 'true'
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Add all changes
+          git add -A
+          
+          # Create commit message based on fixes applied
+          commit_msg="style: auto-fix common code quality issues"
+          
+          if [[ "${{ steps.check-issues.outputs.format_fixes_needed }}" == "true" ]]; then
+            commit_msg="$commit_msg
+
+- Applied code formatting with ruff"
+          fi
+          
+          if [[ "${{ steps.check-issues.outputs.import_fixes }}" == "true" ]]; then
+            commit_msg="$commit_msg
+
+- Sorted imports"
+          fi
+          
+          if [[ "${{ steps.check-issues.outputs.whitespace_fixes }}" == "true" ]]; then
+            commit_msg="$commit_msg
+
+- Fixed trailing whitespace issues"
+          fi
+          
+          commit_msg="$commit_msg
+
+🤖 Generated by auto-fix workflow"
+          
+          git commit -m "$commit_msg"
+
+      - name: Push changes
+        if: steps.git-check.outputs.changes_made == 'true'
+        run: |
+          echo "📤 Pushing auto-fixes..."
+          git push origin ${{ steps.branch-info.outputs.target_branch }}
+          echo "✅ Auto-fixes pushed successfully"
+
+      - name: Find associated PRs
+        if: steps.git-check.outputs.changes_made == 'true'
+        id: find-pr
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branch = '${{ steps.branch-info.outputs.target_branch }}';
+            
+            if (branch === 'main') {
+              return null;
+            }
+            
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              head: `${context.repo.owner}:${branch}`,
+              state: 'open'
+            });
+            
+            return pulls.length > 0 ? pulls[0].number : null;
+
+      - name: Comment on PR about auto-fixes
+        if: steps.git-check.outputs.changes_made == 'true' && steps.find-pr.outputs.result
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = ${{ steps.find-pr.outputs.result }};
+            const fixes = [];
+            
+            if ('${{ steps.check-issues.outputs.format_fixes_needed }}' === 'true') {
+              fixes.push('Code formatting');
+            }
+            if ('${{ steps.check-issues.outputs.import_fixes }}' === 'true') {
+              fixes.push('Import sorting');
+            }
+            if ('${{ steps.check-issues.outputs.whitespace_fixes }}' === 'true') {
+              fixes.push('Whitespace cleanup');
+            }
+            
+            const comment = `## 🤖 Auto-fixes Applied
+            
+            I've automatically fixed some common code quality issues:
+            
+            ${fixes.map(fix => `- ✅ ${fix}`).join('\n')}
+            
+            These changes should help the CI/CD pipeline pass. Please review the changes and re-run any failing checks.
+            
+            **Auto-generated by auto-fix workflow**`;
+            
+            await github.rest.issues.createComment({
+              issue_number: prNumber,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "🎯 Auto-fix Summary"
+          echo "=================="
+          echo "Target branch: ${{ steps.branch-info.outputs.target_branch }}"
+          echo "Fix types requested: ${{ steps.branch-info.outputs.fix_types }}"
+          echo "Changes made: ${{ steps.git-check.outputs.changes_made }}"
+          
+          if [[ "${{ steps.git-check.outputs.changes_made }}" == "true" ]]; then
+            echo "✅ Auto-fixes were applied and committed"
+          else
+            echo "ℹ️ No auto-fixes were needed"
+          fi
