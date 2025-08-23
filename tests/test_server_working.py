@@ -63,8 +63,16 @@ class TestWorkingFunctions:
         mock_note_cache = Mock()
         mock_note_cache.get_note.side_effect = ResourceNotFoundError("Note not found")
 
+        # Mock the Simplenote client to also return not found
+        mock_client = Mock()
+        mock_client.get_note.return_value = ({}, -1)  # Status -1 indicates error
+
         with (
             patch("simplenote_mcp.server.server.note_cache", mock_note_cache),
+            patch(
+                "simplenote_mcp.server.server.get_simplenote_client",
+                return_value=mock_client,
+            ),
             pytest.raises(ResourceNotFoundError),
         ):
             await handle_read_resource("simplenote://note/nonexistent")
@@ -88,9 +96,10 @@ class TestWorkingFunctions:
             patch("simplenote_mcp.server.server.Simplenote") as mock_simplenote,
             patch("simplenote_mcp.server.server.simplenote_client", None),
         ):
-            # Mock config
+            # Mock config - not in offline mode
             mock_config = Mock()
             mock_config.has_credentials = True
+            mock_config.offline_mode = False
             mock_config.simplenote_email = "test@example.com"
             mock_config.simplenote_password = "testpass"  # noqa: S105
             mock_get_config.return_value = mock_config
