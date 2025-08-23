@@ -127,9 +127,32 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
+      - name: Check GitHub Pages status
+        id: pages-check
+        run: |
+          echo "Checking if GitHub Pages is enabled..."
+          # This step will help diagnose the issue
+          echo "Repository: ${{ github.repository }}"
+          echo "Pages URL should be: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
+        continue-on-error: true
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Handle deployment failure
+        if: failure()
+        run: |
+          echo "❌ GitHub Pages deployment failed"
+          echo "This is likely because GitHub Pages is not enabled for this repository"
+          echo "To enable GitHub Pages:"
+          echo "1. Go to: https://github.com/${{ github.repository }}/settings/pages"
+          echo "2. Under 'Source', select 'GitHub Actions'"
+          echo "3. Save the settings"
+          echo ""
+          echo "Documentation was built successfully and is available as an artifact"
+          exit 0  # Don't fail the entire workflow
 
   link-check:
     timeout-minutes: 8

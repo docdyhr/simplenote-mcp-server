@@ -23,9 +23,25 @@ jobs:
         id: check
         uses: actions/github-script@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const pr = context.payload.pull_request;
+            // Handle different event types that might not have pull_request
+            let pr = context.payload.pull_request;
+            
+            // For check_suite events, we need to find PRs associated with the commit
+            if (!pr && context.payload.check_suite) {
+              const checkSuite = context.payload.check_suite;
+              const { data: pulls } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head: `${checkSuite.head_branch}`,
+                state: 'open'
+              });
+              
+              if (pulls.length > 0) {
+                pr = pulls[0];
+              }
+            }
 
             // Skip if PR is already merged or is a draft
             if (!pr || pr.merged || pr.draft) {
@@ -136,7 +152,7 @@ jobs:
   dependabot-auto-merge:
     timeout-minutes: 5
     runs-on: ubuntu-latest
-    if: github.actor == 'dependabot[bot]'
+    if: github.actor == 'dependabot[bot]' && github.event_name == 'pull_request'
     permissions:
       pull-requests: write
       contents: write
