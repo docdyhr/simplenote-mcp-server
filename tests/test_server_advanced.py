@@ -48,8 +48,9 @@ class TestMCPProtocolHandlers:
             "get_note",
             "delete_note",
             "search_notes",
-            "list_notes",
-            "export_notes",
+            "add_tags",
+            "remove_tags",
+            "replace_tags",
         ]
 
         for expected in expected_tools:
@@ -91,10 +92,12 @@ class TestMCPProtocolHandlers:
         )
 
         assert isinstance(result, types.GetPromptResult)
-        assert len(result.messages) == 1
+        assert len(result.messages) == 2
         assert result.messages[0].role == "user"
-        assert "Test content" in result.messages[0].content.text
-        assert "work,todo" in result.messages[0].content.text
+        assert result.messages[1].role == "user"
+        # Content should be in the second message
+        assert "Test content" in result.messages[1].content.text
+        assert "work,todo" in result.messages[1].content.text
 
     @pytest.mark.asyncio
     async def test_handle_get_prompt_search_notes(self):
@@ -104,9 +107,11 @@ class TestMCPProtocolHandlers:
         )
 
         assert isinstance(result, types.GetPromptResult)
-        assert len(result.messages) == 1
+        assert len(result.messages) == 2
         assert result.messages[0].role == "user"
-        assert "meeting notes" in result.messages[0].content.text
+        assert result.messages[1].role == "user"
+        # Query should be in the second message
+        assert "meeting notes" in result.messages[1].content.text
 
     @pytest.mark.asyncio
     async def test_handle_call_tool_with_tool_registry(self):

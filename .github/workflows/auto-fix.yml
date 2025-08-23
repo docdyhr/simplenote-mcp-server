@@ -2,7 +2,7 @@ name: Auto-Fix Common Issues
 
 on:
   workflow_run:
-    workflows: ["CI/CD Pipeline (Bulletproof)", "Code Quality"]
+    workflows: ["CI/CD Pipeline", "Code Quality"]
     types: [completed]
   workflow_dispatch:
     inputs:

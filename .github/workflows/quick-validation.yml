@@ -93,6 +93,12 @@ jobs:
           git diff --name-only origin/${{ github.base_ref }}...HEAD | head -10
           echo "✅ Quick validation completed successfully"
 
+      - name: Quick security scan
+        run: |
+          echo "🔒 Running quick security pre-check..."
+          ruff check --select=S102,S106,S107,S108 . --output-format=github || echo "⚠️ Security warnings found (non-blocking)"
+          echo "✅ Security pre-check completed"
+
       - name: Set validation status
         if: success()
         run: |

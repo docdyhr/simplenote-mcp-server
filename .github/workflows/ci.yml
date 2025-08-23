@@ -1,4 +1,4 @@
-name: CI/CD Pipeline (Bulletproof)
+name: CI/CD Pipeline
 
 on:
   push:
@@ -184,7 +184,12 @@ jobs:
       - name: Run tests
         run: |
           echo "🧪 Running full test suite with coverage..."
-          python -m pytest -v --tb=short --cov=simplenote_mcp --cov-report=xml --cov-report=term
+          start_time=$(date +%s)
+          python -m pytest -v --tb=short --cov=simplenote_mcp --cov-report=xml --cov-report=term --durations=10
+          end_time=$(date +%s)
+          duration=$((end_time - start_time))
+          echo "⏱️ Test suite completed in ${duration}s"
+          echo "test_duration=${duration}" >> $GITHUB_ENV
           echo "✅ Tests passed"
 
       - name: Upload coverage report
@@ -213,7 +218,7 @@ jobs:
     name: Security and Quality Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    needs: build-and-test
+    needs: diagnostics  # Run in parallel with build-and-test
 
     steps:
       - name: Checkout code

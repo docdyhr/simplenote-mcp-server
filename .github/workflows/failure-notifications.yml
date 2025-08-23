@@ -2,7 +2,7 @@ name: Failure Notifications
 
 on:
   workflow_run:
-    workflows: ["CI/CD Pipeline (Bulletproof)", "Security Scanning", "Docker Build"]
+    workflows: ["CI/CD Pipeline", "Security Scanning", "Docker Build"]
     types: [completed]
 
 jobs:
