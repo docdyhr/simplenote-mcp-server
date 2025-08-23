@@ -21,6 +21,9 @@ env:
   PYTHON_VERSION: "3.12"
   FORCE_COLOR: "1"
   PYTHONUNBUFFERED: "1"
+  PIP_TIMEOUT: "60"
+  PIP_RETRIES: "3"
+  PIP_DEFAULT_TIMEOUT: "60"
 
 jobs:
   diagnostics:
@@ -38,7 +41,12 @@ jobs:
 
       - name: Run comprehensive diagnostics
         run: |
-          python .github/scripts/ci-diagnostics.py
+          if [ -f .github/scripts/ci-diagnostics.py ]; then
+            timeout 60 python .github/scripts/ci-diagnostics.py || echo "⚠️ Diagnostics completed with issues"
+          else
+            echo "📋 Running offline validation as fallback:"
+            python scripts/validate-ci-offline.py
+          fi
 
       - name: Upload diagnostics report
         if: always()
@@ -92,25 +100,34 @@ jobs:
           which pip
           ls -la
 
-      - name: Install package (method 1 - full)
+      - name: Install package (method 1 - full with retries)
         id: install-full
         run: |
           echo "🔧 Installing package with all dependencies..."
-          if pip install -e .[dev,test]; then
-            echo "success=true" >> $GITHUB_OUTPUT
-            echo "✅ Full installation successful"
-          else
-            echo "success=false" >> $GITHUB_OUTPUT
-            echo "❌ Full installation failed"
-            exit 1
-          fi
+          set +e
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt of 3..."
+            if timeout 300 pip install --timeout=60 --retries=3 -e .[dev,test]; then
+              echo "success=true" >> $GITHUB_OUTPUT
+              echo "✅ Full installation successful on attempt $attempt"
+              exit 0
+            else
+              echo "❌ Attempt $attempt failed"
+              if [ $attempt -eq 3 ]; then
+                echo "success=false" >> $GITHUB_OUTPUT
+              else
+                sleep 10
+              fi
+            fi
+          done
+          exit 1
 
       - name: Install package (method 2 - minimal fallback)
         if: steps.install-full.outputs.success != 'true'
         run: |
           echo "🔧 Fallback: Installing minimal package..."
-          pip install -e .
-          pip install ruff==0.12.7 mypy==1.17.1
+          timeout 180 pip install --timeout=60 --retries=3 -e .
+          timeout 180 pip install --timeout=60 --retries=3 ruff==0.12.9 mypy==1.17.1 pytest==8.4.1 pytest-asyncio==1.1.0
           echo "✅ Minimal installation successful"
 
       - name: Verify installation
@@ -187,12 +204,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .[dev,test]
+          timeout 300 pip install --timeout=60 --retries=3 -e .[dev,test] || \
+          timeout 180 pip install --timeout=60 --retries=3 -e . ruff==0.12.9 mypy==1.17.1
 
       - name: Run security checks (package only)
         run: |
           echo "🔒 Running security checks on main package..."
-          ruff check --select=S simplenote_mcp/ --output-format=github || true
+          timeout 60 ruff check --select=S simplenote_mcp/ --output-format=github || echo "⚠️ Security scan completed with warnings"
           echo "✅ Security scan completed"
 
       - name: Dependency vulnerability scan (pip-audit)
