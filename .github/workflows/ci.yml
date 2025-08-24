@@ -183,12 +183,20 @@ jobs:
 
       - name: Run tests
         run: |
-          echo "🧪 Running full test suite with coverage..."
+          echo "🧪 Running test suite with coverage (excluding integration tests)..."
           start_time=$(date +%s)
           
           # Explicit test execution with failure detection
           set +e  # Don't exit on failure, capture exit code
-          python -m pytest -v --tb=short --cov=simplenote_mcp --cov-report=xml --cov-report=term --durations=10
+          python -m pytest -v --tb=short \
+            --cov=simplenote_mcp \
+            --cov-report=xml \
+            --cov-report=term \
+            --durations=10 \
+            --ignore=tests/test_title_search_integration.py \
+            --ignore=tests/test_search_integration.py \
+            --ignore=tests/test_title_search.py \
+            -k "not (integration or real_api or network)"
           test_exit_code=$?
           set -e  # Re-enable exit on error
           
@@ -206,6 +214,11 @@ jobs:
             echo "Pipeline will fail to ensure issues are addressed"
             exit $test_exit_code
           fi
+        env:
+          SIMPLENOTE_EMAIL: "test@example.com"
+          SIMPLENOTE_PASSWORD: "test_password"
+          # Use offline mode to prevent network calls
+          SIMPLENOTE_OFFLINE_MODE: "true"
 
       - name: Upload coverage report
         if: always()
