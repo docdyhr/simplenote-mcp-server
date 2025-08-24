@@ -218,6 +218,76 @@ class TestMCPProtocolHandlers:
         assert len(result.contents[0].text) > 0
         assert "Test note content with metadata" in result.contents[0].text
 
+    @pytest.mark.asyncio
+    async def test_handle_list_resources_integration(self):
+        """Test complete resource listing integration with proper structure validation."""
+        mock_cache = Mock()
+        mock_notes = [
+            {
+                "key": "note1",
+                "content": "First test note",
+                "tags": ["work", "important"],
+                "createdate": "2023-01-01T10:00:00Z",
+                "modifydate": "2023-01-02T15:30:00Z",
+            },
+            {
+                "key": "note2",
+                "content": "Second test note",
+                "tags": ["personal"],
+                "createdate": "2023-01-03T09:00:00Z",
+                "modifydate": "2023-01-03T09:30:00Z",
+            },
+        ]
+        mock_cache.get_all_notes.return_value = mock_notes
+
+        with patch("simplenote_mcp.server.server.note_cache", mock_cache):
+            result = await handle_list_resources()
+
+        # Verify result structure
+        assert isinstance(result, list)
+        assert len(result) >= 2  # May include pagination metadata
+
+        # Filter actual note resources (skip pagination metadata)
+        note_resources = [
+            r
+            for r in result
+            if hasattr(r, "uri") and str(r.uri).startswith("simplenote://note/")
+        ]
+
+        # Validate resource structure and content
+        assert len(note_resources) == 2
+
+        # Verify first resource
+        res1 = note_resources[0]
+        assert str(res1.uri) == "simplenote://note/note1"
+        assert "First test note" in str(res1.name)
+        assert hasattr(res1, "description")
+
+        # Verify second resource
+        res2 = note_resources[1]
+        assert str(res2.uri) == "simplenote://note/note2"
+        assert "Second test note" in str(res2.name)
+        assert hasattr(res2, "description")
+
+    @pytest.mark.asyncio
+    async def test_concurrent_client_access_integration(self):
+        """Test that concurrent access to Simplenote client works correctly."""
+        import asyncio
+
+        from simplenote_mcp.server.server import get_simplenote_client
+
+        async def get_client():
+            return get_simplenote_client()
+
+        # Run multiple concurrent client requests
+        tasks = [get_client() for _ in range(5)]
+        clients = await asyncio.gather(*tasks)
+
+        # Verify all clients are the same instance (singleton)
+        first_client = clients[0]
+        for client in clients[1:]:
+            assert client is first_client, "Client should be singleton"
+
 
 @pytest.mark.skip(reason="Disabled pending server architecture alignment")
 class TestConcurrentOperations:

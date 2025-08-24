@@ -185,12 +185,27 @@ jobs:
         run: |
           echo "🧪 Running full test suite with coverage..."
           start_time=$(date +%s)
+          
+          # Explicit test execution with failure detection
+          set +e  # Don't exit on failure, capture exit code
           python -m pytest -v --tb=short --cov=simplenote_mcp --cov-report=xml --cov-report=term --durations=10
+          test_exit_code=$?
+          set -e  # Re-enable exit on error
+          
           end_time=$(date +%s)
           duration=$((end_time - start_time))
           echo "⏱️ Test suite completed in ${duration}s"
           echo "test_duration=${duration}" >> $GITHUB_ENV
-          echo "✅ All tests passed"
+          
+          # Explicit failure handling for pipeline reliability
+          if [ $test_exit_code -eq 0 ]; then
+            echo "✅ All tests passed successfully"
+            exit 0
+          else
+            echo "❌ Tests failed with exit code: $test_exit_code"
+            echo "Pipeline will fail to ensure issues are addressed"
+            exit $test_exit_code
+          fi
 
       - name: Upload coverage report
         if: always()
