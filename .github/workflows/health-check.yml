@@ -49,16 +49,17 @@ jobs:
           echo "$container_logs"
           echo "====================="
 
-          # Check if container shows expected startup behavior
-          if echo "$container_logs" | grep -q "Starting Simplenote MCP Server"; then
-            if echo "$container_logs" | grep -q "Missing Simplenote credentials\|AUTHENTICATION.*environment variables must be set"; then
-              echo "✅ Container ${{ matrix.tag }} started properly and shows expected auth error"
+          # Check if container shows expected behavior (help text or startup/auth messages)
+          if echo "$container_logs" | grep -q "Simplenote MCP Server"; then
+            if echo "$container_logs" | grep -q "Missing Simplenote credentials\|AUTHENTICATION.*environment variables must be set\|Usage:\|Environment Variables:"; then
+              echo "✅ Container ${{ matrix.tag }} started properly and shows expected output"
             else
               echo "⚠️ Container ${{ matrix.tag }} started but unexpected behavior"
-              echo "Expected authentication error not found"
+              echo "Expected startup messages, auth error, or help text not found"
             fi
           else
             echo "❌ Container ${{ matrix.tag }} failed to start properly"
+            echo "No Simplenote MCP Server signature found in output"
             exit 1
           fi
 

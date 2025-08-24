@@ -290,6 +290,42 @@ jobs:
           timeout 120 python scripts/validate-badges.py || echo "⚠️ Badge validation completed with timeout/error"
           echo "✅ Badge validation finished"
 
+  integration-tests:
+    name: Integration Tests (Optional)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-and-test
+    # Disabled by default - to enable: 
+    # 1. Change 'if: false' to 'if: true' or remove the line entirely
+    # 2. Add SIMPLENOTE_EMAIL and SIMPLENOTE_PASSWORD secrets to the repository
+    if: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[test] || pip install -e .
+
+      - name: Run integration tests
+        run: |
+          echo "🔗 Running integration tests with real API..."
+          python -m pytest -v --tb=short \
+            tests/test_title_search_integration.py \
+            tests/test_search_integration.py \
+            tests/test_title_search.py \
+            -k "integration or real_api or network"
+        env:
+          SIMPLENOTE_EMAIL: ${{ secrets.SIMPLENOTE_EMAIL }}
+          SIMPLENOTE_PASSWORD: ${{ secrets.SIMPLENOTE_PASSWORD }}
+
   docker-test:
     name: Docker Build Test
     runs-on: ubuntu-latest
