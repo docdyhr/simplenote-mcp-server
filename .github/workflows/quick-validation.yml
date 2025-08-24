@@ -108,7 +108,7 @@ jobs:
           echo "validation=success" >> $GITHUB_ENV
 
       - name: Comment on PR with quick results
-        if: github.event_name == 'pull_request' && success()
+        if: github.event_name == 'pull_request' && success() && github.actor != 'dependabot[bot]'
         uses: actions/github-script@v7
         with:
           script: |
