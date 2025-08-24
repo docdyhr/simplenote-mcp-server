@@ -858,9 +858,9 @@ tomli==2.2.1 \
     --hash=sha256:ece47d672db52ac607a3d9599a9d48dcb2f2f735c6c2d1f34130085bb12b112a \
     --hash=sha256:f4039b9cbc3048b2416cc57ab3bda989a6fcf9b36cf8937f01a6e731b64f80d7
     # via simplenote-mcp-server (pyproject.toml)
-typer==0.16.0 \
-    --hash=sha256:1f79bed11d4d02d4310e3c1b7ba594183bcedb0ac73b27a9e5f28f6fb5b98855 \
-    --hash=sha256:af377ffaee1dbe37ae9440cb4e8f11686ea5ce4e9bae01b84ae7c63b87f1dd3b
+typer==0.16.1 \
+    --hash=sha256:90ee01cb02d9b8395ae21ee3368421faf21fa138cb2a541ed369c08cec5237c9 \
+    --hash=sha256:d358c65a464a7a90f338e3bb7ff0c74ac081449e53884b12ba658cbd72990614
     # via mcp
 typing-extensions==4.14.1 \
     --hash=sha256:38b39f4aeeab64884ce9f74c94263ef78f3c22467c8724005483154c26648d36 \
