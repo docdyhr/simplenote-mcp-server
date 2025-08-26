@@ -10,6 +10,13 @@ from simplenote import Simplenote
 
 from .config import Config, get_config
 from .logging import logger
+from .monitoring.metrics import (
+    record_cache_access_time,
+    record_cache_hit,
+    record_cache_miss,
+    update_cache_memory_usage,
+    update_cache_size,
+)
 from .search.engine import SearchEngine
 
 # Global cache instance
@@ -185,6 +192,9 @@ class NoteCache:
         logger.info(f"Loaded {len(self._notes)} notes into cache in {elapsed:.2f}s")
         logger.info(f"Found {len(self._tags)} unique tags")
 
+        # Initialize cache metrics after successful initialization
+        self._update_cache_metrics()
+
         return len(self._notes)
 
     async def sync(self) -> int:
@@ -358,15 +368,22 @@ class NoteCache:
             ResourceNotFoundError: If the note doesn't exist.
 
         """
+        start_time = time.time()
+
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
 
         # Check if note is in cache
         note = self._notes.get(note_id)
         if note is not None:
+            # Cache hit
+            access_time = time.time() - start_time
+            record_cache_hit()
+            record_cache_access_time(access_time)
             return note
 
-        # If not in cache, try to get from API
+        # Cache miss - try to get from API
+        record_cache_miss()
         from .errors import ResourceNotFoundError
 
         # Get from Simplenote API
@@ -374,10 +391,14 @@ class NoteCache:
 
         # If note not found, raise error
         if status != 0 or note_data is None:
+            access_time = time.time() - start_time
+            record_cache_access_time(access_time)
             raise ResourceNotFoundError(f"Note with ID {note_id} not found")
 
         # Ensure note_data is a dict before caching
         if not isinstance(note_data, dict):
+            access_time = time.time() - start_time
+            record_cache_access_time(access_time)
             raise ResourceNotFoundError(f"Invalid note data format for ID {note_id}")
 
         # Add note to cache
@@ -386,6 +407,11 @@ class NoteCache:
         # Update tags
         if "tags" in note_data and note_data["tags"]:
             self._tags.update(note_data["tags"])
+
+        # Record access time and update cache size
+        access_time = time.time() - start_time
+        record_cache_access_time(access_time)
+        self._update_cache_metrics()
 
         return note_data
 
@@ -542,16 +568,24 @@ class NoteCache:
         cache_key = self._generate_search_cache_key(query, tag_filters, date_range)
 
         # Check if we have a cached result for this search
-        current_time = time.time()
+        search_start_time = time.time()
+        current_time = search_start_time
         if cache_key in self._query_cache:
             cached_time, cached_results = self._query_cache[cache_key]
             # Use cached results if they're not too old
             if current_time - cached_time < self._query_cache_ttl:
                 logger.debug(f"Using cached search results for query: '{query}'")
+                # Record cache hit for query cache
+                record_cache_hit()
+                search_time = time.time() - search_start_time
+                record_cache_access_time(search_time)
                 # Apply pagination to cached results
                 start_idx = offset
                 end_idx = None if limit is None else offset + limit
                 return cached_results[start_idx:end_idx]
+
+        # Cache miss for query cache
+        record_cache_miss()
 
         # Optimize search by pre-filtering notes if we have tag_filters
         notes_to_search = self._notes
@@ -630,6 +664,10 @@ class NoteCache:
         # Apply pagination (offset + limit)
         start_idx = offset
         end_idx = None if limit is None else offset + limit
+
+        # Record search completion time
+        search_time = time.time() - search_start_time
+        record_cache_access_time(search_time)
 
         return all_results[start_idx:end_idx]
 
@@ -965,6 +1003,26 @@ class NoteCache:
 
         """
         return getattr(self, "_index_mark", "")
+
+    def _update_cache_metrics(self) -> None:
+        """Update cache metrics with current state."""
+        config = get_config()
+        current_size = len(self._notes)
+        max_size = config.cache_max_size
+
+        # Update basic size metrics
+        update_cache_size(current_size, max_size)
+
+        # Estimate memory usage (rough calculation)
+        estimated_memory = 0
+        for note in self._notes.values():
+            # Estimate memory for note content and metadata
+            content_size = len(str(note.get("content", "")))
+            tags_size = sum(len(tag) for tag in note.get("tags", []))
+            metadata_size = 200  # Rough estimate for other fields
+            estimated_memory += content_size + tags_size + metadata_size
+
+        update_cache_memory_usage(estimated_memory)
 
 
 class BackgroundSync:

@@ -560,6 +560,7 @@ class TestMetricsCollection:
                 os.unlink(temp_path)
 
 
+@pytest.mark.perf
 class TestThreadSafety:
     """Test thread safety of metrics collection."""
 
@@ -670,6 +671,7 @@ class TestEdgeCases:
         assert metrics.tool_calls[tool_name].count == 1
 
 
+@pytest.mark.perf
 class TestAsyncCompatibility:
     """Test async compatibility of metrics collection."""
 

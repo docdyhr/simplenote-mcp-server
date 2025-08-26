@@ -211,6 +211,26 @@ class JsonFormatter(logging.Formatter):
                 except (AttributeError, TypeError):
                     pass
 
+        # Send to log pattern monitor for suspicious pattern detection
+        try:
+            # Avoid circular imports by importing only when needed
+            import asyncio
+
+            from .log_monitor import process_log_for_patterns
+
+            # Only process if we're in an async context or can create one
+            try:
+                # Try to process asynchronously if there's a running loop
+                asyncio.get_running_loop()
+                asyncio.create_task(process_log_for_patterns(log_entry.copy()))
+            except RuntimeError:
+                # No running loop, skip async processing to avoid blocking
+                # This ensures logging doesn't break in synchronous contexts
+                pass
+        except Exception:
+            # Silently fail to avoid breaking logging if monitor has issues
+            pass
+
         return json.dumps(log_entry)
 
 
@@ -338,6 +358,11 @@ class StructuredLogAdapter(logging.LoggerAdapter):
         )  # Use copy to avoid modifying original
         self.logger.warning(processed_msg, *args, **processed_kwargs)
 
+        # Trigger pattern monitoring for warnings
+        self._trigger_pattern_monitoring(
+            "WARNING", processed_msg, processed_kwargs.get("extra")
+        )
+
     def error(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log an error message with context."""
         processed_msg, processed_kwargs = self.process(
@@ -345,12 +370,22 @@ class StructuredLogAdapter(logging.LoggerAdapter):
         )  # Use copy to avoid modifying original
         self.logger.error(processed_msg, *args, **processed_kwargs)
 
+        # Trigger pattern monitoring for errors
+        self._trigger_pattern_monitoring(
+            "ERROR", processed_msg, processed_kwargs.get("extra")
+        )
+
     def critical(self, msg: str, *args: Any, **kwargs: Any) -> None:
         """Log a critical message with context."""
         processed_msg, processed_kwargs = self.process(
             msg, kwargs.copy()
         )  # Use copy to avoid modifying original
         self.logger.critical(processed_msg, *args, **processed_kwargs)
+
+        # Trigger pattern monitoring for critical messages
+        self._trigger_pattern_monitoring(
+            "CRITICAL", processed_msg, processed_kwargs.get("extra")
+        )
 
     def with_context(self, **context: Any) -> "StructuredLogAdapter":
         """Create a new logger with additional context."""
@@ -379,6 +414,47 @@ class StructuredLogAdapter(logging.LoggerAdapter):
         if isinstance(self.extra, dict):
             self.extra["trace_id"] = trace_id
         return self
+
+    def _trigger_pattern_monitoring(
+        self, level: str, msg: str, extra_data: dict[str, Any] | None = None
+    ) -> None:
+        """Trigger pattern monitoring for log messages.
+
+        Args:
+            level: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            msg: Log message
+            extra_data: Additional context data
+        """
+        try:
+            # Avoid circular imports
+            import asyncio
+
+            from .log_monitor import process_log_for_patterns
+
+            # Build log entry similar to JsonFormatter
+            log_entry = {
+                "timestamp": datetime.now().isoformat(),
+                "level": level,
+                "message": msg,
+                "logger": self.logger.name,
+            }
+
+            # Add extra context
+            if self.extra:
+                log_entry.update(self.extra)
+            if extra_data:
+                log_entry.update(extra_data)
+
+            # Process asynchronously if possible
+            try:
+                asyncio.get_running_loop()
+                asyncio.create_task(process_log_for_patterns(log_entry))
+            except RuntimeError:
+                # No running loop, skip to avoid blocking
+                pass
+        except Exception:
+            # Silently fail to avoid breaking logging
+            pass
 
 
 def get_logger(name: str, **extra: Any) -> StructuredLogAdapter:

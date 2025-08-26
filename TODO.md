@@ -82,24 +82,24 @@ These items are being committed together with this roadmap update:
 
 ### Next
 
-- [ ] Conventional commit parsing to improve changelog categorization
+- [x] Conventional commit parsing to improve changelog categorization ✅ 2025-08-26
 - [ ] Pre-release dry-run workflow that diff-checks dependency changes
 - [ ] Signed git tags (GPG / Sigstore) integration
-- [ ] Publish SBOM + vulnerability report as release assets
+- [x] Publish SBOM + vulnerability report as release assets ✅ 2025-08-26
 
 ---
 ## 📊 Observability & Performance
 
 - [ ] Standardize logging schema (add logger factory + contextual fields)
-- [ ] Optional HTTP health & metrics endpoint (readiness / liveness probes)
-- [ ] Latency histogram & cache efficacy metrics
+- [x] Optional HTTP health & metrics endpoint (readiness / liveness probes) ✅ 2025-08-26
+- [x] Latency histogram & cache efficacy metrics ✅ 2025-08-26
 - [ ] Performance regression alert threshold definition
 
 ---
 ## 🧩 Architecture & Code Quality
 
-- [ ] Extract repeated error formatting into shared helper
-- [ ] Normalize exception taxonomy & user-facing messages
+- [x] Extract repeated error formatting into shared helper ✅ 2025-08-26
+- [x] Normalize exception taxonomy & user-facing messages ✅ 2025-08-26
 - [ ] Introduce thin service layer for note operations (separating transport vs logic)
 
 ---
@@ -136,6 +136,20 @@ Phase 4 (Week 4+): Feature backlog initiation (regex search, templates)
 - Mean test runtime ≤ 5 min for full matrix (optimize if exceeded)
 
 ---
-Last Updated: 2025-08-11
+Last Updated: 2025-08-26
 Owner: Core Maintainers
 Next Review: 2025-09-01
+
+---
+## 🎉 Recent Completions (Phase 3 Progress)
+
+**2025-08-26**: Completed comprehensive error handling, observability improvements, and release engineering enhancements:
+- ✅ **HTTP Health & Metrics Endpoints**: Added `/health`, `/ready`, and `/metrics` endpoints with Prometheus-compatible format
+- ✅ **Enhanced Metrics System**: Implemented latency histograms with quantile calculations and cache efficacy scoring
+- ✅ **Error Handling Standardization**: Created comprehensive error helper functions and eliminated repeated error formatting patterns
+- ✅ **Advanced Error Taxonomy**: Implemented 30+ granular error subcategories with contextual user messages and smart classification
+- ✅ **Comprehensive Testing**: Added 27+ new tests covering enhanced error taxonomy and metrics systems
+- ✅ **Conventional Commit Parser**: Implemented sophisticated changelog generation with proper categorization, emoji sections, breaking change detection, and GitHub integration
+- ✅ **Release Security Assets**: Integrated comprehensive SBOM generation (CycloneDX JSON/XML, simple SBOM) and vulnerability reporting (pip-audit JSON/Markdown) into release workflow with automatic GitHub release asset attachment
+
+**Impact**: Significantly improved user experience with actionable error messages, enhanced debugging capabilities with detailed metrics, better operational monitoring with health endpoints, professional release documentation with structured changelogs following industry standards, and enterprise-grade supply chain security transparency with comprehensive SBOM and vulnerability reporting attached to every release.

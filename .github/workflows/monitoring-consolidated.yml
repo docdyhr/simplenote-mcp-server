@@ -1,0 +1,361 @@
+name: Consolidated Monitoring
+
+on:
+  schedule:
+    # Run weekly on Monday at 6 AM UTC for comprehensive monitoring
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      run_badge_check:
+        description: "Run badge status check"
+        required: false
+        default: true
+        type: boolean
+      run_security_monitoring:
+        description: "Run security alert monitoring"
+        required: false
+        default: true
+        type: boolean
+      fail_on_security_issues:
+        description: "Fail workflow on security issues"
+        required: false
+        default: true
+        type: boolean
+  push:
+    branches: [main]
+    paths: 
+      - "README.md"
+      - ".github/workflows/**"
+      - "simplenote_mcp/**"
+      - "pyproject.toml"
+
+env:
+  GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+  GITHUB_REPOSITORY_NAME: ${{ github.event.repository.name }}
+
+jobs:
+  badge-status-check:
+    name: Badge Status Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    if: ${{ github.event.inputs.run_badge_check != 'false' }}
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install badge check dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 lxml
+
+      - name: Check badge URLs and workflow references
+        run: |
+          python - <<'EOF'
+          import re
+          import requests
+          import sys
+          import time
+          from urllib.parse import urlparse
+
+          # Read README content
+          with open('README.md', 'r') as f:
+              content = f.read()
+
+          # Extract all badge URLs
+          badge_pattern = r'\[!\[.*?\]\((https://[^)]+)\)\]'
+          img_pattern = r'!\[.*?\]\((https://[^)]+\.svg[^)]*)\)'
+
+          badge_urls = re.findall(badge_pattern, content)
+          img_urls = re.findall(img_pattern, content)
+          all_urls = list(set(badge_urls + img_urls))
+
+          print(f"Found {len(all_urls)} badge URLs to check")
+
+          failed_badges = []
+          session = requests.Session()
+          session.headers.update({
+              'User-Agent': 'Mozilla/5.0 (compatible; BadgeChecker/1.0)'
+          })
+
+          for url in all_urls:
+              try:
+                  print(f"Checking: {url}")
+                  response = session.get(url, timeout=15, allow_redirects=True)
+
+                  if response.status_code != 200:
+                      failed_badges.append(f"{url} - HTTP {response.status_code}")
+                      print(f"  ❌ Failed: HTTP {response.status_code}")
+                  else:
+                      content_type = response.headers.get('content-type', '').lower()
+                      if 'svg' in content_type or 'png' in content_type or 'image' in content_type:
+                          print(f"  ✅ OK")
+                      else:
+                          failed_badges.append(f"{url} - Not image content")
+                          print(f"  ❌ Failed: Not image content")
+
+                  time.sleep(0.5)  # Rate limiting
+
+              except Exception as e:
+                  failed_badges.append(f"{url} - Error: {str(e)}")
+                  print(f"  ❌ Error: {str(e)}")
+
+          # Check workflow badge alignment
+          print("\nChecking workflow badges...")
+          if not re.search(r'CI|test', content, re.IGNORECASE):
+              print("⚠️ Warning: No CI/test badges found in README")
+          
+          if not re.search(r'codecov|coverage', content, re.IGNORECASE):
+              print("⚠️ Warning: No coverage badge found in README")
+
+          if failed_badges:
+              print("\n❌ Badge check failed!")
+              print("Failed badges:")
+              for badge in failed_badges:
+                  print(f"  - {badge}")
+              
+              # Create badge report
+              with open('badge-report.md', 'w') as f:
+                  f.write("# Badge Status Report\n\n")
+                  f.write("## Failed Badges\n\n")
+                  for badge in failed_badges:
+                      f.write(f"- {badge}\n")
+                  f.write("\n## Recommendations\n\n")
+                  f.write("1. Update broken badge URLs\n")
+                  f.write("2. Verify workflow names match badge references\n")
+                  f.write("3. Check service availability\n")
+                  f.write("4. Update repository settings if needed\n")
+              
+              sys.exit(1)
+          else:
+              print("\n✅ All badges are working correctly!")
+          EOF
+
+      - name: Upload badge report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: badge-status-report
+          path: badge-report.md
+          retention-days: 7
+
+  security-alert-monitoring:
+    name: Security Alert Monitoring
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ github.event.inputs.run_security_monitoring != 'false' }}
+    permissions:
+      contents: read
+      security-events: read
+      actions: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install security monitoring dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests PyGithub
+
+      - name: Run security alert monitoring
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - <<'EOF'
+          import os
+          import sys
+          import requests
+          import json
+          from datetime import datetime
+          
+          def check_security_alerts():
+              """Check for security alerts using GitHub API."""
+              token = os.environ.get('GITHUB_TOKEN')
+              repo = os.environ.get('GITHUB_REPOSITORY', 'docdyhr/simplenote-mcp-server')
+              
+              if not token:
+                  print("❌ GitHub token not available")
+                  return False
+              
+              headers = {
+                  'Authorization': f'token {token}',
+                  'Accept': 'application/vnd.github.v3+json'
+              }
+              
+              # Check Dependabot alerts
+              url = f'https://api.github.com/repos/{repo}/dependabot/alerts'
+              
+              try:
+                  response = requests.get(url, headers=headers, timeout=30)
+                  
+                  if response.status_code == 200:
+                      alerts = response.json()
+                      active_alerts = [a for a in alerts if a['state'] == 'open']
+                      
+                      print(f"Found {len(active_alerts)} active security alerts")
+                      
+                      if active_alerts:
+                          print("\n🚨 Active Security Alerts:")
+                          critical_count = 0
+                          high_count = 0
+                          
+                          report_lines = [
+                              "# Security Alert Report",
+                              f"Generated: {datetime.now().isoformat()}",
+                              "",
+                              "## Active Alerts",
+                              ""
+                          ]
+                          
+                          for alert in active_alerts:
+                              severity = alert.get('security_advisory', {}).get('severity', 'unknown')
+                              package = alert.get('dependency', {}).get('package', {}).get('name', 'unknown')
+                              summary = alert.get('security_advisory', {}).get('summary', 'No summary')
+                              
+                              print(f"- {severity.upper()}: {package} - {summary}")
+                              report_lines.append(f"- **{severity.upper()}**: {package}")
+                              report_lines.append(f"  - {summary}")
+                              report_lines.append("")
+                              
+                              if severity.lower() == 'critical':
+                                  critical_count += 1
+                              elif severity.lower() == 'high':
+                                  high_count += 1
+                          
+                          # Write report file
+                          timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                          with open(f'security_alert_report_{timestamp}.md', 'w') as f:
+                              f.write('\n'.join(report_lines))
+                          
+                          # Determine if we should fail
+                          fail_on_issues = os.environ.get('INPUT_FAIL_ON_SECURITY_ISSUES', 'true').lower() == 'true'
+                          
+                          if (critical_count > 0 or high_count > 0) and fail_on_issues:
+                              print(f"\n❌ Found {critical_count} critical and {high_count} high severity alerts")
+                              return False
+                          else:
+                              print(f"\n⚠️ Found alerts but not failing: {critical_count} critical, {high_count} high")
+                              return True
+                      else:
+                          print("✅ No active security alerts found")
+                          return True
+                          
+                  elif response.status_code == 404:
+                      print("⚠️ Security alerts not available (private repo or permissions)")
+                      return True
+                  else:
+                      print(f"❌ API request failed: {response.status_code}")
+                      return False
+                      
+              except Exception as e:
+                  print(f"❌ Error checking security alerts: {str(e)}")
+                  return False
+          
+          # Run check
+          success = check_security_alerts()
+          if not success:
+              sys.exit(1)
+          EOF
+        env:
+          INPUT_FAIL_ON_SECURITY_ISSUES: ${{ github.event.inputs.fail_on_security_issues || 'true' }}
+
+      - name: Upload security report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-alert-report
+          path: security_alert_report_*.md
+          retention-days: 30
+
+  monitoring-summary:
+    name: Monitoring Summary
+    runs-on: ubuntu-latest
+    needs: [badge-status-check, security-alert-monitoring]
+    if: always()
+    permissions:
+      contents: read
+
+    steps:
+      - name: Create monitoring summary
+        run: |
+          echo "# Monitoring Summary Report" > monitoring-summary.md
+          echo "" >> monitoring-summary.md
+          echo "Date: $(date -Iseconds)" >> monitoring-summary.md
+          echo "Workflow: ${{ github.workflow }}" >> monitoring-summary.md
+          echo "Run ID: ${{ github.run_id }}" >> monitoring-summary.md
+          echo "" >> monitoring-summary.md
+          
+          echo "## Results" >> monitoring-summary.md
+          echo "" >> monitoring-summary.md
+          
+          # Badge check results
+          if [ "${{ needs.badge-status-check.result }}" = "success" ]; then
+            echo "- ✅ Badge Status Check: PASSED" >> monitoring-summary.md
+          elif [ "${{ needs.badge-status-check.result }}" = "failure" ]; then
+            echo "- ❌ Badge Status Check: FAILED" >> monitoring-summary.md
+          elif [ "${{ needs.badge-status-check.result }}" = "skipped" ]; then
+            echo "- ⏭️ Badge Status Check: SKIPPED" >> monitoring-summary.md
+          fi
+          
+          # Security monitoring results  
+          if [ "${{ needs.security-alert-monitoring.result }}" = "success" ]; then
+            echo "- ✅ Security Alert Monitoring: PASSED" >> monitoring-summary.md
+          elif [ "${{ needs.security-alert-monitoring.result }}" = "failure" ]; then
+            echo "- ❌ Security Alert Monitoring: FAILED" >> monitoring-summary.md
+          elif [ "${{ needs.security-alert-monitoring.result }}" = "skipped" ]; then
+            echo "- ⏭️ Security Alert Monitoring: SKIPPED" >> monitoring-summary.md
+          fi
+          
+          echo "" >> monitoring-summary.md
+          echo "## Next Steps" >> monitoring-summary.md
+          echo "" >> monitoring-summary.md
+          
+          if [ "${{ needs.badge-status-check.result }}" = "failure" ] || [ "${{ needs.security-alert-monitoring.result }}" = "failure" ]; then
+            echo "- Review failed checks and take corrective action" >> monitoring-summary.md
+            echo "- Check uploaded artifacts for detailed reports" >> monitoring-summary.md
+            echo "- Update configurations or fix identified issues" >> monitoring-summary.md
+          else
+            echo "- All monitoring checks passed successfully" >> monitoring-summary.md
+            echo "- No immediate action required" >> monitoring-summary.md
+          fi
+          
+          cat monitoring-summary.md
+
+      - name: Upload monitoring summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-summary
+          path: monitoring-summary.md
+          retention-days: 14
+
+  notify-on-failure:
+    name: Failure Notifications
+    runs-on: ubuntu-latest
+    needs: [badge-status-check, security-alert-monitoring]
+    if: failure() && github.event_name == 'schedule'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Notify on monitoring failures
+        run: |
+          echo "🚨 Monitoring workflow failed during scheduled run"
+          echo "Badge check: ${{ needs.badge-status-check.result }}"
+          echo "Security monitoring: ${{ needs.security-alert-monitoring.result }}"
+          echo ""
+          echo "Please review the workflow logs and artifacts for details."
+          echo "Repository: ${{ github.repository }}"
+          echo "Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -81,6 +81,7 @@ def large_note_collection():
     return notes
 
 
+@pytest.mark.perf
 class TestSearchPerformance:
     """Test search performance with large datasets."""
 
@@ -187,6 +188,7 @@ class TestSearchPerformance:
         assert elapsed_time < 1.0, "Complex search should complete in reasonable time"
 
 
+@pytest.mark.perf
 class TestSearchStress:
     """Stress test the search functionality with extreme cases."""
 

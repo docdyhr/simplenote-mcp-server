@@ -68,6 +68,16 @@ class Config:
             os.environ.get("METRICS_COLLECTION_INTERVAL", "60")
         )
 
+        # HTTP health/metrics endpoint configuration
+        self.enable_http_endpoint: bool = os.environ.get(
+            "ENABLE_HTTP_ENDPOINT", "false"
+        ).lower() in ("true", "1", "t", "yes")
+        self.http_host: str = os.environ.get("HTTP_HOST", "127.0.0.1")
+        self.http_port: int = int(os.environ.get("HTTP_PORT", "8080"))
+        self.http_metrics_path: str = os.environ.get("HTTP_METRICS_PATH", "/metrics")
+        self.http_health_path: str = os.environ.get("HTTP_HEALTH_PATH", "/health")
+        self.http_ready_path: str = os.environ.get("HTTP_READY_PATH", "/ready")
+
         # Logging configuration - check multiple possible environment variable names
         log_level_env = (
             os.environ.get("LOG_LEVEL")
@@ -159,6 +169,29 @@ class Config:
             raise ValueError(
                 f"METRICS_COLLECTION_INTERVAL must be at least 1 (got {self.metrics_collection_interval})"
             )
+
+        # Validate HTTP endpoint configuration
+        if self.enable_http_endpoint:
+            if not (1024 <= self.http_port <= 65535):
+                raise ValueError(
+                    f"HTTP_PORT must be between 1024 and 65535 (got {self.http_port})"
+                )
+
+            if not self.http_host:
+                raise ValueError(
+                    "HTTP_HOST cannot be empty when HTTP endpoint is enabled"
+                )
+
+            # Validate paths start with /
+            for path_name, path_value in [
+                ("HTTP_METRICS_PATH", self.http_metrics_path),
+                ("HTTP_HEALTH_PATH", self.http_health_path),
+                ("HTTP_READY_PATH", self.http_ready_path),
+            ]:
+                if not path_value.startswith("/"):
+                    raise ValueError(
+                        f"{path_name} must start with '/' (got {path_value})"
+                    )
 
 
 # Global configuration singleton

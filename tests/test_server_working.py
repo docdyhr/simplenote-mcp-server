@@ -13,6 +13,7 @@ from simplenote_mcp.server.server import (
 )
 
 
+@pytest.mark.integration
 class TestWorkingFunctions:
     """Test functions that are working to improve coverage."""
 

@@ -15,6 +15,7 @@ from simplenote_mcp.server.tool_handlers import (
 )
 
 
+@pytest.mark.unit
 class TestToolHandlerRegistry:
     """Test the tool handler registry."""
 
@@ -51,6 +52,7 @@ class TestToolHandlerRegistry:
         assert handler is None
 
 
+@pytest.mark.unit
 class TestCreateNoteHandler:
     """Test the create note handler."""
 
@@ -147,6 +149,7 @@ class TestCreateNoteHandler:
         assert response_data["success"] is True
 
 
+@pytest.mark.unit
 class TestSearchNotesHandler:
     """Test the search notes handler."""
 
@@ -255,6 +258,7 @@ class TestSearchNotesHandler:
             await handler.handle(arguments)
 
 
+@pytest.mark.unit
 class TestUpdateNoteHandler:
     """Test the update note handler."""
 

@@ -15,6 +15,11 @@ from collections import defaultdict, deque
 from functools import wraps
 from typing import Any, Callable
 
+from .error_helpers import (
+    empty_field_error,
+    range_validation_error,
+    type_validation_error,
+)
 from .errors import AuthenticationError, SecurityError, ValidationError
 from .logging import logger
 
@@ -295,15 +300,20 @@ class RequestValidator:
         self, tool_name: str, arguments: dict[str, Any]
     ) -> None:
         """Validate basic request structure."""
-        if not isinstance(tool_name, str) or not tool_name:
-            raise ValidationError("Tool name must be a non-empty string")
+        if not isinstance(tool_name, str):
+            raise type_validation_error("tool_name", "string", tool_name)
+        if not tool_name:
+            raise empty_field_error("tool_name")
 
         if not isinstance(arguments, dict):
-            raise ValidationError("Arguments must be a dictionary")
+            raise type_validation_error("arguments", "dictionary", arguments)
 
         # Check for excessively large requests
-        if len(str(arguments)) > 1024 * 1024:  # 1MB
-            raise ValidationError("Request too large")
+        request_size = len(str(arguments))
+        if request_size > 1024 * 1024:  # 1MB
+            raise range_validation_error(
+                "request_size", max_value=1024 * 1024, actual_value=request_size
+            )
 
     def _check_suspicious_patterns(
         self, tool_name: str, arguments: dict[str, Any], context: dict[str, Any]

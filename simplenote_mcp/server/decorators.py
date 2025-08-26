@@ -362,43 +362,49 @@ def with_safe_json_response(fallback_response: dict[str, Any] | None = None):
 # Common validation functions for use with with_input_validation
 def validate_note_id_required(arguments: dict[str, Any]) -> None:
     """Validate that note_id is present and non-empty."""
-    from .errors import ValidationError
+    from .error_helpers import empty_field_error, required_field_error
 
     note_id = arguments.get("note_id", "")
+    if "note_id" not in arguments:
+        raise required_field_error("note_id")
     if not note_id:
-        raise ValidationError("Note ID is required")
+        raise empty_field_error("note_id")
 
 
 def validate_content_required(arguments: dict[str, Any]) -> None:
     """Validate that content is present (empty content is allowed)."""
-    from .errors import ValidationError
+    from .error_helpers import required_field_error, type_validation_error
 
     # Check that content key exists, but allow empty strings
     if "content" not in arguments:
-        raise ValidationError("Note content parameter is required")
+        raise required_field_error("note_content")
 
     content = arguments.get("content", "")
     # Allow empty content - this is a valid use case for notes
     if content is None:
-        raise ValidationError("Note content cannot be None")
+        raise type_validation_error("note_content", "string", content)
 
 
 def validate_query_required(arguments: dict[str, Any]) -> None:
     """Validate that query is present and non-empty."""
-    from .errors import ValidationError
+    from .error_helpers import empty_field_error, required_field_error
 
     query = arguments.get("query", "")
+    if "query" not in arguments:
+        raise required_field_error("search_query")
     if not query:
-        raise ValidationError("Search query is required")
+        raise empty_field_error("search_query")
 
 
 def validate_tags_required(arguments: dict[str, Any]) -> None:
     """Validate that tags are present and non-empty."""
-    from .errors import ValidationError
+    from .error_helpers import empty_field_error, required_field_error
 
     tags = arguments.get("tags", "")
+    if "tags" not in arguments:
+        raise required_field_error("tags")
     if not tags:
-        raise ValidationError("Tags are required")
+        raise empty_field_error("tags")
 
 
 # Composite decorators for common patterns

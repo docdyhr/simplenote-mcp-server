@@ -8,6 +8,20 @@ from typing import Any
 
 from .error_codes import format_error_code
 
+try:
+    from .error_taxonomy import (
+        ENHANCED_SUBCATEGORY_CODES,
+        ContextualMessageGenerator,
+        ErrorSubcategory,
+        ErrorTaxonomyMapper,
+    )
+except ImportError:
+    # Fallback if taxonomy module is not available
+    ContextualMessageGenerator = None
+    ErrorSubcategory = None
+    ErrorTaxonomyMapper = None
+    ENHANCED_SUBCATEGORY_CODES = {}
+
 logger = logging.getLogger("simplenote_mcp")
 
 
@@ -22,6 +36,7 @@ class ErrorCategory(Enum):
     VALIDATION = "validation"  # Input validation errors
     SECURITY = "security"  # Security-related errors
     INTERNAL = "internal"  # Internal server errors
+    SESSION = "session"  # Session and timeout-related errors
     UNKNOWN = "unknown"  # Uncategorized errors
 
 
@@ -184,25 +199,52 @@ class ServerError(Exception):
         self.category_code = category_map.get(self.category, "UNK")
         prefix = self.category_code
 
-        # Get subcategory code or use a default
+        # Get subcategory code with enhanced taxonomy support
         subcat_code = "GEN"  # Default general subcategory
         if self.subcategory:
-            # Try to map common subcategory names to codes
-            subcategory_map = {
-                "credentials": "CRD",
-                "connection": "CON",
-                "timeout": "TIM",
-                "required": "REQ",
-                "format": "FMT",
-                "note": "NOTE",
-                "tag": "TAG",
-                "api": "API",
-                "server": "SRV",
-                "database": "DB",
-            }
-            subcat_code = subcategory_map.get(
-                self.subcategory, self.subcategory[:3].upper()
-            )
+            # First try enhanced subcategory codes if available
+            if ErrorSubcategory and ENHANCED_SUBCATEGORY_CODES:
+                try:
+                    enum_subcategory = ErrorSubcategory(self.subcategory)
+                    subcat_code = ENHANCED_SUBCATEGORY_CODES.get(
+                        enum_subcategory, "GEN"
+                    )
+                except (ValueError, TypeError):
+                    # Fallback to original mapping
+                    subcategory_map = {
+                        "credentials": "CRD",
+                        "connection": "CON",
+                        "timeout": "TIM",
+                        "required": "REQ",
+                        "format": "FMT",
+                        "note": "NOTE",
+                        "tag": "TAG",
+                        "api": "API",
+                        "server": "SRV",
+                        "database": "DB",
+                        "session": "SESS",
+                    }
+                    subcat_code = subcategory_map.get(
+                        self.subcategory, self.subcategory[:3].upper()
+                    )
+            else:
+                # Original fallback mapping
+                subcategory_map = {
+                    "credentials": "CRD",
+                    "connection": "CON",
+                    "timeout": "TIM",
+                    "required": "REQ",
+                    "format": "FMT",
+                    "note": "NOTE",
+                    "tag": "TAG",
+                    "api": "API",
+                    "server": "SRV",
+                    "database": "DB",
+                    "session": "SESS",
+                }
+                subcat_code = subcategory_map.get(
+                    self.subcategory, self.subcategory[:3].upper()
+                )
 
         # Generate a short unique identifier
         identifier = str(uuid.uuid4())[:4]
@@ -239,9 +281,37 @@ class ServerError(Exception):
 
     @property
     def resolution_steps(self) -> list[str]:
-        """Get the resolution steps for this error."""
+        """Get the resolution steps for this error with enhanced taxonomy support."""
         if self._resolution_steps is not None:
             return self._resolution_steps
+
+        # Try enhanced resolution steps if available
+        if ContextualMessageGenerator and ErrorSubcategory:
+            try:
+                # Convert subcategory string to enum if possible
+                subcategory_enum = None
+                if self.subcategory:
+                    try:
+                        subcategory_enum = ErrorSubcategory(self.subcategory)
+                    except (ValueError, TypeError):
+                        # Use classifier to determine subcategory
+                        if ErrorTaxonomyMapper:
+                            subcategory_enum = ErrorTaxonomyMapper.classify_error(
+                                self.message, self.category, self.subcategory
+                            )
+
+                # Get enhanced resolution steps
+                enhanced_steps = ContextualMessageGenerator.get_resolution_steps(
+                    category=self.category,
+                    subcategory=subcategory_enum,
+                    context=self.details,
+                )
+
+                if enhanced_steps:
+                    return enhanced_steps
+            except Exception:
+                # Fallback to original logic if enhanced generation fails
+                pass
 
         # Use default resolution steps based on category
         return self.DEFAULT_RESOLUTION_STEPS.get(
@@ -249,11 +319,37 @@ class ServerError(Exception):
         )
 
     def get_user_message(self) -> str:
-        """Get a user-friendly error message."""
+        """Get a user-friendly error message with enhanced taxonomy support."""
         if self.user_message:
             return self.user_message
 
-        # Use default user message based on category and subcategory
+        # Try enhanced contextual message generation if available
+        if ContextualMessageGenerator and ErrorSubcategory:
+            try:
+                # Convert subcategory string to enum if possible
+                subcategory_enum = None
+                if self.subcategory:
+                    try:
+                        subcategory_enum = ErrorSubcategory(self.subcategory)
+                    except (ValueError, TypeError):
+                        # Use classifier to determine subcategory
+                        if ErrorTaxonomyMapper:
+                            subcategory_enum = ErrorTaxonomyMapper.classify_error(
+                                self.message, self.category, self.subcategory
+                            )
+
+                # Generate enhanced message
+                return ContextualMessageGenerator.generate_user_message(
+                    category=self.category,
+                    subcategory=subcategory_enum,
+                    context=self.details,
+                    include_details=False,  # Keep user messages concise
+                )
+            except Exception:
+                # Fallback to original logic if enhanced generation fails
+                pass
+
+        # Original fallback logic
         base_message = self.DEFAULT_USER_MESSAGES.get(
             self.category, self.DEFAULT_USER_MESSAGES[ErrorCategory.UNKNOWN]
         )
@@ -397,6 +493,24 @@ class ToolError(ServerError):
         super().__init__(message, **kwargs)
 
 
+class SessionTimeoutError(ServerError):
+    """Error raised when a session has expired or timed out."""
+
+    def __init__(self, message: str, **kwargs: Any) -> None:
+        kwargs.setdefault("category", ErrorCategory.SESSION)
+        kwargs.setdefault("severity", ErrorSeverity.WARNING)
+        kwargs.setdefault("recoverable", True)
+        kwargs.setdefault(
+            "resolution_steps",
+            [
+                "Re-authenticate to create a new session",
+                "Check session timeout configuration",
+                "Verify system clock synchronization",
+            ],
+        )
+        super().__init__(message, **kwargs)
+
+
 def handle_exception(
     e: Exception, context: str = "", operation: str = ""
 ) -> ServerError:
@@ -435,33 +549,7 @@ def handle_exception(
             resource_id = match.group(1)
             break
 
-    # Try to determine subcategory based on error message
-    subcategory = None
-
-    # Keywords that might indicate specific subcategories
-    subcategory_keywords = {
-        "required": "required",
-        "missing": "required",
-        "invalid format": "format",
-        "format": "format",
-        "invalid type": "type",
-        "connection": "connection",
-        "timeout": "timeout",
-        "credential": "credentials",
-        "permission": "permission",
-        "database": "database",
-        "note not found": "note",
-        "tag not found": "tag",
-        "api": "api",
-    }
-
-    lower_error = error_msg.lower()
-    for keyword, category in subcategory_keywords.items():
-        if keyword in lower_error:
-            subcategory = category
-            break
-
-    # Map common exception types to appropriate ServerError subclasses
+    # Map common exception types to appropriate ServerError subclasses (needed for taxonomy)
     error_mapping: dict[type[Exception], type[ServerError]] = {
         ValueError: ValidationError,
         KeyError: ValidationError,
@@ -471,6 +559,77 @@ def handle_exception(
         ConnectionError: NetworkError,
         TimeoutError: NetworkError,
     }
+
+    # Determine subcategory using enhanced taxonomy if available
+    subcategory = None
+
+    if ErrorTaxonomyMapper:
+        try:
+            # Use category from exception mapping for better classification
+            temp_category = ErrorCategory.UNKNOWN
+            for exc_type, error_class in error_mapping.items():
+                if isinstance(e, exc_type):
+                    if error_class == ValidationError:
+                        temp_category = ErrorCategory.VALIDATION
+                    elif error_class == NetworkError:
+                        temp_category = ErrorCategory.NETWORK
+                    elif error_class == ResourceNotFoundError:
+                        temp_category = ErrorCategory.NOT_FOUND
+                    break
+
+            # Classify error with enhanced taxonomy
+            subcategory_enum = ErrorTaxonomyMapper.classify_error(
+                error_msg, temp_category, None
+            )
+            subcategory = subcategory_enum.value
+        except Exception:
+            # Fallback to original keyword matching
+            subcategory_keywords = {
+                "required": "required",
+                "missing": "required",
+                "invalid format": "format",
+                "format": "format",
+                "invalid type": "type",
+                "connection": "connection",
+                "timeout": "timeout",
+                "credential": "credentials",
+                "permission": "permission",
+                "database": "database",
+                "note not found": "note",
+                "tag not found": "tag",
+                "api": "api",
+            }
+
+            lower_error = error_msg.lower()
+            for keyword, category in subcategory_keywords.items():
+                if keyword in lower_error:
+                    subcategory = category
+                    break
+    else:
+        # Original keyword matching as fallback
+        subcategory_keywords = {
+            "required": "required",
+            "missing": "required",
+            "invalid format": "format",
+            "format": "format",
+            "invalid type": "type",
+            "connection": "connection",
+            "timeout": "timeout",
+            "credential": "credentials",
+            "permission": "permission",
+            "database": "database",
+            "note not found": "note",
+            "tag not found": "tag",
+            "api": "api",
+        }
+
+        lower_error = error_msg.lower()
+        for keyword, category in subcategory_keywords.items():
+            if keyword in lower_error:
+                subcategory = category
+                break
+
+    # Use the error_mapping defined above
 
     for exc_type, error_class in error_mapping.items():
         if isinstance(e, exc_type):

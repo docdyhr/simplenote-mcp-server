@@ -65,8 +65,90 @@ METRICS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass
+class Histogram:
+    """Latency histogram with configurable buckets."""
+
+    # Default buckets: 1ms, 5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2.5s, 5s, 10s, +Inf
+    DEFAULT_BUCKETS = [
+        0.001,
+        0.005,
+        0.01,
+        0.025,
+        0.05,
+        0.1,
+        0.25,
+        0.5,
+        1.0,
+        2.5,
+        5.0,
+        10.0,
+        float("inf"),
+    ]
+
+    buckets: list[float] = field(
+        default_factory=lambda: Histogram.DEFAULT_BUCKETS.copy()
+    )
+    counts: dict[float, int] = field(default_factory=dict)
+
+    def __post_init__(self):
+        """Initialize bucket counts."""
+        for bucket in self.buckets:
+            self.counts[bucket] = 0
+
+    def observe(self, value: float) -> None:
+        """Add an observation to the histogram."""
+        for bucket in self.buckets:
+            if value <= bucket:
+                self.counts[bucket] += 1
+
+    def get_bucket_counts(self) -> dict[str, int]:
+        """Get counts for each bucket with string keys for JSON serialization."""
+        result = {}
+        for bucket, count in self.counts.items():
+            if bucket == float("inf"):
+                result["+Inf"] = count
+            else:
+                result[str(bucket)] = count
+        return result
+
+    def get_quantile(self, quantile: float) -> float:
+        """Get approximate quantile value from histogram buckets."""
+        if not any(self.counts.values()):
+            return 0.0
+
+        total_count = sum(self.counts.values())
+        target_count = total_count * quantile
+
+        cumulative = 0
+        prev_bucket = 0.0
+
+        for bucket in sorted(self.buckets):
+            bucket_count = self.counts[bucket]
+            if cumulative + bucket_count >= target_count:
+                # Found the bucket containing our quantile
+                if bucket_count == 0:
+                    # Empty bucket, return previous bucket value
+                    return prev_bucket
+                elif cumulative == target_count:
+                    # Exactly at bucket boundary
+                    return prev_bucket if prev_bucket > 0 else bucket * 0.1
+                else:
+                    # Interpolate within bucket
+                    bucket_position = (target_count - cumulative) / bucket_count
+                    if bucket == float("inf"):
+                        # For infinity bucket, estimate based on previous
+                        return prev_bucket * (1 + bucket_position)
+                    return prev_bucket + (bucket - prev_bucket) * bucket_position
+
+            cumulative += bucket_count
+            prev_bucket = bucket
+
+        return prev_bucket if prev_bucket < float("inf") else 10.0
+
+
+@dataclass
 class TimeMetric:
-    """Time-based metric with statistical tracking."""
+    """Time-based metric with statistical tracking and histogram."""
 
     count: int = 0
     total_time: float = 0.0
@@ -75,6 +157,7 @@ class TimeMetric:
     recent_times: deque[float] = field(
         default_factory=lambda: deque(maxlen=MAX_SAMPLES)
     )
+    histogram: Histogram = field(default_factory=Histogram)
 
     def add(self, duration: float) -> None:
         """Add a new time measurement to this metric."""
@@ -83,6 +166,7 @@ class TimeMetric:
         self.min_time = min(self.min_time, duration)
         self.max_time = max(self.max_time, duration)
         self.recent_times.append(duration)
+        self.histogram.observe(duration)
 
     @property
     def avg_time(self) -> float:
@@ -97,11 +181,24 @@ class TimeMetric:
         return statistics.median(self.recent_times)
 
     @property
+    def p50_time(self) -> float:
+        """Get the 50th percentile (median) from histogram."""
+        return self.histogram.get_quantile(0.5)
+
+    @property
+    def p90_time(self) -> float:
+        """Get the 90th percentile time from histogram."""
+        return self.histogram.get_quantile(0.9)
+
+    @property
     def p95_time(self) -> float:
-        """Get the 95th percentile time for recent measurements."""
-        if len(self.recent_times) < 5:  # Need at least a few samples for percentiles
-            return self.max_time
-        return statistics.quantiles(self.recent_times, n=20)[-1]  # 95th percentile
+        """Get the 95th percentile time from histogram."""
+        return self.histogram.get_quantile(0.95)
+
+    @property
+    def p99_time(self) -> float:
+        """Get the 99th percentile time from histogram."""
+        return self.histogram.get_quantile(0.99)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
@@ -112,7 +209,11 @@ class TimeMetric:
             "max_time": self.max_time,
             "avg_time": self.avg_time,
             "median_time": self.median_time,
+            "p50_time": self.p50_time,
+            "p90_time": self.p90_time,
             "p95_time": self.p95_time,
+            "p99_time": self.p99_time,
+            "histogram_buckets": self.histogram.get_bucket_counts(),
         }
 
 
@@ -207,12 +308,24 @@ class ApiMetrics:
 
 @dataclass
 class CacheMetrics:
-    """Metrics for cache performance."""
+    """Enhanced metrics for cache performance."""
 
     hits: CounterMetric = field(default_factory=CounterMetric)
     misses: CounterMetric = field(default_factory=CounterMetric)
+    evictions: CounterMetric = field(default_factory=CounterMetric)
     size: int = 0
     max_size: int = 0
+    access_times: TimeMetric = field(default_factory=TimeMetric)
+
+    # Cache efficacy tracking
+    hit_streak: int = 0
+    max_hit_streak: int = 0
+    miss_streak: int = 0
+    max_miss_streak: int = 0
+
+    # Memory efficiency
+    total_memory_bytes: int = 0
+    avg_item_size_bytes: float = 0.0
 
     @property
     def hit_rate(self) -> float:
@@ -220,30 +333,91 @@ class CacheMetrics:
         total = self.hits.count + self.misses.count
         return (self.hits.count / total * 100) if total > 0 else 0.0
 
+    @property
+    def miss_rate(self) -> float:
+        """Get the cache miss rate (percentage)."""
+        return 100.0 - self.hit_rate
+
+    @property
+    def efficacy_score(self) -> float:
+        """Calculate cache efficacy score (0-100) based on hit rate, streaks, and memory usage."""
+        if self.hits.count + self.misses.count == 0:
+            return 0.0
+
+        # Base score from hit rate (0-70 points)
+        hit_score = self.hit_rate * 0.7
+
+        # Streak bonus/penalty (0-20 points)
+        streak_score = min(20, self.max_hit_streak) - min(
+            10, self.max_miss_streak * 0.5
+        )
+
+        # Memory efficiency (0-10 points)
+        utilization = self.size / self.max_size if self.max_size > 0 else 0
+        memory_score = 10 * (
+            1 - abs(utilization - 0.75)
+        )  # Optimal around 75% utilization
+
+        return max(0, min(100, hit_score + streak_score + memory_score))
+
     def record_hit(self) -> None:
         """Record a cache hit."""
         self.hits.increment()
+        self.hit_streak += 1
+        self.max_hit_streak = max(self.max_hit_streak, self.hit_streak)
+        self.miss_streak = 0
 
     def record_miss(self) -> None:
         """Record a cache miss."""
         self.misses.increment()
+        self.miss_streak += 1
+        self.max_miss_streak = max(self.max_miss_streak, self.miss_streak)
+        self.hit_streak = 0
+
+    def record_eviction(self) -> None:
+        """Record a cache eviction."""
+        self.evictions.increment()
+
+    def record_access_time(self, duration: float) -> None:
+        """Record the time taken for a cache access."""
+        self.access_times.add(duration)
 
     def update_size(self, current_size: int, max_size: int) -> None:
         """Update the cache size metrics."""
         self.size = current_size
         self.max_size = max_size
 
+    def update_memory_usage(self, total_bytes: int) -> None:
+        """Update memory usage statistics."""
+        self.total_memory_bytes = total_bytes
+        if self.size > 0:
+            self.avg_item_size_bytes = total_bytes / self.size
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
             "hits": self.hits.to_dict(),
             "misses": self.misses.to_dict(),
+            "evictions": self.evictions.to_dict(),
             "hit_rate": self.hit_rate,
+            "miss_rate": self.miss_rate,
+            "efficacy_score": self.efficacy_score,
             "size": self.size,
             "max_size": self.max_size,
             "utilization": (
                 (self.size / self.max_size * 100) if self.max_size > 0 else 0.0
             ),
+            "streaks": {
+                "current_hit_streak": self.hit_streak,
+                "max_hit_streak": self.max_hit_streak,
+                "current_miss_streak": self.miss_streak,
+                "max_miss_streak": self.max_miss_streak,
+            },
+            "access_times": self.access_times.to_dict(),
+            "memory": {
+                "total_bytes": self.total_memory_bytes,
+                "avg_item_size_bytes": self.avg_item_size_bytes,
+            },
         }
 
 
@@ -261,7 +435,7 @@ class ResourceMetrics:
         """Update resource metrics with current system values."""
         try:
             # CPU usage (percentage)
-            cpu_percent = psutil.cpu_percent(interval=0.1)
+            cpu_percent = psutil.cpu_percent(interval=None)
             self.cpu_samples.append(cpu_percent)
 
             # Memory usage (percentage)
@@ -444,6 +618,36 @@ class MetricsCollector:
                     # Save metrics to file
                     self.metrics.save_to_file()
 
+                    # Check performance thresholds and trigger alerts
+                    try:
+                        # Import here to avoid circular imports
+                        import asyncio
+                        import threading
+
+                        from .thresholds import trigger_performance_alerts
+
+                        # Run in a separate thread with its own event loop for async tasks
+                        def run_threshold_check():
+                            try:
+                                loop = asyncio.new_event_loop()
+                                asyncio.set_event_loop(loop)
+                                loop.run_until_complete(trigger_performance_alerts())
+                                loop.close()
+                            except Exception as e:
+                                logger.error(
+                                    f"Error in threshold check thread: {str(e)}"
+                                )
+
+                        # Run threshold checks in background thread
+                        threshold_thread = threading.Thread(
+                            target=run_threshold_check, daemon=True
+                        )
+                        threshold_thread.start()
+                    except Exception as threshold_error:
+                        logger.error(
+                            f"Error in threshold monitoring: {str(threshold_error)}"
+                        )
+
                     # Sleep for the collection interval
                     time.sleep(self._collection_interval)
                 except Exception as e:
@@ -549,6 +753,43 @@ def record_tool_call(tool_name: str) -> None:
 def record_tool_execution_time(tool_name: str, duration: float) -> None:
     """Record a tool execution time."""
     _metrics_collector.record_tool_execution_time(tool_name, duration)
+
+
+def record_cache_eviction() -> None:
+    """Record a cache eviction."""
+    _metrics_collector.metrics.cache.record_eviction()
+
+
+def record_cache_access_time(duration: float) -> None:
+    """Record cache access time."""
+    _metrics_collector.metrics.cache.record_access_time(duration)
+
+
+def update_cache_memory_usage(total_bytes: int) -> None:
+    """Update cache memory usage."""
+    _metrics_collector.metrics.cache.update_memory_usage(total_bytes)
+
+
+# HTTP endpoint bridge functions
+def get_performance_metrics() -> dict[str, Any]:
+    """Get performance metrics for HTTP endpoints."""
+    return _metrics_collector.get_metrics()
+
+
+def get_cache_metrics() -> dict[str, Any]:
+    """Get cache metrics for HTTP endpoints."""
+    return _metrics_collector.metrics.cache.to_dict()
+
+
+def get_memory_metrics() -> dict[str, Any]:
+    """Get memory/resource metrics for HTTP endpoints."""
+    resources = _metrics_collector.metrics.resources
+    return {
+        "memory_usage": getattr(resources, "total_memory_bytes", 0),
+        "cpu_usage": resources.avg_cpu,
+        "memory_percent": resources.avg_memory,
+        "disk_usage_percent": resources.disk_usage,
+    }
 
 
 # Initialize metrics collection when this module is imported

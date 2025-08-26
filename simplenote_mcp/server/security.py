@@ -10,6 +10,13 @@ from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
 
+from .error_helpers import (
+    range_validation_error,
+    security_violation_error,
+    validate_list_or_string,
+    validate_not_empty,
+    validate_string_type,
+)
 from .errors import SecurityError, ValidationError
 from .logging import logger
 
@@ -80,8 +87,7 @@ class SecurityValidator:
             ValidationError: If content fails validation
             SecurityError: If content contains security threats
         """
-        if not isinstance(content, str):
-            raise ValidationError(f"Content must be a string, got {type(content)}")
+        validate_string_type("content", content)
 
         # Length validation
         if len(content) > self.MAX_CONTENT_LENGTH:
@@ -117,15 +123,15 @@ class SecurityValidator:
         Raises:
             ValidationError: If note_id fails validation
         """
-        if not isinstance(note_id, str):
-            raise ValidationError(f"Note ID must be a string, got {type(note_id)}")
+        validate_string_type("note_id", note_id)
 
-        if not note_id or not note_id.strip():
-            raise ValidationError("Note ID cannot be empty")
+        validate_not_empty("note_id", note_id)
 
         if len(note_id) > self.MAX_NOTE_ID_LENGTH:
             raise ValidationError(
-                f"Note ID too long (max {self.MAX_NOTE_ID_LENGTH} characters)"
+                f"Note ID too long (max {self.MAX_NOTE_ID_LENGTH} characters)",
+                field="note_id",
+                subcategory="length",
             )
 
         # Note IDs should be alphanumeric with hyphens/underscores only
@@ -155,10 +161,12 @@ class SecurityValidator:
         elif isinstance(tags, list):
             tag_list = [str(tag).strip() for tag in tags if str(tag).strip()]
         else:
-            raise ValidationError(f"Tags must be string or list, got {type(tags)}")
+            validate_list_or_string("tags", tags)
 
         if len(tag_list) > self.MAX_TAGS_COUNT:
-            raise ValidationError(f"Too many tags (max {self.MAX_TAGS_COUNT})")
+            raise range_validation_error(
+                "tag_count", max_value=self.MAX_TAGS_COUNT, actual_value=len(tag_list)
+            )
 
         validated_tags = []
         for tag in tag_list:
@@ -172,7 +180,12 @@ class SecurityValidator:
                 self._log_security_event(
                     "invalid_tag_format", f"Invalid tag format: {tag}", context
                 )
-                raise ValidationError(f"Tag contains invalid characters: '{tag}'")
+                raise ValidationError(
+                    f"Tag contains invalid characters: '{tag}'",
+                    field="tag",
+                    subcategory="format",
+                    details={"tag": tag, "allowed_pattern": r"a-zA-Z0-9\s\-_#@."},
+                )
 
             validated_tags.append(tag)
 
@@ -189,15 +202,15 @@ class SecurityValidator:
             ValidationError: If query fails validation
             SecurityError: If query contains security threats
         """
-        if not isinstance(query, str):
-            raise ValidationError(f"Search query must be a string, got {type(query)}")
+        validate_string_type("search_query", query)
 
-        if not query or not query.strip():
-            raise ValidationError("Search query cannot be empty")
+        validate_not_empty("search_query", query)
 
         if len(query) > self.MAX_QUERY_LENGTH:
             raise ValidationError(
-                f"Search query too long (max {self.MAX_QUERY_LENGTH} characters)"
+                f"Search query too long (max {self.MAX_QUERY_LENGTH} characters)",
+                field="search_query",
+                subcategory="length",
             )
 
         # Check for injection patterns
@@ -209,7 +222,10 @@ class SecurityValidator:
                     context,
                     severity="HIGH",
                 )
-                raise SecurityError("Potentially dangerous search query detected")
+                raise security_violation_error(
+                    "Dangerous search query pattern",
+                    "Query contains potentially malicious patterns",
+                )
 
     def validate_pagination_params(
         self, limit: Any = None, offset: Any = None

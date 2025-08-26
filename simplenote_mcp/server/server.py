@@ -28,6 +28,9 @@ from .cache import BackgroundSync, NoteCache  # noqa: E402
 from .compat import Path  # noqa: E402
 from .config import LogLevel, get_config  # noqa: E402
 from .decorators import rate_limit
+from .error_helpers import (
+    format_error,
+)
 from .errors import (  # noqa: E402
     AuthenticationError,
     ResourceNotFoundError,
@@ -222,6 +225,24 @@ def setup_signal_handlers() -> None:
         # Set the shutdown flag
         shutdown_requested = True
 
+        # Stop log pattern monitoring
+        try:
+            from .log_monitor import stop_log_monitoring
+
+            stop_log_monitoring()
+            logger.info("Stopped log pattern monitoring")
+        except Exception as e:
+            logger.error(f"Error stopping log pattern monitoring: {e}")
+
+        # Stop HTTP endpoints
+        try:
+            from .http_endpoints import stop_http_endpoints
+
+            stop_http_endpoints()
+            logger.info("Stopped HTTP endpoints")
+        except Exception as e:
+            logger.error(f"Error stopping HTTP endpoints: {e}")
+
         # If we're not in the main thread or inside an async function,
         # we need to exit immediately
         current_thread = threading.current_thread()
@@ -301,6 +322,13 @@ async def _run_full_cache_initialization(cache: NoteCache, timeout: int) -> None
         logger.info(
             f"Note cache initialization completed successfully with {len(cache._notes)} notes"
         )
+        # Mark cache as ready for HTTP endpoints
+        try:
+            from .http_endpoints import set_component_ready
+
+            set_component_ready("note_cache", True)
+        except ImportError:
+            pass  # HTTP endpoints not available
     except TimeoutError:
         logger.warning(
             f"Note cache initialization timed out after {timeout}s, cache has {len(cache._notes)} notes"
@@ -505,8 +533,7 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
     uri_str = str(uri)
     if not uri_str.startswith("simplenote://note/"):
         logger.error(f"Invalid Simplenote URI: {uri}")
-        invalid_uri_msg = f"Invalid Simplenote URI: {uri_str}"
-        raise ValidationError(invalid_uri_msg)
+        raise format_error("uri", "simplenote://note/[note_id] format")
 
     note_id = uri_str.replace("simplenote://note/", "")
     note_uri = f"simplenote://note/{note_id}"
@@ -798,7 +825,9 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
     """
     if not isinstance(arguments, dict):
-        raise ValidationError("Invalid arguments: expected an object")
+        raise ValidationError(
+            "Invalid arguments: expected an object", subcategory="type"
+        )
     from .cache_utils import get_cache_or_create_minimal
     from .tool_handlers import ToolHandlerRegistry
 
@@ -959,7 +988,7 @@ async def handle_get_prompt(
     else:
         error_msg = UNKNOWN_PROMPT_ERROR.format(name=name)
         logger.error(error_msg)
-        raise ValidationError(error_msg)
+        raise ValidationError(error_msg, subcategory="unknown_prompt")
 
 
 async def _start_server_components() -> None:
@@ -967,6 +996,26 @@ async def _start_server_components() -> None:
     logger.info("Starting performance monitoring")
     config = get_config()
     start_metrics_collection(interval=config.metrics_collection_interval)
+
+    # Start log pattern monitoring for suspicious activities
+    try:
+        from .log_monitor import start_log_monitoring
+
+        start_log_monitoring()
+        logger.info("Started log pattern monitoring for security alerts")
+    except Exception as e:
+        logger.error(f"Failed to start log pattern monitoring: {e}")
+
+    # Start HTTP health/metrics endpoints if enabled
+    try:
+        from .http_endpoints import set_component_ready, start_http_endpoints
+
+        start_http_endpoints()
+        # Mark core server components as ready
+        set_component_ready("mcp_server", True)
+        set_component_ready("metrics_collection", True)
+    except Exception as e:
+        logger.error(f"Failed to start HTTP endpoints: {e}")
 
     # Start cache initialization in background but don't wait
     asyncio.create_task(initialize_cache())

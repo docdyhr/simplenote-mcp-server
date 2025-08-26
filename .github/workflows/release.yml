@@ -99,52 +99,34 @@ jobs:
         id: changelog
         if: ${{ github.event.inputs.dry_run != 'true' }}
         run: |
-          # Get commits since last release tag
+          # Get last tag for changelog generation
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-
-          if [ -z "$LAST_TAG" ]; then
-            # No tags exist, get all commits
-            COMMITS=$(git log --pretty=format:"- %s" --no-merges)
+          
+          echo "Generating changelog using conventional commit parser..."
+          
+          # Use the conventional changelog script
+          if [ -n "$LAST_TAG" ]; then
+            echo "Generating changelog since $LAST_TAG"
+            python scripts/conventional_changelog.py \
+              --since "$LAST_TAG" \
+              --version "${{ steps.bump_version.outputs.new_version }}" \
+              --output changelog.md
           else
-            # Get commits since last tag
-            COMMITS=$(git log --pretty=format:"- %s" --no-merges $LAST_TAG..HEAD)
+            echo "No previous tag found, generating changelog from all commits"
+            python scripts/conventional_changelog.py \
+              --version "${{ steps.bump_version.outputs.new_version }}" \
+              --output changelog.md
           fi
 
-          # Categorize commits
-          FEATURES=$(echo "$COMMITS" | grep -i "\(feat\|feature\|add\)" || echo "")
-          FIXES=$(echo "$COMMITS" | grep -i "\(fix\|bug\)" || echo "")
-          DOCS=$(echo "$COMMITS" | grep -i "\(doc\|docs\|documentation\)" || echo "")
-          OTHER=$(echo "$COMMITS" | grep -v -i "\(feat\|feature\|add\|fix\|bug\|doc\|docs\|documentation\)" || echo "")
-
-          # Create changelog file
-          echo "# Changes in version ${{ steps.bump_version.outputs.new_version }}" > changelog.md
-          echo "" >> changelog.md
-
-          if [ -n "$FEATURES" ]; then
-            echo "## Features" >> changelog.md
-            echo "$FEATURES" >> changelog.md
-            echo "" >> changelog.md
-          fi
-
-          if [ -n "$FIXES" ]; then
-            echo "## Fixes" >> changelog.md
-            echo "$FIXES" >> changelog.md
-            echo "" >> changelog.md
-          fi
-
-          if [ -n "$DOCS" ]; then
-            echo "## Documentation" >> changelog.md
-            echo "$DOCS" >> changelog.md
-            echo "" >> changelog.md
-          fi
-
-          if [ -n "$OTHER" ]; then
-            echo "## Other Changes" >> changelog.md
-            echo "$OTHER" >> changelog.md
-            echo "" >> changelog.md
-          fi
-
+          echo "Generated changelog:"
           cat changelog.md
+
+          # Generate summary statistics
+          echo ""
+          echo "Changelog statistics:"
+          python scripts/conventional_changelog.py \
+            $([ -n "$LAST_TAG" ] && echo "--since $LAST_TAG") \
+            --format summary
 
           # Format changelog for GitHub release
           CHANGELOG_CONTENT=$(cat changelog.md)
@@ -237,6 +219,181 @@ jobs:
 
       - name: Check package
         run: twine check dist/*
+
+      - name: Generate SBOM and vulnerability report
+        run: |
+          echo "📋 Generating SBOM and vulnerability reports for release..."
+          
+          # Install required tools
+          pip install cyclonedx-bom==7.0.0 pip-audit==2.7.3
+          
+          # Generate vulnerability report
+          echo "🔍 Generating vulnerability report..."
+          pip-audit -r pyproject.toml -f json -o vulnerability-report.json || true
+          pip-audit -r pyproject.toml -f markdown -o vulnerability-report.md || true
+          
+          # Generate SBOM in multiple formats
+          echo "📋 Generating Software Bill of Materials..."
+          cyclonedx-py -o sbom-release.json -F json --install-all-packages
+          cyclonedx-py -o sbom-release.xml -F xml --install-all-packages
+          
+          # Generate additional SBOM from pip-audit
+          pip-audit -r pyproject.toml -f cyclonedx-json -o sbom-pip-audit-release.json || true
+          
+          # Generate release-specific simple SBOM
+          echo "📋 Generating release SBOM..."
+          python - <<'EOF'
+          import json
+          import subprocess
+          import sys
+          from datetime import datetime
+          
+          def get_package_info():
+              """Get installed package information."""
+              try:
+                  result = subprocess.run(
+                      [sys.executable, '-m', 'pip', 'list', '--format=json'],
+                      capture_output=True, text=True, check=True
+                  )
+                  return json.loads(result.stdout)
+              except Exception as e:
+                  print(f"Error getting package info: {e}")
+                  return []
+          
+          # Generate release SBOM with version info
+          packages = get_package_info()
+          sbom = {
+              "bomFormat": "CycloneDX",
+              "specVersion": "1.4",
+              "serialNumber": "urn:uuid:simplenote-mcp-server-release-${{ needs.prepare-release.outputs.new_version }}",
+              "version": 1,
+              "metadata": {
+                  "timestamp": datetime.utcnow().isoformat() + "Z",
+                  "tools": [
+                      {
+                          "vendor": "Simplenote MCP Server",
+                          "name": "Release SBOM Generator",
+                          "version": "${{ needs.prepare-release.outputs.new_version }}"
+                      }
+                  ],
+                  "component": {
+                      "type": "application",
+                      "name": "simplenote-mcp-server",
+                      "version": "${{ needs.prepare-release.outputs.new_version }}",
+                      "description": "Model Context Protocol (MCP) server for Simplenote"
+                  }
+              },
+              "components": []
+          }
+          
+          # Add components
+          for package in packages:
+              component = {
+                  "type": "library",
+                  "name": package["name"],
+                  "version": package["version"],
+                  "purl": f"pkg:pypi/{package['name']}@{package['version']}",
+                  "scope": "required"
+              }
+              sbom["components"].append(component)
+          
+          with open('sbom-release-simple.json', 'w') as f:
+              json.dump(sbom, f, indent=2)
+          
+          print(f"Generated SBOM with {len(sbom['components'])} components")
+          EOF
+          
+          # Create vulnerability summary
+          echo "📊 Creating vulnerability summary..."
+          python - <<'EOF'
+          import json
+          import os
+          
+          try:
+              with open('vulnerability-report.json', 'r') as f:
+                  report = json.load(f)
+              
+              vulnerabilities = report.get('vulnerabilities', [])
+              
+              # Create summary
+              summary = {
+                  "scan_date": report.get('metadata', {}).get('timestamp', 'unknown'),
+                  "total_vulnerabilities": len(vulnerabilities),
+                  "severity_counts": {
+                      "critical": 0,
+                      "high": 0,
+                      "medium": 0,
+                      "low": 0,
+                      "unknown": 0
+                  },
+                  "affected_packages": []
+              }
+              
+              for vuln in vulnerabilities:
+                  # Extract severity information
+                  severity = 'unknown'
+                  aliases = vuln.get('aliases', [])
+                  for alias in aliases:
+                      if 'critical' in alias.lower():
+                          severity = 'critical'
+                          break
+                      elif 'high' in alias.lower():
+                          severity = 'high'
+                          break
+                      elif 'medium' in alias.lower():
+                          severity = 'medium'
+                          break
+                      elif 'low' in alias.lower():
+                          severity = 'low'
+                          break
+                  
+                  summary["severity_counts"][severity] += 1
+                  
+                  # Track affected packages
+                  package = vuln.get('package', 'unknown')
+                  if package not in summary["affected_packages"]:
+                      summary["affected_packages"].append(package)
+              
+              with open('vulnerability-summary.json', 'w') as f:
+                  json.dump(summary, f, indent=2)
+              
+              print(f"Vulnerability Summary:")
+              print(f"  Total: {summary['total_vulnerabilities']}")
+              print(f"  Critical: {summary['severity_counts']['critical']}")
+              print(f"  High: {summary['severity_counts']['high']}")
+              print(f"  Medium: {summary['severity_counts']['medium']}")
+              print(f"  Low: {summary['severity_counts']['low']}")
+              print(f"  Affected packages: {len(summary['affected_packages'])}")
+              
+          except FileNotFoundError:
+              print("No vulnerability report found - creating empty summary")
+              summary = {
+                  "scan_date": "unknown",
+                  "total_vulnerabilities": 0,
+                  "severity_counts": {"critical": 0, "high": 0, "medium": 0, "low": 0, "unknown": 0},
+                  "affected_packages": []
+              }
+              with open('vulnerability-summary.json', 'w') as f:
+                  json.dump(summary, f, indent=2)
+          EOF
+          
+          # List generated files
+          echo "📋 Generated files:"
+          ls -la sbom-*.json sbom-*.xml vulnerability-*.json vulnerability-*.md 2>/dev/null || true
+          
+          echo "✅ SBOM and vulnerability report generation completed"
+
+      - name: Upload SBOM and vulnerability artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports-${{ needs.prepare-release.outputs.new_version }}
+          path: |
+            sbom-*.json
+            sbom-*.xml
+            vulnerability-*.json
+            vulnerability-*.md
+          retention-days: 90
+
       - name: Publish to PyPI
         if: ${{ github.event.inputs.dry_run != 'true' }}
         uses: pypa/gh-action-pypi-publish@release/v1
@@ -250,10 +407,42 @@ jobs:
         run: |
           echo "Publish step executed. Verify on PyPI to confirm success."
 
+  attach-security-reports:
+    timeout-minutes: 5
+    name: Attach Security Reports to Release
+    needs: [prepare-release, build-and-publish]
+    if: ${{ needs.prepare-release.outputs.release_created == 'true' && needs.build-and-publish.result == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download security artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: security-reports-${{ needs.prepare-release.outputs.new_version }}
+          path: security-reports/
+
+      - name: List downloaded files
+        run: |
+          echo "📋 Downloaded security reports:"
+          ls -la security-reports/
+          
+      - name: Attach SBOM and vulnerability reports to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ needs.prepare-release.outputs.new_version }}"
+          files: |
+            security-reports/sbom-release.json
+            security-reports/sbom-release.xml
+            security-reports/sbom-release-simple.json
+            security-reports/vulnerability-report.json
+            security-reports/vulnerability-report.md
+            security-reports/vulnerability-summary.json
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   notify:
     timeout-minutes: 5
     name: Notification
-    needs: [prepare-release, build-and-publish]
+    needs: [prepare-release, build-and-publish, attach-security-reports]
     if: ${{ always() && needs.prepare-release.outputs.release_created == 'true' }}
     runs-on: ubuntu-latest
 

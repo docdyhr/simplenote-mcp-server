@@ -35,6 +35,7 @@ def mock_note_data():
     ]
 
 
+@pytest.mark.unit
 class TestNoteCache:
     """Tests for the NoteCache class."""
 
@@ -262,6 +263,7 @@ class TestNoteCache:
         assert "updated" not in cache.all_tags
 
 
+@pytest.mark.unit
 class TestBackgroundSync:
     """Tests for the BackgroundSync class."""
 

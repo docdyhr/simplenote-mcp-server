@@ -25,12 +25,15 @@ from .decorators import (
     validate_tags_required,
     with_input_validation,
 )
+from .error_helpers import (
+    empty_field_error,
+    required_field_error,
+)
 from .errors import (
     InternalError,
     NetworkError,
     ResourceNotFoundError,
     ServerError,
-    ValidationError,
 )
 from .logging import logger
 from .security import validate_tool_security
@@ -227,10 +230,10 @@ class UpdateNoteHandler(ToolHandlerBase):
         tags_input = arguments.get("tags", "")
 
         if not note_id:
-            raise ValidationError(NOTE_ID_REQUIRED)
+            raise empty_field_error("note_id")
 
-        if not content:
-            raise ValidationError(NOTE_CONTENT_REQUIRED)
+        if "content" not in arguments:
+            raise required_field_error("content")
 
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
@@ -306,7 +309,7 @@ class DeleteNoteHandler(ToolHandlerBase):
         note_id = arguments.get("note_id", "")
 
         if not note_id:
-            raise ValidationError(NOTE_ID_REQUIRED)
+            raise empty_field_error("note_id")
 
         try:
             status = self.sn.trash_note(note_id)  # Using trash_note as it's safer
@@ -351,7 +354,7 @@ class GetNoteHandler(ToolHandlerBase):
         note_id = arguments.get("note_id", "")
 
         if not note_id:
-            raise ValidationError(NOTE_ID_REQUIRED)
+            raise empty_field_error("note_id")
 
         try:
             note = self._get_note_from_cache_or_api(note_id)
@@ -404,7 +407,7 @@ class SearchNotesHandler(ToolHandlerBase):
         """Handle search_notes tool call."""
         query = arguments.get("query", "")
         if not query:
-            raise ValidationError(QUERY_REQUIRED)
+            raise empty_field_error("query")
 
         # Extract and process parameters
         limit = self._process_limit(arguments.get("limit"))
@@ -706,10 +709,10 @@ class AddTagsHandler(TagOperationHandler):
         tags_input = arguments.get("tags", "")
 
         if not note_id:
-            raise ValidationError(NOTE_ID_REQUIRED)
+            raise empty_field_error("note_id")
 
         if not tags_input:
-            raise ValidationError(TAGS_REQUIRED)
+            raise empty_field_error("tags")
 
         self._parse_tags(tags_input)
 
@@ -803,10 +806,10 @@ class RemoveTagsHandler(TagOperationHandler):
         tags_input = arguments.get("tags", "")
 
         if not note_id:
-            raise ValidationError(NOTE_ID_REQUIRED)
+            raise empty_field_error("note_id")
 
         if not tags_input:
-            raise ValidationError(TAGS_REQUIRED)
+            raise empty_field_error("tags")
 
         self._parse_tags(tags_input)
 
@@ -920,7 +923,7 @@ class ReplaceTagsHandler(TagOperationHandler):
         tags_input = arguments.get("tags", "")
 
         if not note_id:
-            raise ValidationError(NOTE_ID_REQUIRED)
+            raise empty_field_error("note_id")
 
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)

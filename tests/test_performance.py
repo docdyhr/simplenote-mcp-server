@@ -57,6 +57,7 @@ def setup_performance_cache(mock_large_note_list):
 class TestPerformance:
     """Performance tests for server operations."""
 
+    @pytest.mark.perf
     @pytest.mark.asyncio
     async def test_list_resources_performance(self, setup_performance_cache):
         """Test the performance of listing resources."""
@@ -97,6 +98,7 @@ class TestPerformance:
             )
             assert len(large_resources) == 500
 
+    @pytest.mark.perf
     @pytest.mark.asyncio
     async def test_read_resource_performance(self, setup_performance_cache):
         """Test the performance of reading a resource."""
@@ -164,6 +166,7 @@ class TestPerformance:
                 "Reading from API should be reasonably fast"
             )
 
+    @pytest.mark.perf
     @pytest.mark.asyncio
     async def test_search_performance(self, setup_performance_cache):
         """Test the performance of searching notes."""
@@ -196,6 +199,7 @@ class TestPerformance:
             assert response["query"] == "test"
             assert len(response["results"]) <= 50
 
+    @pytest.mark.perf
     @pytest.mark.asyncio
     async def test_cache_initialization_performance(self):
         """Test the performance of initializing the cache."""
