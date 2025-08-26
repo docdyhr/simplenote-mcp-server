@@ -1,6 +1,6 @@
 [project]
 name = "simplenote-mcp-server"
-version = "1.7.0"
+version = "1.8.0"
 description = "A simple MCP Server that connects to Simplenote"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -55,10 +55,15 @@ skips = [ "*test*.py", "**/tests/**", "**/test_*.py",]
 [tool.bandit.blacklist_calls]
 bad_name_sets = [ "pickle", "marshal", "shelve", "subprocess_popen", "subprocess_without_shell_equals_true",]
 
-[tool.setuptools.packages.find]
-where = [ ".",]
-include = [ "simplenote_mcp*",]
-exclude = [ "tests*", "simplenote_mcp.tests*", "*.tests*",]
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = [ "tests",]
+python_files = [ "test_*.py", "*_test.py",]
+python_classes = [ "Test*",]
+python_functions = [ "test_*",]
+addopts = "--strict-markers --strict-config"
+markers = [ "unit: Unit tests - fast, isolated, no external dependencies", "integration: Integration tests - test interactions between components", "perf: Performance tests - slow tests that measure timing/throughput", "security: Security tests - authorization, boundaries, abuse cases", "slow: Slow tests that take significant time to run", "network: Tests that require network access", "auth: Tests that require authentication", "offline: Tests that work in offline mode",]
+filterwarnings = [ "ignore::DeprecationWarning", "ignore::PendingDeprecationWarning",]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = [ "F401",]
@@ -76,25 +81,7 @@ known-first-party = [ "simplenote_mcp",]
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.pytest.ini_options]
-minversion = "6.0"
-testpaths = ["tests"]
-python_files = ["test_*.py", "*_test.py"]
-python_classes = ["Test*"]
-python_functions = ["test_*"]
-addopts = "--strict-markers --strict-config"
-markers = [
-    "unit: Unit tests - fast, isolated, no external dependencies",
-    "integration: Integration tests - test interactions between components",
-    "perf: Performance tests - slow tests that measure timing/throughput",
-    "security: Security tests - authorization, boundaries, abuse cases",
-    "slow: Slow tests that take significant time to run",
-    "network: Tests that require network access",
-    "auth: Tests that require authentication",
-    "offline: Tests that work in offline mode"
-]
-# By default, exclude performance tests unless explicitly requested
-filterwarnings = [
-    "ignore::DeprecationWarning",
-    "ignore::PendingDeprecationWarning"
-]
+[tool.setuptools.packages.find]
+where = [ ".",]
+include = [ "simplenote_mcp*",]
+exclude = [ "tests*", "simplenote_mcp.tests*", "*.tests*",]
