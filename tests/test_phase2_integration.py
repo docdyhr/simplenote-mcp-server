@@ -34,9 +34,7 @@ class TestPhase2SecurityIntegration:
         )
 
         # Mock alert creation
-        with patch(
-            "simplenote_mcp.server.log_monitor.alert_suspicious_pattern"
-        ):
+        with patch("simplenote_mcp.server.log_monitor.alert_suspicious_pattern"):
             # Log authentication failure with suspicious pattern
             logger.error(
                 "Authentication failed for user test_user multiple times in succession"
@@ -203,9 +201,7 @@ class TestPhase2SecurityIntegration:
             "client_ip": "10.0.0.1",
         }
 
-        with patch(
-            "simplenote_mcp.server.log_monitor.alert_suspicious_pattern"
-        ):
+        with patch("simplenote_mcp.server.log_monitor.alert_suspicious_pattern"):
             await process_log_for_patterns(suspicious_log)
 
         # 5. Verify workflow completed without errors

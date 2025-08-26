@@ -609,9 +609,7 @@ class TestLogMonitoringIntegrationWithLogging:
         formatter = JsonFormatter()
 
         # Mock the process_log_for_patterns to avoid actual processing
-        with patch(
-            "simplenote_mcp.server.log_monitor.process_log_for_patterns"
-        ):
+        with patch("simplenote_mcp.server.log_monitor.process_log_for_patterns"):
             formatted = formatter.format(record)
 
         # Should have attempted to process for patterns
@@ -626,9 +624,7 @@ class TestLogMonitoringIntegrationWithLogging:
 
         logger = get_logger("test", user_id="test_user")
 
-        with patch(
-            "simplenote_mcp.server.log_monitor.process_log_for_patterns"
-        ):
+        with patch("simplenote_mcp.server.log_monitor.process_log_for_patterns"):
             logger.error("Authentication failure detected")
             await asyncio.sleep(0.01)  # Allow async processing
 
