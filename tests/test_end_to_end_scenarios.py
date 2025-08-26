@@ -1,10 +1,12 @@
 """End-to-end user session scenario tests."""
 
 import asyncio
+import json
 from unittest.mock import MagicMock, patch
 
 import pytest
 
+from simplenote_mcp.server.errors import ResourceNotFoundError
 from simplenote_mcp.server.server import (
     handle_list_resources,
     handle_read_resource,
@@ -217,7 +219,7 @@ class TestEndToEndScenarios:
         for deleted_note in notes_to_delete:
             mock_client.get_note.return_value = (None, 1)  # Not found
 
-            with pytest.raises(Exception):  # Should raise ResourceNotFoundError
+            with pytest.raises(ResourceNotFoundError):
                 await handle_read_resource(f"simplenote://note/{deleted_note['key']}")
 
     @pytest.mark.asyncio
@@ -357,7 +359,7 @@ class TestEndToEndScenarios:
         # Scenario 1: Network failure during note creation
         mock_client.create_note.return_value = (None, 1)  # Simulate failure
 
-        with pytest.raises(Exception):  # Should handle error gracefully
+        with pytest.raises(RuntimeError):  # Should handle error gracefully
             await test_handle_call_tool(
                 "create_note", {"content": "This should fail", "tags": ["test"]}
             )

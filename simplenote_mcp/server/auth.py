@@ -310,11 +310,11 @@ class AuthenticationManager:
                 logger.error(f"Simplenote authentication test failed: {e}")
                 raise AuthenticationError(
                     f"Failed to authenticate with Simplenote: {e}"
-                )
+                ) from e
 
         except Exception as e:
             logger.error(f"Failed to create Simplenote client: {e}")
-            raise AuthenticationError(f"Authentication failed: {e}")
+            raise AuthenticationError(f"Authentication failed: {e}") from e
 
     def invalidate_client(self) -> None:
         """Invalidate current client, forcing re-authentication on next use."""

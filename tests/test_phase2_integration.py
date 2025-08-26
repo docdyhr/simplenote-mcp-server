@@ -354,7 +354,7 @@ class TestPhase2SecurityIntegration:
             from simplenote_mcp.server.alerting import SecurityAlerter
             from simplenote_mcp.server.auth import AuthenticationManager, SessionManager
             from simplenote_mcp.server.log_monitor import LogPatternMonitor
-            from simplenote_mcp.server.logger_factory import LogCategory, LoggerFactory
+            from simplenote_mcp.server.logger_factory import LoggerFactory
 
             # Verify components can be instantiated
             auth_manager = AuthenticationManager()
