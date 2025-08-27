@@ -23,9 +23,9 @@ async def end_to_end_setup():
 
     # Initial empty state
     mock_client.get_note_list.return_value = ([], 0)
-    mock_client.create_note.return_value = (None, 0)  # Will be overridden per test
+    mock_client.add_note.return_value = (None, 0)  # Will be overridden per test - using correct method name
     mock_client.update_note.return_value = (None, 0)  # Will be overridden per test
-    mock_client.delete_note.return_value = (None, 0)
+    mock_client.trash_note.return_value = 0  # trash_note returns status only
     mock_client.get_note.return_value = (None, 0)  # Will be overridden per test
 
     with (
@@ -36,10 +36,12 @@ async def end_to_end_setup():
         patch("simplenote_mcp.server.server.note_cache", None),
         patch("simplenote_mcp.server.server.get_config") as mock_get_config,
     ):
-        # Configure mock config
+        # Configure mock config with proper values
         mock_config = MagicMock()
         mock_config.default_resource_limit = 100
         mock_config.max_resource_limit = 1000
+        mock_config.cache_initialization_timeout = 30  # Proper timeout value
+        mock_config.sync_interval_seconds = 120
         mock_get_config.return_value = mock_config
 
         # Initialize cache
@@ -84,8 +86,8 @@ class TestEndToEndScenarios:
                 "createdate": f"2025-01-{i + 1:02d}T00:00:00Z",
             }
 
-            # Mock create_note response
-            mock_client.create_note.return_value = (created_note, 0)
+            # Mock add_note response
+            mock_client.add_note.return_value = (created_note, 0)
 
             # Create note via tool
             result = await test_handle_call_tool(
@@ -251,7 +253,7 @@ class TestEndToEndScenarios:
                     "tags": ["session1", "created"],
                     "modifydate": f"2025-04-{i + 11:02d}T12:00:00Z",
                 }
-                mock_client.create_note.return_value = (note, 0)
+                mock_client.add_note.return_value = (note, 0)
 
                 result = await test_handle_call_tool(
                     "create_note", {"content": note["content"], "tags": note["tags"]}
@@ -354,15 +356,22 @@ class TestEndToEndScenarios:
     @pytest.mark.asyncio
     async def test_error_recovery_scenarios(self, end_to_end_setup):
         """Test error recovery during user sessions."""
+        import json
+        
         mock_client = end_to_end_setup["mock_client"]
 
         # Scenario 1: Network failure during note creation
-        mock_client.create_note.return_value = (None, 1)  # Simulate failure
+        mock_client.add_note.return_value = (None, 1)  # Simulate failure
 
-        with pytest.raises(RuntimeError):  # Should handle error gracefully
-            await test_handle_call_tool(
-                "create_note", {"content": "This should fail", "tags": ["test"]}
-            )
+        # The tool should return an error response rather than raising an exception
+        result = await test_handle_call_tool(
+            "create_note", {"content": "This should fail", "tags": ["test"]}
+        )
+        
+        # Check that we got an error response
+        assert len(result) == 1
+        response = json.loads(result[0].text)
+        assert response["error"] is not None  # Should contain error information
 
         # Scenario 2: Recovery after network failure
         successful_note = {
@@ -371,7 +380,7 @@ class TestEndToEndScenarios:
             "tags": ["recovery"],
             "modifydate": "2025-04-15T12:00:00Z",
         }
-        mock_client.create_note.return_value = (successful_note, 0)
+        mock_client.add_note.return_value = (successful_note, 0)
 
         result = await test_handle_call_tool(
             "create_note", {"content": "This should succeed", "tags": ["recovery"]}
@@ -392,14 +401,7 @@ class TestEndToEndScenarios:
 
         for i, (content, tags) in enumerate(notes_to_create):
             if i == 1:  # Simulate failure on second note
-                mock_client.create_note.return_value = (None, 1)
-                try:
-                    await test_handle_call_tool(
-                        "create_note", {"content": content, "tags": tags}
-                    )
-                    success_count += 1
-                except Exception:
-                    failure_count += 1
+                mock_client.add_note.return_value = (None, 1)
             else:
                 note = {
                     "key": f"batch_note_{i}",
@@ -407,17 +409,17 @@ class TestEndToEndScenarios:
                     "tags": tags,
                     "modifydate": f"2025-04-{i + 16:02d}T12:00:00Z",
                 }
-                mock_client.create_note.return_value = (note, 0)
+                mock_client.add_note.return_value = (note, 0)
 
-                result = await test_handle_call_tool(
-                    "create_note", {"content": content, "tags": tags}
-                )
+            result = await test_handle_call_tool(
+                "create_note", {"content": content, "tags": tags}
+            )
 
-                response = json.loads(result[0].text)
-                if response["success"]:
-                    success_count += 1
-                else:
-                    failure_count += 1
+            response = json.loads(result[0].text)
+            if response["success"]:
+                success_count += 1
+            else:
+                failure_count += 1
 
         # Should have partial success
         assert success_count >= 1
