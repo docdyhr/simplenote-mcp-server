@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.tests.test_helpers import handle_call_tool
+from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
 
 
 @pytest.fixture
@@ -90,7 +90,7 @@ async def test_search_notes_via_api(mock_simplenote_client):
     # Mock the note_cache in server module
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Basic search
-        result = await handle_call_tool("search_notes", {"query": "project"})
+        result = await helper_handle_call_tool("search_notes", {"query": "project"})
         # Parse the JSON result from the TextContent list
         result_data = json.loads(result[0].text)
         print("Basic search result:", result_data)
@@ -111,19 +111,19 @@ async def test_search_notes_via_api(mock_simplenote_client):
         # as mock behavior may vary
 
         # Search with tag filter
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "search_notes", {"query": "project", "tags": "important"}
         )
         result_data = json.loads(result[0].text)
         print("Tag filter search result:", result_data)
 
         # Search with boolean operators
-        result = await handle_call_tool("search_notes", {"query": "project AND report"})
+        result = await helper_handle_call_tool("search_notes", {"query": "project AND report"})
         result_data = json.loads(result[0].text)
         print("Boolean search result:", result_data)
 
         # Search with NOT operator
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "search_notes", {"query": "project NOT meeting"}
         )
         result_data = json.loads(result[0].text)
@@ -150,7 +150,7 @@ async def test_empty_search_with_filters(mock_simplenote_client):
     # Mock the note_cache in server module
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Empty queries should have some search text, let's use a non-empty query
-        result = await handle_call_tool("search_notes", {"query": ".", "tags": "work"})
+        result = await helper_handle_call_tool("search_notes", {"query": ".", "tags": "work"})
 
         # Parse JSON result and log for debugging
         result_data = json.loads(result[0].text)
@@ -173,7 +173,7 @@ async def test_empty_search_with_filters(mock_simplenote_client):
                     )
 
         # Query with multiple tag filters
-        result_multi = await handle_call_tool(
+        result_multi = await helper_handle_call_tool(
             "search_notes", {"query": ".", "tags": "work,important"}
         )
         result_multi_data = json.loads(result_multi[0].text)
@@ -215,7 +215,7 @@ async def test_search_with_limit(mock_simplenote_client):
     # Mock the note_cache in server module
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for work-related items with limit
-        result_limited = await handle_call_tool(
+        result_limited = await helper_handle_call_tool(
             "search_notes", {"query": ".", "tags": "work", "limit": "2"}
         )
         result_limited_data = json.loads(result_limited[0].text)
@@ -225,7 +225,7 @@ async def test_search_with_limit(mock_simplenote_client):
         assert "results" in result_limited_data, "Results key missing in response"
 
         # First, get the total possible results to compare with
-        result_unlimited = await handle_call_tool(
+        result_unlimited = await helper_handle_call_tool(
             "search_notes", {"query": ".", "tags": "work"}
         )
         result_unlimited_data = json.loads(result_unlimited[0].text)
@@ -249,7 +249,7 @@ async def test_search_with_limit(mock_simplenote_client):
                     )
 
         # Test specific query with limit
-        result_project = await handle_call_tool(
+        result_project = await helper_handle_call_tool(
             "search_notes", {"query": "project", "limit": "1"}
         )
         result_project_data = json.loads(result_project[0].text)
@@ -305,13 +305,13 @@ async def test_case_insensitive_search(mock_simplenote_client):
     # Mock the note_cache in server module
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search with lowercase
-        result_lower = await handle_call_tool("search_notes", {"query": "project"})
+        result_lower = await helper_handle_call_tool("search_notes", {"query": "project"})
 
         # Search with uppercase
-        result_upper = await handle_call_tool("search_notes", {"query": "PROJECT"})
+        result_upper = await helper_handle_call_tool("search_notes", {"query": "PROJECT"})
 
         # Search with mixed case
-        result_mixed = await handle_call_tool("search_notes", {"query": "PrOjEcT"})
+        result_mixed = await helper_handle_call_tool("search_notes", {"query": "PrOjEcT"})
 
         # Parse results and log for debugging
         result_lower_data = json.loads(result_lower[0].text)

@@ -254,7 +254,7 @@ class TestSearchNotesHandler:
         arguments = {}  # Missing query
 
         # Should raise ValidationError directly
-        with pytest.raises(ValidationError, match="Search query is required"):
+        with pytest.raises(ValidationError, match="Search Query is required"):
             await handler.handle(arguments)
 
 
@@ -316,5 +316,5 @@ class TestUpdateNoteHandler:
         arguments = {"content": "New content"}  # Missing note_id
 
         # Should raise ValidationError directly
-        with pytest.raises(ValidationError, match="Note ID is required"):
+        with pytest.raises(ValidationError, match="Note Id is required"):
             await handler.handle(arguments)

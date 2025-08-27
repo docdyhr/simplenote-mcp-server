@@ -47,7 +47,7 @@ class TestSecurityValidator:
 
     def test_validate_note_content_invalid_type(self):
         """Test validation fails for non-string content."""
-        with pytest.raises(ValidationError, match="Content must be a string"):
+        with pytest.raises(ValidationError, match="Content must be string"):
             self.validator.validate_note_content(123)
 
     def test_validate_note_id_valid(self):
@@ -79,7 +79,7 @@ class TestSecurityValidator:
 
     def test_validate_note_id_invalid_type(self):
         """Test validation fails for non-string note ID."""
-        with pytest.raises(ValidationError, match="Note ID must be a string"):
+        with pytest.raises(ValidationError, match="Note Id must be string"):
             self.validator.validate_note_id(123)
 
     def test_validate_tags_string_input(self):
@@ -103,7 +103,7 @@ class TestSecurityValidator:
             "tag" + str(i) for i in range(SecurityValidator.MAX_TAGS_COUNT + 1)
         ]
 
-        with pytest.raises(ValidationError, match="Too many tags"):
+        with pytest.raises(ValidationError, match="Tag Count must be at most"):
             self.validator.validate_tags(too_many_tags)
 
     def test_validate_tags_too_long(self):
@@ -148,7 +148,7 @@ class TestSecurityValidator:
     def test_validate_search_query_invalid(self):
         """Test validation fails for invalid search queries."""
         # Empty query
-        with pytest.raises(ValidationError, match="Search query cannot be empty"):
+        with pytest.raises(ValidationError, match="Search Query cannot be empty"):
             self.validator.validate_search_query("")
 
         # Too long query
@@ -157,7 +157,7 @@ class TestSecurityValidator:
             self.validator.validate_search_query(long_query)
 
         # Non-string query
-        with pytest.raises(ValidationError, match="Search query must be a string"):
+        with pytest.raises(ValidationError, match="Search Query must be string"):
             self.validator.validate_search_query(123)
 
     def test_validate_search_query_dangerous_patterns(self):
@@ -171,7 +171,7 @@ class TestSecurityValidator:
 
         for query in dangerous_queries:
             with pytest.raises(
-                SecurityError, match="Potentially dangerous search query"
+                SecurityError, match="Dangerous search query pattern"
             ):
                 self.validator.validate_search_query(query)
 

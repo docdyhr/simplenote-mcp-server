@@ -11,7 +11,7 @@ from simplenote_mcp.server.server import (
     handle_read_resource,
     initialize_cache,
 )
-from simplenote_mcp.tests.test_helpers import handle_call_tool
+from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
 
 
 @pytest.fixture
@@ -185,7 +185,7 @@ class TestPerformance:
 
             # Measure search performance
             start_time = time.time()
-            result = await handle_call_tool("search_notes", search_args)
+            result = await helper_handle_call_tool("search_notes", search_args)
             search_time = time.time() - start_time
             print(f"Searching notes took {search_time:.4f} seconds")
             assert search_time < 0.2, "Search should be reasonably fast"

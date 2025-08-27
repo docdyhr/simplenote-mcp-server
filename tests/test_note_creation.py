@@ -8,7 +8,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.tests.test_helpers import handle_call_tool
+from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
 
 
 @pytest.fixture
@@ -53,7 +53,7 @@ async def test_create_simple_note(mock_simplenote_client):
         ),
     ):
         # Create a simple note
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "create_note", {"content": "This is a simple test note"}
         )
 
@@ -80,7 +80,7 @@ async def test_create_note_with_tags(mock_simplenote_client):
         ),
     ):
         # Create a note with tags
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "create_note",
             {"content": "Note with tags", "tags": ["important", "project", "todo"]},
         )
@@ -119,7 +119,7 @@ Action items:
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await handle_call_tool("create_note", {"content": multiline_content})
+        result = await helper_handle_call_tool("create_note", {"content": multiline_content})
 
         result_data = json.loads(result[0].text)
 
@@ -147,7 +147,7 @@ Math: ∫∑∏√∞≠≤≥±"""
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "create_note", {"content": special_content, "tags": ["test", "unicode"]}
         )
 
@@ -171,7 +171,7 @@ async def test_create_empty_note(mock_simplenote_client):
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await handle_call_tool("create_note", {"content": ""})
+        result = await helper_handle_call_tool("create_note", {"content": ""})
 
         result_data = json.loads(result[0].text)
 
@@ -218,7 +218,7 @@ def hello_world():
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "create_note",
             {"content": markdown_content, "tags": ["documentation", "markdown"]},
         )
@@ -246,7 +246,7 @@ async def test_create_note_error_handling(mock_simplenote_client):
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await handle_call_tool("create_note", {"content": "This should fail"})
+        result = await helper_handle_call_tool("create_note", {"content": "This should fail"})
 
         result_data = json.loads(result[0].text)
 
@@ -267,7 +267,7 @@ async def test_create_note_with_duplicate_tags(mock_simplenote_client):
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "create_note",
             {
                 "content": "Note with duplicate tags",
@@ -298,7 +298,7 @@ async def test_create_note_with_very_long_content(mock_simplenote_client):
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await handle_call_tool("create_note", {"content": long_content})
+        result = await helper_handle_call_tool("create_note", {"content": long_content})
 
         result_data = json.loads(result[0].text)
 
@@ -321,7 +321,7 @@ async def test_create_note_cache_update(mock_simplenote_client):
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "create_note", {"content": "Test cache update", "tags": ["cache-test"]}
         )
 
@@ -350,7 +350,7 @@ async def test_create_note_with_tags_string(mock_simplenote_client):
         ),
     ):
         # Some users might pass tags as a string
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "create_note",
             {"content": "Note with string tags", "tags": "tag1,tag2,tag3"},
         )
@@ -400,7 +400,7 @@ async def test_create_multiple_notes_sequentially(mock_simplenote_client):
     ):
         # Create multiple notes
         for i in range(5):
-            result = await handle_call_tool(
+            result = await helper_handle_call_tool(
                 "create_note",
                 {
                     "content": f"Sequential note #{i + 1}",
@@ -442,7 +442,7 @@ async def test_create_note_with_line_breaks(mock_simplenote_client):
         ),
     ):
         for content in [content_unix, content_windows, content_mixed]:
-            result = await handle_call_tool("create_note", {"content": content})
+            result = await helper_handle_call_tool("create_note", {"content": content})
 
             result_data = json.loads(result[0].text)
 

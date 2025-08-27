@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from simplenote_mcp.server.cache import NoteCache
-from simplenote_mcp.tests.test_helpers import handle_call_tool
+from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
 
 
 @pytest.fixture
@@ -127,7 +127,7 @@ async def test_search_title_exact_match(mock_simplenote_client_with_titles):
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for "Project" - should find notes with "Project" in content (including title)
-        result = await handle_call_tool("search_notes", {"query": "Project"})
+        result = await helper_handle_call_tool("search_notes", {"query": "Project"})
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
@@ -164,7 +164,7 @@ async def test_search_title_case_insensitive(mock_simplenote_client_with_titles)
         results_by_query = {}
 
         for query in queries:
-            result = await handle_call_tool("search_notes", {"query": query})
+            result = await helper_handle_call_tool("search_notes", {"query": query})
             result_data = json.loads(result[0].text)
             results_by_query[query] = sorted(
                 [note["id"] for note in result_data.get("results", [])]
@@ -195,7 +195,7 @@ async def test_search_content_including_title(mock_simplenote_client_with_titles
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for "project" - should find notes with project anywhere in content
-        result = await handle_call_tool("search_notes", {"query": "project"})
+        result = await helper_handle_call_tool("search_notes", {"query": "project"})
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
@@ -238,7 +238,7 @@ async def test_search_partial_word_match(mock_simplenote_client_with_titles):
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for "Manage" - should find "Management" in content
-        result = await handle_call_tool("search_notes", {"query": "Manage"})
+        result = await helper_handle_call_tool("search_notes", {"query": "Manage"})
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
@@ -265,7 +265,7 @@ async def test_search_multiple_words(mock_simplenote_client_with_titles):
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for "Project Management" - should find note with both words
-        result = await handle_call_tool("search_notes", {"query": "Project Management"})
+        result = await helper_handle_call_tool("search_notes", {"query": "Project Management"})
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
@@ -292,7 +292,7 @@ async def test_search_with_boolean_operators(mock_simplenote_client_with_titles)
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for "Project AND Status" - should find note4
-        result = await handle_call_tool("search_notes", {"query": "Project AND Status"})
+        result = await helper_handle_call_tool("search_notes", {"query": "Project AND Status"})
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
@@ -302,7 +302,7 @@ async def test_search_with_boolean_operators(mock_simplenote_client_with_titles)
         assert "note4" in result_ids
 
         # Search for "Project NOT Meeting" - should find project notes except meeting
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "search_notes", {"query": "Project NOT Meeting"}
         )
         result_data = json.loads(result[0].text)
@@ -332,7 +332,7 @@ async def test_search_edge_cases(mock_simplenote_client_with_titles):
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for content in empty note
-        result = await handle_call_tool("search_notes", {"query": "anything"})
+        result = await helper_handle_call_tool("search_notes", {"query": "anything"})
         result_data = json.loads(result[0].text)
 
         # Should not crash and should return valid response
@@ -362,7 +362,7 @@ async def test_search_special_characters(mock_simplenote_client_with_titles):
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for "Meeting Notes:" with colon
-        result = await handle_call_tool("search_notes", {"query": "Meeting Notes:"})
+        result = await helper_handle_call_tool("search_notes", {"query": "Meeting Notes:"})
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
@@ -389,7 +389,7 @@ async def test_title_extraction_accuracy(mock_simplenote_client_with_titles):
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Get all notes to check title extraction
-        result = await handle_call_tool("search_notes", {"query": "."})
+        result = await helper_handle_call_tool("search_notes", {"query": "."})
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
@@ -425,7 +425,7 @@ async def test_phrase_search_in_title(mock_simplenote_client_with_titles):
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for exact phrase with quotes
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "search_notes", {"query": '"Project Management"'}
         )
         result_data = json.loads(result[0].text)

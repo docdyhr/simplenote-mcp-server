@@ -7,7 +7,7 @@ import time
 import pytest
 
 from simplenote_mcp.server.server import get_simplenote_client
-from simplenote_mcp.tests.test_helpers import handle_call_tool
+from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
 
 
 def retry_on_failure(max_retries=3, delay=1.0):
@@ -120,7 +120,7 @@ async def test_create_and_search_by_title(test_notes_cleanup):
     # Create the test notes
     created_notes = []
     for note_data in test_data:
-        result = await handle_call_tool(
+        result = await helper_handle_call_tool(
             "create_note", {"content": note_data["content"], "tags": note_data["tags"]}
         )
 
@@ -143,7 +143,7 @@ async def test_create_and_search_by_title(test_notes_cleanup):
     await asyncio.sleep(2)
 
     # Test 1: Search for "Project" - should find multiple notes
-    result = await handle_call_tool("search_notes", {"query": "Project"})
+    result = await helper_handle_call_tool("search_notes", {"query": "Project"})
     result_data = json.loads(result[0].text)
 
     assert result_data["success"] is True
@@ -167,7 +167,7 @@ async def test_create_and_search_by_title(test_notes_cleanup):
 
     # Test 2: Search for specific project names
     for project_name in ["Alpha", "Beta", "Gamma"]:
-        result = await handle_call_tool("search_notes", {"query": project_name})
+        result = await helper_handle_call_tool("search_notes", {"query": project_name})
         result_data = json.loads(result[0].text)
 
         assert result_data["success"] is True
@@ -181,7 +181,7 @@ async def test_create_and_search_by_title(test_notes_cleanup):
         assert expected_note["id"] in found_ids
 
     # Test 3: Search with boolean AND - "Project AND Documentation"
-    result = await handle_call_tool(
+    result = await helper_handle_call_tool(
         "search_notes", {"query": "Project AND Documentation"}
     )
     result_data = json.loads(result[0].text)
@@ -197,7 +197,7 @@ async def test_create_and_search_by_title(test_notes_cleanup):
     assert alpha_note["id"] in found_ids
 
     # Test 4: Search with NOT operator - "Project NOT Meeting"
-    result = await handle_call_tool("search_notes", {"query": "Project NOT Meeting"})
+    result = await helper_handle_call_tool("search_notes", {"query": "Project NOT Meeting"})
     result_data = json.loads(result[0].text)
 
     assert result_data["success"] is True
@@ -239,7 +239,7 @@ async def test_search_with_special_characters_in_title(test_notes_cleanup):
 
     created_ids = []
     for note_data in special_notes:
-        result = await handle_call_tool("create_note", note_data)
+        result = await helper_handle_call_tool("create_note", note_data)
 
         import json
 
@@ -264,7 +264,7 @@ async def test_search_with_special_characters_in_title(test_notes_cleanup):
     ]
 
     for query, _expected_title_start in test_queries:
-        result = await handle_call_tool("search_notes", {"query": query})
+        result = await helper_handle_call_tool("search_notes", {"query": query})
         result_data = json.loads(result[0].text)
 
         assert result_data["success"] is True
@@ -293,7 +293,7 @@ async def test_search_case_sensitivity_real_api(test_notes_cleanup):
 
     created_ids = []
     for content in case_notes:
-        result = await handle_call_tool("create_note", {"content": content})
+        result = await helper_handle_call_tool("create_note", {"content": content})
 
         import json
 
@@ -311,7 +311,7 @@ async def test_search_case_sensitivity_real_api(test_notes_cleanup):
 
     # Search with different cases
     for query in ["project", "Project", "PROJECT", "pRoJeCt"]:
-        result = await handle_call_tool("search_notes", {"query": query})
+        result = await helper_handle_call_tool("search_notes", {"query": query})
         result_data = json.loads(result[0].text)
 
         assert result_data["success"] is True
@@ -346,7 +346,7 @@ async def test_search_empty_and_whitespace_titles(test_notes_cleanup):
 
     created_ids = []
     for content in edge_case_notes:
-        result = await handle_call_tool("create_note", {"content": content})
+        result = await helper_handle_call_tool("create_note", {"content": content})
 
         import json
 
@@ -363,7 +363,7 @@ async def test_search_empty_and_whitespace_titles(test_notes_cleanup):
     await asyncio.sleep(3)
 
     # Search for content that appears after empty lines
-    result = await handle_call_tool("search_notes", {"query": "Content after"})
+    result = await helper_handle_call_tool("search_notes", {"query": "Content after"})
     result_data = json.loads(result[0].text)
 
     assert result_data["success"] is True
@@ -406,7 +406,7 @@ async def test_search_with_tags_and_title(test_notes_cleanup):
 
     created_ids = []
     for note_data in tagged_notes:
-        result = await handle_call_tool("create_note", note_data)
+        result = await helper_handle_call_tool("create_note", note_data)
 
         import json
 
@@ -423,7 +423,7 @@ async def test_search_with_tags_and_title(test_notes_cleanup):
     await asyncio.sleep(3)
 
     # Test 1: Search for "Project" with tag filter "personal"
-    result = await handle_call_tool(
+    result = await helper_handle_call_tool(
         "search_notes", {"query": "Project", "tags": "personal"}
     )
     result_data = json.loads(result[0].text)
@@ -439,7 +439,7 @@ async def test_search_with_tags_and_title(test_notes_cleanup):
                 assert "personal" in r["tags"]
 
     # Test 2: Search for "Management" with tag filter "project"
-    result = await handle_call_tool(
+    result = await helper_handle_call_tool(
         "search_notes", {"query": "Management", "tags": "project"}
     )
     result_data = json.loads(result[0].text)
@@ -476,7 +476,7 @@ async def test_search_performance_with_many_notes(test_notes_cleanup):
 
     created_ids = []
     for note_data in notes_to_create:
-        result = await handle_call_tool("create_note", note_data)
+        result = await helper_handle_call_tool("create_note", note_data)
 
         import json
 
@@ -498,7 +498,7 @@ async def test_search_performance_with_many_notes(test_notes_cleanup):
     # Measure search time
     search_start = time.time()
 
-    result = await handle_call_tool("search_notes", {"query": "Project Analysis"})
+    result = await helper_handle_call_tool("search_notes", {"query": "Project Analysis"})
 
     search_time = time.time() - search_start
     print(f"Search completed in {search_time:.3f} seconds")

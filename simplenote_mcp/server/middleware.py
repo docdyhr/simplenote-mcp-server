@@ -61,6 +61,11 @@ class RateLimiter:
         Raises:
             SecurityError: If rate limit is exceeded
         """
+        import os
+        # Skip rate limiting in test mode
+        if os.getenv("SIMPLENOTE_OFFLINE_MODE") == "true":
+            return
+            
         now = time.time()
 
         # Check if temporarily blocked

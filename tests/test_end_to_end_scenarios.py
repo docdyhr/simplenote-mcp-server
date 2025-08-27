@@ -246,6 +246,12 @@ class TestEndToEndScenarios:
 
         mock_client.get_note_list.return_value = (initial_notes, 0)
         mock_client._notes_db = {note["key"]: note for note in initial_notes}
+        
+        # Initialize cache with initial notes
+        from simplenote_mcp.server.server import note_cache
+        if note_cache:
+            for note in initial_notes:
+                note_cache._notes[note["key"]] = note
 
         async def user_session_1():
             """User session focused on creating and tagging notes."""
@@ -453,6 +459,12 @@ class TestEndToEndScenarios:
 
         mock_client.get_note_list.return_value = (large_dataset, 0)
         mock_client._notes_db = {note["key"]: note for note in large_dataset}
+        
+        # Initialize cache with large dataset
+        from simplenote_mcp.server.server import note_cache
+        if note_cache:
+            for note in large_dataset:
+                note_cache._notes[note["key"]] = note
 
         # Test 1: List resources with pagination
         page1 = await handle_list_resources(limit=50)
