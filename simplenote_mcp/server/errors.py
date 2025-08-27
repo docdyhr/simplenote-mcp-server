@@ -309,9 +309,9 @@ class ServerError(Exception):
 
                 if enhanced_steps:
                     return enhanced_steps
-            except Exception:
+            except Exception as e:
                 # Fallback to original logic if enhanced generation fails
-                pass
+                logger.debug(f"Failed to generate enhanced resolution steps: {e}")
 
         # Use default resolution steps based on category
         return self.DEFAULT_RESOLUTION_STEPS.get(
@@ -345,9 +345,9 @@ class ServerError(Exception):
                     context=self.details,
                     include_details=False,  # Keep user messages concise
                 )
-            except Exception:
+            except Exception as e:
                 # Fallback to original logic if enhanced generation fails
-                pass
+                logger.debug(f"Failed to generate enhanced resolution steps: {e}")
 
         # Original fallback logic
         base_message = self.DEFAULT_USER_MESSAGES.get(

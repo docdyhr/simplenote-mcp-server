@@ -18,7 +18,7 @@ class ErrorSubcategory(Enum):
     INVALID_CREDENTIALS = "invalid_credentials"
     EXPIRED_SESSION = "expired_session"
     MISSING_AUTH = "missing_auth"
-    TOKEN_INVALID = "token_invalid"
+    TOKEN_INVALID = "token_invalid"  # noqa: S105
     PERMISSION_DENIED = "permission_denied"
 
     # Configuration subcategories

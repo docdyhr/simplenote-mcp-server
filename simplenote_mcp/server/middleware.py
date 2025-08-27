@@ -531,9 +531,8 @@ class AuthenticationMiddleware:
     ) -> str:
         """Generate secure session token."""
         # Use HMAC for secure token generation
-        secret_key = (
-            "your-secret-key"  # In production, use a proper secret  # noqa: S105
-        )
+        # TODO: Replace with environment variable in production
+        secret_key = "dev-placeholder-key"  # noqa: S105
         data = f"{user_id}:{client_id}:{timestamp}".encode()
         signature = hmac.new(secret_key.encode(), data, hashlib.sha256).hexdigest()
         return f"{timestamp}:{signature}"

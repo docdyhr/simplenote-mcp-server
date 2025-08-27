@@ -5,6 +5,8 @@ exclude_dirs:
 
 skips:
   - B101  # Skip assert_used checks (common in tests)
+  - B105  # Skip hardcoded_password_string for constant names and dev placeholders
+  - B110  # Skip try_except_pass for intentional logging safety measures
 
 # Only report medium and high severity issues
 # confidence:

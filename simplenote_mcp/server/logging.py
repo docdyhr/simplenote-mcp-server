@@ -229,7 +229,7 @@ class JsonFormatter(logging.Formatter):
                 pass
         except Exception:
             # Silently fail to avoid breaking logging if monitor has issues
-            pass
+            # Note: Intentionally not logging here to prevent recursion
 
         return json.dumps(log_entry)
 
@@ -454,7 +454,7 @@ class StructuredLogAdapter(logging.LoggerAdapter):
                 pass
         except Exception:
             # Silently fail to avoid breaking logging
-            pass
+            # Note: Intentionally not logging here to prevent recursion
 
 
 def get_logger(name: str, **extra: Any) -> StructuredLogAdapter:
