@@ -145,14 +145,14 @@ class TestValidationFunctions:
         """Test validate_note_id_required with missing note_id."""
         arguments = {}
 
-        with pytest.raises(ValidationError, match="Note ID is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Note Id is required"):
             validate_note_id_required(arguments)
 
     def test_validate_note_id_required_empty(self):
         """Test validate_note_id_required with empty note_id."""
         arguments = {"note_id": ""}
 
-        with pytest.raises(ValidationError, match="Note ID is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Note Id cannot be empty"):
             validate_note_id_required(arguments)
 
     def test_validate_content_required_success(self):
@@ -166,7 +166,7 @@ class TestValidationFunctions:
         """Test validate_content_required with missing content."""
         arguments = {}
 
-        with pytest.raises(ValidationError, match="Note content parameter is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Note Content is required"):
             validate_content_required(arguments)
 
     def test_validate_content_required_empty(self):

@@ -27,13 +27,13 @@ class TestValidationFunctions:
     def test_validate_note_id_required_missing(self):
         """Test note ID validation with missing ID."""
         arguments = {}
-        with pytest.raises(ValidationError, match="Note ID is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Note Id is required"):
             validate_note_id_required(arguments)
 
     def test_validate_note_id_required_empty(self):
         """Test note ID validation with empty ID."""
         arguments = {"note_id": ""}
-        with pytest.raises(ValidationError, match="Note ID is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Note Id cannot be empty"):
             validate_note_id_required(arguments)
 
     def test_validate_note_id_required_whitespace(self):
@@ -57,13 +57,13 @@ class TestValidationFunctions:
     def test_validate_content_required_missing(self):
         """Test content validation with missing content."""
         arguments = {}
-        with pytest.raises(ValidationError, match="Note content parameter is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Note Content is required"):
             validate_content_required(arguments)
 
     def test_validate_content_required_none(self):
         """Test content validation with None content."""
         arguments = {"content": None}
-        with pytest.raises(ValidationError, match="Note content cannot be None"):
+        with pytest.raises(ValidationError, match="VALIDATION: Note Content must be string, got <class 'NoneType'>"):
             validate_content_required(arguments)
 
     def test_validate_query_required_valid(self):
@@ -75,13 +75,13 @@ class TestValidationFunctions:
     def test_validate_query_required_missing(self):
         """Test query validation with missing query."""
         arguments = {}
-        with pytest.raises(ValidationError, match="Search query is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Search Query is required"):
             validate_query_required(arguments)
 
     def test_validate_query_required_empty(self):
         """Test query validation with empty query."""
         arguments = {"query": ""}
-        with pytest.raises(ValidationError, match="Search query is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Search Query cannot be empty"):
             validate_query_required(arguments)
 
     def test_validate_query_required_whitespace(self):
@@ -105,19 +105,19 @@ class TestValidationFunctions:
     def test_validate_tags_required_missing(self):
         """Test tags validation with missing tags."""
         arguments = {}
-        with pytest.raises(ValidationError, match="Tags are required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Tags is required"):
             validate_tags_required(arguments)
 
     def test_validate_tags_required_empty_string(self):
         """Test tags validation with empty string tags."""
         arguments = {"tags": ""}
-        with pytest.raises(ValidationError, match="Tags are required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Tags cannot be empty"):
             validate_tags_required(arguments)
 
     def test_validate_tags_required_empty_list(self):
         """Test tags validation with empty list tags."""
         arguments = {"tags": []}
-        with pytest.raises(ValidationError, match="Tags are required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Tags cannot be empty"):
             validate_tags_required(arguments)
 
     def test_validate_tags_required_whitespace(self):
@@ -151,13 +151,13 @@ class TestDecoratorIntegration:
         # Test that the first failing validation raises its specific error
         arguments = {"note_id": ""}  # Missing other required fields
 
-        with pytest.raises(ValidationError, match="Note ID is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Note Id cannot be empty"):
             validate_note_id_required(arguments)
 
         # Even if we fix note_id, content validation should fail next
         arguments = {"note_id": "valid_id"}  # Still missing content
 
-        with pytest.raises(ValidationError, match="Note content parameter is required"):
+        with pytest.raises(ValidationError, match="VALIDATION: Note Content is required"):
             validate_content_required(arguments)
 
 
