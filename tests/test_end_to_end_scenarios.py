@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +13,10 @@ from simplenote_mcp.server.server import (
     handle_read_resource,
     initialize_cache,
 )
-from simplenote_mcp.tests.test_helpers import handle_call_tool as test_handle_call_tool
+async def call_tool_helper(name: str, arguments: dict) -> Any:
+    """Local helper function for tool calls."""
+    from simplenote_mcp.server.server import handle_call_tool as server_handle_call_tool
+    return await server_handle_call_tool(name, arguments)
 
 
 @pytest.fixture
@@ -90,7 +94,7 @@ class TestEndToEndScenarios:
             mock_client.add_note.return_value = (created_note, 0)
 
             # Create note via tool
-            result = await test_handle_call_tool(
+            result = await call_tool_helper(
                 "create_note", {"content": content, "tags": tags}
             )
 
@@ -168,7 +172,7 @@ class TestEndToEndScenarios:
         mock_client.update_note.return_value = (updated_note, 0)
         mock_client.get_note.return_value = (updated_note, 0)  # For subsequent reads
 
-        update_result = await test_handle_call_tool(
+        update_result = await call_tool_helper(
             "update_note",
             {
                 "note_id": created_notes[0]["key"],
@@ -193,7 +197,7 @@ class TestEndToEndScenarios:
         notes_to_delete = created_notes[7:9]  # Delete 2 notes
 
         for note in notes_to_delete:
-            delete_result = await test_handle_call_tool(
+            delete_result = await call_tool_helper(
                 "delete_note", {"note_id": note["key"]}
             )
 
@@ -255,7 +259,7 @@ class TestEndToEndScenarios:
                 }
                 mock_client.add_note.return_value = (note, 0)
 
-                result = await test_handle_call_tool(
+                result = await call_tool_helper(
                     "create_note", {"content": note["content"], "tags": note["tags"]}
                 )
                 results.append(result)
@@ -303,7 +307,7 @@ class TestEndToEndScenarios:
 
                     mock_client.update_note.return_value = (updated_note, 0)
 
-                    result = await test_handle_call_tool(
+                    result = await call_tool_helper(
                         "update_note",
                         {
                             "note_id": note_id,
@@ -364,7 +368,7 @@ class TestEndToEndScenarios:
         mock_client.add_note.return_value = (None, 1)  # Simulate failure
 
         # The tool should return an error response rather than raising an exception
-        result = await test_handle_call_tool(
+        result = await call_tool_helper(
             "create_note", {"content": "This should fail", "tags": ["test"]}
         )
         
@@ -382,7 +386,7 @@ class TestEndToEndScenarios:
         }
         mock_client.add_note.return_value = (successful_note, 0)
 
-        result = await test_handle_call_tool(
+        result = await call_tool_helper(
             "create_note", {"content": "This should succeed", "tags": ["recovery"]}
         )
 
@@ -411,7 +415,7 @@ class TestEndToEndScenarios:
                 }
                 mock_client.add_note.return_value = (note, 0)
 
-            result = await test_handle_call_tool(
+            result = await call_tool_helper(
                 "create_note", {"content": content, "tags": tags}
             )
 
@@ -497,7 +501,7 @@ class TestEndToEndScenarios:
                 mock_client.update_note.return_value = (updated_note, 0)
 
                 try:
-                    result = await test_handle_call_tool(
+                    result = await call_tool_helper(
                         "update_note",
                         {
                             "note_id": note_id,

@@ -3,7 +3,7 @@ from typing import Any
 import mcp.types as types
 
 
-async def handle_read_resource(uri: str) -> types.ReadResourceResult:
+async def helper_handle_read_resource(uri: str) -> types.ReadResourceResult:
     """Helper to read a resource by URI."""
     from simplenote_mcp.server.server import server_instance
 
@@ -18,14 +18,14 @@ async def handle_read_resource(uri: str) -> types.ReadResourceResult:
         raise ValueError("Server instance not available")
 
 
-async def handle_call_tool(name: str, arguments: dict[str, Any]) -> Any:
+async def helper_handle_call_tool(name: str, arguments: dict[str, Any]) -> Any:
     """Helper to call a tool using the server's handle_call_tool function."""
     from simplenote_mcp.server.server import handle_call_tool as server_handle_call_tool
 
     return await server_handle_call_tool(name, arguments)
 
 
-async def handle_list_tools() -> Any:
+async def helper_handle_list_tools() -> Any:
     """Helper to list available tools."""
     from simplenote_mcp.server.server import server_instance
 
