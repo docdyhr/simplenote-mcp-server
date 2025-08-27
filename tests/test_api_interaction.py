@@ -240,7 +240,7 @@ class TestHandleReadResource:
         with pytest.raises(ValidationError) as exc_info:
             await handle_read_resource("invalid://uri")
 
-        assert "Invalid Simplenote URI" in str(exc_info.value)
+        assert "Invalid uri format" in str(exc_info.value)
 
     async def test_read_resource_not_found(self):
         """Test error when note is not found."""
