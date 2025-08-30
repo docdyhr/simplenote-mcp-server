@@ -220,10 +220,11 @@ def rate_limit(max_requests: int, period_seconds: float):
         @wraps(func)
         async def wrapper(*args, **kwargs):
             import os
+
             # Skip rate limiting in test mode
             if os.getenv("SIMPLENOTE_OFFLINE_MODE") == "true":
                 return await func(*args, **kwargs)
-                
+
             nonlocal calls
             now = time.monotonic()
             # Remove timestamps outside the time window

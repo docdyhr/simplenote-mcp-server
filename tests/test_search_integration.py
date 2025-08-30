@@ -118,7 +118,9 @@ async def test_search_notes_via_api(mock_simplenote_client):
         print("Tag filter search result:", result_data)
 
         # Search with boolean operators
-        result = await helper_handle_call_tool("search_notes", {"query": "project AND report"})
+        result = await helper_handle_call_tool(
+            "search_notes", {"query": "project AND report"}
+        )
         result_data = json.loads(result[0].text)
         print("Boolean search result:", result_data)
 
@@ -150,7 +152,9 @@ async def test_empty_search_with_filters(mock_simplenote_client):
     # Mock the note_cache in server module
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Empty queries should have some search text, let's use a non-empty query
-        result = await helper_handle_call_tool("search_notes", {"query": ".", "tags": "work"})
+        result = await helper_handle_call_tool(
+            "search_notes", {"query": ".", "tags": "work"}
+        )
 
         # Parse JSON result and log for debugging
         result_data = json.loads(result[0].text)
@@ -305,13 +309,19 @@ async def test_case_insensitive_search(mock_simplenote_client):
     # Mock the note_cache in server module
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search with lowercase
-        result_lower = await helper_handle_call_tool("search_notes", {"query": "project"})
+        result_lower = await helper_handle_call_tool(
+            "search_notes", {"query": "project"}
+        )
 
         # Search with uppercase
-        result_upper = await helper_handle_call_tool("search_notes", {"query": "PROJECT"})
+        result_upper = await helper_handle_call_tool(
+            "search_notes", {"query": "PROJECT"}
+        )
 
         # Search with mixed case
-        result_mixed = await helper_handle_call_tool("search_notes", {"query": "PrOjEcT"})
+        result_mixed = await helper_handle_call_tool(
+            "search_notes", {"query": "PrOjEcT"}
+        )
 
         # Parse results and log for debugging
         result_lower_data = json.loads(result_lower[0].text)

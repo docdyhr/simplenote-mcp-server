@@ -382,7 +382,9 @@ class TestLogPatternMonitor:
                 ).total_seconds() < 3660  # Within 1 hour + margin
 
     @pytest.mark.asyncio
-    @pytest.mark.skip(reason="File monitoring test has threading/async complexity issues in test environment")
+    @pytest.mark.skip(
+        reason="File monitoring test has threading/async complexity issues in test environment"
+    )
     async def test_log_file_monitoring(self):
         """Test monitoring of log files for pattern detection."""
         monitor = LogPatternMonitor()

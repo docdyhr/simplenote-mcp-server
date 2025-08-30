@@ -53,7 +53,7 @@ class TestCacheEdgeCases:
         # Perform concurrent searches that should trigger race condition
         async def search_task():
             return cache.search_notes("test")
-        
+
         tasks = []
         for _i in range(5):
             tasks.append(asyncio.create_task(search_task()))

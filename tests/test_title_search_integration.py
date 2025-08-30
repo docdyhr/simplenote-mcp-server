@@ -197,7 +197,9 @@ async def test_create_and_search_by_title(test_notes_cleanup):
     assert alpha_note["id"] in found_ids
 
     # Test 4: Search with NOT operator - "Project NOT Meeting"
-    result = await helper_handle_call_tool("search_notes", {"query": "Project NOT Meeting"})
+    result = await helper_handle_call_tool(
+        "search_notes", {"query": "Project NOT Meeting"}
+    )
     result_data = json.loads(result[0].text)
 
     assert result_data["success"] is True
@@ -498,7 +500,9 @@ async def test_search_performance_with_many_notes(test_notes_cleanup):
     # Measure search time
     search_start = time.time()
 
-    result = await helper_handle_call_tool("search_notes", {"query": "Project Analysis"})
+    result = await helper_handle_call_tool(
+        "search_notes", {"query": "Project Analysis"}
+    )
 
     search_time = time.time() - search_start
     print(f"Search completed in {search_time:.3f} seconds")

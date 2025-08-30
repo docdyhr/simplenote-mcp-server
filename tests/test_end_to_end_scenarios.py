@@ -13,9 +13,12 @@ from simplenote_mcp.server.server import (
     handle_read_resource,
     initialize_cache,
 )
+
+
 async def call_tool_helper(name: str, arguments: dict) -> Any:
     """Local helper function for tool calls."""
     from simplenote_mcp.server.server import handle_call_tool as server_handle_call_tool
+
     return await server_handle_call_tool(name, arguments)
 
 
@@ -27,7 +30,10 @@ async def end_to_end_setup():
 
     # Initial empty state
     mock_client.get_note_list.return_value = ([], 0)
-    mock_client.add_note.return_value = (None, 0)  # Will be overridden per test - using correct method name
+    mock_client.add_note.return_value = (
+        None,
+        0,
+    )  # Will be overridden per test - using correct method name
     mock_client.update_note.return_value = (None, 0)  # Will be overridden per test
     mock_client.trash_note.return_value = 0  # trash_note returns status only
     mock_client.get_note.return_value = (None, 0)  # Will be overridden per test
@@ -246,9 +252,10 @@ class TestEndToEndScenarios:
 
         mock_client.get_note_list.return_value = (initial_notes, 0)
         mock_client._notes_db = {note["key"]: note for note in initial_notes}
-        
+
         # Initialize cache with initial notes
         from simplenote_mcp.server.server import note_cache
+
         if note_cache:
             for note in initial_notes:
                 note_cache._notes[note["key"]] = note
@@ -367,7 +374,7 @@ class TestEndToEndScenarios:
     async def test_error_recovery_scenarios(self, end_to_end_setup):
         """Test error recovery during user sessions."""
         import json
-        
+
         mock_client = end_to_end_setup["mock_client"]
 
         # Scenario 1: Network failure during note creation
@@ -377,7 +384,7 @@ class TestEndToEndScenarios:
         result = await call_tool_helper(
             "create_note", {"content": "This should fail", "tags": ["test"]}
         )
-        
+
         # Check that we got an error response
         assert len(result) == 1
         response = json.loads(result[0].text)
@@ -459,9 +466,10 @@ class TestEndToEndScenarios:
 
         mock_client.get_note_list.return_value = (large_dataset, 0)
         mock_client._notes_db = {note["key"]: note for note in large_dataset}
-        
+
         # Initialize cache with large dataset
         from simplenote_mcp.server.server import note_cache
+
         if note_cache:
             for note in large_dataset:
                 note_cache._notes[note["key"]] = note

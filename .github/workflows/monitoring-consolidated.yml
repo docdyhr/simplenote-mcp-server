@@ -23,7 +23,7 @@ on:
         type: boolean
   push:
     branches: [main]
-    paths: 
+    paths:
       - "README.md"
       - ".github/workflows/**"
       - "simplenote_mcp/**"
@@ -111,7 +111,7 @@ jobs:
           print("\nChecking workflow badges...")
           if not re.search(r'CI|test', content, re.IGNORECASE):
               print("⚠️ Warning: No CI/test badges found in README")
-          
+
           if not re.search(r'codecov|coverage', content, re.IGNORECASE):
               print("⚠️ Warning: No coverage badge found in README")
 
@@ -120,7 +120,7 @@ jobs:
               print("Failed badges:")
               for badge in failed_badges:
                   print(f"  - {badge}")
-              
+
               # Create badge report
               with open('badge-report.md', 'w') as f:
                   f.write("# Badge Status Report\n\n")
@@ -132,7 +132,7 @@ jobs:
                   f.write("2. Verify workflow names match badge references\n")
                   f.write("3. Check service availability\n")
                   f.write("4. Update repository settings if needed\n")
-              
+
               sys.exit(1)
           else:
               print("\n✅ All badges are working correctly!")
@@ -180,38 +180,38 @@ jobs:
           import requests
           import json
           from datetime import datetime
-          
+
           def check_security_alerts():
               """Check for security alerts using GitHub API."""
               token = os.environ.get('GITHUB_TOKEN')
               repo = os.environ.get('GITHUB_REPOSITORY', 'docdyhr/simplenote-mcp-server')
-              
+
               if not token:
                   print("❌ GitHub token not available")
                   return False
-              
+
               headers = {
                   'Authorization': f'token {token}',
                   'Accept': 'application/vnd.github.v3+json'
               }
-              
+
               # Check Dependabot alerts
               url = f'https://api.github.com/repos/{repo}/dependabot/alerts'
-              
+
               try:
                   response = requests.get(url, headers=headers, timeout=30)
-                  
+
                   if response.status_code == 200:
                       alerts = response.json()
                       active_alerts = [a for a in alerts if a['state'] == 'open']
-                      
+
                       print(f"Found {len(active_alerts)} active security alerts")
-                      
+
                       if active_alerts:
                           print("\n🚨 Active Security Alerts:")
                           critical_count = 0
                           high_count = 0
-                          
+
                           report_lines = [
                               "# Security Alert Report",
                               f"Generated: {datetime.now().isoformat()}",
@@ -219,30 +219,30 @@ jobs:
                               "## Active Alerts",
                               ""
                           ]
-                          
+
                           for alert in active_alerts:
                               severity = alert.get('security_advisory', {}).get('severity', 'unknown')
                               package = alert.get('dependency', {}).get('package', {}).get('name', 'unknown')
                               summary = alert.get('security_advisory', {}).get('summary', 'No summary')
-                              
+
                               print(f"- {severity.upper()}: {package} - {summary}")
                               report_lines.append(f"- **{severity.upper()}**: {package}")
                               report_lines.append(f"  - {summary}")
                               report_lines.append("")
-                              
+
                               if severity.lower() == 'critical':
                                   critical_count += 1
                               elif severity.lower() == 'high':
                                   high_count += 1
-                          
+
                           # Write report file
                           timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                           with open(f'security_alert_report_{timestamp}.md', 'w') as f:
                               f.write('\n'.join(report_lines))
-                          
+
                           # Determine if we should fail
                           fail_on_issues = os.environ.get('INPUT_FAIL_ON_SECURITY_ISSUES', 'true').lower() == 'true'
-                          
+
                           if (critical_count > 0 or high_count > 0) and fail_on_issues:
                               print(f"\n❌ Found {critical_count} critical and {high_count} high severity alerts")
                               return False
@@ -252,18 +252,18 @@ jobs:
                       else:
                           print("✅ No active security alerts found")
                           return True
-                          
+
                   elif response.status_code == 404:
                       print("⚠️ Security alerts not available (private repo or permissions)")
                       return True
                   else:
                       print(f"❌ API request failed: {response.status_code}")
                       return False
-                      
+
               except Exception as e:
                   print(f"❌ Error checking security alerts: {str(e)}")
                   return False
-          
+
           # Run check
           success = check_security_alerts()
           if not success:
@@ -297,10 +297,10 @@ jobs:
           echo "Workflow: ${{ github.workflow }}" >> monitoring-summary.md
           echo "Run ID: ${{ github.run_id }}" >> monitoring-summary.md
           echo "" >> monitoring-summary.md
-          
+
           echo "## Results" >> monitoring-summary.md
           echo "" >> monitoring-summary.md
-          
+
           # Badge check results
           if [ "${{ needs.badge-status-check.result }}" = "success" ]; then
             echo "- ✅ Badge Status Check: PASSED" >> monitoring-summary.md
@@ -309,8 +309,8 @@ jobs:
           elif [ "${{ needs.badge-status-check.result }}" = "skipped" ]; then
             echo "- ⏭️ Badge Status Check: SKIPPED" >> monitoring-summary.md
           fi
-          
-          # Security monitoring results  
+
+          # Security monitoring results
           if [ "${{ needs.security-alert-monitoring.result }}" = "success" ]; then
             echo "- ✅ Security Alert Monitoring: PASSED" >> monitoring-summary.md
           elif [ "${{ needs.security-alert-monitoring.result }}" = "failure" ]; then
@@ -318,11 +318,11 @@ jobs:
           elif [ "${{ needs.security-alert-monitoring.result }}" = "skipped" ]; then
             echo "- ⏭️ Security Alert Monitoring: SKIPPED" >> monitoring-summary.md
           fi
-          
+
           echo "" >> monitoring-summary.md
           echo "## Next Steps" >> monitoring-summary.md
           echo "" >> monitoring-summary.md
-          
+
           if [ "${{ needs.badge-status-check.result }}" = "failure" ] || [ "${{ needs.security-alert-monitoring.result }}" = "failure" ]; then
             echo "- Review failed checks and take corrective action" >> monitoring-summary.md
             echo "- Check uploaded artifacts for detailed reports" >> monitoring-summary.md
@@ -331,7 +331,7 @@ jobs:
             echo "- All monitoring checks passed successfully" >> monitoring-summary.md
             echo "- No immediate action required" >> monitoring-summary.md
           fi
-          
+
           cat monitoring-summary.md
 
       - name: Upload monitoring summary

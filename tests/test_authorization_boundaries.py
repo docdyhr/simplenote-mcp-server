@@ -32,8 +32,10 @@ class TestAuthorizationBoundaries:
             try:
                 result = await handle_list_resources()
                 # If no exception, should return empty resources (graceful handling)
-                resources = result.resources if hasattr(result, 'resources') else result
-                assert len(resources) == 0  # Should return empty list when unauthenticated
+                resources = result.resources if hasattr(result, "resources") else result
+                assert (
+                    len(resources) == 0
+                )  # Should return empty list when unauthenticated
             except AuthenticationError:
                 # Also acceptable to raise authentication error
                 pass
@@ -66,7 +68,10 @@ class TestAuthorizationBoundaries:
     async def test_tool_parameter_validation_boundaries(self):
         """Test tool parameter validation at boundaries."""
         with patch("simplenote_mcp.server.server.get_simplenote_client") as mock_client:
-            mock_client.return_value.add_note.return_value = ({"key": "test_key", "content": "test"}, 0)  # Proper mock response
+            mock_client.return_value.add_note.return_value = (
+                {"key": "test_key", "content": "test"},
+                0,
+            )  # Proper mock response
             # Test extremely large content
             large_content = "x" * (1024 * 1024 * 10)  # 10MB
 
@@ -75,7 +80,9 @@ class TestAuthorizationBoundaries:
 
             # Test content with null bytes
             try:
-                result = await handle_call_tool("create_note", {"content": "test\x00content"})
+                result = await handle_call_tool(
+                    "create_note", {"content": "test\x00content"}
+                )
                 # If it succeeds, null bytes are now allowed (updated security policy)
                 assert result is not None
             except (ValidationError, SecurityError):
@@ -585,7 +592,7 @@ class TestSecurityMonitoring:
 
             try:
                 await handle_call_tool("create_note", {"content": suspicious_content})
-            except (SecurityError, Exception) as e:
+            except (SecurityError, Exception):
                 # Expected for suspicious content or rate limiting
                 pass
 

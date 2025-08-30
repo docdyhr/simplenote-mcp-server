@@ -119,7 +119,9 @@ Action items:
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await helper_handle_call_tool("create_note", {"content": multiline_content})
+        result = await helper_handle_call_tool(
+            "create_note", {"content": multiline_content}
+        )
 
         result_data = json.loads(result[0].text)
 
@@ -246,7 +248,9 @@ async def test_create_note_error_handling(mock_simplenote_client):
             return_value=mock_simplenote_client,
         ),
     ):
-        result = await helper_handle_call_tool("create_note", {"content": "This should fail"})
+        result = await helper_handle_call_tool(
+            "create_note", {"content": "This should fail"}
+        )
 
         result_data = json.loads(result[0].text)
 

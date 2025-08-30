@@ -170,9 +170,7 @@ class TestSecurityValidator:
         ]
 
         for query in dangerous_queries:
-            with pytest.raises(
-                SecurityError, match="Dangerous search query pattern"
-            ):
+            with pytest.raises(SecurityError, match="Dangerous search query pattern"):
                 self.validator.validate_search_query(query)
 
     def test_validate_pagination_params_valid(self):

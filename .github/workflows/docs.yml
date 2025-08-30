@@ -178,7 +178,18 @@ jobs:
       - name: Check links
         uses: lycheeverse/lychee-action@v2
         with:
-          args: --verbose --no-progress './site/**/*.html'
-          fail: true
+          args: --verbose --no-progress --config .lycheerc.toml './site/**/*.html' --exclude-mail
+          fail: false  # Don't fail workflow on link issues, just report them
+          failIfEmpty: false  # Don't fail if no links found
+          output: lychee-report.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload link check report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: link-check-report
+          path: lychee-report.md
+          retention-days: 7

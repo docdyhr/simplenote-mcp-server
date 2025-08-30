@@ -265,7 +265,9 @@ async def test_search_multiple_words(mock_simplenote_client_with_titles):
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for "Project Management" - should find note with both words
-        result = await helper_handle_call_tool("search_notes", {"query": "Project Management"})
+        result = await helper_handle_call_tool(
+            "search_notes", {"query": "Project Management"}
+        )
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
@@ -292,7 +294,9 @@ async def test_search_with_boolean_operators(mock_simplenote_client_with_titles)
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for "Project AND Status" - should find note4
-        result = await helper_handle_call_tool("search_notes", {"query": "Project AND Status"})
+        result = await helper_handle_call_tool(
+            "search_notes", {"query": "Project AND Status"}
+        )
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
@@ -362,7 +366,9 @@ async def test_search_special_characters(mock_simplenote_client_with_titles):
 
     with patch("simplenote_mcp.server.server.note_cache", cache):
         # Search for "Meeting Notes:" with colon
-        result = await helper_handle_call_tool("search_notes", {"query": "Meeting Notes:"})
+        result = await helper_handle_call_tool(
+            "search_notes", {"query": "Meeting Notes:"}
+        )
         result_data = json.loads(result[0].text)
 
         assert "results" in result_data
