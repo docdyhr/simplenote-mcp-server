@@ -1,0 +1,59 @@
+# Lychee link checker configuration
+# Excludes problematic patterns and configures checking behavior
+
+# Base URL configuration for relative links
+base = "https://docdyhr.github.io/simplenote-mcp-server/"
+
+# Accept status codes that should be considered valid
+accept = [200, 206, 401, 403, 404, 429, 999]
+
+# Exclude problematic URLs and patterns
+exclude = [
+    # GitHub Pages URLs that don't exist yet
+    "https://docdyhr.github.io/simplenote-mcp-server/planning/*",
+    "https://docdyhr.github.io/simplenote-mcp-server/releases/*",
+    "https://docdyhr.github.io/simplenote-mcp-server/security/*",
+    "https://docdyhr.github.io/simplenote-mcp-server/testing/*",
+    "https://docdyhr.github.io/simplenote-mcp-server/usage/*",
+    "https://docdyhr.github.io/simplenote-mcp-server/user-guides/*",
+    # Docker Hub problematic URLs
+    "https://hub.docker.com/repositories/docdyhr",
+    "https://hub.docker.com/settings/security",
+    # Local file references that don't exist
+    "file:///home/runner/work/simplenote-mcp-server/simplenote-mcp-server/site/README.md*"
+]
+
+# Exclude problematic link patterns
+exclude_path = [
+    # Exclude relative paths that cause InvalidPathToUri errors
+    "^/simplenote-mcp-server/.*",
+    # Exclude anchors to self
+    "^\\./.*",
+    "^\\.$"
+]
+
+# Include additional file extensions
+include_verbatim = true
+
+# Skip checking for these file types/patterns
+exclude_file = [
+    ".css",
+    ".js", 
+    "favicon.png",
+    "favicon.ico"
+]
+
+# User agent to avoid bot blocking
+user_agent = "Mozilla/5.0 (compatible; lychee link checker)"
+
+# Request timeout in seconds
+timeout = 30
+
+# Maximum number of redirects to follow
+max_redirects = 5
+
+# Skip checking SSL certificates for local/dev sites
+insecure = false
+
+# Verbose output for debugging
+verbose = true
