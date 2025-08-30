@@ -227,7 +227,7 @@ class JsonFormatter(logging.Formatter):
                 # No running loop, skip async processing to avoid blocking
                 # This ensures logging doesn't break in synchronous contexts
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             # Silently fail to avoid breaking logging if monitor has issues
             # Note: Intentionally not logging here to prevent recursion
             pass
@@ -453,7 +453,7 @@ class StructuredLogAdapter(logging.LoggerAdapter):
             except RuntimeError:
                 # No running loop, skip to avoid blocking
                 pass
-        except Exception:
+        except Exception:  # nosec B110
             # Silently fail to avoid breaking logging
             # Note: Intentionally not logging here to prevent recursion
             pass
