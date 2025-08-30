@@ -1,0 +1,384 @@
+# Claude Code Hooks Configuration for Simplenote MCP Server
+# This file defines intelligent automation hooks that enhance development workflow
+# Place this file in your project root or configure in Claude Code settings
+
+version: "1.0"
+project: simplenote-mcp-server
+description: "Intelligent development hooks for Simplenote MCP Server"
+
+# Global settings
+settings:
+  enabled: true
+  verbose: false
+  fail_fast: false
+  parallel_execution: true
+  cache_results: true
+  cache_ttl: 300  # 5 minutes
+
+# Environment setup
+environment:
+  SIMPLENOTE_OFFLINE_MODE: "true"  # Always use offline mode for testing
+  LOG_LEVEL: "WARNING"  # Reduce noise during development
+
+# Hook definitions
+hooks:
+  # 1. Pre-file edit hooks - Run before editing any file
+  pre-edit:
+    - name: "Check file syntax"
+      pattern: "**/*.py"
+      command: "python -m py_compile {file}"
+      description: "Validate Python syntax before editing"
+
+    - name: "Backup critical files"
+      pattern: "**/server.py|**/cache.py|**/tool_handlers.py"
+      command: "cp {file} {file}.backup.$(date +%Y%m%d_%H%M%S)"
+      description: "Backup critical server files"
+
+  # 2. Post-file edit hooks - Run after editing files
+  post-edit:
+    - name: "Format Python code"
+      pattern: "**/*.py"
+      command: "ruff format {file}"
+      description: "Auto-format Python files with Ruff"
+      continue_on_error: true
+
+    - name: "Check Python types"
+      pattern: "simplenote_mcp/**/*.py"
+      command: "mypy {file} --ignore-missing-imports"
+      description: "Type check Python files"
+      continue_on_error: true
+
+    - name: "Update test coverage"
+      pattern: "simplenote_mcp/**/*.py"
+      command: |
+        if [[ "{file}" != *test_* ]]; then
+          module=$(echo {file} | sed 's/.py$//' | sed 's/\//./g')
+          pytest tests/ -k "$(basename {file} .py)" --cov=$module --cov-report=term-missing:skip-covered --no-header -q 2>/dev/null || true
+        fi
+      description: "Check test coverage for edited module"
+
+  # 3. Pre-commit hooks - Run before committing
+  pre-commit:
+    - name: "Run all tests"
+      command: "SIMPLENOTE_OFFLINE_MODE=true python -m pytest tests/ -x -q --tb=short"
+      description: "Run test suite in offline mode"
+      required: true
+
+    - name: "Security scan"
+      command: "bandit -r simplenote_mcp -f txt --severity-level medium"
+      description: "Scan for security vulnerabilities"
+      required: false
+
+    - name: "Check dependencies"
+      command: "pip-audit --desc --fix"
+      description: "Audit and fix dependency vulnerabilities"
+      required: false
+
+    - name: "Validate CI/CD"
+      command: |
+        for workflow in .github/workflows/*.yml; do
+          python -c "import yaml; yaml.safe_load(open('$workflow'))" || exit 1
+        done
+      description: "Validate GitHub Actions workflows"
+      required: true
+
+  # 4. Tool-specific hooks - Run when using specific Claude Code tools
+  tool-hooks:
+    - tool: "create_note"
+      pre: |
+        echo "🔍 Validating note creation request..."
+        python -c "
+        import json
+        args = json.loads('{arguments}')
+        assert 'content' in args, 'Content is required'
+        assert len(args.get('content', '')) > 0, 'Content cannot be empty'
+        print('✅ Validation passed')
+        "
+      post: |
+        echo "📝 Note created successfully"
+
+    - tool: "search_notes"
+      pre: |
+        echo "🔍 Optimizing search query..."
+        python -c "
+        import json
+        args = json.loads('{arguments}')
+        query = args.get('query', '')
+        if 'AND' in query or 'OR' in query or 'NOT' in query:
+            print('💡 Using boolean search operators')
+        "
+
+  # 5. Test automation hooks
+  test-hooks:
+    - name: "Auto-run related tests"
+      trigger: "file_modified"
+      pattern: "simplenote_mcp/**/*.py"
+      command: |
+        # Find and run related test file
+        test_file="tests/test_$(basename {file})"
+        if [ -f "$test_file" ]; then
+          echo "Running tests for {file}..."
+          pytest "$test_file" -v --tb=short
+        fi
+      description: "Automatically run tests for modified files"
+
+    - name: "Performance regression check"
+      trigger: "file_modified"
+      pattern: "**/cache.py|**/server.py"
+      command: |
+        echo "⚡ Checking performance..."
+        python -m pytest tests/test_performance.py -v --tb=short -q 2>/dev/null || true
+      description: "Check for performance regressions"
+
+  # 6. Documentation hooks
+  doc-hooks:
+    - name: "Update API docs"
+      trigger: "file_modified"
+      pattern: "**/tool_handlers.py"
+      command: |
+        echo "📚 Updating API documentation..."
+        python -c "
+        from simplenote_mcp.server.tool_handlers import ToolHandlerRegistry
+        import json
+
+        tools = []
+        # Generate tool documentation
+        registry = ToolHandlerRegistry()
+        for name, handler in registry.handlers.items():
+            tools.append({
+                'name': name,
+                'description': handler.__doc__ or 'No description',
+                'handler': handler.__class__.__name__
+            })
+
+        with open('docs/api/tools.json', 'w') as f:
+            json.dump(tools, f, indent=2)
+        print(f'✅ Documented {len(tools)} tools')
+        " 2>/dev/null || true
+      description: "Auto-generate tool documentation"
+
+  # 7. Security and compliance hooks
+  security-hooks:
+    - name: "Credential scan"
+      trigger: "pre_commit"
+      command: |
+        echo "🔐 Scanning for credentials..."
+        # Check for hardcoded credentials
+        grep -r "SIMPLENOTE_PASSWORD\|SIMPLENOTE_EMAIL" . \
+          --exclude-dir=.git \
+          --exclude-dir=.env \
+          --exclude="*.md" \
+          --exclude=".claude-code-hooks.yaml" | grep -v "os.getenv\|os.environ" || true
+      description: "Scan for hardcoded credentials"
+
+    - name: "License compliance"
+      trigger: "dependency_added"
+      command: "pip-licenses --summary"
+      description: "Check license compliance"
+
+  # 8. Performance monitoring hooks
+  performance-hooks:
+    - name: "Cache efficiency monitor"
+      trigger: "cache_operation"
+      command: |
+        python -c "
+        from simplenote_mcp.server.monitoring import MetricsCollector
+        collector = MetricsCollector()
+        metrics = collector.get_metrics()
+        cache_metrics = metrics.get('cache', {})
+        hit_rate = cache_metrics.get('hit_rate', 0)
+        if hit_rate < 0.7:
+            print('⚠️ Cache hit rate low: {:.1%}'.format(hit_rate))
+        else:
+            print('✅ Cache hit rate: {:.1%}'.format(hit_rate))
+        " 2>/dev/null || true
+      description: "Monitor cache performance"
+
+  # 9. Workflow automation hooks
+  workflow-hooks:
+    - name: "Auto-fix common issues"
+      trigger: "test_failure"
+      command: |
+        echo "🔧 Attempting auto-fix..."
+        # Fix common test issues
+        if grep -q "ImportError\|ModuleNotFoundError" {error_log}; then
+          pip install -e ".[dev,test]"
+        fi
+
+        if grep -q "SIMPLENOTE_OFFLINE_MODE" {error_log}; then
+          export SIMPLENOTE_OFFLINE_MODE=true
+        fi
+
+        # Re-run failed test
+        pytest {failed_test} -xvs
+      description: "Attempt to auto-fix test failures"
+
+    - name: "Update TODO on completion"
+      trigger: "task_completed"
+      command: |
+        echo "✅ Updating TODO.md..."
+        python -c "
+        from datetime import datetime
+
+        # Add completion to TODO.md
+        with open('TODO.md', 'r') as f:
+            content = f.read()
+
+        # Update last modified date
+        content = content.replace(
+            'Last Updated: 2025-08-30',
+            f'Last Updated: {datetime.now().strftime(\"%Y-%m-%d\")}'
+        )
+
+        with open('TODO.md', 'w') as f:
+            f.write(content)
+        "
+      description: "Update TODO.md with completions"
+
+  # 10. AI-assisted development hooks
+  ai-hooks:
+    - name: "Smart test generation"
+      trigger: "new_function_added"
+      command: |
+        echo "🤖 Generating test for new function..."
+        python -c "
+        import ast
+        import inspect
+
+        # Parse the new function
+        with open('{file}', 'r') as f:
+            tree = ast.parse(f.read())
+
+        # Find new functions without tests
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
+                if not node.name.startswith('_'):
+                    print(f'💡 Suggest test for: {node.name}')
+                    print(f'   Parameters: {[arg.arg for arg in node.args.args]}')
+        "
+      description: "Suggest tests for new functions"
+
+    - name: "Code complexity warning"
+      trigger: "file_modified"
+      pattern: "**/*.py"
+      command: |
+        radon cc {file} -s -n C 2>/dev/null | grep -E "^[[:space:]]*[MF]" && \
+        echo "⚠️ High complexity detected in {file}" || \
+        echo "✅ Complexity check passed"
+      description: "Warn about complex code"
+
+# Custom commands - Available via Claude Code command palette
+commands:
+  - name: "Full Pipeline Check"
+    command: |
+      echo "🚀 Running full pipeline check..."
+      ruff check . && \
+      mypy simplenote_mcp && \
+      SIMPLENOTE_OFFLINE_MODE=true pytest tests/ -x && \
+      bandit -r simplenote_mcp -f txt && \
+      echo "✅ All checks passed!"
+    description: "Run all quality checks"
+
+  - name: "Quick Fix"
+    command: |
+      echo "🔧 Applying quick fixes..."
+      ruff check . --fix && \
+      ruff format . && \
+      pre-commit run --all-files || true && \
+      echo "✅ Quick fixes applied!"
+    description: "Apply automatic fixes"
+
+  - name: "Generate Coverage Report"
+    command: |
+      SIMPLENOTE_OFFLINE_MODE=true pytest tests/ \
+        --cov=simplenote_mcp \
+        --cov-report=html \
+        --cov-report=term-missing && \
+      echo "📊 Coverage report generated in htmlcov/"
+    description: "Generate test coverage report"
+
+  - name: "Performance Profile"
+    command: |
+      python -m cProfile -o profile.stats \
+        -m pytest tests/test_performance.py && \
+      python -c "
+      import pstats
+      stats = pstats.Stats('profile.stats')
+      stats.sort_stats('cumulative')
+      stats.print_stats(20)
+      "
+    description: "Profile performance"
+
+# Notification settings
+notifications:
+  enabled: true
+  channels:
+    - console
+    - status_bar
+  events:
+    test_failure: true
+    security_issue: true
+    performance_regression: true
+    success: false
+
+# Integration with external tools
+integrations:
+  github:
+    enabled: true
+    auto_create_issues: false
+    auto_create_prs: false
+
+  pre_commit:
+    enabled: true
+    config_file: ".pre-commit-config.yaml"
+
+  pytest:
+    enabled: true
+    config_file: "pyproject.toml"
+
+# Advanced features
+advanced:
+  # Intelligent caching
+  smart_cache:
+    enabled: true
+    invalidate_on:
+      - "pyproject.toml"
+      - "requirements*.txt"
+      - ".python-version"
+
+  # Parallel execution
+  parallel:
+    enabled: true
+    max_workers: 4
+
+  # Learning mode - Claude Code learns from your patterns
+  learning_mode:
+    enabled: true
+    track_patterns: true
+    suggest_improvements: true
+
+  # Auto-remediation
+  auto_fix:
+    enabled: true
+    fix_imports: true
+    fix_formatting: true
+    fix_types: false  # Requires manual review
+
+# Hook execution order
+execution_order:
+  1: security-hooks
+  2: pre-edit
+  3: post-edit
+  4: test-hooks
+  5: performance-hooks
+  6: doc-hooks
+  7: workflow-hooks
+  8: ai-hooks
+
+# Error handling
+error_handling:
+  strategy: "continue"  # continue, fail, interactive
+  max_retries: 2
+  retry_delay: 1
+  log_errors: true
+  error_log: ".claude-code-errors.log"

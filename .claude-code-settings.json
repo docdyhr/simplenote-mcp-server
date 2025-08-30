@@ -1,0 +1,168 @@
+{
+  "name": "Simplenote MCP Server",
+  "version": "1.0.0",
+  "description": "Claude Code configuration for Simplenote MCP Server development",
+
+  "hooks": {
+    "configFile": ".claude-code-hooks.yaml",
+    "enabled": true
+  },
+
+  "commands": {
+    "Quick Test": {
+      "command": "./scripts/claude-code-support/auto-test.sh --quick",
+      "description": "Run quick tests for changed files",
+      "category": "Testing",
+      "keybinding": "Ctrl+T"
+    },
+    "Full Validation": {
+      "command": "./scripts/claude-code-support/smart-validator.py",
+      "description": "Run comprehensive code validation",
+      "category": "Quality",
+      "keybinding": "Ctrl+V"
+    },
+    "Development Assistant": {
+      "command": "./scripts/claude-code-support/development-assistant.py --suggest",
+      "description": "Get intelligent development suggestions",
+      "category": "Assistant",
+      "keybinding": "Ctrl+A"
+    },
+    "Auto Fix": {
+      "command": "./scripts/claude-code-support/development-assistant.py --fix",
+      "description": "Automatically fix common issues",
+      "category": "Fix",
+      "keybinding": "Ctrl+F"
+    },
+    "Monitor Project": {
+      "command": "./scripts/claude-code-support/development-assistant.py --monitor 300",
+      "description": "Monitor project for 5 minutes",
+      "category": "Monitor",
+      "background": true
+    },
+    "Coverage Report": {
+      "command": "SIMPLENOTE_OFFLINE_MODE=true pytest tests/ --cov=simplenote_mcp --cov-report=html && open htmlcov/index.html",
+      "description": "Generate and open coverage report",
+      "category": "Quality"
+    },
+    "Performance Profile": {
+      "command": "./scripts/claude-code-support/auto-test.sh --performance",
+      "description": "Run performance tests",
+      "category": "Performance"
+    }
+  },
+
+  "watchers": {
+    "python_files": {
+      "patterns": ["**/*.py"],
+      "ignore": ["**/__pycache__/**", "**/*.pyc"],
+      "actions": [
+        "format",
+        "quick_test"
+      ]
+    },
+    "test_files": {
+      "patterns": ["tests/**/*.py"],
+      "actions": [
+        "run_tests"
+      ]
+    },
+    "config_files": {
+      "patterns": ["*.yml", "*.yaml", "*.json", "*.toml"],
+      "actions": [
+        "validate_config"
+      ]
+    }
+  },
+
+  "snippets": {
+    "mcp_tool_handler": {
+      "description": "Create new MCP tool handler",
+      "template": "class ${1:ToolName}Handler(ToolHandlerBase):\n    \"\"\"${2:Handler description}\"\"\"\n    \n    @validate_note_id_required\n    async def handle(self, arguments: dict) -> List[TextContent]:\n        \"\"\"${3:Handle the tool request}\"\"\"\n        ${4:# Implementation}\n        return [TextContent(type=\"text\", text=\"${5:Success}\")]"
+    },
+    "async_test": {
+      "description": "Create async test function",
+      "template": "@pytest.mark.asyncio\nasync def test_${1:function_name}():\n    \"\"\"${2:Test description}\"\"\"\n    ${3:# Arrange}\n    \n    ${4:# Act}\n    result = await ${5:function_call}\n    \n    ${6:# Assert}\n    assert result is not None"
+    },
+    "mock_simplenote_client": {
+      "description": "Mock Simplenote client setup",
+      "template": "mock_client = MagicMock()\nmock_client.${1:method_name}.return_value = (${2:return_value}, 0)\n\nwith patch(\"simplenote_mcp.server.server.get_simplenote_client\", return_value=mock_client):\n    ${3:# Test code}"
+    }
+  },
+
+  "linting": {
+    "enabled": true,
+    "tools": [
+      {
+        "name": "ruff",
+        "command": "ruff check {file}",
+        "autoFix": "ruff check --fix {file}"
+      },
+      {
+        "name": "mypy",
+        "command": "mypy {file} --ignore-missing-imports"
+      },
+      {
+        "name": "bandit",
+        "command": "bandit {file}"
+      }
+    ]
+  },
+
+  "formatting": {
+    "enabled": true,
+    "command": "ruff format {file}",
+    "onSave": true
+  },
+
+  "testing": {
+    "framework": "pytest",
+    "command": "SIMPLENOTE_OFFLINE_MODE=true python -m pytest {file} -v",
+    "coverage": {
+      "enabled": true,
+      "command": "SIMPLENOTE_OFFLINE_MODE=true python -m pytest {file} --cov=simplenote_mcp --cov-report=term-missing"
+    }
+  },
+
+  "ai_assistance": {
+    "code_review": {
+      "enabled": true,
+      "patterns": ["**/*.py"],
+      "focus_areas": [
+        "mcp_compliance",
+        "error_handling",
+        "performance",
+        "security",
+        "testing"
+      ]
+    },
+    "suggestions": {
+      "enabled": true,
+      "include_patterns": true,
+      "include_best_practices": true
+    }
+  },
+
+  "integrations": {
+    "git": {
+      "pre_commit_validation": true,
+      "auto_format": true
+    },
+    "github": {
+      "check_ci_status": true,
+      "link_issues": true
+    }
+  },
+
+  "project_specific": {
+    "mcp_server": true,
+    "offline_mode": "SIMPLENOTE_OFFLINE_MODE=true",
+    "test_patterns": [
+      "tests/test_*.py"
+    ],
+    "core_modules": [
+      "simplenote_mcp/server/server.py",
+      "simplenote_mcp/server/tool_handlers.py",
+      "simplenote_mcp/server/cache.py"
+    ]
+  }
+}
