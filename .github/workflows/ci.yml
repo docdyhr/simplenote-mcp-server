@@ -402,6 +402,7 @@ jobs:
           echo "✅ Vulnerability scan completed"
 
       - name: Generate SBOM (Software Bill of Materials)
+        continue-on-error: true
         run: |
           echo "📋 Generating SBOM..."
           
