@@ -152,7 +152,8 @@ jobs:
 
       - name: Run security scans
         run: |
-          bandit -r simplenote_mcp --severity-level medium
+          pip install toml
+          bandit -r simplenote_mcp --severity-level medium --ini pyproject.toml
           pip install -e .
           safety check --json || true
 
