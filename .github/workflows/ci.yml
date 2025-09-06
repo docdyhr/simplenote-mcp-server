@@ -152,7 +152,7 @@ jobs:
 
       - name: Run security scans
         run: |
-          bandit -r simplenote_mcp -ll
+          bandit -r simplenote_mcp -ll --severity-level medium
           pip install -e .
           safety check --json || true
 
