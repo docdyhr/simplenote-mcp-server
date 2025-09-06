@@ -189,13 +189,15 @@ async def test_search_content_including_title(mock_simplenote_client_with_titles
 
         result_ids = [note["id"] for note in result_data["results"]]
 
-        # Should find at least these notes
-        assert len(result_ids) >= 6  # At minimum, we expect several matches
+        # Should find at least these notes (5 out of 6 total notes contain "project")
+        assert len(result_ids) >= 5  # At minimum, we expect several matches
 
         # Verify specific notes are found
         assert "note1" in result_ids  # Project Management Guide
+        assert "note2" in result_ids  # Meeting Notes: Project Kickoff
+        assert "note3" in result_ids  # Review project proposal
         assert "note4" in result_ids  # Project Status Report
-        assert "note8" in result_ids  # project in body only
+        assert "note5" in result_ids  # future projects
 
 
 @pytest.mark.asyncio

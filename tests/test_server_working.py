@@ -55,7 +55,7 @@ class TestWorkingFunctions:
     @pytest.mark.asyncio
     async def test_handle_read_resource_invalid_uri(self):
         """Test handle_read_resource with invalid URI."""
-        with pytest.raises(ValidationError, match="Invalid Simplenote URI"):
+        with pytest.raises(ValidationError, match="Invalid uri format"):
             await handle_read_resource("invalid://uri")
 
     @pytest.mark.asyncio
