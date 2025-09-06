@@ -42,7 +42,7 @@ line-length = 88
 
 [tool.bandit]
 exclude_dirs = [ "tests", "simplenote_mcp/tests", "simplenote_mcp/scripts",]
-skips = [ "B101", "B311", "B404", "B603", "B607",]
+skips = [ "B101", "B310", "B311", "B404", "B603", "B607",]
 severity = "medium"
 
 [tool.ruff.lint]

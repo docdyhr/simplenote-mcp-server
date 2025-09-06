@@ -241,7 +241,12 @@ class TestHTTPEndpointsServer:
 
             try:
                 server.start()
-                time.sleep(0.1)  # Give server time to start
+
+                # Wait for server to start with timeout
+                for _ in range(10):  # Try for up to 1 second
+                    if server.is_running():
+                        break
+                    time.sleep(0.1)
 
                 assert server.is_running()
 
