@@ -15,6 +15,9 @@ env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "20"
   SIMPLENOTE_OFFLINE_MODE: "true" # Disable rate limiting in CI
+  TSX_CACHE_DIR: /tmp/tsx-cache # Use temp directory for tsx cache
+  NODE_OPTIONS: "--max-old-space-size=4096" # Increase Node memory
+  PYTEST_TIMEOUT: "60" # Default test timeout
 
 jobs:
   # Quick validation checks

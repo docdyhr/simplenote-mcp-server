@@ -91,8 +91,14 @@ class TestPhase2SecurityIntegration:
         assert not info["authenticated"]
 
     @pytest.mark.asyncio
+    @pytest.mark.timeout(10)  # 10 second timeout
     async def test_log_monitoring_security_patterns(self):
         """Test log monitoring detecting multiple security patterns."""
+        import asyncio
+
+        # Add small delay to ensure proper initialization
+        await asyncio.sleep(0.1)
+
         monitor = get_log_monitor()
 
         # Security log entries with different suspicious patterns
@@ -123,12 +129,25 @@ class TestPhase2SecurityIntegration:
         with patch(
             "simplenote_mcp.server.log_monitor.alert_suspicious_pattern"
         ) as mock_alert:
-            # Process all security logs
+            # Process all security logs with small delays to avoid race conditions
             for log_entry in security_logs:
                 await monitor.process_log_entry(log_entry)
+                await asyncio.sleep(0.01)  # Small delay between entries
 
-            # Should have triggered multiple alerts
-            assert mock_alert.call_count >= 2  # At least SQL injection and XSS
+            # Wait for processing to complete
+            await asyncio.sleep(0.1)
+
+            # Should have triggered multiple alerts (with retry logic)
+            max_retries = 3
+            for attempt in range(max_retries):
+                if mock_alert.call_count >= 2:
+                    break
+                if attempt < max_retries - 1:
+                    await asyncio.sleep(0.5)
+
+            assert mock_alert.call_count >= 2, (
+                f"Expected at least 2 alerts, got {mock_alert.call_count}"
+            )
 
     def test_logger_factory_with_security_context(self):
         """Test logger factory creating loggers with security context."""
