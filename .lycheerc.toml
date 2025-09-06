@@ -38,7 +38,7 @@ include_verbatim = true
 # Skip checking for these file types/patterns
 exclude_file = [
     ".css",
-    ".js", 
+    ".js",
     "favicon.png",
     "favicon.ico"
 ]
