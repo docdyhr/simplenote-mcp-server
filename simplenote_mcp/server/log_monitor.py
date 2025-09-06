@@ -619,3 +619,15 @@ async def process_log_for_patterns(log_entry: dict[str, Any]) -> None:
     """
     monitor = get_log_monitor()
     await monitor.process_log_entry(log_entry)
+
+
+def reset_log_monitor() -> None:
+    """Reset global log pattern monitor for test isolation.
+
+    This function clears the global monitor instance and its state,
+    ensuring clean state between test runs.
+    """
+    global _global_monitor
+    if _global_monitor is not None:
+        _global_monitor.stop_monitoring()
+        _global_monitor = None

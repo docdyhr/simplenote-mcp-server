@@ -13,7 +13,11 @@ import pytest
 
 from simplenote_mcp.server.auth import AuthenticationManager, SessionManager
 from simplenote_mcp.server.errors import SessionTimeoutError
-from simplenote_mcp.server.log_monitor import get_log_monitor, process_log_for_patterns
+from simplenote_mcp.server.log_monitor import (
+    get_log_monitor,
+    process_log_for_patterns,
+    reset_log_monitor,
+)
 from simplenote_mcp.server.logger_factory import (
     get_auth_logger,
     get_performance_logger,
@@ -95,6 +99,9 @@ class TestPhase2SecurityIntegration:
     async def test_log_monitoring_security_patterns(self):
         """Test log monitoring detecting multiple security patterns."""
         import asyncio
+
+        # Reset log monitor state for test isolation
+        reset_log_monitor()
 
         # Add small delay to ensure proper initialization
         await asyncio.sleep(0.1)

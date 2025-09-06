@@ -10,8 +10,7 @@ updates:
     open-pull-requests-limit: 10
     assignees:
       - "docdyhr"
-    reviewers:
-      - "docdyhr"
+
     commit-message:
       prefix: "deps"
       prefix-development: "deps-dev"
@@ -46,8 +45,7 @@ updates:
     open-pull-requests-limit: 5
     assignees:
       - "docdyhr"
-    reviewers:
-      - "docdyhr"
+
     commit-message:
       prefix: "ci"
       include: "scope"
@@ -65,8 +63,7 @@ updates:
     open-pull-requests-limit: 3
     assignees:
       - "docdyhr"
-    reviewers:
-      - "docdyhr"
+
     commit-message:
       prefix: "docker"
       include: "scope"

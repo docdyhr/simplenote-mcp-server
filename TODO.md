@@ -1,4 +1,4 @@
-# Simplenote MCP Server – Roadmap & Release Prep (Updated 2025-08-11)
+# Simplenote MCP Server – Roadmap & Release Prep (Updated 2025-09-06)
 
 This document captures the current actionable roadmap distilled from the recent CI/CD audit, project review, and outstanding improvement opportunities. It replaces the historical status log with a forward-looking, execution‑oriented plan aimed at the next release.
 
@@ -27,7 +27,9 @@ These items are being committed together with this roadmap update:
 ## 🧪 Testing & Quality (Near-Term)
 
 - [x] Add minimal coverage threshold gate (e.g. 70%) – optional, non-blocking first
-- [ ] Add focused cache edge case tests (expiry race, negative TTL)
+- [x] Add focused cache edge case tests (expiry race, negative TTL)
+- [x] Fix test isolation issues in security integration tests
+- [x] Resolve log monitoring singleton state pollution between tests
 - [ ] Add end-to-end user session scenario (create → tag → search → paginate → delete)
 - [ ] Mark long-running performance tests with `@pytest.mark.perf` and exclude from default
 - [ ] Introduce structured test matrix grouping (unit | integration | perf) via pytest markers
@@ -43,6 +45,7 @@ These items are being committed together with this roadmap update:
 ### Quick / In Flight
 
 - [x] pip-audit integrated in CI (report artifact)
+- [x] Fix dependabot.yml configuration errors (invalid 'reviewers' properties)
 
 ### Short Term
 
@@ -160,3 +163,12 @@ Next Review: 2025-09-05
 - ✅ **Release Security Assets**: Integrated comprehensive SBOM generation (CycloneDX JSON/XML, simple SBOM) and vulnerability reporting (pip-audit JSON/Markdown) into release workflow with automatic GitHub release asset attachment
 
 **Impact**: Achieved production-ready stability with zero failing tests, 100% CI/CD pipeline reliability, comprehensive security validation, and significantly improved user experience with actionable error messages. Enhanced debugging capabilities with detailed metrics, better operational monitoring with health endpoints, professional release documentation with structured changelogs following industry standards, and enterprise-grade supply chain security transparency with comprehensive SBOM and vulnerability reporting attached to every release.
+
+**2025-09-06**: GitHub Issues Resolution & Project Health Enhancement:
+- ✅ **Configuration Fixes**: Resolved 3 diagnostic errors in dependabot.yml by removing invalid 'reviewers' properties
+- ✅ **Test Isolation Resolution**: Fixed critical test failure in `test_log_monitoring_security_patterns` due to singleton state pollution
+- ✅ **Test Stability**: Added `reset_log_monitor()` function for proper cleanup between test runs, ensuring Phase 2 security integration tests pass consistently (13/13)
+- ✅ **Project Diagnostics**: Achieved zero errors/warnings state across entire codebase
+- ✅ **Documentation Updates**: Updated REMAINING_ISSUES.md to reflect resolved problems, reducing total issue count from 5 to 4
+
+**Impact**: Eliminated critical test isolation issues that caused intermittent failures in full test suite runs. Improved project health metrics with zero diagnostic errors and consistent test performance. Enhanced maintainability with proper singleton state management and comprehensive issue tracking updates.
