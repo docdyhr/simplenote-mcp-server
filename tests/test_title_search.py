@@ -13,6 +13,9 @@ import pytest
 from simplenote_mcp.server.cache import NoteCache
 from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
 
+# Import fixtures for rate limiting and test data
+pytest_plugins = ["tests.fixtures_rate_limit"]
+
 # Ensure rate limiting is disabled for these tests
 os.environ["SIMPLENOTE_OFFLINE_MODE"] = "true"
 
