@@ -1,0 +1,34 @@
+# Dockerfile for running MCP evaluations
+FROM node:20-alpine
+
+# Install Python and dependencies for the MCP server
+RUN apk add --no-cache python3 py3-pip python3-dev gcc musl-dev
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install npm dependencies
+RUN npm ci
+
+# Copy Python requirements and install
+COPY requirements*.txt pyproject.toml ./
+COPY simplenote_mcp/ ./simplenote_mcp/
+
+# Install Python package
+RUN pip install --break-system-packages -e .
+
+# Copy evaluation files
+COPY evals/ ./evals/
+COPY mcp-server-wrapper.ts ./
+
+# Create directory for results
+RUN mkdir -p /app/eval-results
+
+# Set proper permissions for tsx cache
+ENV TSX_CACHE_DIR=/tmp/tsx-cache
+RUN mkdir -p /tmp/tsx-cache && chmod 777 /tmp/tsx-cache
+
+# Default command
+CMD ["npm", "run", "eval:smoke"]

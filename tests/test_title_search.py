@@ -5,12 +5,16 @@ The title is the first line of the content and is included in the search.
 """
 
 import json
-from unittest.mock import MagicMock, patch
+import os
+from unittest.mock import patch
 
 import pytest
 
 from simplenote_mcp.server.cache import NoteCache
 from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
+
+# Ensure rate limiting is disabled for these tests
+os.environ["SIMPLENOTE_OFFLINE_MODE"] = "true"
 
 
 @pytest.fixture
@@ -78,36 +82,6 @@ def mock_notes_with_titles():
             "modifydate": "2025-01-10T10:00:00",
         },
     ]
-
-
-@pytest.fixture
-def mock_simplenote_client_with_titles(mock_notes_with_titles):
-    """Create a mock Simplenote client with title-focused test data."""
-    mock_client = MagicMock()
-    mock_client.get_note_list.return_value = (mock_notes_with_titles, 0)
-
-    def mock_get_note(note_id):
-        for note in mock_notes_with_titles:
-            if note["key"] == note_id:
-                return note, 0
-        return None, -1
-
-    mock_client.get_note.side_effect = mock_get_note
-
-    def mock_search(query, max_results=None):
-        # Simple mock search that looks in content
-        results = [
-            note
-            for note in mock_notes_with_titles
-            if query.lower() in note["content"].lower()
-        ]
-        if max_results:
-            results = results[:max_results]
-        return results, 0
-
-    mock_client.search_notes.side_effect = mock_search
-
-    return mock_client
 
 
 @pytest.mark.asyncio

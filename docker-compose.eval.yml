@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  mcp-eval:
+    build:
+      context: .
+      dockerfile: Dockerfile.eval
+    environment:
+      - SIMPLENOTE_EMAIL=${SIMPLENOTE_EMAIL}
+      - SIMPLENOTE_PASSWORD=${SIMPLENOTE_PASSWORD}
+      - SIMPLENOTE_OFFLINE_MODE=true
+    volumes:
+      - ./evals:/app/evals:ro
+      - ./mcp-server-wrapper.ts:/app/mcp-server-wrapper.ts:ro
+      - ./simplenote_mcp:/app/simplenote_mcp:ro
+      - ./eval-results:/app/eval-results
+    working_dir: /app
+    command: npm run eval:smoke
