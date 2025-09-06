@@ -1,0 +1,162 @@
+{
+  "total_runs": 438,
+  "success_rate": 72.14611872146118,
+  "average_duration_minutes": 2.3130136986301353,
+  "workflows": {
+    "Pipeline Status Dashboard": {
+      "total": 88,
+      "success": 87,
+      "failed": 0
+    },
+    "Auto-Fix Common Issues": {
+      "total": 45,
+      "success": 0,
+      "failed": 0
+    },
+    "Failure Notifications": {
+      "total": 45,
+      "success": 39,
+      "failed": 1
+    },
+    "CI/CD Metrics Dashboard": {
+      "total": 10,
+      "success": 7,
+      "failed": 2
+    },
+    "Auto-Merge PRs": {
+      "total": 46,
+      "success": 43,
+      "failed": 3
+    },
+    "Build and Publish Docker Image": {
+      "total": 23,
+      "success": 13,
+      "failed": 0
+    },
+    "CI/CD Pipeline": {
+      "total": 22,
+      "success": 9,
+      "failed": 10
+    },
+    "Code Quality": {
+      "total": 23,
+      "success": 18,
+      "failed": 0
+    },
+    "Badge Status Check": {
+      "total": 8,
+      "success": 8,
+      "failed": 0
+    },
+    "Security Alert Monitoring": {
+      "total": 9,
+      "success": 9,
+      "failed": 0
+    },
+    "Security Scanning": {
+      "total": 23,
+      "success": 21,
+      "failed": 0
+    },
+    ".github/workflows/monitoring-consolidated.yml": {
+      "total": 22,
+      "success": 0,
+      "failed": 22
+    },
+    "Push on main": {
+      "total": 16,
+      "success": 15,
+      "failed": 0
+    },
+    "\ud83d\udd0d Dependency Review": {
+      "total": 13,
+      "success": 12,
+      "failed": 1
+    },
+    "Evaluation Quality Gate": {
+      "total": 2,
+      "success": 0,
+      "failed": 2
+    },
+    "MCP Evaluations": {
+      "total": 3,
+      "success": 0,
+      "failed": 3
+    },
+    "pip in /. for ruff - Update #1093014107": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "pip in /. for ruff - Update #1093014080": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "Documentation": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "Optimized CI/CD Pipeline": {
+      "total": 2,
+      "success": 0,
+      "failed": 2
+    },
+    "Debug CI Issues": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "Performance Monitoring": {
+      "total": 14,
+      "success": 13,
+      "failed": 0
+    },
+    "Scheduled": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "docker in /. - Update #1089985197": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "Quick Validation": {
+      "total": 12,
+      "success": 11,
+      "failed": 0
+    },
+    "pip in /. for typer - Update #1087435090": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "pip in /. for cyclonedx-python-lib - Update #1087435049": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "pip in /. for typer - Update #1087435015": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "pip in /. - Update #1087434125": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "Health Check Monitoring": {
+      "total": 1,
+      "success": 1,
+      "failed": 0
+    },
+    "CodeQL Security Analysis": {
+      "total": 1,
+      "success": 0,
+      "failed": 1
+    }
+  }
+}
