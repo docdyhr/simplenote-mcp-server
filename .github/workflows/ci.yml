@@ -1,4 +1,4 @@
-name: Optimized CI/CD Pipeline
+name: CI/CD Pipeline
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ concurrency:
 env:
   PYTHON_VERSION: "3.12"
   NODE_VERSION: "20"
-  SIMPLENOTE_OFFLINE_MODE: "true"  # Disable rate limiting in CI
+  SIMPLENOTE_OFFLINE_MODE: "true" # Disable rate limiting in CI
 
 jobs:
   # Quick validation checks
@@ -37,7 +37,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Restore dependencies
         uses: actions/cache@v4
@@ -165,7 +165,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: "npm"
 
       - name: Install npm dependencies
         run: npm ci

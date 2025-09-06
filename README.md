@@ -467,6 +467,33 @@ The setup script creates:
 4. **Evaluation Tests**: LLM-based assessment of real-world usage
 5. **Performance Tests**: Load and stress testing
 
+### Running MCP Evaluations
+
+#### Docker Method (Recommended)
+Due to potential permission issues with tsx, we recommend running MCP evaluations in Docker:
+
+```bash
+# Run smoke tests
+./scripts/run-evals-docker.sh smoke
+
+# Run basic evaluations
+./scripts/run-evals-docker.sh basic
+
+# Run comprehensive evaluations
+./scripts/run-evals-docker.sh comprehensive
+
+# Run all evaluations
+./scripts/run-evals-docker.sh all
+```
+
+#### Direct Method (if permissions allow)
+```bash
+npm run eval:smoke
+npm run eval:basic
+npm run eval:comprehensive
+npm run eval:all
+```
+
 ### Docker Development
 
 ```bash
