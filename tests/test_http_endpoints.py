@@ -230,17 +230,24 @@ class TestHTTPEndpointsServer:
     )
     def test_server_start_and_stop(self):
         """Test starting and stopping the HTTP server."""
-        with patch("simplenote_mcp.server.config.get_config") as mock_config:
-            # Configure mock to enable HTTP endpoint
-            mock_config_obj = MagicMock()
-            mock_config_obj.enable_http_endpoint = True
-            mock_config_obj.http_host = "127.0.0.1"
-            mock_config_obj.http_port = 18080  # Use different port for tests
-            mock_config_obj.http_health_path = "/health"
-            mock_config_obj.http_ready_path = "/ready"
-            mock_config_obj.http_metrics_path = "/metrics"
-            mock_config.return_value = mock_config_obj
+        # Configure mock to enable HTTP endpoint
+        mock_config_obj = MagicMock()
+        mock_config_obj.enable_http_endpoint = True
+        mock_config_obj.http_host = "127.0.0.1"
+        mock_config_obj.http_port = 18080  # Use different port for tests
+        mock_config_obj.http_health_path = "/health"
+        mock_config_obj.http_ready_path = "/ready"
+        mock_config_obj.http_metrics_path = "/metrics"
 
+        with (
+            patch(
+                "simplenote_mcp.server.config.get_config", return_value=mock_config_obj
+            ),
+            patch(
+                "simplenote_mcp.server.http_endpoints.get_config",
+                return_value=mock_config_obj,
+            ),
+        ):
             server = HTTPEndpointsServer()
 
             try:
@@ -259,11 +266,15 @@ class TestHTTPEndpointsServer:
                 assert info["host"] == "127.0.0.1"
                 assert info["port"] == 18080
 
-            finally:
+                # Test shutdown
                 server.stop()
-                time.sleep(0.1)  # Give server time to stop
+                assert not server.is_running()
 
-            assert not server.is_running()
+            except Exception as e:
+                # Ensure cleanup if test fails
+                if hasattr(server, "stop"):
+                    server.stop()
+                raise e
 
     @pytest.mark.slow
     @pytest.mark.skipif(

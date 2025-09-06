@@ -35,6 +35,19 @@ def get_cache() -> "NoteCache":
     return _cache_instance
 
 
+def clear_cache() -> None:
+    """Clear the global cache instance.
+
+    This is primarily used for testing to ensure fresh cache instances.
+    """
+    global _cache_instance
+    if _cache_instance is not None:
+        # Stop background sync if running
+        if hasattr(_cache_instance, "_sync_task") and _cache_instance._sync_task:
+            _cache_instance._sync_task.cancel()
+    _cache_instance = None
+
+
 class NoteCache:
     """In-memory cache for Simplenote notes.
 

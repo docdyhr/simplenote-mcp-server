@@ -38,10 +38,11 @@ def retry_on_failure(max_retries=3, delay=1.0):
     return decorator
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="function")
 def event_loop():
-    """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    """Create a fresh event loop for each test function."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()
 
@@ -53,34 +54,43 @@ async def test_notes_cleanup():
 
     yield created_note_ids
 
-    # Cleanup: Delete all test notes created during the session
+    # Cleanup: Delete all test notes created during the session with timeout
     if created_note_ids:
-        client = get_simplenote_client()
-        for note_id in created_note_ids:
-            try:
-                # Add retry logic for cleanup too
-                for cleanup_attempt in range(3):
-                    try:
-                        note, status = client.get_note(note_id)
-                        if status == 0 and note:
-                            client.trash_note(note_id)
-                            print(f"Cleaned up test note: {note_id}")
-                            break
-                        elif status != 0:
-                            print(f"Note {note_id} not found (may already be deleted)")
-                            break
-                    except Exception as cleanup_e:
-                        if cleanup_attempt < 2:
-                            await asyncio.sleep(0.5)
-                            continue
-                        print(
-                            f"Failed to cleanup note {note_id} after retries: {cleanup_e}"
-                        )
-            except Exception as e:
-                print(f"Failed to cleanup note {note_id}: {e}")
 
-        # Add delay after cleanup to ensure state is clear for next test
-        await asyncio.sleep(1.0)
+        async def cleanup_with_timeout():
+            client = get_simplenote_client()
+            for note_id in created_note_ids:
+                try:
+                    # Add retry logic for cleanup too
+                    for cleanup_attempt in range(2):  # Reduced attempts
+                        try:
+                            note, status = client.get_note(note_id)
+                            if status == 0 and note:
+                                client.trash_note(note_id)
+                                print(f"Cleaned up test note: {note_id}")
+                                break
+                            elif status != 0:
+                                print(
+                                    f"Note {note_id} not found (may already be deleted)"
+                                )
+                                break
+                        except Exception as cleanup_e:
+                            if cleanup_attempt < 1:
+                                await asyncio.sleep(0.3)  # Shorter delay
+                                continue
+                            print(
+                                f"Failed to cleanup note {note_id} after retries: {cleanup_e}"
+                            )
+                except Exception as e:
+                    print(f"Failed to cleanup note {note_id}: {e}")
+
+        try:
+            # Add timeout to prevent hanging
+            await asyncio.wait_for(cleanup_with_timeout(), timeout=10.0)
+        except asyncio.TimeoutError:
+            print("Cleanup timed out - some test notes may remain")
+        except Exception as e:
+            print(f"Cleanup failed: {e}")
 
 
 @pytest.mark.integration
@@ -127,9 +137,13 @@ async def test_create_and_search_by_title(test_notes_cleanup):
         import json
 
         result_data = json.loads(result[0].text)
-        note_id = result_data.get("key") or result_data.get("note_id")
+        note_id = (
+            result_data.get("key")
+            or result_data.get("note_id")
+            or result_data.get("id")
+        )
 
-        assert note_id is not None
+        assert note_id is not None, f"Note ID not found in result: {result_data}"
         test_notes_cleanup.append(note_id)
 
         created_notes.append(

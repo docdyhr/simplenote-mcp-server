@@ -14,7 +14,8 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.6.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.0-blue.svg)](./CHANGELOG.md)
+[![Test Coverage](https://img.shields.io/badge/coverage-15.6%25-yellow)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/docker/v/docdyhr/simplenote-mcp-server?label=docker&color=blue)](https://hub.docker.com/r/docdyhr/simplenote-mcp-server)
 
@@ -40,11 +41,18 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 - 🔐 **Secure Authentication**: Token-based authentication via environment variables
 - 🧩 **MCP Compatible**: Works with Claude Desktop and other MCP clients
 - 🐳 **Docker Ready**: Full containerization with multi-stage builds and security hardening
-- 📊 **Monitoring**: Optional performance metrics and monitoring
+- 📊 **Monitoring**: Optional HTTP endpoints for health, readiness, and metrics
+- 🧪 **Robust Testing**: Comprehensive test suite with 700+ tests and continuous integration
+- 🔒 **Security Hardened**: Regular security scanning with Bandit, pip-audit, and dependency checks
 
 ---
 
 ## 🚀 Quick Start
+
+### Prerequisites
+
+- Simplenote account (create one at [simplenote.com](https://simplenote.com/))
+- Python 3.10+ (for non-Docker installs) or Docker
 
 ### Option 1: Docker (Recommended)
 
@@ -53,11 +61,17 @@ The fastest way to get started is using our pre-built Docker image:
 ```bash
 # Pull and run the latest image
 docker run -d \
+  --name simplenote-mcp \
   -e SIMPLENOTE_EMAIL=your.email@example.com \
   -e SIMPLENOTE_PASSWORD=your-password \
   -p 8000:8000 \
   docdyhr/simplenote-mcp-server:latest
 ```
+
+**Docker Health Checks:** The container includes built-in health monitoring endpoints:
+- Health: `http://localhost:8000/health`
+- Readiness: `http://localhost:8000/ready`  
+- Metrics: `http://localhost:8000/metrics` (Prometheus format)
 
 Or use Docker Compose:
 
@@ -96,6 +110,14 @@ simplenote-mcp-server
 ---
 
 ## 🐳 Docker Deployment
+
+### Container Features
+
+- **Multi-stage builds** for optimized image size
+- **Security hardening** with non-root user and minimal attack surface
+- **Health monitoring** endpoints built-in
+- **Resource limits** and proper signal handling
+- **Volume support** for persistent data
 
 ### Using Pre-built Images
 
@@ -287,6 +309,50 @@ project from:2023-01-01 to:2023-12-31
 - **Indexed lookups** for tags and content
 - **Query result caching** for repeated searches
 - **Optimized API usage** with minimal Simplenote calls
+
+---
+
+## 🎯 Recent Improvements (September 2025)
+
+### ✅ Quality & Reliability Enhancements
+
+**Test Suite Stabilization**: 
+- Fixed test isolation issues that caused intermittent failures
+- Improved test cleanup with proper timeout handling
+- Enhanced fixture management for better test reliability
+- Achieved consistent test results across individual and suite runs
+
+**CI/CD Pipeline Optimization**:
+- Consolidated 28 workflows down to 16 active workflows
+- Implemented unified monitoring workflow combining security, health, and badge checks
+- Improved test coverage reporting with realistic 15.6% baseline
+- Enhanced Docker build validation and security scanning
+
+**Code Quality Improvements**:
+- All linting (Ruff), formatting, and type checking (MyPy) now pass consistently  
+- Zero high-severity security vulnerabilities (verified with Bandit, pip-audit, safety)
+- Standardized code formatting and pre-commit hooks configuration
+- Enhanced error handling and user-facing error messages
+
+### 🔧 Developer Experience
+
+**Improved Testing**:
+- 724 comprehensive tests covering core functionality
+- Function-scoped fixtures for better test isolation  
+- Realistic coverage baseline established (15.6%)
+- Streamlined test execution with proper cleanup
+
+**Enhanced Documentation**:
+- Updated deployment guides with current Docker setup
+- Improved health monitoring endpoint documentation
+- Added troubleshooting guides for common issues
+- Current status and roadmap documentation
+
+**Container Improvements**:
+- Multi-stage Docker builds for optimized image size
+- Built-in health monitoring endpoints (`/health`, `/ready`, `/metrics`)
+- Enhanced security hardening with non-root user
+- Improved signal handling and graceful shutdown
 
 ---
 

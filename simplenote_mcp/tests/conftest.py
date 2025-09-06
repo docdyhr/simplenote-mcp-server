@@ -49,10 +49,15 @@ def check_environment() -> None:
         )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def simplenote_client():
-    """Get a Simplenote client for testing."""
+    """Get a fresh Simplenote client for each test function."""
     try:
+        # Clear any cached client instances
+        from simplenote_mcp.server.server import clear_client_cache
+
+        clear_client_cache()
+
         client = get_simplenote_client()
         return client
     except AuthenticationError as e:
@@ -148,9 +153,9 @@ async def note_cache(simplenote_client) -> AsyncGenerator[NoteCache, None]:
         pytest.fail(f"Failed to initialize note cache: {str(e)}")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 async def global_note_cache(simplenote_client) -> AsyncGenerator[NoteCache, None]:
-    """Create and initialize a NoteCache instance for all tests in the session."""
+    """Create and initialize a NoteCache instance for each test function."""
     cache = NoteCache(simplenote_client)
 
     try:
@@ -161,10 +166,15 @@ async def global_note_cache(simplenote_client) -> AsyncGenerator[NoteCache, None
         pytest.fail(f"Failed to initialize global note cache: {str(e)}")
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 async def server_cache() -> AsyncGenerator[NoteCache | None, None]:
-    """Initialize and return the server's global cache."""
+    """Initialize and return the server's cache for each test function."""
     try:
+        # Clear any existing cache before initializing
+        from simplenote_mcp.server.cache import clear_cache
+
+        clear_cache()
+
         await initialize_cache()
         from simplenote_mcp.server.cache import get_cache
 
@@ -173,6 +183,9 @@ async def server_cache() -> AsyncGenerator[NoteCache | None, None]:
             pytest.fail("Failed to initialize server cache")
 
         yield cache
+
+        # Cleanup after test
+        clear_cache()
     except Exception as e:
         pytest.fail(f"Failed to initialize server cache: {str(e)}")
 
@@ -233,9 +246,10 @@ def error_handler():
 
 
 # Configure pytest to handle asyncio
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="function")
 def event_loop():
-    """Create an event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    """Create a fresh event loop for each test function."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     yield loop
     loop.close()

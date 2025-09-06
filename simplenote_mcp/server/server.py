@@ -167,6 +167,16 @@ def get_simplenote_client() -> Simplenote:
     return simplenote_client
 
 
+def clear_client_cache() -> None:
+    """Clear the global Simplenote client cache.
+
+    This is primarily used for testing to ensure fresh client instances.
+    """
+    global simplenote_client
+    simplenote_client = None
+    logger.debug("Simplenote client cache cleared")
+
+
 # PID file for process management
 PID_FILE_PATH = Path(tempfile.gettempdir()) / "simplenote_mcp_server.pid"
 # Use same temp directory for consistency
