@@ -635,9 +635,9 @@ pytest==8.4.2 \
     #   pytest-mock
     #   pytest-timeout
     #   simplenote-mcp-server (pyproject.toml)
-pytest-asyncio==1.1.0 \
-    --hash=sha256:5fe2d69607b0bd75c656d1211f969cadba035030156745ee09e7d71740e58ecf \
-    --hash=sha256:796aa822981e01b68c12e4827b8697108f7205020f24b5793b3c41555dab68ea
+pytest-asyncio==1.2.0 \
+    --hash=sha256:8e17ae5e46d8e7efe51ab6494dd2010f4ca8dae51652aa3c8d55acf50bfb2e99 \
+    --hash=sha256:c609a64a2a8768462d0c99811ddb8bd2583c33fd33cf7f21af1c142e824ffb57
     # via simplenote-mcp-server (pyproject.toml)
 pytest-cov==6.3.0 \
     --hash=sha256:35c580e7800f87ce892e687461166e1ac2bcb8fb9e13aea79032518d6e503ff2 \
