@@ -127,7 +127,7 @@ jobs:
           pytest $SHARD_FILES --cov=simplenote_mcp --cov-report=xml --cov-report=term
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: ./coverage.xml
           flags: unittests-shard-${{ matrix.shard }}
