@@ -231,7 +231,7 @@ jobs:
           sbom: false
 
       - name: Generate attestation for Docker Hub
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         if: github.event_name != 'pull_request' && needs.check-secrets.outputs.has-docker-secrets == 'true'
         continue-on-error: true
         with:
@@ -240,7 +240,7 @@ jobs:
           push-to-registry: true
 
       - name: Generate attestation for GHCR
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v3
         if: github.event_name != 'pull_request'
         continue-on-error: true
         with:
