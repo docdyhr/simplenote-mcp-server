@@ -90,3 +90,4 @@ ci-diagnostics-report.json
 
 # PRVATE
 private*
+coverage.json
