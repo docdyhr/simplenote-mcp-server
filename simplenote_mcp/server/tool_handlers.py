@@ -97,6 +97,34 @@ class ToolHandlerBase(ABC):
             List of text content responses
         """
 
+    def _format_error_response(
+        self, error: Exception, operation: str, context: dict[str, Any] | None = None
+    ) -> list[types.TextContent]:
+        """Format an error into a consistent JSON response.
+
+        Args:
+            error: The exception that occurred
+            operation: Description of the operation that failed
+            context: Optional context information (note_id, query, etc.)
+
+        Returns:
+            List containing formatted error response
+        """
+        if isinstance(error, ServerError):
+            error_dict = error.to_dict()
+        else:
+            from .errors import handle_exception
+
+            logger.error(f"Error {operation}: {str(error)}", exc_info=True)
+            handled_error = handle_exception(error, operation)
+            error_dict = handled_error.to_dict()
+
+        # Add context if provided
+        if context:
+            error_dict["error"]["context"] = context
+
+        return [types.TextContent(type="text", text=json.dumps(error_dict))]
+
     def _get_note_from_cache_or_api(self, note_id: str) -> dict[str, Any]:
         """Get a note from cache first, then API if not found.
 
@@ -208,14 +236,7 @@ class CreateNoteHandler(ToolHandlerBase):
                 raise NetworkError(error_msg)
 
         except Exception as e:
-            if isinstance(e, ServerError):
-                return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
-
-            logger.error(f"Error creating note: {str(e)}", exc_info=True)
-            from .errors import handle_exception
-
-            error = handle_exception(e, "creating note")
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+            return self._format_error_response(e, "creating note")
 
 
 class UpdateNoteHandler(ToolHandlerBase):
@@ -289,14 +310,9 @@ class UpdateNoteHandler(ToolHandlerBase):
                 raise NetworkError(error_msg)
 
         except Exception as e:
-            if isinstance(e, ServerError):
-                return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
-
-            logger.error(f"Error updating note: {str(e)}", exc_info=True)
-            from .errors import handle_exception
-
-            error = handle_exception(e, f"updating note {note_id}")
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+            return self._format_error_response(
+                e, f"updating note {note_id}", {"note_id": note_id}
+            )
 
 
 class DeleteNoteHandler(ToolHandlerBase):
@@ -334,14 +350,9 @@ class DeleteNoteHandler(ToolHandlerBase):
                 raise NetworkError(FAILED_TRASH_NOTE)
 
         except Exception as e:
-            if isinstance(e, ServerError):
-                return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
-
-            logger.error(f"Error deleting note: {str(e)}", exc_info=True)
-            from .errors import handle_exception
-
-            error = handle_exception(e, f"deleting note {note_id}")
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+            return self._format_error_response(
+                e, f"deleting note {note_id}", {"note_id": note_id}
+            )
 
 
 class GetNoteHandler(ToolHandlerBase):
@@ -388,14 +399,9 @@ class GetNoteHandler(ToolHandlerBase):
             ]
 
         except Exception as e:
-            if isinstance(e, ServerError):
-                return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
-
-            logger.error(f"Error getting note: {str(e)}", exc_info=True)
-            from .errors import handle_exception
-
-            error = handle_exception(e, f"getting note {note_id}")
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+            return self._format_error_response(
+                e, f"getting note {note_id}", {"note_id": note_id}
+            )
 
 
 class SearchNotesHandler(ToolHandlerBase):
@@ -504,14 +510,9 @@ class SearchNotesHandler(ToolHandlerBase):
 
     def _handle_search_error(self, e: Exception, query: str) -> list[types.TextContent]:
         """Handle search errors and return appropriate response."""
-        if isinstance(e, ServerError):
-            return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
-
-        logger.error(f"Error searching notes: {str(e)}", exc_info=True)
-        from .errors import handle_exception
-
-        error = handle_exception(e, f"searching notes for '{query}'")
-        return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+        return self._format_error_response(
+            e, f"searching notes for '{query}'", {"query": query}
+        )
 
     async def _search_with_cache(
         self,
@@ -785,14 +786,9 @@ class AddTagsHandler(TagOperationHandler):
                 ]
 
         except Exception as e:
-            if isinstance(e, ServerError):
-                return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
-
-            logger.error(f"Error adding tags: {str(e)}", exc_info=True)
-            from .errors import handle_exception
-
-            error = handle_exception(e, f"adding tags to note {note_id}")
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+            return self._format_error_response(
+                e, f"adding tags to note {note_id}", {"note_id": note_id}
+            )
 
 
 class RemoveTagsHandler(TagOperationHandler):
@@ -902,14 +898,9 @@ class RemoveTagsHandler(TagOperationHandler):
                 ]
 
         except Exception as e:
-            if isinstance(e, ServerError):
-                return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
-
-            logger.error(f"Error removing tags: {str(e)}", exc_info=True)
-            from .errors import handle_exception
-
-            error = handle_exception(e, f"removing tags from note {note_id}")
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+            return self._format_error_response(
+                e, f"removing tags from note {note_id}", {"note_id": note_id}
+            )
 
 
 class ReplaceTagsHandler(TagOperationHandler):
@@ -981,14 +972,9 @@ class ReplaceTagsHandler(TagOperationHandler):
                 raise NetworkError(error_msg)
 
         except Exception as e:
-            if isinstance(e, ServerError):
-                return [types.TextContent(type="text", text=json.dumps(e.to_dict()))]
-
-            logger.error(f"Error replacing tags: {str(e)}", exc_info=True)
-            from .errors import handle_exception
-
-            error = handle_exception(e, f"replacing tags on note {note_id}")
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+            return self._format_error_response(
+                e, f"replacing tags on note {note_id}", {"note_id": note_id}
+            )
 
 
 class ToolHandlerRegistry:
