@@ -13,6 +13,10 @@ on:
     # Run weekly to catch issues early
     - cron: "0 2 * * 1" # Mondays at 2 AM UTC
 
+permissions:
+  contents: read
+  pull-requests: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
