@@ -17,11 +17,11 @@ build-backend = "setuptools.build_meta"
 text = "MIT"
 
 [project.optional-dependencies]
-dev = [ "ruff==0.13.2", "mypy==1.18.2", "pre-commit>=3.0.0", "black>=23.0.0", "bandit[toml]>=1.7.5", "pip-audit>=2.7.3", "tomli>=1.2.0;python_version<'3.11'",]
+dev = [ "ruff==0.13.3", "mypy==1.18.2", "pre-commit>=3.0.0", "black>=23.0.0", "bandit[toml]>=1.7.5", "pip-audit>=2.7.3", "tomli>=1.2.0;python_version<'3.11'",]
 test = [ "pytest>=8.4.1", "pytest-asyncio>=1.1.0", "pytest-cov>=6.2.1", "pytest-mock>=3.10.0", "pytest-timeout>=2.3.1", "requests>=2.32.4", "tomli>=1.2.0;python_version<'3.11'",]
 monitoring = [ "psutil>=5.9.0",]
 evals = []
-all = [ "ruff==0.13.2", "mypy==1.18.2", "pre-commit>=3.0.0", "black>=23.0.0", "bandit[toml]>=1.7.5", "pip-audit>=2.7.3", "pytest>=8.4.1", "pytest-asyncio>=1.1.0", "pytest-cov>=6.2.1", "pytest-mock>=3.10.0", "pytest-timeout>=2.3.1", "psutil>=5.9.0", "requests>=2.32.4", "tomli>=1.2.0;python_version<'3.11'",]
+all = [ "ruff==0.13.3", "mypy==1.18.2", "pre-commit>=3.0.0", "black>=23.0.0", "bandit[toml]>=1.7.5", "pip-audit>=2.7.3", "pytest>=8.4.1", "pytest-asyncio>=1.1.0", "pytest-cov>=6.2.1", "pytest-mock>=3.10.0", "pytest-timeout>=2.3.1", "psutil>=5.9.0", "requests>=2.32.4", "tomli>=1.2.0;python_version<'3.11'",]
 
 [project.scripts]
 simplenote-mcp-server = "simplenote_mcp.server:run_main"
