@@ -481,9 +481,9 @@ pip-requirements-parser==32.0.1 \
     --hash=sha256:4659bc2a667783e7a15d190f6fccf8b2486685b6dba4c19c3876314769c57526 \
     --hash=sha256:b4fa3a7a0be38243123cf9d1f3518da10c51bdb165a2b2985566247f9155a7d3
     # via pip-audit
-platformdirs==4.4.0 \
-    --hash=sha256:abd01743f24e5287cd7a5db3752faf1a2d65353f38ec26d98e25a6db65958c85 \
-    --hash=sha256:ca753cf4d81dc309bc67b0ea38fd15dc97bc30ce419a7f58d13eb3bf14c4febf
+platformdirs==4.5.0 \
+    --hash=sha256:70ddccdd7c99fc5942e9fc25636a8b34d04c24b335100223152c2803e4063312 \
+    --hash=sha256:e578a81bb873cbb89a41fcc904c7ef523cc18284b7e3b3ccf06aca1403b7ebd3
     # via
     #   black
     #   pip-audit
