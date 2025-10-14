@@ -79,19 +79,16 @@ jobs:
         uses: github/codeql-action/init@v3
         with:
           languages: ${{ matrix.language }}
-          queries: ${{ github.event.inputs.queries || 'default' }}
           # Custom queries for security-focused analysis
           config: |
             name: "CodeQL Security Analysis"
             disable-default-queries: false
             queries:
-              - name: security-extended
-                uses: security-extended
-              - name: security-and-quality  
-                uses: security-and-quality
+              - uses: security-extended
+              - uses: security-and-quality
             paths-ignore:
               - "tests/**"
-              - "docs/**" 
+              - "docs/**"
               - "scripts/**"
               - "*.md"
             paths:
