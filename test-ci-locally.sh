@@ -11,6 +11,7 @@ python .github/scripts/ci-diagnostics.py
 echo ""
 echo "🔧 Step 2: Installing package..."
 pip install -e .[dev,test]
+pip install build
 
 echo ""
 echo "✅ Step 3: Verifying installation..."
