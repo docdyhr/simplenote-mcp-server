@@ -4,7 +4,7 @@ version = "1.8.0"
 description = "A simple MCP Server that connects to Simplenote"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = [ "mcp[cli]>=1.10.0", "simplenote>=2.1.4", "requests>=2.32.4",]
+dependencies = [ "mcp[cli]>=1.18.0", "simplenote>=2.1.4", "requests>=2.32.4",]
 [[project.authors]]
 name = "Thomas Juul Dyhr"
 email = "docdyhr@me.com"
@@ -17,11 +17,11 @@ build-backend = "setuptools.build_meta"
 text = "MIT"
 
 [project.optional-dependencies]
-dev = [ "ruff==0.14.0", "mypy==1.18.2", "pre-commit>=3.0.0", "black>=23.0.0", "bandit[toml]>=1.7.5", "pip-audit>=2.7.3", "tomli>=1.2.0;python_version<'3.11'",]
-test = [ "pytest>=8.4.1", "pytest-asyncio>=1.1.0", "pytest-cov>=6.2.1", "pytest-mock>=3.10.0", "pytest-timeout>=2.3.1", "requests>=2.32.4", "tomli>=1.2.0;python_version<'3.11'",]
+dev = [ "ruff==0.14.1", "mypy==1.18.2", "pre-commit>=3.0.0", "black>=23.0.0", "bandit[toml]>=1.7.5", "pip-audit>=2.7.3", "tomli>=1.2.0;python_version<'3.11'",]
+test = [ "pytest>=8.4.2", "pytest-asyncio>=1.2.0", "pytest-cov>=7.0.0", "pytest-mock>=3.15.1", "pytest-timeout>=2.3.1", "requests>=2.32.4", "tomli>=1.2.0;python_version<'3.11'",]
 monitoring = [ "psutil>=5.9.0",]
 evals = []
-all = [ "ruff==0.14.0", "mypy==1.18.2", "pre-commit>=3.0.0", "black>=23.0.0", "bandit[toml]>=1.7.5", "pip-audit>=2.7.3", "pytest>=8.4.1", "pytest-asyncio>=1.1.0", "pytest-cov>=6.2.1", "pytest-mock>=3.10.0", "pytest-timeout>=2.3.1", "psutil>=5.9.0", "requests>=2.32.4", "tomli>=1.2.0;python_version<'3.11'",]
+all = [ "ruff==0.14.1", "mypy==1.18.2", "pre-commit>=3.0.0", "black>=23.0.0", "bandit[toml]>=1.7.5", "pip-audit>=2.7.3", "pytest>=8.4.2", "pytest-asyncio>=1.2.0", "pytest-cov>=7.0.0", "pytest-mock>=3.15.1", "pytest-timeout>=2.3.1", "psutil>=5.9.0", "requests>=2.32.4", "tomli>=1.2.0;python_version<'3.11'",]
 
 [project.scripts]
 simplenote-mcp-server = "simplenote_mcp.server:run_main"
