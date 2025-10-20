@@ -1,6 +1,27 @@
-# Simplenote MCP Server – Roadmap & Release Prep (Updated 2025-10-19)
+# Simplenote MCP Server – Roadmap & Release Prep (Updated 2025-10-20)
 
 This document captures the current actionable roadmap distilled from the recent CI/CD audit, project review, and outstanding improvement opportunities. It replaces the historical status log with a forward-looking, execution‑oriented plan aimed at the next release.
+
+---
+## 🚀 Recent Updates (2025-10-20)
+
+**Branch & CI/CD Maintenance:**
+
+- ✅ Resolved PR #171: Manually applied `actions/setup-node@v6` upgrade
+- ✅ Fixed Docker build failure: Corrected Python 3.14 site-packages path mismatch
+- ✅ Cleaned up branches: All Dependabot branches auto-deleted, only `main` remains
+- ✅ CI/CD Status: All security scans passing, Docker build fixed and queued
+
+**GitHub Actions Updates:**
+
+- [x] actions/setup-node: v5 → v6 (breaking change: npm-only caching)
+- [x] Dockerfile: Fixed python3.13 → python3.14 path for site-packages copy
+
+**Issues & PRs:**
+
+- Open PRs: 0 ✅
+- Open Issues: 0 ✅
+- Stale Branches: 0 ✅
 
 ---
 ## 🎯 Next Release Objective
