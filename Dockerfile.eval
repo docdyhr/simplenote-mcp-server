@@ -1,5 +1,5 @@
 # Dockerfile for running MCP evaluations
-FROM node:24-alpine
+FROM node:25-alpine
 
 # Install Python and dependencies for the MCP server
 RUN apk add --no-cache python3 py3-pip python3-dev gcc musl-dev
