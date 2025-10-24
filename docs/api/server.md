@@ -450,7 +450,7 @@ The server API follows semantic versioning:
 - **Minor**: New features, backward compatible
 - **Patch**: Bug fixes, no API changes
 
-Current API version: `1.6.0`
+Current API version: `1.8.1`
 
 ## Changelog
 

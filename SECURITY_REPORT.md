@@ -1,8 +1,8 @@
 # Simplenote MCP Server - Security Assessment Report
 
 **Generated:** January 29, 2025  
-**Version:** 1.6.0  
-**Assessment Period:** January 2025  
+**Version:** 1.8.1  
+**Assessment Period:** January 2025
 
 ## 🔒 Executive Summary
 

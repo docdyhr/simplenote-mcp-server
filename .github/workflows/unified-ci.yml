@@ -62,6 +62,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[dev,test]"
 
+      - name: Check version consistency
+        run: |
+          python scripts/quality/check_version_consistency.py
+
       - name: Run linters
         run: |
           ruff check .
@@ -100,7 +104,11 @@ jobs:
           SIMPLENOTE_EMAIL: test@example.com
           SIMPLENOTE_PASSWORD: test-password
         run: |
-          pytest tests/ -m "not integration" --cov=simplenote_mcp --cov-report=xml --cov-report=term
+          pytest tests/ -m "not integration" --cov=simplenote_mcp --cov-report=xml --cov-report=json --cov-report=term
+
+      - name: Check coverage threshold
+        run: |
+          python scripts/quality/check_coverage.py --threshold 65.0 --warn-only
 
       - name: Upload coverage
         uses: codecov/codecov-action@v5
