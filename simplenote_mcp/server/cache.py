@@ -82,54 +82,35 @@ class NoteCache:
             str, list[str]
         ] = {}  # Map of first word in title to note IDs (for prefix search)
 
-    async def initialize(self) -> int:
-        """Initialize the cache with all notes from Simplenote.
+    async def _fetch_all_notes_with_retry(self) -> list[dict[str, Any]]:
+        """Fetch all notes from API with retry logic.
 
         Returns:
-            Number of notes loaded into the cache.
+            List of note dictionaries
 
         Raises:
-            NetworkError: If there's an error connecting to Simplenote.
-
+            NetworkError: If all retries fail
         """
-        if self._initialized:
-            return len(self._notes)
-
-        start_time = time.time()
-        logger.info("Initializing note cache...")
-
-        # Maximum retries for initial load
         max_retries = 3
         retry_count = 0
         retry_delay = 2
-        notes_data: list[dict[str, Any]] = []  # Initialize to empty list
 
         while retry_count < max_retries:
             try:
-                # Get all notes from Simplenote (run in thread pool to avoid blocking)
                 loop = asyncio.get_event_loop()
                 notes_result, status = await loop.run_in_executor(
                     None,
                     lambda: self._client.get_note_list(tags=[]),
                 )
 
-                # Ensure we have proper type
-                if isinstance(notes_result, list):
-                    notes_data = notes_result
-                elif isinstance(notes_result, dict) and "notes" in notes_result:
-                    notes_data = notes_result["notes"]
-                else:
-                    notes_data = []
-
                 if status != 0:
-                    # Log the error but don't raise exception yet if we have retries left
                     if retry_count < max_retries - 1:
                         logger.warning(
                             f"Failed to get notes from Simplenote (status {status}), retrying {retry_count + 1}/{max_retries}..."
                         )
                         retry_count += 1
                         await asyncio.sleep(retry_delay)
-                        retry_delay *= 2  # Exponential backoff
+                        retry_delay *= 2
                         continue
                     else:
                         from .errors import NetworkError
@@ -138,11 +119,15 @@ class NoteCache:
                             f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts"
                         )
 
-                # If we got here, we succeeded
-                break
+                # Extract notes from result
+                if isinstance(notes_result, list):
+                    return notes_result
+                elif isinstance(notes_result, dict) and "notes" in notes_result:
+                    return notes_result["notes"]
+                else:
+                    return []
 
             except Exception as e:
-                # Handle other exceptions similarly
                 if retry_count < max_retries - 1:
                     logger.warning(
                         f"Error connecting to Simplenote: {str(e)}, retrying {retry_count + 1}/{max_retries}..."
@@ -152,7 +137,6 @@ class NoteCache:
                     retry_delay *= 2
                     continue
                 else:
-                    # Re-raise the exception after all retries
                     from .errors import NetworkError
 
                     if isinstance(e, NetworkError):
@@ -161,13 +145,10 @@ class NoteCache:
                         f"Failed to initialize cache after {max_retries} attempts: {str(e)}"
                     ) from e
 
-        # Store notes in the cache
-        self._notes = {note["key"]: note for note in notes_data}
-        self._initialized = True
-        self._last_sync = time.time()
+        return []
 
-        # Get index mark - for test compatibility
-        # Wrap this in try/except to prevent it from failing initialization if this step fails
+    async def _fetch_index_mark(self) -> None:
+        """Fetch index mark from API for test compatibility."""
         try:
             loop = asyncio.get_event_loop()
             index_result, index_status = await loop.run_in_executor(
@@ -186,28 +167,73 @@ class NoteCache:
             logger.warning(f"Failed to get index mark (non-critical): {str(e)}")
             self._index_mark = "test_mark"
 
-        # Extract all unique tags and build indexes
+    def _build_tag_index(self, note_id: str, tags: list[str]) -> None:
+        """Build tag index for a note.
+
+        Args:
+            note_id: Note ID
+            tags: List of tags
+        """
+        self._tags.update(tags)
+        for tag in tags:
+            if tag not in self._tag_index:
+                self._tag_index[tag] = set()
+            self._tag_index[tag].add(note_id)
+
+    def _build_title_index(self, note_id: str, content: str) -> None:
+        """Build title index for a note.
+
+        Args:
+            note_id: Note ID
+            content: Note content
+        """
+        first_word = self._extract_first_word(content)
+        if first_word:
+            if first_word not in self._title_index:
+                self._title_index[first_word] = []
+            self._title_index[first_word].append(note_id)
+
+    def _build_all_indexes(self) -> None:
+        """Build tag and title indexes for all notes."""
         for note_id, note in self._notes.items():
             # Build tag index
             if "tags" in note and note["tags"]:
-                self._tags.update(note["tags"])
-
-                # Update tag index for each tag
-                for tag in note["tags"]:
-                    if tag not in self._tag_index:
-                        self._tag_index[tag] = set()
-                    self._tag_index[tag].add(note_id)
+                self._build_tag_index(note_id, note["tags"])
 
             # Build title index
             content = note.get("content", "")
             if content:
-                first_line = content.splitlines()[0] if content else ""
-                if first_line:
-                    first_word = first_line.split()[0] if first_line.split() else ""
-                    if first_word:
-                        if first_word not in self._title_index:
-                            self._title_index[first_word] = []
-                        self._title_index[first_word].append(note_id)
+                self._build_title_index(note_id, content)
+
+    async def initialize(self) -> int:
+        """Initialize the cache with all notes from Simplenote.
+
+        Returns:
+            Number of notes loaded into the cache.
+
+        Raises:
+            NetworkError: If there's an error connecting to Simplenote.
+
+        """
+        if self._initialized:
+            return len(self._notes)
+
+        start_time = time.time()
+        logger.info("Initializing note cache...")
+
+        # Fetch all notes with retry logic
+        notes_data = await self._fetch_all_notes_with_retry()
+
+        # Store notes in the cache
+        self._notes = {note["key"]: note for note in notes_data}
+        self._initialized = True
+        self._last_sync = time.time()
+
+        # Fetch index mark for test compatibility
+        await self._fetch_index_mark()
+
+        # Build all indexes
+        self._build_all_indexes()
 
         elapsed = time.time() - start_time
         logger.info(f"Loaded {len(self._notes)} notes into cache in {elapsed:.2f}s")
@@ -218,43 +244,29 @@ class NoteCache:
 
         return len(self._notes)
 
-    async def sync(self) -> int:
-        """Synchronize the cache with Simplenote.
+    async def _fetch_sync_data_with_retry(
+        self, since: float
+    ) -> list[dict[str, Any]] | dict[str, Any]:
+        """Fetch sync data from API with retry logic.
 
-        This method retrieves only notes that have changed since the last sync.
+        Args:
+            since: Timestamp of last sync
 
         Returns:
-            Number of notes that were updated in the cache.
+            API result (list or dict)
 
+        Raises:
+            NetworkError: If all retries fail
         """
-        if not self._initialized:
-            # If not initialized, do a full load
-            return await self.initialize()
-
-        start_time = time.time()
-        logger.debug(f"Syncing note cache (last sync: {self._last_sync})")
-
-        # Get changes since last sync
-        since = self._last_sync
-
-        # Add retry logic for sync as well
         max_retries = 2
         retry_count = 0
         retry_delay = 1
-        result: (
-            list[dict[str, Any]] | dict[str, Any]
-        ) = []  # Initialize result to avoid unbound variable
-        notes_data: list[
-            dict[str, Any]
-        ] = []  # Initialize notes_data to avoid unbound variable
 
         while retry_count < max_retries:
             try:
                 api_result, status = self._client.get_note_list(since=since, tags=[])
-                result = api_result
 
                 if status != 0:
-                    # Handle non-zero status
                     if retry_count < max_retries - 1:
                         logger.warning(
                             f"Sync failed with status {status}, retrying {retry_count + 1}/{max_retries}..."
@@ -270,11 +282,9 @@ class NoteCache:
                             f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts"
                         )
 
-                # Successful API call
-                break
+                return api_result
 
             except Exception as e:
-                # Handle other exceptions
                 if retry_count < max_retries - 1:
                     logger.warning(
                         f"Error during sync: {str(e)}, retrying {retry_count + 1}/{max_retries}..."
@@ -284,7 +294,6 @@ class NoteCache:
                     retry_delay *= 2
                     continue
                 else:
-                    # Re-raise after all retries
                     from .errors import NetworkError
 
                     if isinstance(e, NetworkError):
@@ -293,63 +302,90 @@ class NoteCache:
                         f"Failed to sync after {max_retries} attempts: {str(e)}"
                     ) from e
 
-        try:
-            # Update local index mark for test compatibility
-            if isinstance(result, dict) and "mark" in result:
+        # Should never reach here, but satisfy type checker
+        return []
+
+    def _extract_notes_from_result(
+        self, result: list[dict[str, Any]] | dict[str, Any]
+    ) -> list[dict[str, Any]]:
+        """Extract notes array from API result.
+
+        Args:
+            result: API result (list or dict)
+
+        Returns:
+            List of note dictionaries
+        """
+        if isinstance(result, dict):
+            if "mark" in result:
                 self._index_mark = result["mark"]
+            return result.get("notes", [])
+        return result if isinstance(result, list) else []
 
-            # Get the notes array based on the result type
-            if isinstance(result, dict) and "notes" in result:
-                notes_data = result["notes"]
-            else:
-                notes_data = result if isinstance(result, list) else []
+    def _process_sync_notes(self, notes_data: list[dict[str, Any]]) -> int:
+        """Process notes from sync and update cache.
 
-            # Update or add changed notes to the cache
-            change_count = 0
+        Args:
+            notes_data: List of notes from API
 
-            # Keep track of existing tags and new tags
-            old_tags = set(self._tags)
-            new_tags = set()
+        Returns:
+            Number of changes made
+        """
+        change_count = 0
 
-            # First pass to remove deleted notes and collect tags being used
-            for note in notes_data:
-                note_id = note["key"]
-                if "deleted" in note and note["deleted"]:
-                    # Note was deleted (moved to trash)
-                    if note_id in self._notes:
-                        # Keep track of tags being removed
-                        if "tags" in self._notes[note_id]:
-                            old_tags.update(self._notes[note_id].get("tags", []))
-
-                        # Remove the note
-                        del self._notes[note_id]
-                        change_count += 1
-                else:
-                    # Note was created or updated
-                    self._notes[note_id] = note
+        for note in notes_data:
+            note_id = note["key"]
+            if note.get("deleted"):
+                # Note was deleted
+                if note_id in self._notes:
+                    del self._notes[note_id]
                     change_count += 1
+            else:
+                # Note was created or updated
+                self._notes[note_id] = note
+                change_count += 1
 
-                    # Collect new tags
-                    if "tags" in note and note["tags"]:
-                        new_tags.update(note["tags"])
+        return change_count
 
-            # Calculate which tags are still in use by scanning all notes
-            all_used_tags = set()
-            for note in self._notes.values():
-                if "tags" in note and note["tags"]:
-                    all_used_tags.update(note["tags"])
+    def _rebuild_tag_cache(self) -> None:
+        """Rebuild tag cache from all current notes."""
+        all_used_tags = set()
+        for note in self._notes.values():
+            if "tags" in note and note["tags"]:
+                all_used_tags.update(note["tags"])
+        self._tags = all_used_tags
 
-            # Reset tag set with only tags still in use
-            self._tags = all_used_tags
+    async def sync(self) -> int:
+        """Synchronize the cache with Simplenote.
 
-            # Special case for the test - explicitly handle "important" tag
-            # This ensures compatibility with the test_sync method expectations
-            if (
-                "important" in old_tags
-                and "important" not in new_tags
-                and "test_sync" in str(self._client)
-            ):
-                self._tags.discard("important")
+        This method retrieves only notes that have changed since the last sync.
+
+        Returns:
+            Number of notes that were updated in the cache.
+
+        Raises:
+            NetworkError: If sync fails after all retries
+        """
+        from .errors import NetworkError
+
+        if not self._initialized:
+            return await self.initialize()
+
+        start_time = time.time()
+        logger.debug(f"Syncing note cache (last sync: {self._last_sync})")
+
+        try:
+            # Fetch data with retry logic
+            result = await self._fetch_sync_data_with_retry(self._last_sync)
+
+            # Extract notes from result
+            notes_data = self._extract_notes_from_result(result)
+
+            # Process notes and update cache
+            change_count = self._process_sync_notes(notes_data)
+
+            # Rebuild tag cache
+            self._rebuild_tag_cache()
 
             # Update last sync time
             self._last_sync = time.time()
@@ -365,15 +401,14 @@ class NoteCache:
 
             return change_count
 
+        except NetworkError:
+            # Re-raise NetworkError to indicate sync failure
+            raise
         except Exception as e:
-            # Handle processing errors
             elapsed = time.time() - start_time
             logger.error(
                 f"Error processing sync results after {elapsed:.2f}s: {str(e)}"
             )
-
-            # Return 0 changes for non-critical errors during processing
-            # This allows the sync loop to continue rather than crashing
             return 0
 
     def get_note(self, note_id: str) -> dict | None:
@@ -461,73 +496,183 @@ class NoteCache:
             logger.debug("Cache not fully initialized yet, returning empty list")
             return []
 
-        # Initialize filtered_notes to prevent unbound variable error
-        filtered_notes = []
+        # Filter notes by tag
+        filtered_notes = self._apply_tag_filter(tag_filter)
 
-        # Filter by tag if specified using tag index for faster performance
-        if tag_filter:
-            if tag_filter.lower() == "untagged":
-                # Special case for untagged notes
-                filtered_notes = [
-                    note
-                    for note_id, note in self._notes.items()
-                    if not note.get("tags") or len(note.get("tags", [])) == 0
-                ]
-            else:
-                # First try exact match using tag index for faster performance
-                if tag_filter in self._tag_index:
-                    note_keys = self._tag_index[tag_filter]
-                    filtered_notes = [
-                        self._notes[key] for key in note_keys if key in self._notes
-                    ]
-                else:
-                    # Try case-insensitive match if exact match fails
-                    tag_filter_lower = tag_filter.lower()
-                    case_insensitive_match = False
+        # Sort notes
+        sorted_notes = self._sort_notes(filtered_notes, sort_by, sort_direction)
 
-                    for tag in self._tag_index:
-                        if tag.lower() == tag_filter_lower:
-                            note_keys = self._tag_index[tag]
-                            filtered_notes = [
-                                self._notes[key]
-                                for key in note_keys
-                                if key in self._notes
-                            ]
-                            case_insensitive_match = True
-                            break
+        # Apply pagination
+        start_idx = offset
+        end_idx = None if limit is None else offset + limit
+        return sorted_notes[start_idx:end_idx]
 
-                    # Tag doesn't exist in index
-                    if not case_insensitive_match:
-                        filtered_notes = []
-        else:
-            filtered_notes = list(self._notes.values())
+    def _apply_tag_filter(self, tag_filter: str | None) -> list[dict[str, Any]]:
+        """Apply tag filter to notes.
 
-        # Get sort key function based on sort_by parameter
-        def get_sort_key(note: dict[str, Any]) -> Any:
-            if sort_by == "title":
-                # Use first line of content or empty string if no content
-                content = note.get("content", "")
-                return content.splitlines()[0] if content else ""
-            elif sort_by == "createdate":
-                return note.get("createdate", 0)
-            else:  # Default to modifydate
-                return note.get("modifydate", 0)
+        Args:
+            tag_filter: Tag to filter by, or None for all notes
 
-        # Sort direction
+        Returns:
+            List of filtered notes
+        """
+        if not tag_filter:
+            return list(self._notes.values())
+
+        if tag_filter.lower() == "untagged":
+            return [
+                note
+                for note_id, note in self._notes.items()
+                if not note.get("tags") or len(note.get("tags", [])) == 0
+            ]
+
+        # Try to get notes with this tag
+        note_ids = self._get_notes_with_tag(tag_filter)
+        if note_ids:
+            return [self._notes[key] for key in note_ids if key in self._notes]
+
+        return []
+
+    def _get_sort_key(self, note: dict[str, Any], sort_by: str) -> Any:
+        """Get sort key for a note.
+
+        Args:
+            note: Note dictionary
+            sort_by: Field to sort by
+
+        Returns:
+            Sort key value
+        """
+        if sort_by == "title":
+            content = note.get("content", "")
+            return content.splitlines()[0] if content else ""
+        elif sort_by == "createdate":
+            return note.get("createdate", 0)
+        else:  # Default to modifydate
+            return note.get("modifydate", 0)
+
+    def _sort_notes(
+        self, notes: list[dict[str, Any]], sort_by: str, sort_direction: str
+    ) -> list[dict[str, Any]]:
+        """Sort notes by specified field and direction.
+
+        Args:
+            notes: List of notes to sort
+            sort_by: Field to sort by
+            sort_direction: Sort direction ('asc' or 'desc')
+
+        Returns:
+            Sorted list of notes
+        """
         reverse_sort = sort_direction.lower() == "desc"
-
-        # Sort notes by specified field and direction
-        sorted_notes = sorted(
-            filtered_notes,
-            key=get_sort_key,
+        return sorted(
+            notes,
+            key=lambda note: self._get_sort_key(note, sort_by),
             reverse=reverse_sort,
         )
 
-        # Apply pagination (offset + limit)
-        start_idx = offset
-        end_idx = None if limit is None else offset + limit
+    def _check_search_cache(
+        self,
+        cache_key: str,
+        query: str,
+        offset: int,
+        limit: int | None,
+        search_start_time: float,
+    ) -> list[dict[str, Any]] | None:
+        """Check if search results are cached and return them if valid.
 
-        return sorted_notes[start_idx:end_idx]
+        Args:
+            cache_key: Cache key for the search
+            query: Search query string
+            offset: Pagination offset
+            limit: Maximum results
+            search_start_time: Time when search started
+
+        Returns:
+            Cached results with pagination applied, or None if cache miss
+        """
+        current_time = search_start_time
+        if cache_key in self._query_cache:
+            cached_time, cached_results = self._query_cache[cache_key]
+            if current_time - cached_time < self._query_cache_ttl:
+                logger.debug(f"Using cached search results for query: '{query}'")
+                record_cache_hit()
+                search_time = time.time() - search_start_time
+                record_cache_access_time(search_time)
+                start_idx = offset
+                end_idx = None if limit is None else offset + limit
+                return cached_results[start_idx:end_idx]
+        return None
+
+    def _filter_notes_by_untagged(self) -> dict[str, dict[str, Any]]:
+        """Filter notes that have no tags.
+
+        Returns:
+            Dictionary of untagged notes
+        """
+        notes_to_search = {
+            key: note
+            for key, note in self._notes.items()
+            if not note.get("tags") or len(note.get("tags", [])) == 0
+        }
+        logger.debug(
+            f"Filtered for untagged notes: {len(notes_to_search)} of {len(self._notes)}"
+        )
+        return notes_to_search
+
+    def _get_notes_with_tag(self, tag: str) -> set[str] | None:
+        """Get note IDs that have a specific tag (case-insensitive).
+
+        Args:
+            tag: Tag to search for
+
+        Returns:
+            Set of note IDs, or None if tag not found
+        """
+        # Try exact match
+        if tag in self._tag_index:
+            return self._tag_index[tag]
+
+        # Try case-insensitive match
+        tag_lower = tag.lower()
+        for indexed_tag in self._tag_index:
+            if indexed_tag.lower() == tag_lower:
+                return self._tag_index[indexed_tag]
+
+        return None
+
+    def _filter_notes_by_tags(
+        self, tag_filters: list[str]
+    ) -> dict[str, dict[str, Any]]:
+        """Filter notes by tag filters.
+
+        Args:
+            tag_filters: List of tags to filter by
+
+        Returns:
+            Dictionary of notes matching all tags
+        """
+        matching_note_ids = None
+        for tag in tag_filters:
+            tag_note_ids = self._get_notes_with_tag(tag)
+            if tag_note_ids is None:
+                matching_note_ids = set()
+                break
+            if matching_note_ids is None:
+                matching_note_ids = set(tag_note_ids)
+            else:
+                matching_note_ids &= tag_note_ids
+
+        if matching_note_ids is not None:
+            notes_to_search = {
+                key: self._notes[key] for key in matching_note_ids if key in self._notes
+            }
+            logger.debug(
+                f"Pre-filtered notes by tags: {len(notes_to_search)} of {len(self._notes)}"
+            )
+            return notes_to_search
+
+        return self._notes
 
     def search_notes(
         self,
@@ -548,123 +693,37 @@ class NoteCache:
 
         Returns:
             List of matching notes sorted by relevance.
-
-        Examples:
-            Simple search:
-            >>> search_notes("project meeting")
-
-            Boolean operators:
-            >>> search_notes("project AND meeting AND NOT cancelled")
-
-            Quoted phrases:
-            >>> search_notes('"action items" AND project')
-
-            Tag filters:
-            >>> search_notes("meeting", tag_filters=["work", "important"])
-            >>> search_notes("meeting tag:work tag:important")  # Equivalent
-
-            Date range:
-            >>> from datetime import datetime
-            >>> start_date = datetime(2023, 1, 1)
-            >>> end_date = datetime(2023, 12, 31)
-            >>> search_notes("meeting", date_range=(start_date, end_date))
-            >>> search_notes("meeting from:2023-01-01 to:2023-12-31")  # Equivalent
-
-            Pagination:
-            >>> search_notes("meeting", limit=10, offset=20)  # Return notes 21-30
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
 
-        # Log search operation
         logger.debug(
-            f"Advanced search: query='{query}', "
-            f"tags={tag_filters}, "
-            f"date_range={date_range}, "
-            f"limit={limit}, "
-            f"offset={offset}, "
-            f"notes_count={len(self._notes)}"
+            f"Advanced search: query='{query}', tags={tag_filters}, "
+            f"date_range={date_range}, limit={limit}, offset={offset}"
         )
 
-        # Generate a cache key for this search
+        # Generate cache key
         cache_key = self._generate_search_cache_key(query, tag_filters, date_range)
-
-        # Check if we have a cached result for this search
         search_start_time = time.time()
-        current_time = search_start_time
-        if cache_key in self._query_cache:
-            cached_time, cached_results = self._query_cache[cache_key]
-            # Use cached results if they're not too old
-            if current_time - cached_time < self._query_cache_ttl:
-                logger.debug(f"Using cached search results for query: '{query}'")
-                # Record cache hit for query cache
-                record_cache_hit()
-                search_time = time.time() - search_start_time
-                record_cache_access_time(search_time)
-                # Apply pagination to cached results
-                start_idx = offset
-                end_idx = None if limit is None else offset + limit
-                return cached_results[start_idx:end_idx]
 
-        # Cache miss for query cache
+        # Check cache
+        cached_result = self._check_search_cache(
+            cache_key, query, offset, limit, search_start_time
+        )
+        if cached_result is not None:
+            return cached_result
+
         record_cache_miss()
 
-        # Optimize search by pre-filtering notes if we have tag_filters
+        # Filter notes by tags
         notes_to_search = self._notes
         if tag_filters:
-            # Check if we're looking for untagged notes
             if len(tag_filters) == 1 and tag_filters[0].lower() == "untagged":
-                # Filter notes that have no tags
-                notes_to_search = {
-                    key: note
-                    for key, note in self._notes.items()
-                    if not note.get("tags") or len(note.get("tags", [])) == 0
-                }
-                logger.debug(
-                    f"Filtered for untagged notes: {len(notes_to_search)} of {len(self._notes)}"
-                )
+                notes_to_search = self._filter_notes_by_untagged()
             else:
-                # Get the set of notes that have all required tags
-                matching_note_ids = None
-                for tag in tag_filters:
-                    tag_lower = tag.lower()
-                    # First try exact match
-                    if tag in self._tag_index:
-                        tag_note_ids = self._tag_index[tag]
-                        if matching_note_ids is None:
-                            matching_note_ids = set(tag_note_ids)
-                        else:
-                            matching_note_ids &= tag_note_ids
-                    else:
-                        # Try case-insensitive match
-                        found_case_insensitive = False
-                        for indexed_tag in self._tag_index:
-                            if indexed_tag.lower() == tag_lower:
-                                tag_note_ids = self._tag_index[indexed_tag]
-                                if matching_note_ids is None:
-                                    matching_note_ids = set(tag_note_ids)
-                                else:
-                                    matching_note_ids &= tag_note_ids
-                                found_case_insensitive = True
-                                break
+                notes_to_search = self._filter_notes_by_tags(tag_filters)
 
-                        # If tag doesn't exist even case-insensitively, no notes can match
-                        if not found_case_insensitive:
-                            matching_note_ids = set()
-                            break
-
-                if matching_note_ids is not None:
-                    # Create filtered dict of notes to search
-                    notes_to_search = {
-                        key: self._notes[key]
-                        for key in matching_note_ids
-                        if key in self._notes
-                    }
-                    logger.debug(
-                        f"Pre-filtered notes by tags: {len(notes_to_search)} of {len(self._notes)}"
-                    )
-
-        # Use the search engine to perform the search with the filtered notes
+        # Use search engine
         all_results = self._search_engine.search(
             notes=notes_to_search,
             query=query,
@@ -672,25 +731,24 @@ class NoteCache:
             date_range=date_range,
         )
 
-        # Store results in cache
-        self._query_cache[cache_key] = (current_time, all_results)
+        # Cache results
+        self._query_cache[cache_key] = (search_start_time, all_results)
 
-        # Manage cache size - remove oldest entries if we have too many
-        if len(self._query_cache) > 100:  # Limit cache to 100 entries
+        # Manage cache size
+        if len(self._query_cache) > 100:
             oldest_keys = sorted(
                 self._query_cache.keys(), key=lambda k: self._query_cache[k][0]
-            )[:10]  # Remove 10 oldest entries
+            )[:10]
             for k in oldest_keys:
                 del self._query_cache[k]
 
-        # Apply pagination (offset + limit)
-        start_idx = offset
-        end_idx = None if limit is None else offset + limit
-
-        # Record search completion time
+        # Record timing
         search_time = time.time() - search_start_time
         record_cache_access_time(search_time)
 
+        # Apply pagination
+        start_idx = offset
+        end_idx = None if limit is None else offset + limit
         return all_results[start_idx:end_idx]
 
     def _generate_search_cache_key(
@@ -723,6 +781,100 @@ class NoteCache:
         combined = f"{query}|{tag_str}|{date_str}|{self._last_sync}"
         return hashlib.md5(combined.encode(), usedforsecurity=False).hexdigest()
 
+    def _extract_first_word(self, content: str) -> str:
+        """Extract first word from content for title indexing.
+
+        Args:
+            content: Note content
+
+        Returns:
+            First word of first line, or empty string
+        """
+        if not content:
+            return ""
+        first_line = content.splitlines()[0] if content else ""
+        if not first_line:
+            return ""
+        words = first_line.split()
+        return words[0] if words else ""
+
+    def _add_tags_to_indexes(self, note_id: str, tags: list[str]) -> None:
+        """Add tags to cache indexes.
+
+        Args:
+            note_id: Note ID
+            tags: List of tags to add
+        """
+        for tag in tags:
+            self._tags.add(tag)
+            if tag not in self._tag_index:
+                self._tag_index[tag] = set()
+            self._tag_index[tag].add(note_id)
+
+    def _add_to_title_index(self, note_id: str, content: str) -> None:
+        """Add note to title index.
+
+        Args:
+            note_id: Note ID
+            content: Note content
+        """
+        first_word = self._extract_first_word(content)
+        if first_word:
+            if first_word not in self._title_index:
+                self._title_index[first_word] = []
+            if note_id not in self._title_index[first_word]:
+                self._title_index[first_word].append(note_id)
+
+    def _remove_from_title_index(self, note_id: str, content: str) -> None:
+        """Remove note from title index.
+
+        Args:
+            note_id: Note ID
+            content: Note content
+        """
+        first_word = self._extract_first_word(content)
+        if first_word and first_word in self._title_index:
+            if note_id in self._title_index[first_word]:
+                self._title_index[first_word].remove(note_id)
+                # Clean up empty entries
+                if not self._title_index[first_word]:
+                    del self._title_index[first_word]
+
+    def _remove_tags_from_indexes(self, note_id: str, tags: list[str]) -> None:
+        """Remove tags from cache indexes.
+
+        Args:
+            note_id: Note ID
+            tags: List of tags to remove
+        """
+        for tag in tags:
+            # Remove note ID from tag index
+            if tag in self._tag_index:
+                self._tag_index[tag].discard(note_id)
+                # Clean up empty tag index entries
+                if not self._tag_index[tag]:
+                    del self._tag_index[tag]
+
+            # Check if tag is used in any other note
+            if not self._is_tag_used_elsewhere(note_id, tag):
+                self._tags.discard(tag)
+
+    def _is_tag_used_elsewhere(self, exclude_note_id: str, tag: str) -> bool:
+        """Check if tag is used in any note except the excluded one.
+
+        Args:
+            exclude_note_id: Note ID to exclude from search
+            tag: Tag to search for
+
+        Returns:
+            True if tag is used elsewhere
+        """
+        return any(
+            tag in other_note.get("tags", [])
+            for other_key, other_note in self._notes.items()
+            if other_key != exclude_note_id
+        )
+
     def update_cache_after_create(self, note: dict) -> None:
         """Update cache after creating a note.
 
@@ -738,27 +890,34 @@ class NoteCache:
 
         # Update tags and tag index
         if "tags" in note and note["tags"]:
-            for tag in note["tags"]:
-                self._tags.add(tag)
-
-                # Update tag index
-                if tag not in self._tag_index:
-                    self._tag_index[tag] = set()
-                self._tag_index[tag].add(note_id)
+            self._add_tags_to_indexes(note_id, note["tags"])
 
         # Update title index
         content = note.get("content", "")
         if content:
-            first_line = content.splitlines()[0] if content else ""
-            if first_line:
-                first_word = first_line.split()[0] if first_line.split() else ""
-                if first_word:
-                    if first_word not in self._title_index:
-                        self._title_index[first_word] = []
-                    self._title_index[first_word].append(note_id)
+            self._add_to_title_index(note_id, content)
 
         # Clear query cache on note creation
         self._query_cache.clear()
+
+    def _update_tags_on_update(
+        self, note_id: str, old_tags: list[str], new_tags: list[str]
+    ) -> None:
+        """Update tag indexes when a note is updated.
+
+        Args:
+            note_id: Note ID
+            old_tags: Previous tags
+            new_tags: New tags
+        """
+        # Find removed tags
+        removed_tags = [tag for tag in old_tags if tag not in new_tags]
+        if removed_tags:
+            self._remove_tags_from_indexes(note_id, removed_tags)
+
+        # Add new tags
+        if new_tags:
+            self._add_tags_to_indexes(note_id, new_tags)
 
     def update_cache_after_update(self, note: dict) -> None:
         """Update cache after updating a note.
@@ -773,79 +932,26 @@ class NoteCache:
         note_id = note["key"]
 
         # Remove old tags from indexes if note was already in cache
-        if note_id in self._notes and "tags" in self._notes[note_id]:
-            old_tags = self._notes[note_id]["tags"]
+        if note_id in self._notes:
+            old_tags = self._notes[note_id].get("tags", [])
             new_tags = note.get("tags", [])
+            self._update_tags_on_update(note_id, old_tags, new_tags)
 
-            # Process removed tags
-            for tag in old_tags:
-                if tag not in new_tags:
-                    # Remove note ID from tag index
-                    if tag in self._tag_index:
-                        self._tag_index[tag].discard(note_id)
-                        # Clean up empty tag index entries
-                        if not self._tag_index[tag]:
-                            del self._tag_index[tag]
-
-                    # Check if tag is used in any other note
-                    if not any(
-                        tag in other_note.get("tags", [])
-                        for other_key, other_note in self._notes.items()
-                        if other_key != note_id
-                    ):
-                        self._tags.discard(tag)
-
-        # Update title index - remove old entries
-        old_content = (
-            self._notes[note_id].get("content", "") if note_id in self._notes else ""
-        )
-        if old_content:
-            old_first_line = old_content.splitlines()[0] if old_content else ""
-            if old_first_line:
-                old_first_word = (
-                    old_first_line.split()[0] if old_first_line.split() else ""
-                )
-                if (
-                    old_first_word
-                    and old_first_word in self._title_index
-                    and note_id in self._title_index[old_first_word]
-                ):
-                    self._title_index[old_first_word].remove(note_id)
-                    # Clean up empty title index entries
-                    if not self._title_index[old_first_word]:
-                        del self._title_index[old_first_word]
+            # Update title index - remove old entries
+            old_content = self._notes[note_id].get("content", "")
+            if old_content:
+                self._remove_from_title_index(note_id, old_content)
 
         # Update note
         self._notes[note_id] = note
 
-        # Add new tags to indexes
-        if "tags" in note and note["tags"]:
-            for tag in note["tags"]:
-                self._tags.add(tag)
-
-                # Update tag index
-                if tag not in self._tag_index:
-                    self._tag_index[tag] = set()
-                self._tag_index[tag].add(note_id)
-
         # Update title index with new content
         content = note.get("content", "")
         if content:
-            first_line = content.splitlines()[0] if content else ""
-            if first_line:
-                first_word = first_line.split()[0] if first_line.split() else ""
-                if first_word:
-                    if first_word not in self._title_index:
-                        self._title_index[first_word] = []
-                    if note_id not in self._title_index[first_word]:
-                        self._title_index[first_word].append(note_id)
+            self._add_to_title_index(note_id, content)
 
         # Clear query cache on note update
         self._query_cache.clear()
-
-        # Add new tags
-        if "tags" in note and note["tags"]:
-            self._tags.update(note["tags"])
 
     def update_cache_after_delete(self, note_id: str) -> None:
         """Update cache after deleting a note.
@@ -857,47 +963,21 @@ class NoteCache:
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
 
+        if note_id not in self._notes:
+            return
+
         # Remove tags from indexes
-        if note_id in self._notes and "tags" in self._notes[note_id]:
-            old_tags = self._notes[note_id]["tags"]
-
-            # Process removed tags
-            for tag in old_tags:
-                # Remove note ID from tag index
-                if tag in self._tag_index:
-                    self._tag_index[tag].discard(note_id)
-                    # Clean up empty tag index entries
-                    if not self._tag_index[tag]:
-                        del self._tag_index[tag]
-
-                # Check if tag is used in any other note
-                if not any(
-                    tag in other_note.get("tags", [])
-                    for other_key, other_note in self._notes.items()
-                    if other_key != note_id
-                ):
-                    self._tags.discard(tag)
+        old_tags = self._notes[note_id].get("tags", [])
+        if old_tags:
+            self._remove_tags_from_indexes(note_id, old_tags)
 
         # Update title index - remove deleted note
-        if note_id in self._notes:
-            content = self._notes[note_id].get("content", "")
-            if content:
-                first_line = content.splitlines()[0] if content else ""
-                if first_line:
-                    first_word = first_line.split()[0] if first_line.split() else ""
-                    if (
-                        first_word
-                        and first_word in self._title_index
-                        and note_id in self._title_index[first_word]
-                    ):
-                        self._title_index[first_word].remove(note_id)
-                        # Clean up empty title index entries
-                        if not self._title_index[first_word]:
-                            del self._title_index[first_word]
+        content = self._notes[note_id].get("content", "")
+        if content:
+            self._remove_from_title_index(note_id, content)
 
         # Remove note from cache
-        if note_id in self._notes:
-            del self._notes[note_id]
+        del self._notes[note_id]
 
         # Clear query cache on note deletion
         self._query_cache.clear()
