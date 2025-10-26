@@ -1,9 +1,34 @@
-# Simplenote MCP Server – Roadmap & Release Prep (Updated 2025-10-20)
+# Simplenote MCP Server – Roadmap & Release Prep (Updated 2025-01-26)
 
 This document captures the current actionable roadmap distilled from the recent CI/CD audit, project review, and outstanding improvement opportunities. It replaces the historical status log with a forward-looking, execution‑oriented plan aimed at the next release.
 
 ---
-## 🚀 Recent Updates (2025-10-20)
+## 🚀 Recent Updates (2025-01-26)
+
+**Critical Bug Fix:**
+
+- ✅ **Fixed Claude Desktop timeout issue** - Server now starts in < 1 second (was 55+ seconds)
+- ✅ Implemented thread pool execution for blocking Simplenote API calls
+- ✅ Made cache initialization truly non-blocking with background loading
+- ✅ Fixed unawaited coroutine warnings in log monitor
+- ✅ Added graceful empty cache handling during startup
+
+**Documentation Improvements:**
+
+- ✅ Created comprehensive CHANGELOG.md with full version history
+- ✅ Added CLAUDE_DESKTOP_TIMEOUT_FIX.md with detailed technical analysis
+- ✅ Created PROJECT_IMPROVEMENTS_SUMMARY_2025_01.md
+- ✅ Added TESTING_CLAUDE_DESKTOP.md testing guide
+- ✅ Added code complexity analysis tools and REFACTORING_PLAN.md
+
+**Code Quality:**
+
+- ✅ Added radon for complexity metrics (28 functions CC >= 15 identified)
+- ✅ Generated complexity report with refactoring priorities
+- ✅ Maintained zero diagnostics errors
+- ✅ All 756 tests passing with 69.64% coverage
+
+## 🚀 Previous Updates (2025-10-20)
 
 **Branch & CI/CD Maintenance:**
 
@@ -26,17 +51,37 @@ This document captures the current actionable roadmap distilled from the recent 
 ---
 ## 🎯 Next Release Objective
 
-Deliver a reliability & security focused release (vNEXT) that:
+Deliver a stability & maintainability focused release (v1.8.2 or v1.9.0) that:
 
-- Expands CI from smoke test → full test suite with coverage artifact
-- Introduces authenticated supply‑chain vulnerability scanning in core CI
-- Produces durable changelog artifacts during automated releases
-- Lays groundwork for future quality gates (evaluation & security)
+- ✅ Resolves Claude Desktop integration (COMPLETED)
+- ✅ Provides comprehensive version history via CHANGELOG.md (COMPLETED)
+- ✅ Establishes code complexity baselines and refactoring plan (COMPLETED)
+- 🔄 Tests production deployment with real users
+- 🔄 Gathers feedback on performance improvements
+- 📋 Considers code refactoring initiative (7-week plan available)
 
 ---
-## ✅ Quick Wins (Implemented Now)
+## ✅ Recent Completions (2025-01-26)
 
-These items are being committed together with this roadmap update:
+**Critical Fixes:**
+- [x] ✅ Fix Claude Desktop timeout (55s → < 1s startup)
+- [x] ✅ Thread pool execution for blocking API calls
+- [x] ✅ Non-blocking cache initialization
+- [x] ✅ Graceful empty cache handling
+
+**Documentation:**
+- [x] ✅ Create CHANGELOG.md with complete version history
+- [x] ✅ Technical documentation for timeout fix
+- [x] ✅ Testing guide for Claude Desktop
+- [x] ✅ Comprehensive project improvements summary
+
+**Code Quality Tools:**
+- [x] ✅ Add radon for complexity metrics
+- [x] ✅ Create automated complexity analysis script
+- [x] ✅ Generate refactoring plan with priorities
+- [x] ✅ Establish complexity baselines
+
+## ✅ Previous Quick Wins (2025-10-20)
 
 - [x] CI: Run full pytest suite (not just `test_main_module.py`)
 - [x] CI: Generate coverage XML + upload artifact
@@ -74,29 +119,59 @@ These items are being committed together with this roadmap update:
 **Impact**: All dependencies up-to-date, test coverage improved to 27.45%, all CI/CD workflows passing.
 
 ---
-## 🧪 Testing & Quality (Near-Term)
+## 🧪 Testing & Quality
 
+### Completed ✅
 - [x] Add minimal coverage threshold gate (e.g. 70%) – optional, non-blocking first
 - [x] Add focused cache edge case tests (expiry race, negative TTL)
 - [x] Fix test isolation issues in security integration tests
 - [x] Resolve log monitoring singleton state pollution between tests
-- [x] **NEW**: Comprehensive error scenario testing (17 tests covering all tool handlers) ✅ 2025-10-02
-- [x] **NEW**: Increased test coverage from 15.6% to 23.5% (+7.9%) ✅ 2025-10-02
+- [x] Comprehensive error scenario testing (17 tests covering all tool handlers) ✅ 2025-10-02
+- [x] Increased test coverage from 15.6% to 23.5% (+7.9%) ✅ 2025-10-02
+- [x] Raise `tool_handlers.py` coverage toward 58% (achieved) ✅ 2025-10-02
+- [x] Maintain 756 tests passing with 69.64% coverage ✅ 2025-01-26
+
+### Near-Term (Next Sprint)
+- [ ] **Test in Production**: Validate Claude Desktop fix with real users
+- [ ] Monitor logs for 7 days post-deployment
+- [ ] Gather performance feedback from users (> 1000 notes)
 - [ ] Add end-to-end user session scenario (create → tag → search → paginate → delete)
 - [ ] Mark long-running performance tests with `@pytest.mark.perf` and exclude from default
 - [ ] Introduce structured test matrix grouping (unit | integration | perf) via pytest markers
 
-### Medium
-
-- [x] Raise `tool_handlers.py` coverage toward 58% (achieved) ✅ 2025-10-02
+### Medium Priority
 - [ ] Raise `tool_handlers.py` coverage toward 80% (target +22% more)
 - [ ] Batch operation simulation tests (bulk create/update)
+- [ ] Performance regression tests for startup time
+
+---
+## 🔧 Code Quality & Refactoring (NEW - 2025-01-26)
+
+### Completed ✅
+- [x] Add radon to dev dependencies
+- [x] Create automated complexity analysis script
+- [x] Generate baseline complexity report (83 functions CC >= 10)
+- [x] Identify high-priority refactoring targets (cache.py MI 12.7)
+- [x] Create comprehensive 7-week refactoring plan
+
+### Planned (Medium Priority)
+- [ ] **Cache Module Refactoring**: Split cache.py into storage/sync/search modules
+- [ ] **Search Engine Simplification**: Reduce search() complexity from CC 30 to < 15
+- [ ] **Security Validation**: Extract validation rules, reduce CC from 22 to < 15
+- [ ] **Error Handler Refactoring**: Use dispatch pattern instead of if-elif chains
+
+**Target Metrics**:
+- All functions CC < 15 (currently 28 functions >= 15)
+- All files MI > 20 (currently cache.py at 12.7)
+- Average MI increase from 57.8 to > 65
+
+**Timeline**: 7 weeks (see REFACTORING_PLAN.md)  
+**Status**: ⏸️ Planned - Waiting for production stability confirmation
 
 ---
 ## 🔐 Security & Supply Chain
 
-### Quick / In Flight
-
+### Completed ✅
 - [x] pip-audit integrated in CI (report artifact)
 - [x] Fix dependabot.yml configuration errors (invalid 'reviewers' properties)
 
