@@ -106,8 +106,12 @@ class NoteCache:
 
         while retry_count < max_retries:
             try:
-                # Get all notes from Simplenote
-                notes_result, status = self._client.get_note_list(tags=[])
+                # Get all notes from Simplenote (run in thread pool to avoid blocking)
+                loop = asyncio.get_event_loop()
+                notes_result, status = await loop.run_in_executor(
+                    None,
+                    lambda: self._client.get_note_list(tags=[]),
+                )
 
                 # Ensure we have proper type
                 if isinstance(notes_result, list):
@@ -165,7 +169,11 @@ class NoteCache:
         # Get index mark - for test compatibility
         # Wrap this in try/except to prevent it from failing initialization if this step fails
         try:
-            index_result, index_status = self._client.get_note_list()
+            loop = asyncio.get_event_loop()
+            index_result, index_status = await loop.run_in_executor(
+                None,
+                self._client.get_note_list,
+            )
             if (
                 index_status == 0
                 and isinstance(index_result, dict)
@@ -446,11 +454,12 @@ class NoteCache:
             sort_direction: Sort direction ("asc" or "desc").
 
         Returns:
-            List of note data.
+            List of note data. Returns empty list if cache not fully initialized.
 
         """
         if not self._initialized:
-            raise RuntimeError(CACHE_NOT_LOADED)
+            logger.debug("Cache not fully initialized yet, returning empty list")
+            return []
 
         # Initialize filtered_notes to prevent unbound variable error
         filtered_notes = []

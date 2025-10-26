@@ -459,12 +459,21 @@ class LogPatternMonitor:
                             try:
                                 # Try to run in existing event loop if available
                                 loop = asyncio.get_running_loop()
-                                asyncio.create_task(self._process_log_line(line))
+                                task = asyncio.create_task(self._process_log_line(line))
+                                # Store task reference to prevent warning about unawaited coroutine
+                                # The task will run in background and we don't need to await it
+                                task.add_done_callback(lambda t: None)
                             except RuntimeError:
                                 # No running loop, create one for this thread
                                 loop = self._get_or_create_event_loop()
-                                asyncio.run_coroutine_threadsafe(
+                                future = asyncio.run_coroutine_threadsafe(
                                     self._process_log_line(line), loop
+                                )
+                                # Add callback to handle any exceptions
+                                future.add_done_callback(
+                                    lambda f: f.exception()
+                                    if not f.cancelled()
+                                    else None
                                 )
 
         except Exception as e:

@@ -273,18 +273,29 @@ def setup_signal_handlers() -> None:
 
 
 async def _test_simplenote_connection(sn: Any) -> None:
-    """Test Simplenote API connection."""
+    """Test Simplenote API connection.
+
+    This runs the synchronous Simplenote API call in a thread pool
+    to avoid blocking the async event loop.
+    """
     logger.debug("Testing Simplenote client connection...")
     try:
-        test_notes, status = sn.get_note_list()
+        # Run blocking API call in thread pool to avoid blocking event loop
+        loop = asyncio.get_event_loop()
+        test_notes, status = await loop.run_in_executor(
+            None,  # Use default executor
+            sn.get_note_list,
+        )
         if status == 0:
             logger.debug(
                 f"Simplenote API connection successful, received {len(test_notes) if isinstance(test_notes, list) else 'data'} items"
             )
         else:
             logger.error(f"Simplenote API connection test failed with status {status}")
+            raise AuthenticationError("Failed to authenticate with Simplenote API")
     except Exception as e:
-        logger.error(f"Simplenote API connection test failed: {str(e)}", exc_info=True)
+        logger.error(f"Error testing Simplenote API connection: {str(e)}")
+        raise
 
 
 async def _create_minimal_cache(sn: Any) -> NoteCache:
@@ -301,10 +312,18 @@ async def _create_minimal_cache(sn: Any) -> NoteCache:
 
 
 async def _populate_cache_direct(cache: NoteCache, sn: Any) -> None:
-    """Populate cache directly with API call."""
+    """Populate cache directly with API call.
+
+    Runs the blocking API call in a thread pool to avoid blocking the event loop.
+    """
     try:
         logger.debug("Attempting direct API call to get notes...")
-        all_notes, status = sn.get_note_list()
+        # Run blocking API call in thread pool
+        loop = asyncio.get_event_loop()
+        all_notes, status = await loop.run_in_executor(
+            None,  # Use default executor
+            sn.get_note_list,
+        )
         if status == 0 and isinstance(all_notes, list) and all_notes:
             # Success! Update the cache directly
             try:
@@ -365,33 +384,40 @@ async def _background_cache_initialization(
 
 
 async def initialize_cache() -> None:
-    """Initialize the note cache and start background sync."""
+    """Initialize the note cache and start background sync.
+
+    This is now truly non-blocking - it creates a minimal cache immediately
+    and loads notes in the background without awaiting.
+    """
     global note_cache, background_sync
-    logger.debug("Initializing note cache")
+    logger.debug("Initializing note cache (non-blocking)")
 
     try:
-        logger.info("Initializing note cache")
+        logger.info("Starting non-blocking cache initialization")
 
-        # Get and test Simplenote client
+        # Get Simplenote client (don't test connection yet - do it async)
         sn = get_simplenote_client()
-        await _test_simplenote_connection(sn)
 
-        # Create minimal cache if needed
+        # Create minimal empty cache immediately if needed
         if note_cache is None:
             note_cache = await _create_minimal_cache(sn)
+            logger.info("Created minimal cache, will populate in background")
 
-        # Start background sync
+        # Start background sync immediately (it handles its own initialization)
         if background_sync is None:
             background_sync = BackgroundSync(note_cache)
             await background_sync.start()
+            logger.info("Background sync started")
 
-        # Start background initialization
+        # Kick off background initialization WITHOUT awaiting
+        # This allows the MCP server to start serving requests immediately
         config = get_config()
         asyncio.create_task(
-            _background_cache_initialization(
+            _background_cache_initialization_safe(
                 note_cache, sn, config.cache_initialization_timeout
             )
         )
+        logger.info("Cache initialization task started in background")
 
     except Exception as e:
         if isinstance(e, ServerError):
@@ -399,6 +425,36 @@ async def initialize_cache() -> None:
         logger.error(f"Error initializing cache: {str(e)}", exc_info=True)
         error = handle_exception(e, "initializing cache")
         raise error from e
+
+
+async def _background_cache_initialization_safe(
+    cache: NoteCache, client: Simplenote, timeout: int
+) -> None:
+    """Safely initialize cache in background with error handling.
+
+    This runs completely asynchronously and won't block server startup.
+
+    Args:
+        cache: The note cache to initialize
+        client: The Simplenote client
+        timeout: Timeout for initialization in seconds
+    """
+    try:
+        logger.info("Background cache initialization starting...")
+
+        # Test connection first (async, non-blocking)
+        await _test_simplenote_connection(client)
+
+        # Now do the full initialization
+        await _background_cache_initialization(cache, client, timeout)
+
+        logger.info("Background cache initialization completed successfully")
+    except asyncio.CancelledError:
+        logger.info("Background cache initialization cancelled")
+    except Exception as e:
+        logger.error(f"Background cache initialization failed: {str(e)}", exc_info=True)
+        # Don't raise - we don't want to crash the server
+        # The cache will retry on next background sync
 
 
 # ===== RESOURCE CAPABILITIES =====
@@ -1002,7 +1058,10 @@ async def handle_get_prompt(
 
 
 async def _start_server_components() -> None:
-    """Start server monitoring and cache initialization."""
+    """Start server monitoring and cache initialization.
+
+    This function completes quickly and doesn't block on cache loading.
+    """
     logger.info("Starting performance monitoring")
     config = get_config()
     start_metrics_collection(interval=config.metrics_collection_interval)
@@ -1027,9 +1086,14 @@ async def _start_server_components() -> None:
     except Exception as e:
         logger.error(f"Failed to start HTTP endpoints: {e}")
 
-    # Start cache initialization in background but don't wait
-    asyncio.create_task(initialize_cache())
-    logger.info("Started cache initialization in background")
+    # Start cache initialization - this is now truly non-blocking
+    # It creates an empty cache immediately and populates it in background
+    try:
+        await initialize_cache()
+        logger.info("Cache initialization started (loading notes in background)")
+    except Exception as e:
+        logger.error(f"Failed to start cache initialization: {e}", exc_info=True)
+        # Continue anyway - server can still start with empty cache
 
 
 def _get_server_capabilities() -> Any:
@@ -1128,6 +1192,9 @@ async def _stop_background_sync() -> None:
 
 async def run() -> None:
     """Run the server using STDIO transport."""
+    import time as time_module
+
+    startup_start = time_module.time()
     logger.info("Starting MCP server STDIO transport")
 
     try:
@@ -1135,11 +1202,20 @@ async def run() -> None:
             logger.info("STDIO server created, initializing MCP server")
 
             try:
-                # Start server components
+                # Start server components (non-blocking)
+                components_start = time_module.time()
                 await _start_server_components()
+                components_time = time_module.time() - components_start
+                logger.info(f"Server components started in {components_time:.2f}s")
 
                 # Get server capabilities
                 capabilities = _get_server_capabilities()
+
+                # Log total startup time
+                startup_time = time_module.time() - startup_start
+                logger.info(
+                    f"MCP server ready in {startup_time:.2f}s (cache loading in background)"
+                )
 
                 # Create shutdown monitoring
                 shutdown_future = await _create_shutdown_monitor()
