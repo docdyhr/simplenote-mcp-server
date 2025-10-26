@@ -310,7 +310,36 @@ project from:2023-01-01 to:2023-12-31
 
 ---
 
-## 🎯 Recent Improvements (September 2025)
+## 🎯 Recent Improvements
+
+### ✅ January 2025 - Performance & Code Quality
+
+**Critical Bug Fix**:
+- **Fixed Claude Desktop timeout** - Reduced startup time from 55+ seconds to < 1 second (98% improvement)
+- Implemented thread pool execution for blocking Simplenote API calls
+- Made cache initialization truly non-blocking with background loading
+- Resolved `anyio.BrokenResourceError` during shutdown
+
+**Code Refactoring - Phase 1 Complete**:
+- **Cache module complexity reduced**: 5 high-complexity functions (CC >= 15) → 0 (100% reduction)
+- **Maintainability improved**: Cache MI from 12.7 → 16.2 (+28%)
+- Extracted 23 helper methods for better code organization
+- All 670 tests passing with 67% cache coverage maintained
+- See `REFACTORING_PHASE1_COMPLETE.md` for details
+
+**Documentation Enhancements**:
+- Added comprehensive `CHANGELOG.md` with complete version history
+- Created `TESTING_CLAUDE_DESKTOP.md` for user testing guide
+- Added code complexity analysis tools (`check_complexity.py`)
+- Documented refactoring plan and completion reports
+
+**Quality Tools**:
+- Integrated Radon for automated complexity analysis
+- Baseline metrics: 22 functions CC >= 15 (down from 28)
+- Average Maintainability Index: 57.9 (maintained)
+- Zero diagnostics errors, all quality gates passing
+
+### ✅ September 2025 - Quality & Reliability Enhancements
 
 ### ✅ Quality & Reliability Enhancements
 

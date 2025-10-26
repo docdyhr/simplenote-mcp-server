@@ -69,6 +69,37 @@ For more detailed information about the linting setup, see [docs/linting_guide.m
 
 For detailed information about the pre-commit setup, including troubleshooting, see [PRE_COMMIT_README.md](PRE_COMMIT_README.md).
 
+### Code Complexity Analysis
+
+This project uses **Radon** to monitor code complexity and maintainability:
+
+```bash
+# Analyze complexity for the entire project
+python scripts/quality/check_complexity.py
+
+# Analyze a specific file
+python scripts/quality/check_complexity.py --path simplenote_mcp/server/cache.py
+
+# Set custom complexity threshold
+python scripts/quality/check_complexity.py --threshold 15
+
+# Generate detailed JSON report
+python scripts/quality/check_complexity.py --output my-report.json
+```
+
+**Complexity Guidelines**:
+- **Target**: All functions should have Cyclomatic Complexity (CC) < 15
+- **Maintainability Index (MI)**: All files should have MI > 20
+- **When refactoring**: Extract helper methods, use single responsibility principle
+- **See**: `REFACTORING_PLAN.md` for refactoring guidelines and examples
+
+**Metrics Explained**:
+- **CC < 10**: Low complexity (Good) ✅
+- **CC 10-15**: Moderate complexity (Acceptable) ⚠️
+- **CC > 15**: High complexity (Should refactor) ❌
+- **MI > 20**: High maintainability (Good) ✅
+- **MI < 20**: Low maintainability (Should improve) ⚠️
+
 #### Python 3.13 Compatibility
 
 This project includes special handling to ensure compatibility with both Python 3.12 and 3.13. When using pre-commit, always run the fix script first if you encounter any errors:
