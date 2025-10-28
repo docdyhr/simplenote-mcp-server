@@ -1,0 +1,17 @@
+labels: [question]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for starting a discussion! This is the place to ask questions, share ideas, and connect with the community.
+
+        **Please search existing discussions before creating a new one.**
+
+  - type: textarea
+    id: discussion
+    attributes:
+      label: Discussion Topic
+      description: What would you like to discuss?
+      placeholder: Describe your question, idea, or topic...
+    validations:
+      required: true

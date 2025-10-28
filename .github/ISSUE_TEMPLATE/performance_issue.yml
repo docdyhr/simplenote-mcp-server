@@ -1,0 +1,164 @@
+name: ⚡ Performance Issue
+description: Report slow performance or resource usage problems
+title: "[Performance]: "
+labels: ["performance", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a performance issue! This helps us keep the server fast and efficient.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Performance Issue Description
+      description: Describe the performance problem you're experiencing
+      placeholder: The server is slow when...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: type
+    attributes:
+      label: Performance Issue Type
+      description: What kind of performance issue is this?
+      options:
+        - Slow startup time
+        - Slow search/query performance
+        - High memory usage
+        - High CPU usage
+        - Slow note operations (create/update/delete)
+        - Slow cache synchronization
+        - Network latency
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Performance Metrics
+      description: Provide specific metrics if available
+      placeholder: |
+        - Startup time: 30 seconds
+        - Memory usage: 2GB
+        - CPU usage: 100%
+        - Operation took: X seconds
+    validations:
+      required: false
+
+  - type: input
+    id: note-count
+    attributes:
+      label: Number of Notes
+      description: How many notes do you have in your Simplenote account?
+      placeholder: "~1000 notes"
+    validations:
+      required: false
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this performance issue?
+      placeholder: |
+        1. Start server with...
+        2. Execute this operation...
+        3. Observe slow performance...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Performance
+      description: What performance did you expect?
+      placeholder: I expected the operation to complete in...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: Which version are you using?
+      options:
+        - 1.9.0 (latest)
+        - 1.8.1
+        - 1.8.0
+        - 1.7.0
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment Method
+      description: How are you running the server?
+      options:
+        - Claude Desktop (MCP integration)
+        - Docker
+        - Docker Compose
+        - Kubernetes/Helm
+        - Python/pip install
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: system
+    attributes:
+      label: System Information
+      description: Information about your system
+      placeholder: |
+        OS: macOS 14.0
+        CPU: M1 Pro
+        RAM: 16GB
+        Python: 3.12.0
+    validations:
+      required: false
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Your configuration settings (redact sensitive info)
+      placeholder: |
+        SYNC_INTERVAL_SECONDS=120
+        LOG_LEVEL=INFO
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Any relevant performance logs or profiling data
+      placeholder: Paste logs here...
+      render: shell
+    validations:
+      required: false
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Any other context about the performance issue
+      placeholder: Any additional information...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Pre-submission Checklist
+      description: Please confirm
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have provided specific performance metrics where possible
+          required: true
+        - label: I have included system information and configuration
+          required: true

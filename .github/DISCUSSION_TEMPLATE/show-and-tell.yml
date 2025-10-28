@@ -1,0 +1,39 @@
+labels: [show-and-tell]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share what you've built with the Simplenote MCP Server! We love to see how the community is using the project.
+
+  - type: textarea
+    id: project
+    attributes:
+      label: What did you build?
+      description: Describe your project or use case
+      placeholder: I built...
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: Share more details about your project
+      placeholder: |
+        - What problem does it solve?
+        - How does it work?
+        - Any interesting challenges?
+    validations:
+      required: false
+
+  - type: textarea
+    id: links
+    attributes:
+      label: Links
+      description: Share links to your project, demo, or screenshots
+      placeholder: |
+        - GitHub: https://github.com/...
+        - Demo: https://...
+        - Screenshots: [drag and drop images here]
+    validations:
+      required: false
