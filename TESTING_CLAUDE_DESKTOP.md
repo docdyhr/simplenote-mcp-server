@@ -1,6 +1,18 @@
 # Testing Simplenote MCP Server with Claude Desktop
 
-**Quick Start Guide for Testing the Timeout Fix**
+**Production Validation Guide for v1.9.0**
+
+This guide helps you test the new v1.9.0 release with its **98% startup performance improvement** and verify that Claude Desktop integration works flawlessly.
+
+---
+
+## 🎯 What's New in v1.9.0
+
+- ✅ **Sub-second startup** (was 55+ seconds, now < 1 second)
+- ✅ **Fixed Claude Desktop timeout** issue completely
+- ✅ **Non-blocking cache initialization** with background loading
+- ✅ **Graceful empty cache handling** during startup
+- ✅ **Zero regressions** - all existing functionality maintained
 
 ---
 
@@ -133,8 +145,100 @@ Search my notes for "project"
 
 **Create Note**:
 ```
-Create a new note with content: "Test note from Claude Desktop"
+Create a new note with content: "Test note from Claude Desktop v1.9.0"
 ```
+
+---
+
+## ⚡ v1.9.0 Specific Validation
+
+### Performance Testing
+
+**Expected**: Server should start in **< 1 second**
+
+1. **Check Startup Time**:
+   ```bash
+   # Time the server startup
+   time python -m simplenote_mcp.server --help
+   
+   # Expected output: real < 1.0s
+   ```
+
+2. **Monitor Claude Desktop Startup**:
+   - Launch Claude Desktop
+   - **Expected**: Immediate response, no timeout errors
+   - **Expected**: Tools available within 1-2 seconds
+   - **Previous issue**: 55+ second timeout and failure
+
+### Functionality Validation
+
+Test all major features to ensure no regressions:
+
+1. **Cache Operations** (Background Loading):
+   ```
+   # Immediately after startup
+   Show me all my notes
+   ```
+   - **Expected**: May return empty initially, then populate
+   - **Expected**: No errors or crashes
+   - **New behavior**: Graceful empty cache handling
+
+2. **Search During Background Sync**:
+   ```
+   Search for "test"
+   ```
+   - **Expected**: Works immediately even during cache load
+   - **Expected**: Results improve as cache populates
+   - **New behavior**: Non-blocking operations
+
+3. **Large Note Collections** (if you have 500+ notes):
+   - **Expected**: Startup still < 1 second
+   - **Expected**: Search remains responsive
+   - **Monitor**: Memory usage should be reasonable
+
+### Log Validation
+
+Check logs for clean operation:
+
+**macOS**:
+```bash
+tail -f ~/Library/Logs/Claude/mcp*.log
+```
+
+**Windows**:
+```powershell
+Get-Content "$env:APPDATA\Claude\logs\mcp*.log" -Tail 50 -Wait
+```
+
+**Expected in logs**:
+- ✅ "Server starting" message
+- ✅ "Cache initialized (background loading)" message
+- ✅ "Background sync started" message
+- ✅ No "timeout" errors
+- ✅ No "BrokenResourceError" messages
+- ✅ No unawaited coroutine warnings
+
+**Should NOT see**:
+- ❌ Timeout errors
+- ❌ BrokenResourceError
+- ❌ RuntimeWarning about coroutines
+- ❌ Authentication failures (if credentials correct)
+
+---
+
+## 📊 Success Criteria
+
+Your v1.9.0 installation is working correctly if:
+
+- [ ] ✅ Server starts in < 1 second
+- [ ] ✅ Claude Desktop shows "simplenote" server connected
+- [ ] ✅ Can list notes immediately
+- [ ] ✅ Can search notes without delay
+- [ ] ✅ Can create new notes
+- [ ] ✅ Can update existing notes
+- [ ] ✅ No timeout errors in logs
+- [ ] ✅ No error messages in Claude Desktop
+- [ ] ✅ Background sync completes without issues
 
 ---
 

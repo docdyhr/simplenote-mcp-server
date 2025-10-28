@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 💬 GitHub Discussions
+    url: https://github.com/docdyhr/simplenote-mcp-server/discussions
+    about: Ask questions, share ideas, and discuss with the community
+  - name: 📚 Documentation
+    url: https://github.com/docdyhr/simplenote-mcp-server#readme
+    about: Read the documentation and guides
+  - name: 🔒 Security Vulnerability
+    url: https://github.com/docdyhr/simplenote-mcp-server/security/advisories/new
+    about: Report a security vulnerability privately

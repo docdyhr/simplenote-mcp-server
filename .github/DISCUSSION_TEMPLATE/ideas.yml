@@ -1,0 +1,35 @@
+labels: [idea]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share your ideas for improving the Simplenote MCP Server!
+
+        **Note**: For specific feature requests, please use the Feature Request issue template instead.
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your Idea
+      description: What's your idea?
+      placeholder: I have an idea to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: benefits
+    attributes:
+      label: Benefits
+      description: How would this idea benefit the project or community?
+      placeholder: This would help by...
+    validations:
+      required: false
+
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Implementation Thoughts
+      description: Any thoughts on how this could be implemented?
+      placeholder: This could be implemented by...
+    validations:
+      required: false
