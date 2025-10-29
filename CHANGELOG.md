@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **🔒 Critical Security Fix**: Resolved CVE-2025-62727 in Starlette dependency
+  - Upgraded Starlette from 0.46.2 to >=0.49.1 (fixes DoS vulnerability via crafted Range headers)
+  - Upgraded urllib3 from 2.2.2 to >=2.5.0 (fixes redirect control bypass and PoolManager issues)
+  - Upgraded MCP from 1.18.0 to >=1.10.0 (fixes validation errors and ClosedResourceError crashes)
+  - Upgraded requests to >=2.32.4 (fixes .netrc credential leak)
+  - Pinned secure versions in pyproject.toml to prevent regression
+  - All critical vulnerabilities resolved (15 → 8 remaining, 0 critical)
+
 ## [1.9.0] - 2025-10-28
 
 ### 🎉 Major Release: Production-Ready with Critical Performance Fix
