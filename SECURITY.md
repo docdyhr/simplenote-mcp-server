@@ -36,10 +36,21 @@ We provide security updates for the following versions:
 
 | Version | Supported          | End of Support |
 | ------- | ------------------ | -------------- |
-| 1.6.x   | ✅ Yes             | TBD            |
-| 1.5.x   | ✅ Yes             | 2025-03-01     |
-| 1.4.x   | ⚠️ Critical only   | 2024-12-31     |
-| < 1.4   | ❌ No              | 2024-07-01     |
+| 1.9.x   | ✅ Yes             | TBD            |
+| 1.8.x   | ✅ Yes             | 2025-04-01     |
+| 1.7.x   | ⚠️ Critical only   | 2025-02-01     |
+| < 1.7   | ❌ No              | 2025-01-01     |
+
+## 📊 Security Monitoring
+
+For detailed information about our automated security monitoring and maintenance procedures, see [Security Monitoring Guide](docs/SECURITY_MONITORING.md).
+
+**Key Features**:
+- Automated dependency scanning with Dependabot
+- CVE scanning with pip-audit in CI/CD
+- Static analysis with Bandit and CodeQL
+- Weekly security scans
+- 24-hour response time for critical issues
 
 ## 🔐 Security Features
 

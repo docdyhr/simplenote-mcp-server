@@ -26,6 +26,14 @@ updates:
         patterns:
           - "mcp*"
           - "simplenote*"
+      security-dependencies:
+        dependency-type: "production"
+        patterns:
+          - "starlette*"
+          - "urllib3*"
+          - "requests*"
+        update-types:
+          - "security"
       development-dependencies:
         dependency-type: "development"
         patterns:
