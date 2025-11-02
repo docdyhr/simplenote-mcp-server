@@ -287,9 +287,9 @@ coverage[toml]==7.11.0 \
     --hash=sha256:fcc0a4aa589de34bc56e1a80a740ee0f8c47611bdfb28cd1849de60660f3799d \
     --hash=sha256:fcc15fc462707b0680cff6242c48625da7f9a16a28a41bb8fd7a4280920e676c
     # via pytest-cov
-cyclonedx-python-lib==11.4.0 \
-    --hash=sha256:1de90231a600340cc6a7bacb35fbe97c75241b39788beaa33a0f49bf4afd4e6c \
-    --hash=sha256:98a2b05da0f203379bd169b8d369075db7b3b5d5c812c05c1b5ebe40ad0305bc
+cyclonedx-python-lib==11.5.0 \
+    --hash=sha256:175819663ae5a3c9930462ebcbddd6abb3ad5f237e12a503dbd0af320a9c5b96 \
+    --hash=sha256:5cca5b444421d39a83b45fcab24ed3e90cafaca97b89fc45cb10d2516bd2d79d
     # via pip-audit
 defusedxml==0.7.1 \
     --hash=sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69 \
