@@ -15,7 +15,6 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Version](https://img.shields.io/badge/version-1.9.0-blue.svg)](./CHANGELOG.md)
 [![Test Coverage](https://img.shields.io/badge/coverage-69.64%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Docker](https://img.shields.io/docker/v/docdyhr/simplenote-mcp-server?label=docker&color=blue)](https://hub.docker.com/r/docdyhr/simplenote-mcp-server)
 
 <!-- Download & Stats Badges -->
 [![PyPI Downloads](https://img.shields.io/pypi/dm/simplenote-mcp-server?label=PyPI%20downloads)](https://pypi.org/project/simplenote-mcp-server/)
