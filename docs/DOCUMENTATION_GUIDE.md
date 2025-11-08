@@ -104,6 +104,25 @@ mv PROJECT_STATUS_JANUARY_2025.md docs/archive/2025/
 mv *_SUMMARY.md docs/archive/2025/
 ```
 
+**Current Archive Snapshot (2025):**
+
+The following historical summaries now live under `docs/archive/2025/` for easier browsing:
+
+- `docs/archive/2025/CONTEXT_TEST_IMPLEMENTATION_SUMMARY.md`
+- `docs/archive/2025/CI_CD_FIXES_SUMMARY.md`
+- `docs/archive/2025/DOCKER_HUB_FIX_SUMMARY.md`
+- `docs/archive/2025/EVALUATION_IMPROVEMENTS_SUMMARY.md`
+- `docs/archive/2025/FINAL_RESOLUTION_SUMMARY.md`
+- `docs/archive/2025/IMPROVEMENTS_SUMMARY_OCT_2025.md`
+- `docs/archive/2025/ISSUE_RESOLUTION_SUMMARY.md`
+- `docs/archive/2025/MCP_EVALS_INTEGRATION_SUMMARY.md`
+- `docs/archive/2025/PR_RESOLUTION_FINAL_SUMMARY.md`
+- `docs/archive/2025/PR_RESOLUTION_SUMMARY.md`
+- `docs/archive/2025/PROJECT_COMPLETION_SUMMARY.md`
+- `docs/archive/2025/PROJECT_IMPROVEMENTS_SUMMARY_2025_01.md`
+
+Use this directory as the canonical home for future legacy summaries so the repository root stays focused on active work.
+
 **What to Keep:**
 
 - Latest status report

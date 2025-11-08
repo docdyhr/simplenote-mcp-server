@@ -130,6 +130,14 @@ simplenote-mcp-server
 
 ---
 
+## 🗂 Documentation Map & Archives
+
+- Start with `docs/DOCUMENTATION_GUIDE.md` for a curated tour of user, developer, and operations docs plus maintenance checklists.
+- Historical project summaries now live under `docs/archive/2025/`, keeping the repository root focused on active roadmaps and guides.
+- Need something fast? Run `rg "<topic>" docs/` or jump to `docs/index.md` for the MkDocs-style table of contents.
+
+---
+
 ## 🐳 Docker Deployment
 
 ### Container Features
