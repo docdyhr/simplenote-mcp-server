@@ -354,9 +354,9 @@ markdown-it-py==4.0.0 \
     --hash=sha256:87327c59b172c5011896038353a81343b6754500a08cd7a4973bb48c6d578147 \
     --hash=sha256:cb0a2b4aa34f932c007117b194e945bd74e0ec24133ceb5bac59009cda1cb9f3
     # via rich
-mcp[cli]==1.21.0 \
-    --hash=sha256:598619e53eb0b7a6513db38c426b28a4bdf57496fed04332100d2c56acade98b \
-    --hash=sha256:bab0a38e8f8c48080d787233343f8d301b0e1e95846ae7dead251b2421d99855
+mcp[cli]==1.21.1 \
+    --hash=sha256:540e6ac4b12b085c43f14879fde04cbdb10148a09ea9492ff82d8c7ba651a302 \
+    --hash=sha256:dd35abe36d68530a8a1291daa25d50276d8731e545c0434d6e250a3700dd2a6d
     # via simplenote-mcp-server (pyproject.toml)
 mdurl==0.1.2 \
     --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8 \
