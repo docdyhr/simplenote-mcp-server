@@ -22,9 +22,9 @@ attrs==25.4.0 \
     # via
     #   jsonschema
     #   referencing
-bandit[toml]==1.9.1 \
-    --hash=sha256:0a1f34c04f067ee28985b7854edaa659c9299bd71e1b7e18236e46cccc79720b \
-    --hash=sha256:6dbafd1a51e276e065404f06980d624bad142344daeac3b085121fcfd117b7cf
+bandit[toml]==1.9.2 \
+    --hash=sha256:32410415cd93bf9c8b91972159d5cf1e7f063a9146d70345641cd3877de348ce \
+    --hash=sha256:bda8d68610fc33a6e10b7a8f1d61d92c8f6c004051d5e946406be1fb1b16a868
     # via simplenote-mcp-server (pyproject.toml)
 black==25.11.0 \
     --hash=sha256:0a1d40348b6621cc20d3d7530a5b8d67e9714906dfd7346338249ad9c6cedf2b \
