@@ -45,8 +45,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "package-lock.json"
+          # Note: npm cache disabled - package-lock.json may not exist on scheduled runs
 
       - name: Install Python dependencies
         run: |
@@ -184,8 +183,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: "package-lock.json"
+          # Note: npm cache disabled - package-lock.json may not exist
 
       - name: Install mcp-evals
         run: |
