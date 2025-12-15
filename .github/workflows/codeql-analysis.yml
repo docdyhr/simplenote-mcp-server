@@ -4,27 +4,27 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'simplenote_mcp/**'
-      - '.github/workflows/codeql-analysis.yml'
+      - "simplenote_mcp/**"
+      - ".github/workflows/codeql-analysis.yml"
   pull_request:
     branches: [main]
     paths:
-      - 'simplenote_mcp/**'
-      - '.github/workflows/codeql-analysis.yml'
+      - "simplenote_mcp/**"
+      - ".github/workflows/codeql-analysis.yml"
   schedule:
     # Run weekly on Sundays at 02:00 UTC
-    - cron: '0 2 * * 0'
+    - cron: "0 2 * * 0"
   workflow_dispatch:
     inputs:
       languages:
-        description: 'Languages to analyze (comma-separated: python,javascript)'
+        description: "Languages to analyze (comma-separated: python,javascript)"
         required: false
-        default: 'python'
+        default: "python"
         type: string
       queries:
-        description: 'Query suite to run'
+        description: "Query suite to run"
         required: false
-        default: 'default'
+        default: "default"
         type: choice
         options:
           - default
@@ -46,13 +46,13 @@ jobs:
     name: CodeQL Analysis (${{ matrix.language }})
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    
+
     strategy:
       fail-fast: false
       matrix:
-        language: [ 'python' ]
+        language: ["python"]
         # Add 'javascript' if we have significant JS code
-        
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -64,8 +64,8 @@ jobs:
         if: matrix.language == 'python'
         uses: actions/setup-python@v6
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          cache: "pip"
 
       - name: Install Python dependencies
         if: matrix.language == 'python'
@@ -99,13 +99,13 @@ jobs:
         with:
           category: "/language:${{ matrix.language }}"
           upload: true
-          
+
       - name: Process CodeQL Results
         if: always()
         run: |
           echo "🔍 CodeQL Analysis completed for ${{ matrix.language }}"
           echo "Results have been uploaded to GitHub Security tab"
-          
+
           # Check if results directory exists and process alerts
           if [ -d "${{ runner.temp }}/codeql_results" ]; then
             echo "📊 Processing CodeQL results..."
@@ -113,72 +113,71 @@ jobs:
           fi
 
   security-summary:
-    name: Security Analysis Summary  
+    name: Security Analysis Summary
     runs-on: ubuntu-latest
     needs: analyze
     if: always()
     permissions:
       security-events: read
       pull-requests: write
-      
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
-        
+
       - name: Generate security summary
         uses: actions/github-script@v8
         with:
           script: |
             const fs = require('fs');
-            
-            // Get CodeQL analysis results
-            const analysisJobs = ${{ toJSON(needs.analyze) }};
+
+            // Get CodeQL analysis results - needs.analyze returns { result: 'success'|'failure' }
+            const analyzeResult = ${{ toJSON(needs.analyze) }};
             let summary = "# 🔍 CodeQL Security Analysis Summary\n\n";
-            
+
             summary += `**Workflow**: ${context.workflow}\n`;
             summary += `**Run ID**: ${context.runId}\n`;
             summary += `**Triggered by**: ${context.eventName}\n\n`;
-            
+
             summary += "## Analysis Results\n\n";
-            
-            let allSuccessful = true;
-            for (const [language, result] of Object.entries(analysisJobs)) {
-              const status = result.result;
-              const statusEmoji = status === 'success' ? '✅' : '❌';
-              
+
+            // The analyze job result contains the overall status
+            const status = analyzeResult.result || 'unknown';
+            const allSuccessful = status === 'success';
+            const statusEmoji = allSuccessful ? '✅' : '❌';
+
+            // Languages analyzed (from matrix)
+            const languages = ['python'];
+            for (const language of languages) {
               summary += `- ${statusEmoji} **${language.toUpperCase()}**: ${status.toUpperCase()}\n`;
-              
-              if (status !== 'success') {
-                allSuccessful = false;
-              }
             }
-            
+
             summary += "\n## Security Recommendations\n\n";
-            
+
             if (allSuccessful) {
               summary += "- ✅ All CodeQL analyses completed successfully\n";
-              summary += "- 📊 Review any security alerts in the Security tab\n"; 
+              summary += "- 📊 Review any security alerts in the Security tab\n";
               summary += "- 🔄 CodeQL will continue monitoring for new vulnerabilities\n";
             } else {
               summary += "- ⚠️ Some CodeQL analyses failed - review workflow logs\n";
               summary += "- 🔧 Fix any configuration issues and re-run analysis\n";
               summary += "- 📋 Ensure all dependencies are properly configured\n";
             }
-            
+
             summary += "\n## Next Steps\n\n";
             summary += "1. **Review Alerts**: Check the [Security tab](../../security/code-scanning) for any new findings\n";
             summary += "2. **Address Issues**: Prioritize and fix any identified security vulnerabilities\n";
             summary += "3. **Monitor Trends**: Track security improvements over time\n";
             summary += "4. **Update Queries**: Consider expanding analysis with additional query suites\n\n";
-            
+
             summary += "---\n";
             summary += "*This summary was automatically generated by the CodeQL Analysis workflow.*\n";
-            
+
             console.log(summary);
-            
+
             // Save summary as artifact
             fs.writeFileSync('codeql-summary.md', summary);
-            
+
             // Post to PR if this is a pull request
             if (context.eventName === 'pull_request') {
               const comments = await github.rest.issues.listComments({
@@ -186,11 +185,11 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
               });
-              
+
               const existingComment = comments.data.find(
                 comment => comment.body.includes('CodeQL Security Analysis Summary')
               );
-              
+
               if (existingComment) {
                 await github.rest.issues.updateComment({
                   owner: context.repo.owner,
@@ -209,7 +208,7 @@ jobs:
                 console.log('Created new CodeQL summary comment');
               }
             }
-            
+
       - name: Upload CodeQL summary
         if: always()
         uses: actions/upload-artifact@v6
@@ -226,7 +225,7 @@ jobs:
     permissions:
       security-events: read
       issues: write
-      
+
     steps:
       - name: Check for new security alerts
         uses: actions/github-script@v8
@@ -240,16 +239,16 @@ jobs:
                 state: 'open',
                 per_page: 100
               });
-              
+
               const recentAlerts = alerts.data.filter(alert => {
                 const createdAt = new Date(alert.created_at);
                 const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
                 return createdAt > dayAgo;
               });
-              
+
               if (recentAlerts.length > 0) {
                 console.log(`Found ${recentAlerts.length} new security alerts in the last 24 hours`);
-                
+
                 // Create issue for new alerts
                 const issueBody = [
                   '## 🚨 New Security Alerts Detected',
@@ -259,7 +258,7 @@ jobs:
                   '**Analysis**: Scheduled CodeQL scan',
                   '',
                   '### Recent Alerts:',
-                  ...recentAlerts.map(alert => 
+                  ...recentAlerts.map(alert =>
                     `- **${alert.rule.severity.toUpperCase()}**: ${alert.rule.description} (${alert.rule.id})`
                   ),
                   '',
@@ -282,7 +281,7 @@ jobs:
                   body: issueBody,
                   labels: ['security', 'automated', 'codeql']
                 });
-                
+
                 console.log('Created security alert issue');
               } else {
                 console.log('No new security alerts found');
