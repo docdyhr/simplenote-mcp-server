@@ -53,54 +53,84 @@ class BadgeValidator:
         all_urls = list(set(badge_urls + img_urls))
         return sorted(all_urls)
 
-    def validate_badge(self, url: str) -> dict[str, Any]:
-        """Validate a single badge URL."""
-        try:
-            response = self.session.get(url, timeout=10, allow_redirects=True)
+    def validate_badge(self, url: str, max_retries: int = 3) -> dict[str, Any]:
+        """Validate a single badge URL with retry support for transient failures."""
+        last_error = None
 
-            # Check HTTP status
-            if response.status_code != 200:
+        for attempt in range(max_retries):
+            try:
+                response = self.session.get(url, timeout=10, allow_redirects=True)
+
+                # Check HTTP status
+                if response.status_code != 200:
+                    last_error = {
+                        "valid": False,
+                        "status_code": response.status_code,
+                        "message": f"HTTP {response.status_code}",
+                    }
+                    # Retry on 5xx errors (server issues)
+                    if response.status_code >= 500:
+                        time.sleep(1 * (attempt + 1))  # Exponential backoff
+                        continue
+                    return last_error
+
+                # Check content type for SVG badges
+                content_type = response.headers.get("content-type", "").lower()
+                if (
+                    "svg" in url
+                    and "svg" not in content_type
+                    and "xml" not in content_type
+                ):
+                    return {
+                        "valid": False,
+                        "status_code": response.status_code,
+                        "message": "Not SVG content",
+                    }
+
+                # Check response size (empty responses might indicate issues)
+                if len(response.content) < 100:
+                    return {
+                        "valid": False,
+                        "status_code": response.status_code,
+                        "message": "Response too small",
+                    }
+
                 return {
-                    "valid": False,
+                    "valid": True,
                     "status_code": response.status_code,
-                    "message": f"HTTP {response.status_code}",
+                    "message": "OK",
                 }
 
-            # Check content type for SVG badges
-            content_type = response.headers.get("content-type", "").lower()
-            if "svg" in url and "svg" not in content_type and "xml" not in content_type:
+            except requests.exceptions.Timeout:
+                last_error = {"valid": False, "status_code": 0, "message": "Timeout"}
+                time.sleep(1 * (attempt + 1))
+            except requests.exceptions.ConnectionError:
+                last_error = {
+                    "valid": False,
+                    "status_code": 0,
+                    "message": "Connection Error",
+                }
+                time.sleep(1 * (attempt + 1))
+            except requests.exceptions.RequestException as e:
+                last_error = {
+                    "valid": False,
+                    "status_code": 0,
+                    "message": f"Request Error: {str(e)[:50]}",
+                }
+                time.sleep(1 * (attempt + 1))
+            except Exception as e:
                 return {
                     "valid": False,
-                    "status_code": response.status_code,
-                    "message": "Not SVG content",
+                    "status_code": 0,
+                    "message": f"Unexpected Error: {str(e)[:50]}",
                 }
 
-            # Check response size (empty responses might indicate issues)
-            if len(response.content) < 100:
-                return {
-                    "valid": False,
-                    "status_code": response.status_code,
-                    "message": "Response too small",
-                }
-
-            return {"valid": True, "status_code": response.status_code, "message": "OK"}
-
-        except requests.exceptions.Timeout:
-            return {"valid": False, "status_code": 0, "message": "Timeout"}
-        except requests.exceptions.ConnectionError:
-            return {"valid": False, "status_code": 0, "message": "Connection Error"}
-        except requests.exceptions.RequestException as e:
-            return {
-                "valid": False,
-                "status_code": 0,
-                "message": f"Request Error: {str(e)[:50]}",
-            }
-        except Exception as e:
-            return {
-                "valid": False,
-                "status_code": 0,
-                "message": f"Unexpected Error: {str(e)[:50]}",
-            }
+        # Return the last error after all retries failed
+        return last_error or {
+            "valid": False,
+            "status_code": 0,
+            "message": "Unknown error",
+        }
 
     def categorize_badge(self, url: str) -> str:
         """Categorize badge by URL pattern."""
