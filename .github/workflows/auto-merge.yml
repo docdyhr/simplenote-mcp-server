@@ -32,7 +32,7 @@ jobs:
           script: |
             // Handle different event types that might not have pull_request
             let pr = context.payload.pull_request;
-            
+
             // For check_suite events, we need to find PRs associated with the commit
             if (!pr && context.payload.check_suite) {
               const checkSuite = context.payload.check_suite;
@@ -42,7 +42,7 @@ jobs:
                 head: `${checkSuite.head_branch}`,
                 state: 'open'
               });
-              
+
               if (pulls.length > 0) {
                 pr = pulls[0];
               }
@@ -155,7 +155,7 @@ jobs:
             }
 
   dependabot-auto-merge:
-    timeout-minutes: 5
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     if: github.actor == 'dependabot[bot]' && github.event_name == 'pull_request'
     permissions:
@@ -176,9 +176,44 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Auto-merge Dependabot PRs
+      - name: Wait for CI checks to complete
         if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
-        run: gh pr merge --auto --squash "$PR_URL"
+        run: |
+          echo "Waiting for CI checks to complete..."
+          # Wait up to 5 minutes for checks to complete
+          for i in {1..30}; do
+            STATUS=$(gh pr checks "$PR_URL" --json state --jq '.[] | select(.state != "SUCCESS" and .state != "SKIPPED" and .state != "PENDING") | .state' 2>/dev/null || echo "PENDING")
+            PENDING=$(gh pr checks "$PR_URL" --json state --jq '[.[] | select(.state == "PENDING")] | length' 2>/dev/null || echo "1")
+
+            if [ "$PENDING" = "0" ]; then
+              echo "All checks completed"
+              break
+            fi
+
+            echo "Checks still pending ($PENDING remaining), waiting 10s..."
+            sleep 10
+          done
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Merge Dependabot PRs
+        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        run: |
+          # Check if all required checks passed
+          FAILED=$(gh pr checks "$PR_URL" --json state --jq '[.[] | select(.state == "FAILURE")] | length' 2>/dev/null || echo "0")
+
+          if [ "$FAILED" != "0" ]; then
+            echo "Some checks failed, skipping merge"
+            exit 0
+          fi
+
+          # Try to merge directly (squash)
+          gh pr merge --squash --delete-branch "$PR_URL" || {
+            echo "Direct merge failed, PR may need manual review"
+            exit 0
+          }
+          echo "Successfully merged PR"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
