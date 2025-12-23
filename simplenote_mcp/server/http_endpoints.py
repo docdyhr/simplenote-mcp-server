@@ -28,7 +28,7 @@ logger = get_performance_logger(operation="http_endpoints")
 class HealthStatus:
     """Represents system health status."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.start_time = datetime.utcnow()
         self.last_check = datetime.utcnow()
         self.checks: dict[str, dict[str, Any]] = {}
@@ -76,7 +76,7 @@ class HealthStatus:
 class ReadinessChecker:
     """Checks system readiness for serving requests."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.ready = False
         self.ready_since: datetime | None = None
         self.checks: dict[str, bool] = {}
@@ -114,7 +114,7 @@ class ReadinessChecker:
 class MetricsCollector:
     """Collects and formats system metrics."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.custom_metrics: dict[str, Any] = {}
 
     def add_metric(
@@ -406,7 +406,7 @@ class HTTPEndpointsHandler(BaseHTTPRequestHandler):
 class HTTPEndpointsServer:
     """HTTP server for health and metrics endpoints."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.config = get_config()
         self.server: HTTPServer | None = None
         self.server_thread: Thread | None = None
