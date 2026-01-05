@@ -29,6 +29,14 @@ class RateLimiter:
 
     def __init__(self):
         """Initialize rate limiter with sliding window algorithm."""
+        from .config import get_config
+
+        # Get rate limit configuration
+        config = get_config()
+        self.default_max_requests = config.rate_limit_requests
+        self.default_window_seconds = config.rate_limit_window_seconds
+        self.default_burst_limit = config.rate_limit_burst
+
         # Sliding window counters: {identifier: deque of timestamps}
         self.sliding_windows = defaultdict(lambda: deque())
 
@@ -44,8 +52,8 @@ class RateLimiter:
     def check_rate_limit(
         self,
         identifier: str,
-        max_requests: int = 100,
-        window_seconds: int = 900,  # 15 minutes
+        max_requests: int | None = None,
+        window_seconds: int | None = None,
         strategy: str = "sliding_window",
         burst_limit: int | None = None,
     ) -> None:
@@ -53,15 +61,23 @@ class RateLimiter:
 
         Args:
             identifier: Unique identifier for the requester
-            max_requests: Maximum requests allowed
-            window_seconds: Time window in seconds
+            max_requests: Maximum requests allowed (uses config default if None)
+            window_seconds: Time window in seconds (uses config default if None)
             strategy: Rate limiting strategy ('sliding_window' or 'token_bucket')
-            burst_limit: Maximum burst requests (for token bucket)
+            burst_limit: Maximum burst requests (uses config default if None)
 
         Raises:
             SecurityError: If rate limit is exceeded
         """
         import os
+
+        # Use configured defaults if not specified
+        if max_requests is None:
+            max_requests = self.default_max_requests
+        if window_seconds is None:
+            window_seconds = self.default_window_seconds
+        if burst_limit is None:
+            burst_limit = self.default_burst_limit
 
         # Skip rate limiting in test mode
         if os.getenv("SIMPLENOTE_OFFLINE_MODE") == "true":
@@ -536,9 +552,15 @@ class AuthenticationMiddleware:
         self, user_id: str, client_id: str, timestamp: float
     ) -> str:
         """Generate secure session token."""
+        import os
+        import secrets
+
         # Use HMAC for secure token generation
-        # TODO: Replace with environment variable in production
-        secret_key = "dev-placeholder-key"  # noqa: S105
+        # Get secret key from environment or generate a random one for dev
+        secret_key = os.environ.get(
+            "SESSION_SECRET_KEY",
+            secrets.token_hex(32),  # Fallback for development
+        )
         data = f"{user_id}:{client_id}:{timestamp}".encode()
         signature = hmac.new(secret_key.encode(), data, hashlib.sha256).hexdigest()
         return f"{timestamp}:{signature}"

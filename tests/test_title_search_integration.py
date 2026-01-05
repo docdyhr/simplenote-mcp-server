@@ -1,13 +1,34 @@
-"""Integration tests for title search functionality with real API calls."""
+"""Integration tests for title search functionality with real API calls.
+
+These tests require a real Simplenote API connection and are skipped in offline mode.
+"""
 
 import asyncio
 import functools
+import os
 import time
 
 import pytest
 
 from simplenote_mcp.server.server import get_simplenote_client
 from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
+
+# Check if we're running in offline mode
+OFFLINE_MODE = os.environ.get("SIMPLENOTE_OFFLINE_MODE", "").lower() in (
+    "true",
+    "1",
+    "yes",
+)
+
+# Skip all tests in this module if running in offline mode
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.slow,
+    pytest.mark.skipif(
+        OFFLINE_MODE,
+        reason="Integration tests require real Simplenote API (SIMPLENOTE_OFFLINE_MODE is enabled)",
+    ),
+]
 
 
 def retry_on_failure(max_retries=3, delay=1.0):
@@ -93,8 +114,6 @@ async def test_notes_cleanup():
             print(f"Cleanup failed: {e}")
 
 
-@pytest.mark.integration
-@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_create_and_search_by_title(test_notes_cleanup):
     """Test creating notes with specific titles and searching for them."""
@@ -230,8 +249,6 @@ async def test_create_and_search_by_title(test_notes_cleanup):
     assert alpha_note["id"] in found_ids
 
 
-@pytest.mark.integration
-@pytest.mark.slow
 @pytest.mark.asyncio
 @retry_on_failure(max_retries=3, delay=2.0)
 async def test_search_with_special_characters_in_title(test_notes_cleanup):
@@ -294,8 +311,6 @@ async def test_search_with_special_characters_in_title(test_notes_cleanup):
         assert len(result_data["results"]) > 0, f"No results found for query '{query}'"
 
 
-@pytest.mark.integration
-@pytest.mark.slow
 @pytest.mark.asyncio
 @retry_on_failure(max_retries=3, delay=2.0)
 async def test_search_case_sensitivity_real_api(test_notes_cleanup):
@@ -345,8 +360,6 @@ async def test_search_case_sensitivity_real_api(test_notes_cleanup):
         print(f"Query '{query}' found {found_count} of {len(created_ids)} test notes")
 
 
-@pytest.mark.integration
-@pytest.mark.slow
 @pytest.mark.asyncio
 @retry_on_failure(max_retries=3, delay=2.0)
 async def test_search_empty_and_whitespace_titles(test_notes_cleanup):
@@ -394,8 +407,6 @@ async def test_search_empty_and_whitespace_titles(test_notes_cleanup):
         print(f"Found {found_count} edge case notes with 'Content after'")
 
 
-@pytest.mark.integration
-@pytest.mark.slow
 @pytest.mark.asyncio
 @retry_on_failure(max_retries=3, delay=2.0)
 async def test_search_with_tags_and_title(test_notes_cleanup):
@@ -469,8 +480,6 @@ async def test_search_with_tags_and_title(test_notes_cleanup):
                 assert "project" in r["tags"]
 
 
-@pytest.mark.integration
-@pytest.mark.slow
 @pytest.mark.asyncio
 @retry_on_failure(max_retries=3, delay=2.0)
 async def test_search_performance_with_many_notes(test_notes_cleanup):

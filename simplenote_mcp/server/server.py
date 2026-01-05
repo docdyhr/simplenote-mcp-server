@@ -733,7 +733,7 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="search_notes",
-                description="Search for notes in Simplenote with advanced capabilities",
+                description="Search for notes in Simplenote with advanced capabilities and pagination support",
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -743,7 +743,11 @@ async def handle_list_tools() -> list[types.Tool]:
                         },
                         "limit": {
                             "type": "integer",
-                            "description": "Maximum number of results to return",
+                            "description": "Maximum number of results to return per page (default: 20)",
+                        },
+                        "offset": {
+                            "type": "integer",
+                            "description": "Number of results to skip for pagination (default: 0)",
                         },
                         "tags": {
                             "type": "string",

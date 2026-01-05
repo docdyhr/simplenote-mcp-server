@@ -68,6 +68,15 @@ class Config:
             os.environ.get("METRICS_COLLECTION_INTERVAL", "60")
         )
 
+        # Rate limiting configuration
+        self.rate_limit_requests: int = int(
+            os.environ.get("RATE_LIMIT_REQUESTS", "100")
+        )
+        self.rate_limit_window_seconds: int = int(
+            os.environ.get("RATE_LIMIT_WINDOW_SECONDS", "900")
+        )  # 15 minutes default
+        self.rate_limit_burst: int = int(os.environ.get("RATE_LIMIT_BURST", "20"))
+
         # HTTP health/metrics endpoint configuration
         self.enable_http_endpoint: bool = os.environ.get(
             "ENABLE_HTTP_ENDPOINT", "false"
@@ -168,6 +177,22 @@ class Config:
         if self.metrics_collection_interval < 1:
             raise ValueError(
                 f"METRICS_COLLECTION_INTERVAL must be at least 1 (got {self.metrics_collection_interval})"
+            )
+
+        # Validate rate limiting configuration
+        if self.rate_limit_requests < 1:
+            raise ValueError(
+                f"RATE_LIMIT_REQUESTS must be at least 1 (got {self.rate_limit_requests})"
+            )
+
+        if self.rate_limit_window_seconds < 1:
+            raise ValueError(
+                f"RATE_LIMIT_WINDOW_SECONDS must be at least 1 (got {self.rate_limit_window_seconds})"
+            )
+
+        if self.rate_limit_burst < 1:
+            raise ValueError(
+                f"RATE_LIMIT_BURST must be at least 1 (got {self.rate_limit_burst})"
             )
 
         # Validate HTTP endpoint configuration

@@ -295,19 +295,265 @@ class SecurityAlerter:
         Args:
             alert: Security alert to send
         """
-        # TODO: Implement email alerting
-        # This would integrate with SMTP server or email service
-        logger.info(f"Would send email alert: {alert}")
+        import os
+        import smtplib
+        from email.mime.multipart import MIMEMultipart
+        from email.mime.text import MIMEText
+
+        # Get email configuration from environment
+        smtp_host = os.environ.get("ALERT_SMTP_HOST")
+        smtp_port = int(os.environ.get("ALERT_SMTP_PORT", "587"))
+        smtp_user = os.environ.get("ALERT_SMTP_USER")
+        smtp_password = os.environ.get("ALERT_SMTP_PASSWORD")
+        alert_from = os.environ.get("ALERT_EMAIL_FROM")
+        alert_to = os.environ.get("ALERT_EMAIL_TO")
+
+        if not all([smtp_host, smtp_user, smtp_password, alert_from, alert_to]):
+            logger.debug(
+                "Email alerting not configured. Set ALERT_SMTP_HOST, ALERT_SMTP_USER, "
+                "ALERT_SMTP_PASSWORD, ALERT_EMAIL_FROM, and ALERT_EMAIL_TO environment variables."
+            )
+            return
+
+        try:
+            # Create email message
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = (
+                f"[{alert.severity.value}] Security Alert: {alert.alert_type.value}"
+            )
+            msg["From"] = alert_from
+            msg["To"] = alert_to
+
+            # Create plain text and HTML versions
+            text_content = f"""
+Security Alert
+
+Severity: {alert.severity.value}
+Type: {alert.alert_type.value}
+Time: {alert.timestamp.isoformat()}
+Alert ID: {alert.alert_id}
+
+Message: {alert.message}
+
+User ID: {alert.user_id or "N/A"}
+
+Context:
+{json.dumps(alert.context, indent=2)}
+
+Client Info:
+{json.dumps(alert.client_info, indent=2)}
+"""
+
+            html_content = f"""
+<html>
+<body>
+<h2 style="color: {"red" if alert.severity == AlertSeverity.CRITICAL else "orange"};">
+    [{alert.severity.value}] Security Alert
+</h2>
+<table border="1" cellpadding="5">
+    <tr><td><strong>Type</strong></td><td>{alert.alert_type.value}</td></tr>
+    <tr><td><strong>Time</strong></td><td>{alert.timestamp.isoformat()}</td></tr>
+    <tr><td><strong>Alert ID</strong></td><td>{alert.alert_id}</td></tr>
+    <tr><td><strong>Message</strong></td><td>{alert.message}</td></tr>
+    <tr><td><strong>User ID</strong></td><td>{alert.user_id or "N/A"}</td></tr>
+</table>
+<h3>Context</h3>
+<pre>{json.dumps(alert.context, indent=2)}</pre>
+<h3>Client Info</h3>
+<pre>{json.dumps(alert.client_info, indent=2)}</pre>
+</body>
+</html>
+"""
+
+            msg.attach(MIMEText(text_content, "plain"))
+            msg.attach(MIMEText(html_content, "html"))
+
+            # Send email
+            use_ssl = os.environ.get("ALERT_SMTP_SSL", "false").lower() == "true"
+
+            if use_ssl:
+                with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+                    server.login(smtp_user, smtp_password)
+                    server.sendmail(alert_from, alert_to.split(","), msg.as_string())
+            else:
+                with smtplib.SMTP(smtp_host, smtp_port) as server:
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
+                    server.sendmail(alert_from, alert_to.split(","), msg.as_string())
+
+            logger.info(f"Email alert sent successfully for {alert.alert_id}")
+
+        except Exception as e:
+            logger.error(f"Failed to send email alert: {e}")
 
     async def _send_webhook_alert(self, alert: SecurityAlert) -> None:
         """Send webhook alert for high-severity incidents.
 
+        Supports multiple webhook URLs and common formats (Slack, Discord, generic).
+
         Args:
             alert: Security alert to send
         """
-        # TODO: Implement webhook alerting
-        # This would send HTTP POST to configured webhook URLs
-        logger.info(f"Would send webhook alert: {alert}")
+        import os
+
+        import aiohttp
+
+        # Get webhook URLs from environment (comma-separated)
+        webhook_urls = os.environ.get("ALERT_WEBHOOK_URLS", "")
+        webhook_secret = os.environ.get("ALERT_WEBHOOK_SECRET", "")
+
+        if not webhook_urls:
+            logger.debug(
+                "Webhook alerting not configured. Set ALERT_WEBHOOK_URLS environment variable."
+            )
+            return
+
+        urls = [url.strip() for url in webhook_urls.split(",") if url.strip()]
+
+        for url in urls:
+            try:
+                # Prepare payload based on URL pattern (Slack, Discord, or generic)
+                payload = self._prepare_webhook_payload(alert, url)
+                headers = {"Content-Type": "application/json"}
+
+                # Add HMAC signature if secret is configured
+                if webhook_secret:
+                    import hashlib
+                    import hmac
+
+                    payload_bytes = json.dumps(payload).encode()
+                    signature = hmac.new(
+                        webhook_secret.encode(), payload_bytes, hashlib.sha256
+                    ).hexdigest()
+                    headers["X-Signature-256"] = f"sha256={signature}"
+
+                async with (
+                    aiohttp.ClientSession() as session,
+                    session.post(
+                        url,
+                        json=payload,
+                        headers=headers,
+                        timeout=aiohttp.ClientTimeout(total=10),
+                    ) as response,
+                ):
+                    if response.status >= 400:
+                        logger.error(
+                            f"Webhook alert failed for {url}: HTTP {response.status}"
+                        )
+                    else:
+                        logger.info(
+                            f"Webhook alert sent successfully to {url} for {alert.alert_id}"
+                        )
+
+            except Exception as e:
+                logger.error(f"Failed to send webhook alert to {url}: {e}")
+
+    def _prepare_webhook_payload(
+        self, alert: SecurityAlert, url: str
+    ) -> dict[str, Any]:
+        """Prepare webhook payload based on the target service.
+
+        Args:
+            alert: Security alert to send
+            url: Webhook URL (used to detect service type)
+
+        Returns:
+            Formatted payload dictionary
+        """
+        # Detect service type from URL
+        if "slack.com" in url or "hooks.slack.com" in url:
+            # Slack format
+            color = (
+                "#FF0000"
+                if alert.severity == AlertSeverity.CRITICAL
+                else "#FFA500"
+                if alert.severity == AlertSeverity.HIGH
+                else "#FFFF00"
+                if alert.severity == AlertSeverity.MEDIUM
+                else "#00FF00"
+            )
+            return {
+                "attachments": [
+                    {
+                        "color": color,
+                        "title": f"[{alert.severity.value}] {alert.alert_type.value}",
+                        "text": alert.message,
+                        "fields": [
+                            {
+                                "title": "Alert ID",
+                                "value": alert.alert_id,
+                                "short": True,
+                            },
+                            {
+                                "title": "User ID",
+                                "value": alert.user_id or "N/A",
+                                "short": True,
+                            },
+                            {
+                                "title": "Time",
+                                "value": alert.timestamp.isoformat(),
+                                "short": True,
+                            },
+                        ],
+                        "footer": "Simplenote MCP Server Security",
+                        "ts": int(alert.timestamp.timestamp()),
+                    }
+                ]
+            }
+
+        elif "discord.com" in url or "discordapp.com" in url:
+            # Discord format
+            color = (
+                0xFF0000
+                if alert.severity == AlertSeverity.CRITICAL
+                else 0xFFA500
+                if alert.severity == AlertSeverity.HIGH
+                else 0xFFFF00
+                if alert.severity == AlertSeverity.MEDIUM
+                else 0x00FF00
+            )
+            return {
+                "embeds": [
+                    {
+                        "title": f"[{alert.severity.value}] {alert.alert_type.value}",
+                        "description": alert.message,
+                        "color": color,
+                        "fields": [
+                            {
+                                "name": "Alert ID",
+                                "value": alert.alert_id,
+                                "inline": True,
+                            },
+                            {
+                                "name": "User ID",
+                                "value": alert.user_id or "N/A",
+                                "inline": True,
+                            },
+                            {
+                                "name": "Time",
+                                "value": alert.timestamp.isoformat(),
+                                "inline": True,
+                            },
+                        ],
+                        "footer": {"text": "Simplenote MCP Server Security"},
+                        "timestamp": alert.timestamp.isoformat(),
+                    }
+                ]
+            }
+
+        else:
+            # Generic JSON format
+            return {
+                "alert_id": alert.alert_id,
+                "alert_type": alert.alert_type.value,
+                "severity": alert.severity.value,
+                "message": alert.message,
+                "context": alert.context,
+                "user_id": alert.user_id,
+                "client_info": alert.client_info,
+                "timestamp": alert.timestamp.isoformat(),
+                "source": "simplenote-mcp-server",
+            }
 
     def get_recent_alerts(
         self,

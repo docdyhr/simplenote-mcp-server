@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import time
+from collections import OrderedDict
 from datetime import datetime
 from typing import Any, Optional
 
@@ -69,6 +70,13 @@ class NoteCache:
         self._tags: set[str] = set()  # Set of all unique tags
         self._lock = asyncio.Lock()  # Lock for thread-safe access
         self._search_engine = SearchEngine()  # Search engine for advanced search
+
+        # Cache size limit and LRU tracking
+        config = get_config()
+        self._max_cache_size: int = config.cache_max_size
+        self._access_order: OrderedDict[str, float] = (
+            OrderedDict()
+        )  # LRU tracking: note_id -> last_access_time
 
         # New data structures for optimized cache
         self._tag_index: dict[
@@ -205,6 +213,104 @@ class NoteCache:
             if content:
                 self._build_title_index(note_id, content)
 
+            # Initialize LRU tracking
+            self._access_order[note_id] = time.time()
+
+    def _record_access(self, note_id: str) -> None:
+        """Record access to a note for LRU tracking.
+
+        Args:
+            note_id: The note ID that was accessed
+        """
+        # Move to end of OrderedDict (most recently used)
+        if note_id in self._access_order:
+            self._access_order.move_to_end(note_id)
+        self._access_order[note_id] = time.time()
+
+    def _evict_if_needed(self) -> int:
+        """Evict least recently used notes if cache exceeds max size.
+
+        Returns:
+            Number of notes evicted
+        """
+        evicted_count = 0
+
+        while len(self._notes) > self._max_cache_size:
+            if not self._access_order:
+                break
+
+            # Get the least recently used note (first item in OrderedDict)
+            lru_note_id = next(iter(self._access_order))
+
+            # Remove from cache
+            if lru_note_id in self._notes:
+                self._remove_note_from_indexes(lru_note_id)
+                del self._notes[lru_note_id]
+                evicted_count += 1
+                logger.debug(f"Evicted note {lru_note_id} from cache (LRU)")
+
+            # Remove from access order
+            del self._access_order[lru_note_id]
+
+        if evicted_count > 0:
+            logger.info(
+                f"Evicted {evicted_count} notes from cache. "
+                f"Cache size: {len(self._notes)}/{self._max_cache_size}"
+            )
+            self._update_cache_metrics()
+
+        return evicted_count
+
+    def _remove_note_from_indexes(self, note_id: str) -> None:
+        """Remove a note from all indexes.
+
+        Args:
+            note_id: The note ID to remove from indexes
+        """
+        # Remove from tag index
+        note = self._notes.get(note_id)
+        if note:
+            tags = note.get("tags", [])
+            for tag in tags:
+                if tag in self._tag_index:
+                    self._tag_index[tag].discard(note_id)
+                    # Clean up empty tag entries
+                    if not self._tag_index[tag]:
+                        del self._tag_index[tag]
+
+            # Remove from title index
+            content = note.get("content", "")
+            if content:
+                first_word = self._extract_first_word(content)
+                if first_word and first_word in self._title_index:
+                    if note_id in self._title_index[first_word]:
+                        self._title_index[first_word].remove(note_id)
+                    # Clean up empty title entries
+                    if not self._title_index[first_word]:
+                        del self._title_index[first_word]
+
+    def get_cache_stats(self) -> dict[str, Any]:
+        """Get cache statistics including eviction info.
+
+        Returns:
+            Dictionary with cache statistics
+        """
+        return {
+            "current_size": len(self._notes),
+            "max_size": self._max_cache_size,
+            "utilization_percent": (
+                (len(self._notes) / self._max_cache_size * 100)
+                if self._max_cache_size > 0
+                else 0
+            ),
+            "tag_count": len(self._tags),
+            "tag_index_size": len(self._tag_index),
+            "title_index_size": len(self._title_index),
+            "query_cache_size": len(self._query_cache),
+            "initialized": self._initialized,
+            "last_sync": self._last_sync,
+        }
+
     async def initialize(self) -> int:
         """Initialize the cache with all notes from Simplenote.
 
@@ -338,12 +444,19 @@ class NoteCache:
             if note.get("deleted"):
                 # Note was deleted
                 if note_id in self._notes:
+                    self._remove_note_from_indexes(note_id)
                     del self._notes[note_id]
+                    if note_id in self._access_order:
+                        del self._access_order[note_id]
                     change_count += 1
             else:
                 # Note was created or updated
                 self._notes[note_id] = note
+                self._record_access(note_id)
                 change_count += 1
+
+        # Evict LRU notes if cache exceeds max size after sync
+        self._evict_if_needed()
 
         return change_count
 
@@ -432,7 +545,8 @@ class NoteCache:
         # Check if note is in cache
         note = self._notes.get(note_id)
         if note is not None:
-            # Cache hit
+            # Cache hit - record access for LRU
+            self._record_access(note_id)
             access_time = time.time() - start_time
             record_cache_hit()
             record_cache_access_time(access_time)
@@ -459,10 +573,19 @@ class NoteCache:
 
         # Add note to cache
         self._notes[note_id] = note_data
+        self._record_access(note_id)
 
-        # Update tags
+        # Update tags and indexes
         if "tags" in note_data and note_data["tags"]:
             self._tags.update(note_data["tags"])
+            self._build_tag_index(note_id, note_data["tags"])
+
+        content = note_data.get("content", "")
+        if content:
+            self._build_title_index(note_id, content)
+
+        # Evict LRU notes if cache exceeds max size
+        self._evict_if_needed()
 
         # Record access time and update cache size
         access_time = time.time() - start_time
@@ -887,6 +1010,7 @@ class NoteCache:
 
         note_id = note["key"]
         self._notes[note_id] = note
+        self._record_access(note_id)
 
         # Update tags and tag index
         if "tags" in note and note["tags"]:
@@ -896,6 +1020,9 @@ class NoteCache:
         content = note.get("content", "")
         if content:
             self._add_to_title_index(note_id, content)
+
+        # Evict LRU notes if cache exceeds max size
+        self._evict_if_needed()
 
         # Clear query cache on note creation
         self._query_cache.clear()
@@ -944,6 +1071,7 @@ class NoteCache:
 
         # Update note
         self._notes[note_id] = note
+        self._record_access(note_id)
 
         # Update title index with new content
         content = note.get("content", "")
@@ -978,6 +1106,10 @@ class NoteCache:
 
         # Remove note from cache
         del self._notes[note_id]
+
+        # Remove from LRU tracking
+        if note_id in self._access_order:
+            del self._access_order[note_id]
 
         # Clear query cache on note deletion
         self._query_cache.clear()

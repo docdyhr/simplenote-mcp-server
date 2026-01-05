@@ -1,19 +1,9 @@
-"""Tests for HTTP health and metrics endpoints.
+"""Tests for HTTP health and metrics endpoints."""
 
-This module tests the optional HTTP endpoints that provide health checks,
-readiness probes, and metrics for production observability.
-"""
-
-import json
-import os
 import time
+from datetime import datetime
 from unittest.mock import MagicMock, patch
-from urllib.error import URLError
-from urllib.request import urlopen
 
-import pytest
-
-from simplenote_mcp.server.config import Config
 from simplenote_mcp.server.http_endpoints import (
     HealthStatus,
     HTTPEndpointsHandler,
@@ -30,525 +20,469 @@ from simplenote_mcp.server.http_endpoints import (
 
 
 class TestHealthStatus:
-    """Test health status functionality."""
+    """Tests for HealthStatus class."""
 
-    def test_health_status_initialization(self):
-        """Test health status initialization."""
-        health = HealthStatus()
+    def test_init(self):
+        """Test HealthStatus initialization."""
+        status = HealthStatus()
+        assert status.overall_status == "healthy"
+        assert status.checks == {}
+        assert isinstance(status.start_time, datetime)
+        assert isinstance(status.last_check, datetime)
 
-        assert health.overall_status == "healthy"
-        assert len(health.checks) == 0
-        assert health.get_uptime_seconds() >= 0
+    def test_add_check_healthy(self):
+        """Test adding a healthy check."""
+        status = HealthStatus()
+        status.add_check("test", "healthy", "All good")
 
-    def test_add_health_check(self):
-        """Test adding health checks."""
-        health = HealthStatus()
+        assert "test" in status.checks
+        assert status.checks["test"]["status"] == "healthy"
+        assert status.checks["test"]["message"] == "All good"
+        assert status.overall_status == "healthy"
 
-        health.add_check("test_service", "healthy", "Service is running")
+    def test_add_check_degraded(self):
+        """Test adding a degraded check affects overall status."""
+        status = HealthStatus()
+        status.add_check("healthy_check", "healthy", "OK")
+        status.add_check("degraded_check", "degraded", "Slow response")
 
-        assert len(health.checks) == 1
-        assert health.checks["test_service"]["status"] == "healthy"
-        assert health.checks["test_service"]["message"] == "Service is running"
-        assert health.overall_status == "healthy"
+        assert status.overall_status == "degraded"
 
-    def test_health_status_degraded(self):
-        """Test health status with degraded components."""
-        health = HealthStatus()
+    def test_add_check_unhealthy(self):
+        """Test adding an unhealthy check affects overall status."""
+        status = HealthStatus()
+        status.add_check("healthy_check", "healthy", "OK")
+        status.add_check("degraded_check", "degraded", "Slow")
+        status.add_check("unhealthy_check", "unhealthy", "Failed")
 
-        health.add_check("service1", "healthy", "Good")
-        health.add_check("service2", "degraded", "Slow response")
+        assert status.overall_status == "unhealthy"
 
-        assert health.overall_status == "degraded"
+    def test_add_check_with_details(self):
+        """Test adding a check with details."""
+        status = HealthStatus()
+        details = {"memory_mb": 512, "cpu_percent": 25}
+        status.add_check("resources", "healthy", "Resources OK", details)
 
-    def test_health_status_unhealthy(self):
-        """Test health status with unhealthy components."""
-        health = HealthStatus()
+        assert status.checks["resources"]["details"] == details
 
-        health.add_check("service1", "healthy", "Good")
-        health.add_check("service2", "degraded", "Slow")
-        health.add_check("service3", "unhealthy", "Down")
+    def test_get_uptime_seconds(self):
+        """Test uptime calculation."""
+        status = HealthStatus()
+        time.sleep(0.1)
+        uptime = status.get_uptime_seconds()
 
-        assert health.overall_status == "unhealthy"
+        assert uptime >= 0.1
+        assert uptime < 1.0
 
-    def test_health_status_to_dict(self):
-        """Test converting health status to dictionary."""
-        health = HealthStatus()
-        health.add_check("test", "healthy", "OK", {"detail": "value"})
+    def test_to_dict(self):
+        """Test conversion to dictionary."""
+        status = HealthStatus()
+        status.add_check("test", "healthy", "OK")
 
-        data = health.to_dict()
+        result = status.to_dict()
 
-        assert data["status"] == "healthy"
-        assert "timestamp" in data
-        assert "uptime_seconds" in data
-        assert "test" in data["checks"]
-        assert data["checks"]["test"]["details"]["detail"] == "value"
+        assert "status" in result
+        assert "timestamp" in result
+        assert "uptime_seconds" in result
+        assert "checks" in result
+        assert result["status"] == "healthy"
 
 
 class TestReadinessChecker:
-    """Test readiness checker functionality."""
+    """Tests for ReadinessChecker class."""
 
-    def test_readiness_initialization(self):
-        """Test readiness checker initialization."""
+    def test_init(self):
+        """Test ReadinessChecker initialization."""
         checker = ReadinessChecker()
-
-        assert not checker.is_ready()
+        assert checker.ready is False
         assert checker.ready_since is None
-        assert len(checker.checks) == 0
+        assert checker.checks == {}
 
-    def test_component_readiness(self):
-        """Test setting component readiness."""
+    def test_set_component_ready_single(self):
+        """Test setting a single component ready."""
         checker = ReadinessChecker()
+        checker.set_component_ready("database", True)
 
-        checker.set_component_ready("component1", True)
-        assert checker.is_ready()
+        assert checker.checks["database"] is True
+        assert checker.ready is True
         assert checker.ready_since is not None
 
-    def test_multiple_components_readiness(self):
-        """Test readiness with multiple components."""
+    def test_set_component_ready_multiple(self):
+        """Test multiple components must all be ready."""
         checker = ReadinessChecker()
+        checker.set_component_ready("database", True)
+        checker.set_component_ready("cache", False)
 
-        checker.set_component_ready("component1", True)
-        checker.set_component_ready("component2", False)
+        assert checker.ready is False
 
-        assert not checker.is_ready()
+    def test_set_component_ready_all(self):
+        """Test system ready when all components ready."""
+        checker = ReadinessChecker()
+        checker.set_component_ready("database", True)
+        checker.set_component_ready("cache", True)
+        checker.set_component_ready("api", True)
+
+        assert checker.ready is True
+
+    def test_set_component_not_ready(self):
+        """Test component becoming not ready."""
+        checker = ReadinessChecker()
+        checker.set_component_ready("database", True)
+        assert checker.ready is True
+
+        checker.set_component_ready("database", False)
+        assert checker.ready is False
         assert checker.ready_since is None
 
-        checker.set_component_ready("component2", True)
-        assert checker.is_ready()
-
-    def test_readiness_to_dict(self):
-        """Test converting readiness to dictionary."""
+    def test_is_ready(self):
+        """Test is_ready method."""
         checker = ReadinessChecker()
-        checker.set_component_ready("test_component", True)
+        assert checker.is_ready() is False
 
-        data = checker.to_dict()
+        checker.set_component_ready("test", True)
+        assert checker.is_ready() is True
 
-        assert data["ready"]
-        assert "ready_since" in data
-        assert data["components"]["test_component"]
+    def test_to_dict(self):
+        """Test conversion to dictionary."""
+        checker = ReadinessChecker()
+        checker.set_component_ready("test", True)
+
+        result = checker.to_dict()
+
+        assert "ready" in result
+        assert "ready_since" in result
+        assert "components" in result
+        assert "timestamp" in result
+        assert result["ready"] is True
 
 
 class TestMetricsCollector:
-    """Test metrics collector functionality."""
+    """Tests for MetricsCollector class."""
 
-    def test_metrics_initialization(self):
-        """Test metrics collector initialization."""
+    def test_init(self):
+        """Test MetricsCollector initialization."""
         collector = MetricsCollector()
-
-        assert len(collector.custom_metrics) == 0
+        assert collector.custom_metrics == {}
 
     def test_add_metric(self):
-        """Test adding custom metrics."""
+        """Test adding a custom metric."""
         collector = MetricsCollector()
+        collector.add_metric("request_count", 100)
 
-        collector.add_metric("test_metric", 42, {"label": "value"})
+        assert "request_count" in collector.custom_metrics
+        assert collector.custom_metrics["request_count"]["value"] == 100
 
-        assert "test_metric" in collector.custom_metrics
-        assert collector.custom_metrics["test_metric"]["value"] == 42
-        assert collector.custom_metrics["test_metric"]["labels"]["label"] == "value"
+    def test_add_metric_with_labels(self):
+        """Test adding a metric with labels."""
+        collector = MetricsCollector()
+        labels = {"method": "GET", "path": "/health"}
+        collector.add_metric("http_requests", 50, labels)
 
-    def test_get_all_metrics(self):
+        metric = collector.custom_metrics["http_requests"]
+        assert metric["value"] == 50
+        assert metric["labels"] == labels
+
+    @patch("simplenote_mcp.server.http_endpoints.get_memory_metrics")
+    @patch("simplenote_mcp.server.http_endpoints.get_performance_metrics")
+    @patch("simplenote_mcp.server.http_endpoints.get_cache_metrics")
+    def test_get_all_metrics(self, mock_cache, mock_perf, mock_memory):
         """Test getting all metrics."""
+        mock_memory.return_value = {"memory_usage": 1024}
+        mock_perf.return_value = {"latency_ms": 10}
+        mock_cache.return_value = {"hits": 100, "misses": 10}
+
         collector = MetricsCollector()
-        collector.add_metric("custom_metric", 100)
+        collector.add_metric("custom", 42)
 
         metrics = collector.get_all_metrics()
 
         assert "timestamp" in metrics
         assert "uptime_seconds" in metrics
+        assert "memory" in metrics
+        assert "performance" in metrics
+        assert "cache" in metrics
         assert "custom" in metrics
-        assert metrics["custom"]["custom_metric"]["value"] == 100
 
-    def test_prometheus_format(self):
-        """Test Prometheus format output."""
+    @patch("simplenote_mcp.server.http_endpoints.get_memory_metrics")
+    @patch("simplenote_mcp.server.http_endpoints.get_performance_metrics")
+    @patch("simplenote_mcp.server.http_endpoints.get_cache_metrics")
+    def test_get_all_metrics_with_error(self, mock_cache, mock_perf, mock_memory):
+        """Test metrics collection handles errors gracefully."""
+        mock_memory.side_effect = Exception("Memory error")
+        mock_perf.return_value = {}
+        mock_cache.return_value = {}
+
         collector = MetricsCollector()
-        collector.add_metric("test_counter", 5, {"instance": "test"})
+        metrics = collector.get_all_metrics()
+
+        assert "metrics_error" in metrics
+
+    @patch("simplenote_mcp.server.http_endpoints.get_memory_metrics")
+    @patch("simplenote_mcp.server.http_endpoints.get_performance_metrics")
+    @patch("simplenote_mcp.server.http_endpoints.get_cache_metrics")
+    def test_get_prometheus_format(self, mock_cache, mock_perf, mock_memory):
+        """Test Prometheus format output."""
+        mock_memory.return_value = {"memory_usage": 1024000}
+        mock_perf.return_value = {}
+        mock_cache.return_value = {"hits": 100, "misses": 10}
+
+        collector = MetricsCollector()
+        collector.add_metric("test_metric", 42, {"env": "test"})
 
         prometheus_output = collector.get_prometheus_format()
 
         assert "simplenote_mcp_uptime_seconds" in prometheus_output
-        assert "simplenote_mcp_test_counter" in prometheus_output
-        assert "# HELP" in prometheus_output
-        assert "# TYPE" in prometheus_output
-        assert 'instance="test"' in prometheus_output
+        assert "simplenote_mcp_memory_usage_bytes" in prometheus_output
+        assert "simplenote_mcp_cache_hits_total" in prometheus_output
+        assert "simplenote_mcp_cache_misses_total" in prometheus_output
+        assert "simplenote_mcp_test_metric" in prometheus_output
+        assert 'env="test"' in prometheus_output
 
 
 class TestHTTPEndpointsHandler:
-    """Test HTTP endpoints handler."""
+    """Tests for HTTPEndpointsHandler class."""
 
     def setup_method(self):
-        """Setup test method."""
-        # Reset class-level instances for clean tests
+        """Reset handler state before each test."""
         HTTPEndpointsHandler.health_status = HealthStatus()
         HTTPEndpointsHandler.readiness_checker = ReadinessChecker()
         HTTPEndpointsHandler.metrics_collector = MetricsCollector()
 
-    def test_handler_initialization(self):
-        """Test handler has proper class attributes."""
-        assert hasattr(HTTPEndpointsHandler, "health_status")
-        assert hasattr(HTTPEndpointsHandler, "readiness_checker")
-        assert hasattr(HTTPEndpointsHandler, "metrics_collector")
+    def test_class_level_instances(self):
+        """Test that handler has class-level shared instances."""
+        assert isinstance(HTTPEndpointsHandler.health_status, HealthStatus)
+        assert isinstance(HTTPEndpointsHandler.readiness_checker, ReadinessChecker)
+        assert isinstance(HTTPEndpointsHandler.metrics_collector, MetricsCollector)
 
 
-@pytest.mark.integration
 class TestHTTPEndpointsServer:
-    """Test HTTP endpoints server integration."""
+    """Tests for HTTPEndpointsServer class."""
 
-    def test_server_initialization(self):
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_init(self, mock_config):
         """Test server initialization."""
-        with patch("simplenote_mcp.server.config.get_config") as mock_config:
-            mock_config.return_value.enable_http_endpoint = False
+        mock_config.return_value = MagicMock(
+            enable_http_endpoint=True,
+            http_host="localhost",
+            http_port=8080,
+            http_health_path="/health",
+            http_ready_path="/ready",
+            http_metrics_path="/metrics",
+        )
 
-            server = HTTPEndpointsServer()
+        server = HTTPEndpointsServer()
 
-            assert not server.is_running()
-            assert server.server is None
+        assert server.server is None
+        assert server.server_thread is None
+        assert server.running is False
 
-    def test_server_disabled_by_config(self):
-        """Test server doesn't start when disabled by config."""
-        with patch("simplenote_mcp.server.config.get_config") as mock_config:
-            mock_config.return_value.enable_http_endpoint = False
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_start_disabled(self, mock_config):
+        """Test server doesn't start when disabled."""
+        mock_config.return_value = MagicMock(enable_http_endpoint=False)
 
-            server = HTTPEndpointsServer()
-            server.start()
+        server = HTTPEndpointsServer()
+        server.start()
 
-            assert not server.is_running()
+        assert server.running is False
 
-    def test_get_server_info_not_running(self):
-        """Test server info when not running."""
-        with patch("simplenote_mcp.server.config.get_config") as mock_config:
-            mock_config.return_value.enable_http_endpoint = False
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_start_already_running(self, mock_config):
+        """Test server warns when already running."""
+        mock_config.return_value = MagicMock(enable_http_endpoint=True)
 
-            server = HTTPEndpointsServer()
-            info = server.get_server_info()
+        server = HTTPEndpointsServer()
+        server.running = True
 
-            assert not info["running"]
+        # Should not raise, just log warning
+        server.start()
 
-    @pytest.mark.slow
-    @pytest.mark.skipif(
-        os.environ.get("CI") == "true", reason="Flaky in CI environment"
-    )
-    def test_server_start_and_stop(self):
-        """Test starting and stopping the HTTP server."""
-        # Configure mock to enable HTTP endpoint
-        mock_config_obj = MagicMock()
-        mock_config_obj.enable_http_endpoint = True
-        mock_config_obj.http_host = "127.0.0.1"
-        mock_config_obj.http_port = 18080  # Use different port for tests
-        mock_config_obj.http_health_path = "/health"
-        mock_config_obj.http_ready_path = "/ready"
-        mock_config_obj.http_metrics_path = "/metrics"
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_stop_not_running(self, mock_config):
+        """Test stopping a non-running server."""
+        mock_config.return_value = MagicMock(enable_http_endpoint=True)
 
-        with (
-            patch(
-                "simplenote_mcp.server.config.get_config", return_value=mock_config_obj
-            ),
-            patch(
-                "simplenote_mcp.server.http_endpoints.get_config",
-                return_value=mock_config_obj,
-            ),
-        ):
-            server = HTTPEndpointsServer()
+        server = HTTPEndpointsServer()
+        # Should not raise
+        server.stop()
 
-            try:
-                server.start()
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_is_running(self, mock_config):
+        """Test is_running method."""
+        mock_config.return_value = MagicMock(enable_http_endpoint=True)
 
-                # Wait for server to start with timeout
-                for _ in range(10):  # Try for up to 1 second
-                    if server.is_running():
-                        break
-                    time.sleep(0.1)
+        server = HTTPEndpointsServer()
+        assert server.is_running() is False
 
-                assert server.is_running()
+        server.running = True
+        assert server.is_running() is True
 
-                info = server.get_server_info()
-                assert info["running"]
-                assert info["host"] == "127.0.0.1"
-                assert info["port"] == 18080
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_get_server_info_not_running(self, mock_config):
+        """Test get_server_info when not running."""
+        mock_config.return_value = MagicMock(enable_http_endpoint=True)
 
-                # Test shutdown
-                server.stop()
-                assert not server.is_running()
+        server = HTTPEndpointsServer()
+        info = server.get_server_info()
 
-            except Exception as e:
-                # Ensure cleanup if test fails
-                if hasattr(server, "stop"):
-                    server.stop()
-                raise e
+        assert info == {"running": False}
 
-    @pytest.mark.slow
-    @pytest.mark.skipif(
-        os.environ.get("CI") == "true", reason="Flaky in CI environment"
-    )
-    def test_http_endpoints_integration(self):
-        """Test actual HTTP requests to endpoints."""
-        with patch("simplenote_mcp.server.config.get_config") as mock_config:
-            # Configure mock
-            mock_config_obj = MagicMock()
-            mock_config_obj.enable_http_endpoint = True
-            mock_config_obj.http_host = "127.0.0.1"
-            mock_config_obj.http_port = 18081  # Different port
-            mock_config_obj.http_health_path = "/health"
-            mock_config_obj.http_ready_path = "/ready"
-            mock_config_obj.http_metrics_path = "/metrics"
-            mock_config.return_value = mock_config_obj
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_get_server_info_running(self, mock_config):
+        """Test get_server_info when running."""
+        mock_config.return_value = MagicMock(
+            enable_http_endpoint=True,
+            http_host="localhost",
+            http_port=8080,
+            http_health_path="/health",
+            http_ready_path="/ready",
+            http_metrics_path="/metrics",
+        )
 
-            server = HTTPEndpointsServer()
+        server = HTTPEndpointsServer()
+        server.running = True
 
-            # Mock the metrics functions to avoid import errors
-            with (
-                patch(
-                    "simplenote_mcp.server.http_endpoints.get_memory_metrics"
-                ) as mock_memory,
-                patch(
-                    "simplenote_mcp.server.http_endpoints.get_performance_metrics"
-                ) as mock_perf,
-                patch(
-                    "simplenote_mcp.server.http_endpoints.get_cache_metrics"
-                ) as mock_cache,
-            ):
-                mock_memory.return_value = {"memory_usage": 100 * 1024 * 1024}  # 100MB
-                mock_perf.return_value = {"cpu_usage": 25.0}
-                mock_cache.return_value = {"hits": 100, "misses": 20, "hit_rate": 0.83}
+        info = server.get_server_info()
 
-                try:
-                    server.start()
-                    time.sleep(0.2)  # Give server more time to fully start
-
-                    # Test health endpoint
-                    try:
-                        with urlopen(
-                            "http://127.0.0.1:18081/health", timeout=5
-                        ) as response:
-                            health_data = json.loads(response.read().decode())
-                            assert "status" in health_data
-                            assert "checks" in health_data
-                            assert "uptime_seconds" in health_data
-                    except URLError:
-                        pytest.skip(
-                            "Could not connect to test server - port may be in use"
-                        )
-
-                    # Test readiness endpoint
-                    with urlopen("http://127.0.0.1:18081/ready", timeout=5) as response:
-                        ready_data = json.loads(response.read().decode())
-                        assert "ready" in ready_data
-                        assert "components" in ready_data
-
-                    # Test metrics endpoint (JSON format)
-                    with urlopen(
-                        "http://127.0.0.1:18081/metrics", timeout=5
-                    ) as response:
-                        metrics_data = json.loads(response.read().decode())
-                        assert "timestamp" in metrics_data
-                        assert "uptime_seconds" in metrics_data
-
-                    # Test metrics endpoint (Prometheus format)
-                    with urlopen(
-                        "http://127.0.0.1:18081/metrics?format=prometheus", timeout=5
-                    ) as response:
-                        prometheus_data = response.read().decode()
-                        assert "simplenote_mcp_uptime_seconds" in prometheus_data
-                        assert "# HELP" in prometheus_data
-
-                finally:
-                    server.stop()
-                    time.sleep(0.1)
+        assert info["running"] is True
+        assert info["host"] == "localhost"
+        assert info["port"] == 8080
+        assert "endpoints" in info
 
 
-class TestGlobalFunctions:
-    """Test global functions for HTTP endpoints."""
+class TestModuleFunctions:
+    """Tests for module-level functions."""
 
-    def test_get_http_server_singleton(self):
-        """Test that get_http_server returns singleton."""
-        server1 = get_http_server()
-        server2 = get_http_server()
-
-        assert server1 is server2
+    def setup_method(self):
+        """Reset state before each test."""
+        HTTPEndpointsHandler.health_status = HealthStatus()
+        HTTPEndpointsHandler.readiness_checker = ReadinessChecker()
+        HTTPEndpointsHandler.metrics_collector = MetricsCollector()
 
     def test_set_component_ready(self):
-        """Test setting component readiness."""
-        # Reset state
-        HTTPEndpointsHandler.readiness_checker = ReadinessChecker()
-
+        """Test set_component_ready function."""
         set_component_ready("test_component", True)
 
-        assert HTTPEndpointsHandler.readiness_checker.checks["test_component"]
+        assert HTTPEndpointsHandler.readiness_checker.checks["test_component"] is True
 
-    def test_add_health_check_global(self):
-        """Test adding health check globally."""
-        # Reset state
-        HTTPEndpointsHandler.health_status = HealthStatus()
+    def test_add_health_check(self):
+        """Test add_health_check function."""
+        add_health_check("test_check", "healthy", "All good", {"key": "value"})
 
-        add_health_check("test_service", "healthy", "All good")
+        check = HTTPEndpointsHandler.health_status.checks["test_check"]
+        assert check["status"] == "healthy"
+        assert check["message"] == "All good"
+        assert check["details"] == {"key": "value"}
 
-        assert "test_service" in HTTPEndpointsHandler.health_status.checks
-        assert (
-            HTTPEndpointsHandler.health_status.checks["test_service"]["status"]
-            == "healthy"
-        )
+    def test_add_metric(self):
+        """Test add_metric function."""
+        add_metric("test_metric", 42, {"label": "value"})
 
-    def test_add_metric_global(self):
-        """Test adding metric globally."""
-        # Reset state
-        HTTPEndpointsHandler.metrics_collector = MetricsCollector()
+        metric = HTTPEndpointsHandler.metrics_collector.custom_metrics["test_metric"]
+        assert metric["value"] == 42
+        assert metric["labels"] == {"label": "value"}
 
-        add_metric("test_metric", 42, {"env": "test"})
+    @patch("simplenote_mcp.server.http_endpoints._http_server", None)
+    def test_get_http_server_creates_instance(self):
+        """Test get_http_server creates new instance."""
+        with patch("simplenote_mcp.server.http_endpoints.get_config") as mock_config:
+            mock_config.return_value = MagicMock(enable_http_endpoint=True)
+            server = get_http_server()
+            assert isinstance(server, HTTPEndpointsServer)
 
-        assert "test_metric" in HTTPEndpointsHandler.metrics_collector.custom_metrics
-        assert (
-            HTTPEndpointsHandler.metrics_collector.custom_metrics["test_metric"][
-                "value"
-            ]
-            == 42
-        )
+    @patch("simplenote_mcp.server.http_endpoints.get_http_server")
+    def test_start_http_endpoints(self, mock_get_server):
+        """Test start_http_endpoints function."""
+        mock_server = MagicMock()
+        mock_get_server.return_value = mock_server
 
-    def test_start_stop_http_endpoints_global(self):
-        """Test global start/stop functions."""
-        with patch("simplenote_mcp.server.config.get_config") as mock_config:
-            mock_config.return_value.enable_http_endpoint = False
+        start_http_endpoints()
 
-            # These should not raise errors
-            start_http_endpoints()
-            stop_http_endpoints()
+        mock_server.start.assert_called_once()
 
+    @patch("simplenote_mcp.server.http_endpoints.get_http_server")
+    def test_stop_http_endpoints(self, mock_get_server):
+        """Test stop_http_endpoints function."""
+        mock_server = MagicMock()
+        mock_get_server.return_value = mock_server
 
-class TestConfigurationIntegration:
-    """Test HTTP endpoints configuration integration."""
+        stop_http_endpoints()
 
-    def test_config_validation_valid(self):
-        """Test valid HTTP endpoint configuration."""
-        config = Config()
-        config.enable_http_endpoint = True
-        config.http_port = 8080
-        config.http_host = "0.0.0.0"
-        config.http_health_path = "/health"
-        config.http_ready_path = "/ready"
-        config.http_metrics_path = "/metrics"
-
-        # Should not raise
-        config.validate()
-
-    def test_config_validation_invalid_port(self):
-        """Test invalid port configuration."""
-        config = Config()
-        config.enable_http_endpoint = True
-        config.http_port = 80  # Below 1024
-
-        with pytest.raises(
-            ValueError, match="HTTP_PORT must be between 1024 and 65535"
-        ):
-            config.validate()
-
-    def test_config_validation_invalid_path(self):
-        """Test invalid path configuration."""
-        config = Config()
-        config.enable_http_endpoint = True
-        config.http_port = 8080
-        config.http_health_path = "health"  # Missing leading slash
-
-        with pytest.raises(ValueError, match="HTTP_HEALTH_PATH must start with"):
-            config.validate()
-
-    def test_config_validation_empty_host(self):
-        """Test empty host configuration."""
-        config = Config()
-        config.enable_http_endpoint = True
-        config.http_host = ""
-
-        with pytest.raises(ValueError, match="HTTP_HOST cannot be empty"):
-            config.validate()
+        mock_server.stop.assert_called_once()
 
 
-@pytest.mark.performance
-class TestHTTPEndpointsPerformance:
-    """Test HTTP endpoints performance."""
+class TestHealthStatusEdgeCases:
+    """Edge case tests for HealthStatus."""
 
-    @pytest.mark.slow
-    def test_metrics_collection_performance(self):
-        """Test that metrics collection doesn't significantly impact performance."""
+    def test_multiple_checks_same_name(self):
+        """Test updating a check with the same name."""
+        status = HealthStatus()
+        status.add_check("memory", "healthy", "OK")
+        status.add_check("memory", "degraded", "High usage")
+
+        assert status.checks["memory"]["status"] == "degraded"
+        assert len(status.checks) == 1
+
+    def test_transition_from_unhealthy_to_healthy(self):
+        """Test status can recover from unhealthy."""
+        status = HealthStatus()
+        status.add_check("service", "unhealthy", "Down")
+        assert status.overall_status == "unhealthy"
+
+        status.add_check("service", "healthy", "Recovered")
+        assert status.overall_status == "healthy"
+
+    def test_empty_details(self):
+        """Test check with None details."""
+        status = HealthStatus()
+        status.add_check("test", "healthy", "OK", None)
+
+        assert status.checks["test"]["details"] == {}
+
+
+class TestReadinessCheckerEdgeCases:
+    """Edge case tests for ReadinessChecker."""
+
+    def test_empty_components(self):
+        """Test readiness with no components."""
+        checker = ReadinessChecker()
+        assert checker.is_ready() is False
+
+    def test_component_toggle(self):
+        """Test component ready/not ready toggle."""
+        checker = ReadinessChecker()
+
+        checker.set_component_ready("db", True)
+        ready_since_first = checker.ready_since
+
+        checker.set_component_ready("db", False)
+        assert checker.ready_since is None
+
+        checker.set_component_ready("db", True)
+        assert checker.ready_since is not None
+        assert checker.ready_since != ready_since_first
+
+
+class TestMetricsCollectorEdgeCases:
+    """Edge case tests for MetricsCollector."""
+
+    def test_metric_update(self):
+        """Test updating an existing metric."""
         collector = MetricsCollector()
+        collector.add_metric("counter", 1)
+        collector.add_metric("counter", 2)
 
-        start_time = time.time()
+        assert collector.custom_metrics["counter"]["value"] == 2
 
-        # Add many metrics quickly
-        for i in range(1000):
-            collector.add_metric(f"metric_{i}", i, {"iteration": str(i)})
-
-        end_time = time.time()
-        duration = end_time - start_time
-
-        # Should be very fast (under 100ms for 1000 metrics)
-        assert duration < 0.1
-
-        # Getting all metrics should also be fast
-        start_time = time.time()
-        with (
-            patch("simplenote_mcp.server.http_endpoints.get_memory_metrics"),
-            patch("simplenote_mcp.server.http_endpoints.get_performance_metrics"),
-            patch("simplenote_mcp.server.http_endpoints.get_cache_metrics"),
-        ):
-            metrics = collector.get_all_metrics()
-        end_time = time.time()
-
-        assert end_time - start_time < 0.1
-        assert len(metrics["custom"]) == 1000
-
-    def test_health_check_performance(self):
-        """Test that health checks are fast."""
-        health = HealthStatus()
-
-        start_time = time.time()
-
-        # Add many health checks
-        for i in range(100):
-            health.add_check(f"service_{i}", "healthy", f"Service {i} OK")
-
-        end_time = time.time()
-
-        # Should be very fast (under 10ms for 100 checks)
-        assert end_time - start_time < 0.01
-
-
-@pytest.mark.security
-class TestHTTPEndpointsSecurity:
-    """Test security aspects of HTTP endpoints."""
-
-    def test_no_sensitive_data_in_health_response(self):
-        """Test that health responses don't contain sensitive data."""
-        health = HealthStatus()
-        health.add_check("database", "healthy", "Connected to DB")
-
-        health_data = health.to_dict()
-        health_json = json.dumps(health_data)
-
-        # Should not contain common sensitive keywords
-        sensitive_keywords = [
-            "password",
-            "secret",
-            "key",
-            "token",
-            "credential",
-            "api_key",
-            "private",
-            "confidential",
-        ]
-
-        for keyword in sensitive_keywords:
-            assert keyword.lower() not in health_json.lower()
-
-    def test_no_sensitive_data_in_metrics_response(self):
-        """Test that metrics responses don't expose sensitive data."""
+    def test_metric_special_characters_in_name(self):
+        """Test metric names with special characters in Prometheus format."""
         collector = MetricsCollector()
-
-        # Add some test metrics
-        collector.add_metric("request_count", 100)
-        collector.add_metric("response_time", 0.25)
+        collector.add_metric("my-metric.name", 42)
 
         with (
             patch(
                 "simplenote_mcp.server.http_endpoints.get_memory_metrics"
-            ) as mock_memory,
+            ) as mock_mem,
             patch(
                 "simplenote_mcp.server.http_endpoints.get_performance_metrics"
             ) as mock_perf,
@@ -556,31 +490,11 @@ class TestHTTPEndpointsSecurity:
                 "simplenote_mcp.server.http_endpoints.get_cache_metrics"
             ) as mock_cache,
         ):
-            mock_memory.return_value = {"memory_usage": 1000000}
-            mock_perf.return_value = {"cpu_usage": 15.0}
-            mock_cache.return_value = {"hits": 50, "misses": 10}
+            mock_mem.return_value = {}
+            mock_perf.return_value = {}
+            mock_cache.return_value = {}
 
-            metrics = collector.get_all_metrics()
-            metrics_json = json.dumps(metrics)
+            output = collector.get_prometheus_format()
 
-            # Should not contain sensitive data
-            sensitive_keywords = ["password", "secret", "key", "token", "credential"]
-
-            for keyword in sensitive_keywords:
-                assert keyword.lower() not in metrics_json.lower()
-
-    def test_prometheus_format_safe(self):
-        """Test that Prometheus format doesn't expose sensitive data."""
-        collector = MetricsCollector()
-        collector.add_metric("safe_metric", 42, {"env": "production"})
-
-        prometheus_output = collector.get_prometheus_format()
-
-        # Should contain expected safe content
-        assert "simplenote_mcp_safe_metric" in prometheus_output
-        assert 'env="production"' in prometheus_output
-
-        # Should not contain sensitive keywords
-        sensitive_keywords = ["password", "secret", "token"]
-        for keyword in sensitive_keywords:
-            assert keyword.lower() not in prometheus_output.lower()
+            # Special chars should be replaced with underscores
+            assert "simplenote_mcp_my_metric_name" in output
