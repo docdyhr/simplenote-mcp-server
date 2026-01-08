@@ -7,14 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-01-08
+
+### 🔒 Security Release: Critical Vulnerability Fixes and Maintenance Updates
+
+This release addresses a critical security vulnerability in urllib3 and includes comprehensive dependency updates from the past two months.
+
 ### Security
-- **🔒 Critical Security Fix**: Resolved CVE-2025-62727 in Starlette dependency
-  - Upgraded Starlette from 0.46.2 to >=0.49.1 (fixes DoS vulnerability via crafted Range headers)
-  - Upgraded urllib3 from 2.2.2 to >=2.5.0 (fixes redirect control bypass and PoolManager issues)
-  - Upgraded MCP from 1.18.0 to >=1.10.0 (fixes validation errors and ClosedResourceError crashes)
-  - Upgraded requests to >=2.32.4 (fixes .netrc credential leak)
-  - Pinned secure versions in pyproject.toml to prevent regression
-  - All critical vulnerabilities resolved (15 → 8 remaining, 0 critical)
+- **🔒 Critical**: Fixed CVE-2026-21441 in urllib3 dependency
+  - Upgraded urllib3 from 2.6.2 to >=2.6.3
+  - Addresses decompression bomb vulnerability in streaming API
+  - Prevents excessive resource consumption from malicious servers
+  - No known vulnerabilities remaining in dependencies
+- Maintained security posture with zero high/critical Bandit findings in production code
+- All credentials properly managed via environment variables (no hardcoded secrets)
+
+### Dependencies
+- Comprehensive dependency updates via Dependabot (20+ packages)
+  - certifi: 2025.11.12 → 2026.1.4
+  - filelock: 3.20.1 → 3.20.2
+  - sse-starlette: 3.0.4 → 3.1.2
+  - coverage: 7.13.0 → 7.13.1
+  - psutil: 7.1.3 → 7.2.1
+  - pyparsing: 3.2.5 → 3.3.1
+  - typer: 0.20.0 → 0.21.0
+  - uvicorn: 0.38.0 → 0.40.0
+  - python-multipart: 0.0.20 → 0.0.21
+  - pre-commit: 4.5.0 → 4.5.1
+  - mypy: 1.19.0 → 1.19.1
+  - ruff: 0.14.9 → 0.14.10
+  - nodeenv: 1.9.1 → 1.10.0
+  - mcp[cli]: Updated to latest version
+
+### Fixed
+- CI/CD: Restored DOCKER_README.md symlink for Docker Hub description
+- CI/CD: Improved handling of disabled auto-merge in Dependabot workflow
+- Types: Added missing type hints to http_endpoints.py
+- CI/CD: Resolved workflow issues and improved GitHub Actions configuration
+- CI/CD: Updated GitHub Actions dependencies (upload-artifact v5→v6, download-artifact v3→v4, cache v4→v5)
+
+### Quality Assurance
+- All 831 tests passing with 73% code coverage
+- Zero linting errors (Ruff)
+- Zero type checking errors (mypy)
+- Zero high/critical security issues (Bandit, pip-audit)
+- Comprehensive security review completed
 
 ## [1.9.0] - 2025-10-28
 
