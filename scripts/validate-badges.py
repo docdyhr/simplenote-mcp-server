@@ -68,9 +68,9 @@ class BadgeValidator:
                         "status_code": response.status_code,
                         "message": f"HTTP {response.status_code}",
                     }
-                    # Retry on 5xx errors (server issues)
-                    if response.status_code >= 500:
-                        time.sleep(1 * (attempt + 1))  # Exponential backoff
+                    # Retry on 5xx errors (server issues) and 429 (rate limiting)
+                    if response.status_code >= 500 or response.status_code == 429:
+                        time.sleep(2 * (attempt + 1))  # Exponential backoff
                         continue
                     return last_error
 
@@ -208,15 +208,20 @@ class BadgeValidator:
             time.sleep(0.5)
 
         working = sum(1 for r in results if r["valid"])
-        failing = len(results) - working
+        # Treat 429 (rate limited) as warnings, not failures
+        rate_limited = sum(
+            1 for r in results if not r["valid"] and r["status_code"] == 429
+        )
+        failing = len(results) - working - rate_limited
 
         return {
             "total": len(results),
             "working": working,
             "failing": failing,
+            "rate_limited": rate_limited,
             "results": results,
             "categories": categories,
-            "summary": f"{working} working, {failing} failing",
+            "summary": f"{working} working, {failing} failing, {rate_limited} rate-limited",
         }
 
     def check_badge_accessibility(self, url: str) -> dict[str, Any]:
@@ -253,10 +258,15 @@ class BadgeValidator:
         total = validation_results["total"]
         working = validation_results["working"]
         failing = validation_results["failing"]
+        rate_limited = validation_results.get("rate_limited", 0)
 
         report.append(f"📊 SUMMARY: {working}/{total} badges working")
-        if failing == 0:
+        if failing == 0 and rate_limited == 0:
             report.append("🎉 ALL BADGES ARE WORKING!")
+        elif failing == 0 and rate_limited > 0:
+            report.append(
+                f"⚠️  {rate_limited} badges rate-limited (temporary, not a failure)"
+            )
         else:
             report.append(f"⚠️  {failing} badges need attention")
         report.append("")
@@ -274,12 +284,23 @@ class BadgeValidator:
         if failing > 0:
             report.append("❌ FAILING BADGES:")
             for result in validation_results["results"]:
-                if not result["valid"]:
+                if not result["valid"] and result["status_code"] != 429:
                     domain = urlparse(result["url"]).netloc
                     report.append(
                         f"  - {domain} ({result['category']}): {result['message']}"
                     )
                     report.append(f"    URL: {result['url']}")
+            report.append("")
+
+        # Show rate-limited badges as warnings
+        if rate_limited > 0:
+            report.append(
+                "⚠️  RATE-LIMITED BADGES (temporary, not counted as failures):"
+            )
+            for result in validation_results["results"]:
+                if not result["valid"] and result["status_code"] == 429:
+                    domain = urlparse(result["url"]).netloc
+                    report.append(f"  - {domain} ({result['category']}): Rate limited")
             report.append("")
 
         report.append("✅ WORKING BADGES:")
@@ -347,7 +368,7 @@ def main() -> int:
         if args.json:
             validator.export_json_report(results, args.json)
 
-        # Exit with error code if badges are failing
+        # Exit with error code if badges are failing (excluding rate-limited)
         if results["failing"] > 0:
             if not args.quiet:
                 print(
@@ -355,8 +376,16 @@ def main() -> int:
                 )
             sys.exit(1)
         else:
-            if not args.quiet:
-                print("\n✅ All badges validated successfully!")
+            rate_limited = results.get("rate_limited", 0)
+            if rate_limited > 0:
+                if not args.quiet:
+                    print(
+                        f"\n⚠️  {rate_limited} badges were rate-limited (temporary issue, not a failure)"
+                    )
+                    print("✅ All other badges validated successfully!")
+            else:
+                if not args.quiet:
+                    print("\n✅ All badges validated successfully!")
             sys.exit(0)
 
     except FileNotFoundError as e:
