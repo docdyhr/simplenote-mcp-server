@@ -11,6 +11,7 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime
+from urllib.parse import urlparse
 from typing import TypedDict
 
 from simplenote_mcp.server.compat import Path
@@ -158,9 +159,17 @@ def test_http_connection() -> bool:
     print_and_log("\n=== Testing HTTP Connection ===")
 
     try:
+        # Validate URL scheme before making request (B310 security fix)
+        parsed_url = urlparse(SIMPLENOTE_API_URL)
+        if parsed_url.scheme not in ("http", "https"):
+            print_and_log(
+                f"❌ Invalid URL scheme: {parsed_url.scheme}. Only http/https allowed."
+            )
+            return False
+
         # Just check the main website response
         req = urllib.request.Request(SIMPLENOTE_API_URL, method="HEAD")
-        with urllib.request.urlopen(req, timeout=DEFAULT_TIMEOUT) as response:
+        with urllib.request.urlopen(req, timeout=DEFAULT_TIMEOUT) as response:  # noqa: S310
             print_and_log("✅ HTTP connection successful to Simplenote website")
             print_and_log(f"  Status code: {response.status}")
             print_and_log(f"  Headers: {dict(response.headers)}")

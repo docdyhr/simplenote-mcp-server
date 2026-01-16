@@ -453,6 +453,9 @@ class RequestValidator:
 class AuthenticationMiddleware:
     """Authentication and session management middleware."""
 
+    # Class-level flag to warn only once about missing SESSION_SECRET_KEY
+    _session_key_warning_logged = False
+
     def __init__(self):
         """Initialize authentication middleware."""
         self.session_store = {}
@@ -556,11 +559,18 @@ class AuthenticationMiddleware:
         import secrets
 
         # Use HMAC for secure token generation
-        # Get secret key from environment or generate a random one for dev
-        secret_key = os.environ.get(
-            "SESSION_SECRET_KEY",
-            secrets.token_hex(32),  # Fallback for development
-        )
+        # Get secret key from environment or generate ephemeral key for dev
+        secret_key = os.environ.get("SESSION_SECRET_KEY")
+        if not secret_key:
+            if not AuthenticationMiddleware._session_key_warning_logged:
+                logger.warning(
+                    "SESSION_SECRET_KEY not set - generating ephemeral key. "
+                    "Sessions will not persist across server restarts. "
+                    "Set SESSION_SECRET_KEY environment variable for production use."
+                )
+                AuthenticationMiddleware._session_key_warning_logged = True
+            secret_key = secrets.token_hex(32)
+
         data = f"{user_id}:{client_id}:{timestamp}".encode()
         signature = hmac.new(secret_key.encode(), data, hashlib.sha256).hexdigest()
         return f"{timestamp}:{signature}"
