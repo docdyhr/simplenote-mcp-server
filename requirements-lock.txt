@@ -119,7 +119,7 @@ requests-toolbelt==1.0.0
 rfc3986==2.0.0
 rich==14.1.0
 rpds-py==0.27.1
-ruamel.yaml==0.18.14
+ruamel.yaml==0.19.1
 ruamel.yaml.clib==0.2.12
 ruff==0.14.10
 safety==3.5.2
