@@ -53,7 +53,7 @@ license-expression==30.4.4
 mando==0.7.1
 Markdown==3.10
 markdown-it-py==4.0.0
-MarkupSafe==3.0.2
+MarkupSafe==3.0.3
 marshmallow==4.2.0
 mcp==1.25.0
 mdurl==0.1.2
