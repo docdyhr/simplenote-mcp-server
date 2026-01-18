@@ -6,7 +6,7 @@ anyio==4.10.0
 attrs==25.3.0
 Authlib==1.6.6
 babel==2.17.0
-backrefs==5.9
+backrefs==6.1
 bandit==1.8.6
 black==25.1.0
 boolean.py==5.0
