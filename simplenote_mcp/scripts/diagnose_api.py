@@ -11,8 +11,8 @@ import time
 import urllib.error
 import urllib.request
 from datetime import datetime
-from urllib.parse import urlparse
 from typing import TypedDict
+from urllib.parse import urlparse
 
 from simplenote_mcp.server.compat import Path
 
