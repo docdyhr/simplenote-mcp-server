@@ -79,7 +79,7 @@ packageurl-python==0.17.3
 packaging==25.0
 paginate==0.5.7
 pathspec==0.12.1
-pbr==6.1.1
+pbr==7.0.3
 pip-api==0.0.34
 pip-requirements-parser==32.0.1
 pip-tools==7.5.0
