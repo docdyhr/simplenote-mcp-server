@@ -147,6 +147,6 @@ urllib3==2.6.3
 uvicorn==0.35.0
 virtualenv==20.36.1
 watchdog==6.0.0
-wheel==0.45.1
+wheel==0.46.2
 wheel-filename==1.4.2
 yarl==1.22.0
