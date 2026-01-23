@@ -389,22 +389,21 @@ class CICDHealthValidator:
             main_python_versions.update(versions)
 
         # Should have a consistent default Python version
+        ci_yml = workflows_dir / "ci.yml"
+        ci_content = ci_yml.read_text() if ci_yml.exists() else ""
         env_python_pattern = re.search(
             r'PYTHON_VERSION:\s*["\']?([^"\'\s]+)["\']?',
-            open(workflows_dir / "ci.yml").read()
-            if (workflows_dir / "ci.yml").exists()
-            else "",
+            ci_content,
         )
         if env_python_pattern:
             expected_python = env_python_pattern.group(1)
             for filename, versions in python_versions.items():
-                if (
-                    expected_python not in versions
-                    and "matrix" not in open(workflows_dir / filename).read()
-                ):
-                    issues.append(
-                        f"{filename} doesn't use expected Python version {expected_python}"
-                    )
+                if expected_python not in versions:
+                    wf_content = (workflows_dir / filename).read_text()
+                    if "matrix" not in wf_content:
+                        issues.append(
+                            f"{filename} doesn't use expected Python version {expected_python}"
+                        )
 
         if issues:
             self.report.add_result(

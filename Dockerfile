@@ -20,8 +20,8 @@ COPY pyproject.toml ./
 COPY setup.py ./
 COPY VERSION ./
 
-# Install build dependencies first
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel build
+# Install build dependencies first (setuptools>=78.1.1 for jaraco.context CVE fix)
+RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2" build
 
 # Copy source code
 COPY simplenote_mcp/ simplenote_mcp/
@@ -42,8 +42,8 @@ RUN groupadd -r mcp && useradd -r -g mcp -m -d /home/mcp mcp
 
 WORKDIR /app
 
-# Install runtime dependencies only
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install runtime dependencies and apply security updates
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 

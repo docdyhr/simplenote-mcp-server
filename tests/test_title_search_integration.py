@@ -37,7 +37,7 @@ def retry_on_failure(max_retries=3, delay=1.0):
     def decorator(func):
         @functools.wraps(func)
         async def wrapper(*args, **kwargs):
-            last_exception = None
+            last_exception: Exception | None = None
             for attempt in range(max_retries):
                 try:
                     # Add extra delay between retries to avoid rate limiting
@@ -52,7 +52,9 @@ def retry_on_failure(max_retries=3, delay=1.0):
                         # Clean up any partial state before retry
                         if len(args) > 0 and hasattr(args[0], "clear"):
                             args[0].clear()
-            raise last_exception
+            if last_exception is not None:
+                raise last_exception
+            raise RuntimeError(f"Retry failed after {max_retries} attempts")
 
         return wrapper
 
