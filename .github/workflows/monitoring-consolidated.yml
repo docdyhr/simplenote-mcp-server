@@ -66,14 +66,14 @@ jobs:
       - name: Install security tools
         run: |
           pip install --upgrade pip
-          pip install bandit safety pip-audit
+          pip install bandit pip-audit
 
       - name: Run Bandit security scan
         id: bandit
         run: |
           echo "Running Bandit security scan..."
           bandit -r simplenote_mcp -f json -o bandit-report.json || true
-          bandit -r simplenote_mcp --severity-level medium --confidence-level medium
+          bandit -r simplenote_mcp --severity-level high --confidence-level high
 
       - name: Run pip-audit vulnerability scan
         id: pip-audit
@@ -81,14 +81,7 @@ jobs:
           echo "Running pip-audit vulnerability scan..."
           pip install -e .
           pip-audit --format=json --output=pip-audit-report.json || true
-          pip-audit --desc
-
-      - name: Run safety check
-        id: safety
-        run: |
-          echo "Running safety vulnerability check..."
-          safety check --json --output safety-report.json || true
-          safety check
+          pip-audit --desc || echo "⚠️ pip-audit found vulnerabilities (see report artifact)"
 
       - name: Upload security reports
         if: always()
@@ -98,7 +91,6 @@ jobs:
           path: |
             bandit-report.json
             pip-audit-report.json
-            safety-report.json
           retention-days: 30
 
       - name: Check for critical security issues

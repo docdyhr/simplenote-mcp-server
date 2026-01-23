@@ -41,7 +41,7 @@ identify==2.6.10
 idna==3.10
 iniconfig==2.1.0
 jaraco.classes==3.4.0
-jaraco.context==6.0.1
+jaraco.context==6.1.0
 jaraco.functools==4.4.0
 Jinja2==3.1.6
 joblib==1.5.1
@@ -147,6 +147,6 @@ urllib3==2.6.3
 uvicorn==0.35.0
 virtualenv==20.36.1
 watchdog==6.0.0
-wheel==0.46.2
+wheel==0.46.3
 wheel-filename==1.4.2
 yarl==1.22.0

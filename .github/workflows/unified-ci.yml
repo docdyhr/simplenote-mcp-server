@@ -130,13 +130,13 @@ jobs:
 
       - name: Install security tools
         run: |
-          pip install bandit safety
+          pip install bandit pip-audit
 
       - name: Run security scans
         run: |
           bandit -r simplenote_mcp --severity-level high
           pip install -e .
-          safety check
+          pip-audit --desc
 
   build_and_publish:
     name: Build and Publish

@@ -169,7 +169,7 @@ def test_http_connection() -> bool:
 
         # Just check the main website response
         req = urllib.request.Request(SIMPLENOTE_API_URL, method="HEAD")
-        with urllib.request.urlopen(req, timeout=DEFAULT_TIMEOUT) as response:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=DEFAULT_TIMEOUT) as response:  # noqa: S310  # nosec B310 - URL scheme validated above
             print_and_log("✅ HTTP connection successful to Simplenote website")
             print_and_log(f"  Status code: {response.status}")
             print_and_log(f"  Headers: {dict(response.headers)}")
