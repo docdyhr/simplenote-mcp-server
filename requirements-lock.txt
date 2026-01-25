@@ -120,7 +120,7 @@ rfc3986==2.0.0
 rich==14.3.1
 rpds-py==0.27.1
 ruamel.yaml==0.19.1
-ruamel.yaml.clib==0.2.12
+ruamel.yaml.clib==0.2.15
 ruff==0.14.14
 safety==3.5.2
 safety-schemas==0.0.14
