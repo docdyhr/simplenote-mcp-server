@@ -51,7 +51,7 @@ keyring==25.7.0
 librt==0.7.4
 license-expression==30.4.4
 mando==0.7.1
-Markdown==3.10
+Markdown==3.10.1
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 marshmallow==4.2.0
