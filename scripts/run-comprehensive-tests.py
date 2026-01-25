@@ -114,7 +114,7 @@ class TestRunner:
                 ["pip", "install", "bandit"], capture_output=True, check=True
             )
         except subprocess.CalledProcessError:
-            pass
+            pass  # Bandit already installed or installation failed, continue anyway
 
         results = {}
         all_passed = True

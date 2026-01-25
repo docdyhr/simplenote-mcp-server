@@ -614,7 +614,7 @@ class TestSecurityMonitoring:
                     # Expected for abuse pattern detection or rate limiting
                     if "Rate limit" in str(e):
                         break  # Stop when rate limited
-                    pass
+                    continue  # Continue testing abuse detection
 
             # Should handle gracefully without crashing
             # Actual abuse detection would depend on implementation

@@ -108,7 +108,7 @@ def run_linting(project_dir: str) -> dict[str, Any]:
                     count = int(parts[1].strip().split(" ")[0])
                     issues_by_rule[rule] = count
                 except (IndexError, ValueError):
-                    pass
+                    pass  # Malformed line, skip this rule
 
     return {
         "status": "pass" if return_code == 0 else "fail",

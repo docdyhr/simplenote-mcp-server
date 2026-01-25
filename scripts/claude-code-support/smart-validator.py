@@ -507,8 +507,8 @@ def main():
                 files_to_validate = [
                     Path(f.strip()) for f in result.stdout.split("\n") if f.strip()
                 ]
-        except Exception:
-            pass
+        except Exception:  # noqa: BLE001
+            pass  # Git command failed, will use fallback below
 
         if not files_to_validate:
             # Fallback to Python files in project

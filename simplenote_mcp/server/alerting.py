@@ -5,6 +5,7 @@ rate limit violations, dangerous input patterns, and other suspicious activities
 """
 
 import json
+import logging
 import time
 from collections import defaultdict, deque
 from datetime import datetime, timedelta
@@ -12,7 +13,8 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from .logging import logger
+# Use standard logging to avoid circular import with .logging module
+logger = logging.getLogger("simplenote_mcp.alerting")
 
 
 class AlertSeverity(Enum):

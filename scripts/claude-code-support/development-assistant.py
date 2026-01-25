@@ -129,8 +129,8 @@ class DevelopmentAssistant:
             if "TODO" in content or "FIXME" in content:
                 suggestions.append("📝 Review TODO/FIXME comments")
 
-        except Exception:
-            pass
+        except Exception:  # noqa: BLE001
+            pass  # File read error, skip suggestions
 
         return suggestions
 
@@ -177,8 +177,8 @@ class DevelopmentAssistant:
                 runs = json.loads(result.stdout)
                 if runs and runs[0].get("conclusion") == "failure":
                     suggestions.append("🚨 Fix failing CI/CD pipeline")
-        except Exception:
-            pass
+        except Exception:  # noqa: BLE001
+            pass  # gh CLI not available or API error
 
         return suggestions
 
@@ -253,8 +253,8 @@ class DevelopmentAssistant:
                                 content = f.read()
                                 if module_name in content:
                                     test_files.append(str(test_file))
-                        except Exception:
-                            pass
+                        except Exception:  # noqa: BLE001
+                            pass  # Skip unreadable test files
 
         # Remove duplicates
         test_files = list(set(test_files))

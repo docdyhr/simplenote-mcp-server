@@ -155,7 +155,7 @@ class JsonFormatter(logging.Formatter):
             if callable(getattr(record, "getMessage", None)):
                 log_entry["message"] = record.getMessage()
         except (AttributeError, TypeError):
-            pass
+            pass  # Use default message from getattr above
 
         # Add exception info if present
         try:
@@ -167,7 +167,7 @@ class JsonFormatter(logging.Formatter):
                     "traceback": logging.Formatter().formatException(exc_info),
                 }
         except (AttributeError, TypeError, IndexError):
-            pass
+            pass  # Exception info not available or malformed
 
         # Add all extra attributes from record.__dict__
         try:
@@ -209,7 +209,7 @@ class JsonFormatter(logging.Formatter):
                     if hasattr(record, attr):
                         log_entry[attr] = getattr(record, attr)
                 except (AttributeError, TypeError):
-                    pass
+                    pass  # Attribute not accessible, skip it
 
         # Send to log pattern monitor for suspicious pattern detection
         try:

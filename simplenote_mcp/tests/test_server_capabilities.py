@@ -208,8 +208,6 @@ async def test_create_note_tool():
     assert "key" in text_result.text, "Result should contain note key"
 
     # Extract note ID for cleanup
-    import json
-
     note_data = json.loads(text_result.text)
     assert "key" in note_data, "JSON result should contain note key"
     note_id = note_data["key"]

@@ -13,6 +13,24 @@ Format: {PREFIX}_{SUBCAT}_{IDENTIFIER}
 Example: AUTH_CRD_a1b2 - Authentication error with credentials subcategory
 """
 
+from enum import Enum
+
+
+class ErrorCategory(Enum):
+    """Categories of errors for better error handling and reporting."""
+
+    AUTHENTICATION = "authentication"  # Auth-related errors
+    CONFIGURATION = "configuration"  # Configuration errors
+    NETWORK = "network"  # Network/API connectivity issues
+    NOT_FOUND = "not_found"  # Resource not found
+    PERMISSION = "permission"  # Permission/access denied
+    VALIDATION = "validation"  # Input validation errors
+    SECURITY = "security"  # Security-related errors
+    INTERNAL = "internal"  # Internal server errors
+    SESSION = "session"  # Session and timeout-related errors
+    UNKNOWN = "unknown"  # Uncategorized errors
+
+
 # Category prefixes mapping from enum values to code prefixes
 CATEGORY_PREFIXES = {
     "authentication": "AUTH",

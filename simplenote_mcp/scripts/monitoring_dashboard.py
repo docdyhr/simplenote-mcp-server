@@ -334,7 +334,7 @@ def display_terminal_ui(
                 break
 
     except KeyboardInterrupt:
-        pass
+        pass  # User requested exit, clean shutdown
 
 
 def display_rich_ui(metrics_history: MetricsHistory, refresh_interval: int) -> None:

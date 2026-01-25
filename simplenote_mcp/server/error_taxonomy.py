@@ -8,7 +8,7 @@ and maintainability of error reporting throughout the Simplenote MCP server.
 from enum import Enum
 from typing import Any
 
-from .errors import ErrorCategory
+from .error_codes import ErrorCategory
 
 
 class ErrorSubcategory(Enum):

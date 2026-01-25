@@ -7,6 +7,7 @@ system and the alerting system.
 
 import asyncio
 import json
+import logging
 import re
 import threading
 import time
@@ -16,9 +17,9 @@ from pathlib import Path
 from typing import Any
 
 from .alerting import AlertSeverity, alert_suspicious_pattern
-from .logging import get_logger
 
-logger = get_logger("log_monitor")
+# Use standard logging to avoid circular import with .logging module
+logger = logging.getLogger("simplenote_mcp.log_monitor")
 
 
 class SuspiciousPattern:

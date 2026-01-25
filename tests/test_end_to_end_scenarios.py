@@ -105,8 +105,6 @@ class TestEndToEndScenarios:
             )
 
             assert len(result) == 1
-            import json
-
             response = json.loads(result[0].text)
             assert response["success"] is True
 
@@ -373,8 +371,6 @@ class TestEndToEndScenarios:
     @pytest.mark.asyncio
     async def test_error_recovery_scenarios(self, end_to_end_setup):
         """Test error recovery during user sessions."""
-        import json
-
         mock_client = end_to_end_setup["mock_client"]
 
         # Scenario 1: Network failure during note creation

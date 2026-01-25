@@ -423,8 +423,6 @@ class SearchEngine:
 
             # For multiple words, use a regex pattern that matches the exact sequence
             # with word boundaries
-            import re
-
             # Escape regex special characters
             escaped_words = [re.escape(word) for word in search_words]
             # Join with whitespace pattern

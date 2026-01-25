@@ -6,7 +6,7 @@ import uuid
 from enum import Enum
 from typing import Any
 
-from .error_codes import format_error_code
+from .error_codes import ErrorCategory, format_error_code
 
 try:
     from .error_taxonomy import (
@@ -23,21 +23,6 @@ except ImportError:
     ENHANCED_SUBCATEGORY_CODES = {}
 
 logger = logging.getLogger("simplenote_mcp")
-
-
-class ErrorCategory(Enum):
-    """Categories of errors for better error handling and reporting."""
-
-    AUTHENTICATION = "authentication"  # Auth-related errors
-    CONFIGURATION = "configuration"  # Configuration errors
-    NETWORK = "network"  # Network/API connectivity issues
-    NOT_FOUND = "not_found"  # Resource not found
-    PERMISSION = "permission"  # Permission/access denied
-    VALIDATION = "validation"  # Input validation errors
-    SECURITY = "security"  # Security-related errors
-    INTERNAL = "internal"  # Internal server errors
-    SESSION = "session"  # Session and timeout-related errors
-    UNKNOWN = "unknown"  # Uncategorized errors
 
 
 class ErrorSeverity(Enum):

@@ -272,9 +272,6 @@ class TestMCPProtocolHandlers:
     @pytest.mark.asyncio
     async def test_concurrent_client_access_integration(self):
         """Test that concurrent access to Simplenote client works correctly."""
-        import asyncio
-
-        from simplenote_mcp.server.server import get_simplenote_client
 
         async def get_client():
             return get_simplenote_client()

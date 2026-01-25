@@ -98,8 +98,6 @@ class TestPhase2SecurityIntegration:
     @pytest.mark.timeout(10)  # 10 second timeout
     async def test_log_monitoring_security_patterns(self):
         """Test log monitoring detecting multiple security patterns."""
-        import asyncio
-
         # Reset log monitor state for test isolation
         reset_log_monitor()
 
