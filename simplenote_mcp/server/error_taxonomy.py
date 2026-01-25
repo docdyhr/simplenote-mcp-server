@@ -353,10 +353,11 @@ class ContextualMessageGenerator:
         context = context or {}
 
         # Base resolution steps from the category
-        from .errors import ServerError
+        # Import from error_codes to avoid circular import with errors.py
+        from .error_codes import DEFAULT_RESOLUTION_STEPS
 
-        base_steps = ServerError.DEFAULT_RESOLUTION_STEPS.get(
-            category, ServerError.DEFAULT_RESOLUTION_STEPS[ErrorCategory.UNKNOWN]
+        base_steps = DEFAULT_RESOLUTION_STEPS.get(
+            category, DEFAULT_RESOLUTION_STEPS[ErrorCategory.UNKNOWN]
         )
 
         # Enhanced steps based on subcategory

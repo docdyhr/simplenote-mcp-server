@@ -6,7 +6,7 @@ import uuid
 from enum import Enum
 from typing import Any
 
-from .error_codes import ErrorCategory, format_error_code
+from .error_codes import DEFAULT_RESOLUTION_STEPS, ErrorCategory, format_error_code
 
 try:
     from .error_taxonomy import (
@@ -40,50 +40,6 @@ class ServerError(Exception):
     This provides consistent error handling with categories, severity levels,
     and enhanced logging.
     """
-
-    # Resolution steps for different error categories
-    DEFAULT_RESOLUTION_STEPS = {
-        ErrorCategory.AUTHENTICATION: [
-            "Check your Simplenote username and password",
-            "Verify your environment variables are set correctly",
-            "Try re-authenticating by restarting the server",
-        ],
-        ErrorCategory.CONFIGURATION: [
-            "Check your configuration file for errors",
-            "Verify environment variables are set correctly",
-            "Ensure configuration directories exist and are writable",
-        ],
-        ErrorCategory.NETWORK: [
-            "Check your internet connection",
-            "Verify Simplenote API is available (https://app.simplenote.com)",
-            "Try again in a few minutes if the issue persists",
-        ],
-        ErrorCategory.NOT_FOUND: [
-            "Check that the resource ID is correct",
-            "Verify the resource exists in your Simplenote account",
-            "Try syncing your notes to get the latest data",
-        ],
-        ErrorCategory.PERMISSION: [
-            "Check that you have appropriate permissions",
-            "Verify you are using the correct credentials",
-            "Contact support if you believe this is an error",
-        ],
-        ErrorCategory.VALIDATION: [
-            "Check the input parameters for errors",
-            "Verify that required fields are provided",
-            "Ensure data formats are correct",
-        ],
-        ErrorCategory.INTERNAL: [
-            "Check the server logs for detailed error information",
-            "Restart the server to clear any cached state",
-            "Report this issue to the developers",
-        ],
-        ErrorCategory.UNKNOWN: [
-            "Check the server logs for more information",
-            "Try restarting the server",
-            "Report this issue if it persists",
-        ],
-    }
 
     # User-friendly messages for different error categories
     DEFAULT_USER_MESSAGES = {
@@ -299,8 +255,8 @@ class ServerError(Exception):
                 logger.debug(f"Failed to generate enhanced resolution steps: {e}")
 
         # Use default resolution steps based on category
-        return self.DEFAULT_RESOLUTION_STEPS.get(
-            self.category, self.DEFAULT_RESOLUTION_STEPS[ErrorCategory.UNKNOWN]
+        return DEFAULT_RESOLUTION_STEPS.get(
+            self.category, DEFAULT_RESOLUTION_STEPS[ErrorCategory.UNKNOWN]
         )
 
     def get_user_message(self) -> str:

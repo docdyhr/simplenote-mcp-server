@@ -228,3 +228,59 @@ def format_error_code(category_prefix: str, subcategory: str, identifier: str) -
         Formatted error code
     """
     return f"{category_prefix}_{subcategory}_{identifier}"
+
+
+# Default resolution steps for each error category
+# Moved here to avoid circular imports between errors.py and error_taxonomy.py
+DEFAULT_RESOLUTION_STEPS: dict[ErrorCategory, list[str]] = {
+    ErrorCategory.AUTHENTICATION: [
+        "Check your Simplenote username and password",
+        "Verify your environment variables are set correctly",
+        "Try re-authenticating by restarting the server",
+    ],
+    ErrorCategory.CONFIGURATION: [
+        "Check your configuration file for errors",
+        "Verify environment variables are set correctly",
+        "Ensure configuration directories exist and are writable",
+    ],
+    ErrorCategory.NETWORK: [
+        "Check your internet connection",
+        "Verify Simplenote API is available (https://app.simplenote.com)",
+        "Try again in a few minutes if the issue persists",
+    ],
+    ErrorCategory.NOT_FOUND: [
+        "Check that the resource ID is correct",
+        "Verify the resource exists in your Simplenote account",
+        "Try syncing your notes to get the latest data",
+    ],
+    ErrorCategory.PERMISSION: [
+        "Check that you have appropriate permissions",
+        "Verify you are using the correct credentials",
+        "Contact support if you believe this is an error",
+    ],
+    ErrorCategory.VALIDATION: [
+        "Check the input parameters for errors",
+        "Verify that required fields are provided",
+        "Ensure data formats are correct",
+    ],
+    ErrorCategory.SECURITY: [
+        "Verify your request is properly authenticated",
+        "Check for any security policy violations",
+        "Contact security team if this persists",
+    ],
+    ErrorCategory.INTERNAL: [
+        "Check the server logs for detailed error information",
+        "Restart the server to clear any cached state",
+        "Report this issue to the developers",
+    ],
+    ErrorCategory.SESSION: [
+        "Try logging out and logging back in",
+        "Clear your session data and restart",
+        "Check for session timeout settings",
+    ],
+    ErrorCategory.UNKNOWN: [
+        "Check the server logs for more information",
+        "Try restarting the server",
+        "Report this issue if it persists",
+    ],
+}
