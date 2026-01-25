@@ -44,7 +44,7 @@ jaraco.classes==3.4.0
 jaraco.context==6.1.0
 jaraco.functools==4.4.0
 Jinja2==3.1.6
-joblib==1.5.1
+joblib==1.5.3
 jsonschema==4.25.1
 jsonschema-specifications==2025.9.1
 keyring==25.7.0
