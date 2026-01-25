@@ -338,19 +338,19 @@ class ContextualMessageGenerator:
         cls,
         category: ErrorCategory,
         subcategory: ErrorSubcategory | None = None,
-        context: dict[str, Any] | None = None,
+        _context: dict[str, Any]
+        | None = None,  # Reserved for future context-aware steps
     ) -> list[str]:
         """Get context-aware resolution steps.
 
         Args:
             category: Error category
             subcategory: Optional error subcategory
-            context: Optional context dictionary
+            _context: Optional context dictionary (reserved for future use)
 
         Returns:
             List of resolution steps
         """
-        context = context or {}
 
         # Base resolution steps from the category
         # Import from error_codes to avoid circular import with errors.py
