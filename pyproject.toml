@@ -1,6 +1,6 @@
 [project]
 name = "simplenote-mcp-server"
-version = "1.10.0"
+version = "1.10.1"
 description = "A simple MCP Server that connects to Simplenote"
 readme = "README.md"
 requires-python = ">=3.10"

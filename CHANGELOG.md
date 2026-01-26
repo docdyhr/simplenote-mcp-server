@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-01-26
+
+### 🔧 Patch Release: Security Fixes and Code Quality Improvements
+
+This patch release resolves all CodeQL security alerts and improves code quality through cyclic import fixes.
+
+### Security
+- **Resolved all CodeQL code scanning alerts** (0 open alerts)
+  - Fixed `py/cyclic-import` issues between error handling modules
+  - Fixed `py/repeated-import` patterns across test files
+  - Fixed `py/empty-except` patterns with proper documentation
+  - Fixed `py/unnecessary-pass` and `py/unused-local-variable` findings
+- **Docker image security improvements**
+  - Added `apt-get upgrade` to apply security patches in base image
+  - Pinned setuptools>=78.1.1 for jaraco.context CVE fix
+- **Dismissed infrastructure CVEs** (no upstream fixes available)
+  - glibc CVEs in Debian base image (CVE-2026-0861, CVE-2026-0915, CVE-2025-15281)
+  - Vendored wheel CVE in setuptools (CVE-2026-24049)
+
+### Fixed
+- Resolved cyclic import between `errors.py` and `error_taxonomy.py` by moving `DEFAULT_RESOLUTION_STEPS` to `error_codes.py`
+- Fixed CI/CD pipeline failures related to CodeQL and safety package compatibility
+- Replaced `safety` with `pip-audit` for dependency vulnerability scanning
+
+### Dependencies
+- 47+ dependency updates via Dependabot including:
+  - starlette: 0.50.0 → 0.52.1
+  - coverage: 7.11.0 → 7.13.1
+  - pytest: 8.4.2 → 9.0.2
+  - ruff: 0.14.10 → 0.14.14
+  - bandit: 1.8.6 → 1.9.3
+  - mcp: Updated to latest version
+  - cryptography: Updated to 46.0.3
+
+### Quality Assurance
+- All 850 tests passing with 73% code coverage
+- Zero linting errors (Ruff)
+- Zero type checking errors (mypy)
+- Zero open security alerts
+- All CI/CD pipelines passing
+
 ## [1.10.0] - 2026-01-08
 
 ### 🔒 Security Release: Critical Vulnerability Fixes and Maintenance Updates
