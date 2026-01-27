@@ -69,7 +69,7 @@ class RateLimiter:
         Raises:
             SecurityError: If rate limit is exceeded
         """
-        import os
+        from .config import get_config
 
         # Use configured defaults if not specified
         if max_requests is None:
@@ -79,8 +79,8 @@ class RateLimiter:
         if burst_limit is None:
             burst_limit = self.default_burst_limit
 
-        # Skip rate limiting in test mode
-        if os.getenv("SIMPLENOTE_OFFLINE_MODE") == "true":
+        # Skip rate limiting in offline/test mode
+        if get_config().offline_mode:
             return
 
         now = time.time()

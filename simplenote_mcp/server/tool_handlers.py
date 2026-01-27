@@ -187,11 +187,15 @@ class CreateNoteHandler(ToolHandlerBase):
         content = arguments.get("content", "")
         tags_input = arguments.get("tags", "")
 
-        # Handle tags which can be either a string or a list
+        # Handle tags which can be either a string or a list (comma-separated)
         if isinstance(tags_input, list):
             tags = [str(tag).strip() for tag in tags_input]
         elif isinstance(tags_input, str):
-            tags = [tag.strip() for tag in safe_split(tags_input)] if tags_input else []
+            tags = (
+                [tag.strip() for tag in safe_split(tags_input, ",")]
+                if tags_input
+                else []
+            )
         else:
             tags = []
 
@@ -262,12 +266,12 @@ class UpdateNoteHandler(ToolHandlerBase):
             # Update the note content
             safe_set(existing_note, "content", content)
 
-            # Update tags if provided
+            # Update tags if provided (comma-separated)
             if tags_input:
                 if isinstance(tags_input, list):
                     tags = [tag.strip() for tag in tags_input]
                 elif isinstance(tags_input, str):
-                    tags = [tag.strip() for tag in safe_split(tags_input)]
+                    tags = [tag.strip() for tag in safe_split(tags_input, ",")]
                 else:
                     tags = []
 
@@ -446,7 +450,7 @@ class SearchNotesHandler(ToolHandlerBase):
         return limit
 
     def _process_tag_filters(self, tags_input: Any) -> list[str] | None:
-        """Process tag filters from input."""
+        """Process tag filters from input (comma-separated)."""
         if not tags_input:
             return None
 
@@ -454,7 +458,9 @@ class SearchNotesHandler(ToolHandlerBase):
         if isinstance(tags_input, list):
             tag_filters = [tag.strip() for tag in tags_input if tag.strip()]
         elif isinstance(tags_input, str):
-            tag_filters = [tag.strip() for tag in safe_split(tags_input) if tag.strip()]
+            tag_filters = [
+                tag.strip() for tag in safe_split(tags_input, ",") if tag.strip()
+            ]
 
         logger.debug(f"Tag filters: {tag_filters}")
         return tag_filters
@@ -690,11 +696,18 @@ class TagOperationHandler(ToolHandlerBase):
     """Base handler for tag operations (add, remove, replace)."""
 
     def _parse_tags(self, tags_input: Any) -> list[str]:
-        """Parse tags from various input formats."""
+        """Parse tags from various input formats.
+
+        Tags are expected to be comma-separated when provided as a string.
+        """
         if isinstance(tags_input, list):
             return [tag.strip() for tag in tags_input]
         elif isinstance(tags_input, str):
-            return [tag.strip() for tag in safe_split(tags_input)] if tags_input else []
+            return (
+                [tag.strip() for tag in safe_split(tags_input, ",")]
+                if tags_input
+                else []
+            )
         else:
             return []
 
@@ -720,8 +733,10 @@ class AddTagsHandler(TagOperationHandler):
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
 
-            # Parse the tags to add
-            tags_to_add = [tag.strip() for tag in safe_split(tags_input) if tag.strip()]
+            # Parse the tags to add (comma-separated)
+            tags_to_add = [
+                tag.strip() for tag in safe_split(tags_input, ",") if tag.strip()
+            ]
 
             # Get current tags or initialize empty list
             current_tags = safe_get(existing_note, "tags", [])
@@ -812,9 +827,9 @@ class RemoveTagsHandler(TagOperationHandler):
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
 
-            # Parse the tags to remove
+            # Parse the tags to remove (comma-separated)
             tags_to_remove = [
-                tag.strip() for tag in safe_split(tags_input) if tag.strip()
+                tag.strip() for tag in safe_split(tags_input, ",") if tag.strip()
             ]
 
             # Get current tags or initialize empty list
@@ -919,11 +934,11 @@ class ReplaceTagsHandler(TagOperationHandler):
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
 
-            # Parse the new tags
+            # Parse the new tags (comma-separated)
             new_tags = self._parse_tags(tags_input)
             if tags_input and isinstance(tags_input, str):
                 new_tags = [
-                    tag.strip() for tag in safe_split(tags_input) if tag.strip()
+                    tag.strip() for tag in safe_split(tags_input, ",") if tag.strip()
                 ]
 
             # Get current tags

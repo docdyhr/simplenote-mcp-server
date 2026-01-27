@@ -1262,9 +1262,21 @@ def run_main() -> None:
         from .logging import debug_to_file
 
         if config.log_level == LogLevel.DEBUG:
+            # Sensitive keys that should always be masked
+            sensitive_patterns = ("PASSWORD", "SECRET", "TOKEN", "KEY", "CREDENTIAL")
             for key, value in os.environ.items():
                 if key.startswith("LOG_") or key.startswith("SIMPLENOTE_"):
-                    masked_value = value if "PASSWORD" not in key else "*****"
+                    # Mask all SIMPLENOTE_* values except non-sensitive config like EMAIL
+                    should_mask = key.startswith("SIMPLENOTE_") and key not in (
+                        "SIMPLENOTE_EMAIL",
+                        "SIMPLENOTE_USERNAME",
+                        "SIMPLENOTE_OFFLINE_MODE",
+                    )
+                    # Also mask if key contains sensitive patterns
+                    should_mask = should_mask or any(
+                        p in key.upper() for p in sensitive_patterns
+                    )
+                    masked_value = "*****" if should_mask else value
                     debug_to_file(f"Environment variable found: {key}={masked_value}")
 
         logger.info(f"Starting Simplenote MCP Server v{__version__}")

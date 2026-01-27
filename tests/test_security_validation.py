@@ -1,5 +1,6 @@
 """Tests for security validation functionality."""
 
+import os
 from datetime import datetime
 
 import pytest
@@ -519,3 +520,68 @@ class TestArgumentValidation:
             self.validator.validate_arguments(
                 {"long_param": "x" * 10001}, "create_note"
             )
+
+
+class TestRateLimiterOfflineMode:
+    """Test RateLimiter respects offline mode configuration."""
+
+    @pytest.mark.parametrize(
+        "env_value",
+        ["true", "1", "t", "yes", "TRUE", "Yes"],
+    )
+    def test_rate_limiter_skips_in_offline_mode(self, env_value):
+        """Test that rate limiting is skipped when offline mode is enabled."""
+        from unittest.mock import patch
+
+        from simplenote_mcp.server.middleware import RateLimiter
+
+        with patch.dict(
+            os.environ,
+            {
+                "SIMPLENOTE_OFFLINE_MODE": env_value,
+                "SIMPLENOTE_EMAIL": "",
+                "SIMPLENOTE_PASSWORD": "",
+            },
+            clear=True,
+        ):
+            # Clear any cached config
+            from simplenote_mcp.server import config as config_module
+
+            config_module._config = None
+
+            limiter = RateLimiter()
+
+            # Should not raise even with many requests
+            for _ in range(1000):
+                limiter.check_rate_limit("test_user")
+
+    def test_rate_limiter_enforces_in_online_mode(self):
+        """Test that rate limiting is enforced when offline mode is disabled."""
+        from unittest.mock import patch
+
+        from simplenote_mcp.server.errors import SecurityError
+        from simplenote_mcp.server.middleware import RateLimiter
+
+        with patch.dict(
+            os.environ,
+            {
+                "SIMPLENOTE_OFFLINE_MODE": "false",
+                "SIMPLENOTE_EMAIL": "test@example.com",
+                "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
+            },
+            clear=True,
+        ):
+            # Clear any cached config
+            from simplenote_mcp.server import config as config_module
+
+            config_module._config = None
+
+            limiter = RateLimiter()
+
+            # Fill up the rate limit (default is 100 requests per 60 seconds)
+            for _ in range(100):
+                limiter.check_rate_limit("test_user_online")
+
+            # Next request should fail
+            with pytest.raises(SecurityError, match="Rate limit exceeded"):
+                limiter.check_rate_limit("test_user_online")

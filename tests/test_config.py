@@ -518,3 +518,39 @@ class TestConfigIntegration:
 
             # Test validation passes with credentials
             config.validate()  # Should not raise
+
+    @pytest.mark.parametrize(
+        "env_value",
+        ["true", "1", "t", "yes", "TRUE", "True", "YES", "Yes"],
+    )
+    def test_offline_mode_truthy_variants(self, env_value):
+        """Test offline mode accepts various truthy values."""
+        with patch.dict(
+            os.environ,
+            {
+                "SIMPLENOTE_OFFLINE_MODE": env_value,
+                "SIMPLENOTE_EMAIL": "",
+                "SIMPLENOTE_PASSWORD": "",
+            },
+            clear=True,
+        ):
+            config = Config()
+            assert config.offline_mode is True, f"Expected True for '{env_value}'"
+
+    @pytest.mark.parametrize(
+        "env_value",
+        ["false", "0", "f", "no", "FALSE", "False", "NO", "No", "", "invalid"],
+    )
+    def test_offline_mode_falsy_variants(self, env_value):
+        """Test offline mode rejects various falsy/invalid values."""
+        with patch.dict(
+            os.environ,
+            {
+                "SIMPLENOTE_OFFLINE_MODE": env_value,
+                "SIMPLENOTE_EMAIL": "test@example.com",
+                "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
+            },
+            clear=True,
+        ):
+            config = Config()
+            assert config.offline_mode is False, f"Expected False for '{env_value}'"

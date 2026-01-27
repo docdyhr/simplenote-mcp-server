@@ -318,3 +318,110 @@ class TestUpdateNoteHandler:
         # Should raise ValidationError directly
         with pytest.raises(ValidationError, match="Note Id is required"):
             await handler.handle(arguments)
+
+
+@pytest.mark.unit
+class TestTagParsing:
+    """Test that tags are correctly parsed as comma-separated values."""
+
+    @pytest.fixture
+    def mock_client(self):
+        """Create a mock Simplenote client."""
+        client = MagicMock()
+        client.add_note.return_value = (
+            {"key": "new_note_id", "content": "test", "tags": ["work", "personal"]},
+            0,
+        )
+        client.get_note.return_value = (
+            {"key": "test_id", "content": "Old content", "tags": []},
+            0,
+        )
+        client.update_note.return_value = (
+            {"key": "test_id", "content": "Old content", "tags": ["work", "personal"]},
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        """Create a mock note cache."""
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.get_note.return_value = {
+            "key": "test_id",
+            "content": "Old content",
+            "tags": [],
+        }
+        cache.update_cache_after_create = MagicMock()
+        cache.update_cache_after_update = MagicMock()
+        return cache
+
+    @pytest.mark.asyncio
+    async def test_create_note_comma_separated_tags(self, mock_client, mock_cache):
+        """Test that create_note correctly parses comma-separated tags."""
+        handler = CreateNoteHandler(mock_client, mock_cache)
+        arguments = {"content": "test content", "tags": "work,personal"}
+
+        await handler.handle(arguments)
+
+        # Verify the note was created with properly parsed tags
+        call_args = mock_client.add_note.call_args
+        note_arg = call_args[0][0]
+        assert note_arg["tags"] == ["work", "personal"]
+
+    @pytest.mark.asyncio
+    async def test_create_note_comma_separated_tags_with_spaces(
+        self, mock_client, mock_cache
+    ):
+        """Test that create_note handles comma-separated tags with whitespace."""
+        handler = CreateNoteHandler(mock_client, mock_cache)
+        arguments = {"content": "test content", "tags": "work , personal , urgent"}
+
+        await handler.handle(arguments)
+
+        call_args = mock_client.add_note.call_args
+        note_arg = call_args[0][0]
+        assert note_arg["tags"] == ["work", "personal", "urgent"]
+
+    @pytest.mark.asyncio
+    async def test_create_note_list_tags(self, mock_client, mock_cache):
+        """Test that create_note handles list of tags."""
+        handler = CreateNoteHandler(mock_client, mock_cache)
+        arguments = {"content": "test content", "tags": ["work", "personal"]}
+
+        await handler.handle(arguments)
+
+        call_args = mock_client.add_note.call_args
+        note_arg = call_args[0][0]
+        assert note_arg["tags"] == ["work", "personal"]
+
+    @pytest.mark.asyncio
+    async def test_update_note_comma_separated_tags(self, mock_client, mock_cache):
+        """Test that update_note correctly parses comma-separated tags."""
+        handler = UpdateNoteHandler(mock_client, mock_cache)
+        arguments = {
+            "note_id": "test_id",
+            "content": "updated content",
+            "tags": "work,personal",
+        }
+
+        await handler.handle(arguments)
+
+        call_args = mock_client.update_note.call_args
+        note_arg = call_args[0][0]
+        assert note_arg["tags"] == ["work", "personal"]
+
+    @pytest.mark.asyncio
+    async def test_search_notes_comma_separated_tag_filters(self, mock_cache):
+        """Test that search_notes correctly parses comma-separated tag filters."""
+        mock_cache.search_notes.return_value = []
+        mock_client = MagicMock()
+        handler = SearchNotesHandler(mock_client, mock_cache)
+        arguments = {"query": "test", "tags": "work,personal"}
+
+        await handler.handle(arguments)
+
+        # Verify search was called with properly parsed tags
+        call_args = mock_cache.search_notes.call_args
+        # The tag_filters parameter should be a list of separate tags
+        assert call_args[1].get("tag_filters") == ["work", "personal"]
