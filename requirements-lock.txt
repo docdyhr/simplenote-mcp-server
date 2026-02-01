@@ -50,7 +50,7 @@ jsonschema-specifications==2025.9.1
 keyring==25.7.0
 librt==0.7.8
 license-expression==30.4.4
-mando==0.7.1
+mando==0.8.2
 Markdown==3.10.1
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
