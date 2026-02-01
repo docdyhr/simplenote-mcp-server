@@ -139,7 +139,7 @@ tenacity==9.1.2
 toml==0.10.2
 tomlkit==0.14.0
 tqdm==4.67.2
-twine==6.1.0
+twine==6.2.0
 typer==0.19.1
 typing-inspection==0.4.2
 typing_extensions==4.15.0
