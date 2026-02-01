@@ -19,7 +19,7 @@ charset-normalizer==3.4.3
 check-wheel-contents==0.6.3
 click==8.3.0
 colorama==0.4.6
-coverage==7.13.1
+coverage==7.13.2
 cryptography==46.0.3
 cyclonedx-python-lib==9.1.0
 defusedxml==0.7.1
