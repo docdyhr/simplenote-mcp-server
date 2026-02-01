@@ -54,7 +54,7 @@ mando==0.7.1
 Markdown==3.10.1
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
-marshmallow==4.2.0
+marshmallow==4.2.1
 mcp==1.26.0
 mdurl==0.1.2
 mergedeep==1.3.4
