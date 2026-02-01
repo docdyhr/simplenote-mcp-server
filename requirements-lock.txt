@@ -123,7 +123,7 @@ ruamel.yaml==0.19.1
 ruamel.yaml.clib==0.2.15
 ruff==0.14.14
 safety==3.5.2
-safety-schemas==0.0.14
+safety-schemas==0.0.18
 setuptools==80.10.2
 shellingham==1.5.4
 simplenote==2.1.4
