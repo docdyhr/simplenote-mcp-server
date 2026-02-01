@@ -86,7 +86,7 @@ pip-tools==7.5.2
 pip_audit==2.9.0
 platformdirs==4.4.0
 pluggy==1.5.0
-pre_commit==4.2.0
+pre_commit==4.5.1
 propcache==0.4.1
 psutil==6.1.1
 py-serializable==2.1.0
