@@ -76,7 +76,7 @@ nh3==0.3.2
 nltk==3.9.2
 nodeenv==1.9.1
 packageurl-python==0.17.3
-packaging==25.0
+packaging==26.0
 paginate==0.5.7
 pathspec==1.0.4
 pbr==7.0.3
