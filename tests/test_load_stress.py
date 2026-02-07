@@ -292,16 +292,20 @@ class TestStressTesting:
     @pytest.mark.asyncio
     async def test_rate_limiting_effectiveness(self):
         """Test that rate limiting is effective under burst load."""
-        import os
+        from unittest.mock import patch
 
         from simplenote_mcp.server.errors import SecurityError
         from simplenote_mcp.server.middleware import RateLimiter
 
-        # Temporarily disable offline mode to test rate limiting
-        original_offline = os.environ.get("SIMPLENOTE_OFFLINE_MODE")
-        os.environ["SIMPLENOTE_OFFLINE_MODE"] = "false"
+        # Mock get_config to return a config with offline_mode=False
+        mock_config = MagicMock()
+        mock_config.offline_mode = False
+        mock_config.rate_limit_requests = 100
+        mock_config.rate_limit_window_seconds = 60
+        mock_config.rate_limit_burst = 100
 
-        try:
+        # Patch at the source module since middleware imports get_config locally
+        with patch("simplenote_mcp.server.config.get_config", return_value=mock_config):
             limiter = RateLimiter()
 
             # Simulate burst of requests from same client
@@ -329,12 +333,6 @@ class TestStressTesting:
             # But should allow up to the limit
             assert allowed_count > 0, "Rate limiter should allow some requests"
             assert allowed_count <= 50, "Rate limiter should enforce the limit"
-        finally:
-            # Restore original offline mode
-            if original_offline is not None:
-                os.environ["SIMPLENOTE_OFFLINE_MODE"] = original_offline
-            else:
-                os.environ.pop("SIMPLENOTE_OFFLINE_MODE", None)
 
     @pytest.mark.asyncio
     async def test_error_recovery_under_load(self):
