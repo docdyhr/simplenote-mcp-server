@@ -49,12 +49,6 @@ severity = "medium"
 select = [ "E", "F", "W", "I", "B", "C4", "SIM", "UP",]
 ignore = [ "E203", "E501", "E402", "SIM105", "SIM102", "SIM103", "SIM212", "UP035",]
 
-[tool.bandit.assert_used]
-skips = [ "*test*.py", "**/tests/**", "**/test_*.py",]
-
-[tool.bandit.blacklist_calls]
-bad_name_sets = [ "pickle", "marshal", "shelve", "subprocess_popen", "subprocess_without_shell_equals_true",]
-
 [tool.pytest.ini_options]
 minversion = "6.0"
 testpaths = [ "tests",]
@@ -73,7 +67,6 @@ filterwarnings = [ "ignore::DeprecationWarning", "ignore::PendingDeprecationWarn
 "scripts/*" = [ "SIM", "S",]
 "simplenote_mcp/scripts/*" = [ "SIM", "S",]
 "stubs/*" = [ "ALL",]
-"test_workflows_locally.py" = [ "S602",]
 
 [tool.ruff.lint.isort]
 known-first-party = [ "simplenote_mcp",]

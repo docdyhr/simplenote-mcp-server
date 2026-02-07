@@ -37,6 +37,7 @@ eval-output.json
 *.eval.log
 
 # Logs
+/logs/
 simplenote_mcp/logs/*
 !simplenote_mcp/logs/.gitkeep
 /tmp/simplenote_mcp_debug.log
@@ -88,6 +89,13 @@ site/
 workflow-status*.json
 ci-diagnostics-report.json
 
-# PRVATE
+# Generated reports
+badge-validation.json
+complexity-report.json
+quality-check-results.json
+sbom-*.json
+vulnerability-*.json
+
+# Private
 private*
 coverage.json
