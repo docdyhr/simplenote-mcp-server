@@ -74,7 +74,7 @@ mypy==1.19.1
 mypy_extensions==1.1.0
 nh3==0.3.2
 nltk==3.9.2
-nodeenv==1.9.1
+nodeenv==1.10.0
 packageurl-python==0.17.3
 packaging==26.0
 paginate==0.5.7
