@@ -733,13 +733,13 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="search_notes",
-                description="Search for notes in Simplenote with advanced capabilities and pagination support",
+                description="Search for notes in Simplenote with advanced capabilities including fuzzy matching and pagination support",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)",
+                            "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31 or natural language dates like from:last_week to:yesterday)",
                         },
                         "limit": {
                             "type": "integer",
@@ -755,11 +755,15 @@ async def handle_list_tools() -> list[types.Tool]:
                         },
                         "from_date": {
                             "type": "string",
-                            "description": "Filter notes modified after this date (ISO format, e.g., 2023-01-01)",
+                            "description": "Filter notes modified after this date (ISO format e.g. 2023-01-01, or natural language e.g. yesterday, last_week, 3_days_ago)",
                         },
                         "to_date": {
                             "type": "string",
-                            "description": "Filter notes modified before this date (ISO format, e.g., 2023-12-31)",
+                            "description": "Filter notes modified before this date (ISO format e.g. 2023-12-31, or natural language e.g. today, yesterday)",
+                        },
+                        "fuzzy": {
+                            "type": "boolean",
+                            "description": "Enable fuzzy matching to handle typos and approximate matches (default: false)",
                         },
                     },
                     "required": ["query"],
@@ -831,6 +835,51 @@ async def handle_list_tools() -> list[types.Tool]:
                         },
                     },
                     "required": ["note_id", "tags"],
+                },
+            ),
+            types.Tool(
+                name="export_notes",
+                description="Export one or more notes to Markdown or JSON format",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_ids": {
+                            "type": "string",
+                            "description": "Note IDs to export (comma-separated)",
+                        },
+                        "format": {
+                            "type": "string",
+                            "description": "Export format: 'markdown' (with YAML front matter) or 'json' (default: markdown)",
+                            "enum": ["markdown", "json"],
+                        },
+                        "include_metadata": {
+                            "type": "boolean",
+                            "description": "Include metadata like dates, tags, and ID (default: true)",
+                        },
+                    },
+                    "required": ["note_ids"],
+                },
+            ),
+            types.Tool(
+                name="find_and_merge_duplicates",
+                description="Find duplicate or near-duplicate notes and optionally merge them",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "threshold": {
+                            "type": "number",
+                            "description": "Similarity threshold from 0.0 to 1.0 (default: 0.8). Higher values require more similarity.",
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "If true (default), only report duplicates without merging. Set to false to actually merge.",
+                        },
+                        "tag_filter": {
+                            "type": "string",
+                            "description": "Only check notes with this tag (optional, helps narrow scope)",
+                        },
+                    },
+                    "required": [],
                 },
             ),
         ]

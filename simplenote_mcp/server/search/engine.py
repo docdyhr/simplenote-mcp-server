@@ -6,6 +6,8 @@ from datetime import datetime
 from typing import Any
 
 from ..logging import logger
+from .date_parser import parse_natural_date
+from .fuzzy import FuzzyMatcher
 from .parser import QueryParser, QueryToken, TokenType
 
 
@@ -19,9 +21,15 @@ class SearchEngine:
     - Date range filtering
     """
 
-    def __init__(self) -> None:
-        """Initialize the search engine."""
+    def __init__(self, fuzzy: bool = False) -> None:
+        """Initialize the search engine.
+
+        Args:
+            fuzzy: Enable fuzzy matching for typo-tolerant search.
+        """
         self._lock = asyncio.Lock()
+        self._fuzzy = fuzzy
+        self._fuzzy_matcher = FuzzyMatcher() if fuzzy else None
 
     def search(
         self,
@@ -67,12 +75,21 @@ class SearchEngine:
                 try:
                     global_from_date = datetime.fromisoformat(token.value)
                 except ValueError:
-                    logger.warning(f"Invalid from date format: {token.value}")
+                    # Fallback to natural language date parsing
+                    parsed = parse_natural_date(token.value)
+                    if parsed is not None:
+                        global_from_date = parsed
+                    else:
+                        logger.warning(f"Invalid from date format: {token.value}")
             elif token.type == TokenType.DATE_TO:
                 try:
                     global_to_date = datetime.fromisoformat(token.value)
                 except ValueError:
-                    logger.warning(f"Invalid to date format: {token.value}")
+                    parsed = parse_natural_date(token.value)
+                    if parsed is not None:
+                        global_to_date = parsed
+                    else:
+                        logger.warning(f"Invalid to date format: {token.value}")
             else:
                 remaining_tokens.append(token)
 
@@ -393,6 +410,9 @@ class SearchEngine:
     ) -> bool:
         """Check if note content contains the search term.
 
+        When fuzzy mode is enabled, falls back to fuzzy matching if
+        exact/substring matching fails.
+
         Args:
             note: The note to check
             search_term: The term to search for
@@ -419,7 +439,10 @@ class SearchEngine:
             search_words = search_lower.split()
             if len(search_words) <= 1:
                 # Single word or empty - just do direct matching
-                return search_lower in content_lower
+                found = search_lower in content_lower
+                if not found and self._fuzzy and self._fuzzy_matcher:
+                    return self._fuzzy_matcher.fuzzy_contains(content, search_term)
+                return found
 
             # For multiple words, use a regex pattern that matches the exact sequence
             # with word boundaries
@@ -429,10 +452,16 @@ class SearchEngine:
             pattern = r"\b" + r"\s+".join(escaped_words) + r"\b"
 
             # Check if the pattern matches
-            return bool(re.search(pattern, content_lower))
+            found = bool(re.search(pattern, content_lower))
+            if not found and self._fuzzy and self._fuzzy_matcher:
+                return self._fuzzy_matcher.fuzzy_contains_phrase(content, search_term)
+            return found
         else:
             # Case-insensitive match for regular terms
-            return search_term.lower() in content.lower()
+            found = search_term.lower() in content.lower()
+            if not found and self._fuzzy and self._fuzzy_matcher:
+                return self._fuzzy_matcher.fuzzy_contains(content, search_term)
+            return found
 
     def _get_modify_date(self, note: dict[str, Any]) -> datetime:
         """Extract the modification date from a note.
@@ -494,6 +523,17 @@ class SearchEngine:
             # Bonus for title matches
             if term in title_line:
                 term_score += 10
+            elif self._fuzzy and self._fuzzy_matcher:
+                # Reduced bonus for fuzzy title matches
+                fuzzy_title_score = self._fuzzy_matcher.fuzzy_score(title_line, term)
+                if fuzzy_title_score >= self._fuzzy_matcher.threshold:
+                    term_score += int(3 * fuzzy_title_score)
+
+            # If no exact matches but fuzzy mode is on, add partial score
+            if term_score == 0 and self._fuzzy and self._fuzzy_matcher:
+                fuzzy_content_score = self._fuzzy_matcher.fuzzy_score(content, term)
+                if fuzzy_content_score >= self._fuzzy_matcher.threshold:
+                    term_score += max(1, int(3 * fuzzy_content_score))
 
             score += term_score
 

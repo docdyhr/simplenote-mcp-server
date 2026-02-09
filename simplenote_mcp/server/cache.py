@@ -804,6 +804,7 @@ class NoteCache:
         offset: int = 0,
         tag_filters: list[str] | None = None,
         date_range: tuple[datetime | None, datetime | None] | None = None,
+        fuzzy: bool = False,
     ) -> list[dict[str, Any]]:
         """Search for notes in the cache using advanced search capabilities.
 
@@ -813,6 +814,7 @@ class NoteCache:
             offset: Number of matching notes to skip (pagination offset).
             tag_filters: Optional list of tags to filter by.
             date_range: Optional tuple of (from_date, to_date) for date filtering.
+            fuzzy: Enable fuzzy matching for typo-tolerant search.
 
         Returns:
             List of matching notes sorted by relevance.
@@ -822,11 +824,13 @@ class NoteCache:
 
         logger.debug(
             f"Advanced search: query='{query}', tags={tag_filters}, "
-            f"date_range={date_range}, limit={limit}, offset={offset}"
+            f"date_range={date_range}, limit={limit}, offset={offset}, fuzzy={fuzzy}"
         )
 
         # Generate cache key
-        cache_key = self._generate_search_cache_key(query, tag_filters, date_range)
+        cache_key = self._generate_search_cache_key(
+            query, tag_filters, date_range, fuzzy
+        )
         search_start_time = time.time()
 
         # Check cache
@@ -846,8 +850,9 @@ class NoteCache:
             else:
                 notes_to_search = self._filter_notes_by_tags(tag_filters)
 
-        # Use search engine
-        all_results = self._search_engine.search(
+        # Use search engine with fuzzy mode if requested
+        search_engine = SearchEngine(fuzzy=fuzzy) if fuzzy else self._search_engine
+        all_results = search_engine.search(
             notes=notes_to_search,
             query=query,
             tag_filters=tag_filters,
@@ -879,6 +884,7 @@ class NoteCache:
         query: str,
         tag_filters: list[str] | None,
         date_range: tuple[datetime | None, datetime | None] | None,
+        fuzzy: bool = False,
     ) -> str:
         """Generate a cache key for search results.
 
@@ -886,6 +892,7 @@ class NoteCache:
             query: The search query string
             tag_filters: List of tags to filter by
             date_range: Tuple of (from_date, to_date)
+            fuzzy: Whether fuzzy matching is enabled
 
         Returns:
             A string key for the query cache
@@ -901,7 +908,7 @@ class NoteCache:
             date_str = f"{from_str},{to_str}"
 
         # Combine parameters and calculate hash - not used for security purposes
-        combined = f"{query}|{tag_str}|{date_str}|{self._last_sync}"
+        combined = f"{query}|{tag_str}|{date_str}|{fuzzy}|{self._last_sync}"
         return hashlib.md5(combined.encode(), usedforsecurity=False).hexdigest()
 
     def _extract_first_word(self, content: str) -> str:

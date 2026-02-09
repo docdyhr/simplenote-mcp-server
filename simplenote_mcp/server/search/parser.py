@@ -3,6 +3,8 @@
 import re
 from enum import Enum, auto
 
+from .date_parser import parse_natural_date
+
 
 class TokenType(Enum):
     """Token types for search query parsing."""
@@ -104,6 +106,10 @@ class QueryParser:
         query = re.sub(r"from:(\S+)", replace_from_date, query, flags=re.IGNORECASE)
         query = re.sub(r"to:(\S+)", replace_to_date, query, flags=re.IGNORECASE)
 
+        # Resolve natural language dates to ISO format
+        from_dates = [self._resolve_date_value(d) for d in from_dates]
+        to_dates = [self._resolve_date_value(d) for d in to_dates]
+
         # Extract tag filters
         tags = []
 
@@ -169,3 +175,31 @@ class QueryParser:
             )
 
         return expanded_tokens
+
+    @staticmethod
+    def _resolve_date_value(date_str: str) -> str:
+        """Resolve a date string, trying natural language parsing if needed.
+
+        If the value is already a valid ISO date (YYYY-MM-DD or full ISO),
+        it is returned as-is. Otherwise, underscores are treated as spaces
+        and natural language parsing is attempted (e.g., "last_week",
+        "3_days_ago"). If all parsing fails, the original string is returned.
+
+        Args:
+            date_str: The date string to resolve.
+
+        Returns:
+            ISO format date string, or original string if not parseable.
+        """
+        import re
+
+        # If it already looks like an ISO date, keep it as-is
+        if re.match(r"^\d{4}-\d{2}-\d{2}", date_str):
+            return date_str
+
+        # Replace underscores with spaces for natural language parsing
+        nl_text = date_str.replace("_", " ")
+        parsed = parse_natural_date(nl_text)
+        if parsed is not None:
+            return parsed.isoformat()
+        return date_str

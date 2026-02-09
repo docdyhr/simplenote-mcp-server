@@ -33,6 +33,8 @@ class TestToolHandlerRegistry:
             "add_tags",
             "remove_tags",
             "replace_tags",
+            "export_notes",
+            "find_and_merge_duplicates",
         }
 
         assert set(registry.list_tools()) == expected_tools

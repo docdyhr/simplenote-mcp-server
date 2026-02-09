@@ -425,15 +425,16 @@ class SearchNotesHandler(ToolHandlerBase):
         date_range = self._process_date_range(
             arguments.get("from_date"), arguments.get("to_date")
         )
+        fuzzy = bool(arguments.get("fuzzy", False))
 
         logger.debug(
             f"Advanced search called with: query='{query}', limit={limit}, "
-            + f"tags='{tag_filters}', date_range={date_range}"
+            + f"tags='{tag_filters}', date_range={date_range}, fuzzy={fuzzy}"
         )
 
         try:
             return await self._execute_search(
-                query, limit, tag_filters, date_range, arguments
+                query, limit, tag_filters, date_range, arguments, fuzzy
             )
         except Exception as e:
             return self._handle_search_error(e, query)
@@ -477,7 +478,11 @@ class SearchNotesHandler(ToolHandlerBase):
         return None
 
     def _parse_date(self, date_str: str | None, field_name: str) -> Any:
-        """Parse a date string, return None if invalid."""
+        """Parse a date string, return None if invalid.
+
+        Tries ISO format first, then falls back to natural language parsing
+        for expressions like "yesterday", "last_week", "3_days_ago".
+        """
         if not date_str:
             return None
 
@@ -488,6 +493,14 @@ class SearchNotesHandler(ToolHandlerBase):
             logger.debug(f"{field_name}: {parsed_date}")
             return parsed_date
         except ValueError:
+            # Fallback to natural language date parsing
+            from .search.date_parser import parse_natural_date
+
+            nl_text = date_str.replace("_", " ")
+            parsed_date = parse_natural_date(nl_text)
+            if parsed_date is not None:
+                logger.debug(f"{field_name} (natural language): {parsed_date}")
+                return parsed_date
             logger.warning(f"Invalid {field_name} format: {date_str}")
             return None
 
@@ -498,6 +511,7 @@ class SearchNotesHandler(ToolHandlerBase):
         tag_filters: list[str] | None,
         date_range: tuple | None,
         arguments: dict[str, Any],
+        fuzzy: bool = False,
     ) -> list[types.TextContent]:
         """Execute search using cache or API."""
         cache_initialized = (
@@ -509,10 +523,12 @@ class SearchNotesHandler(ToolHandlerBase):
 
         if cache_initialized:
             return await self._search_with_cache(
-                query, limit, tag_filters, date_range, arguments
+                query, limit, tag_filters, date_range, arguments, fuzzy
             )
         else:
-            return await self._search_with_api(query, limit, tag_filters, date_range)
+            return await self._search_with_api(
+                query, limit, tag_filters, date_range, fuzzy
+            )
 
     def _handle_search_error(self, e: Exception, query: str) -> list[types.TextContent]:
         """Handle search errors and return appropriate response."""
@@ -527,6 +543,7 @@ class SearchNotesHandler(ToolHandlerBase):
         tag_filters: list[str] | None,
         date_range: tuple | None,
         arguments: dict[str, Any],
+        fuzzy: bool = False,
     ) -> list[types.TextContent]:
         """Search using cache."""
         logger.debug("Using advanced search with cache")
@@ -542,6 +559,7 @@ class SearchNotesHandler(ToolHandlerBase):
             query=query,
             tag_filters=tag_filters,
             date_range=date_range,
+            fuzzy=fuzzy,
         )
         total_matching_notes = len(all_matching_notes)
 
@@ -552,6 +570,7 @@ class SearchNotesHandler(ToolHandlerBase):
             offset=offset,
             tag_filters=tag_filters,
             date_range=date_range,
+            fuzzy=fuzzy,
         )
 
         # Format results
@@ -618,12 +637,13 @@ class SearchNotesHandler(ToolHandlerBase):
         limit: int | None,
         tag_filters: list[str] | None,
         date_range: tuple | None,
+        fuzzy: bool = False,
     ) -> list[types.TextContent]:
         """Search using API fallback."""
         logger.debug("Cache not available, using API with temporary search engine")
         from .search.engine import SearchEngine
 
-        api_search_engine = SearchEngine()
+        api_search_engine = SearchEngine(fuzzy=fuzzy)
 
         # Get all notes from the API
         all_notes, status = self.sn.get_note_list()
@@ -992,6 +1012,312 @@ class ReplaceTagsHandler(TagOperationHandler):
             )
 
 
+class FindAndMergeDuplicatesHandler(ToolHandlerBase):
+    """Handler for find_and_merge_duplicates tool."""
+
+    @validate_tool_security("find_and_merge_duplicates")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle find_and_merge_duplicates tool call.
+
+        Finds duplicate notes and optionally merges them.
+        """
+        threshold = arguments.get("threshold", 0.8)
+        dry_run = arguments.get("dry_run", True)
+        tag_filter = arguments.get("tag_filter", "")
+
+        # Validate threshold
+        try:
+            threshold = float(threshold)
+            threshold = max(0.0, min(1.0, threshold))
+        except (ValueError, TypeError):
+            threshold = 0.8
+
+        try:
+            from .duplicates import DuplicateFinder
+
+            finder = DuplicateFinder(threshold=threshold)
+
+            # Get all notes from cache or API
+            all_notes = self._get_all_notes(tag_filter)
+
+            if not all_notes:
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "message": "No notes found to check for duplicates",
+                                "groups": [],
+                                "total_groups": 0,
+                            }
+                        ),
+                    )
+                ]
+
+            # Find duplicate groups
+            groups = finder.find_duplicates(all_notes)
+
+            if not groups:
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "message": f"No duplicates found among {len(all_notes)} notes (threshold: {threshold})",
+                                "groups": [],
+                                "total_groups": 0,
+                                "notes_checked": len(all_notes),
+                            }
+                        ),
+                    )
+                ]
+
+            if dry_run:
+                return self._format_dry_run_response(groups, len(all_notes), threshold)
+            else:
+                return await self._perform_merge(
+                    groups, finder, len(all_notes), threshold
+                )
+
+        except Exception as e:
+            return self._format_error_response(e, "finding duplicates")
+
+    def _get_all_notes(self, tag_filter: str) -> list[dict[str, Any]]:
+        """Get all notes, optionally filtered by tag.
+
+        Args:
+            tag_filter: Tag to filter by, or empty string for all notes.
+
+        Returns:
+            List of note dictionaries.
+        """
+        if self.note_cache is not None and self.note_cache.is_initialized:
+            if tag_filter:
+                return self.note_cache.get_all_notes(tag_filter=tag_filter)
+            return self.note_cache.get_all_notes()
+        else:
+            # Fallback to API
+            all_notes, status = self.sn.get_note_list()
+            if status != 0:
+                raise NetworkError("Failed to retrieve notes for duplicate check")
+            notes = all_notes if isinstance(all_notes, list) else []
+            if tag_filter:
+                notes = [n for n in notes if tag_filter in n.get("tags", [])]
+            return notes
+
+    def _format_dry_run_response(
+        self,
+        groups: list[list[dict[str, Any]]],
+        total_notes: int,
+        threshold: float,
+    ) -> list[types.TextContent]:
+        """Format response for dry run mode.
+
+        Args:
+            groups: List of duplicate groups.
+            total_notes: Total notes checked.
+            threshold: Similarity threshold used.
+
+        Returns:
+            Formatted response.
+        """
+        group_summaries = []
+        for i, group in enumerate(groups):
+            notes_in_group = []
+            for note in group:
+                content = note.get("content", "")
+                title = content.split("\n", 1)[0].strip()[:80] if content else ""
+                notes_in_group.append(
+                    {
+                        "id": note.get("key", ""),
+                        "title": title,
+                        "similarity": note.get("_similarity", 0),
+                        "tags": note.get("tags", []),
+                    }
+                )
+            group_summaries.append(
+                {
+                    "group": i + 1,
+                    "count": len(group),
+                    "notes": notes_in_group,
+                }
+            )
+
+        total_duplicates = sum(len(g) - 1 for g in groups)
+        return [
+            types.TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "success": True,
+                        "dry_run": True,
+                        "message": (
+                            f"Found {len(groups)} duplicate group(s) with "
+                            f"{total_duplicates} duplicate note(s) that could be merged"
+                        ),
+                        "groups": group_summaries,
+                        "total_groups": len(groups),
+                        "total_duplicates": total_duplicates,
+                        "notes_checked": total_notes,
+                        "threshold": threshold,
+                    }
+                ),
+            )
+        ]
+
+    async def _perform_merge(
+        self,
+        groups: list[list[dict[str, Any]]],
+        finder: Any,
+        total_notes: int,
+        threshold: float,
+    ) -> list[types.TextContent]:
+        """Perform actual merge of duplicate groups.
+
+        Args:
+            groups: List of duplicate groups.
+            finder: DuplicateFinder instance.
+            total_notes: Total notes checked.
+            threshold: Similarity threshold used.
+
+        Returns:
+            Formatted response with merge results.
+        """
+        merged_count = 0
+        trashed_count = 0
+        errors = []
+
+        for group in groups:
+            try:
+                # Merge the group
+                merged_note = finder.merge_group(group)
+                winner_id = merged_note.get("key", "")
+
+                # Update the winning note with merged tags
+                updated_note, status = self.sn.update_note(merged_note)
+                if status != 0:
+                    errors.append(f"Failed to update note {winner_id}")
+                    continue
+
+                if isinstance(updated_note, dict):
+                    self._update_cache_after_operation(updated_note, "update")
+
+                # Trash the duplicate notes (skip the winner)
+                for note in group[1:]:
+                    dup_id = note.get("key", "")
+                    if dup_id and dup_id != winner_id:
+                        trash_status = self.sn.trash_note(dup_id)
+                        if trash_status == 0:
+                            self._update_cache_after_operation(dup_id, "delete")
+                            trashed_count += 1
+                        else:
+                            errors.append(f"Failed to trash note {dup_id}")
+
+                merged_count += 1
+            except Exception as e:
+                errors.append(str(e))
+
+        response: dict[str, Any] = {
+            "success": True,
+            "dry_run": False,
+            "message": (
+                f"Merged {merged_count} group(s), trashed {trashed_count} duplicate note(s)"
+            ),
+            "groups_merged": merged_count,
+            "notes_trashed": trashed_count,
+            "notes_checked": total_notes,
+            "threshold": threshold,
+        }
+        if errors:
+            response["errors"] = errors
+
+        return [types.TextContent(type="text", text=json.dumps(response))]
+
+
+class ExportNotesHandler(ToolHandlerBase):
+    """Handler for export_notes tool."""
+
+    @validate_tool_security("export_notes")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle export_notes tool call.
+
+        Exports one or more notes to Markdown or JSON format.
+        """
+        note_ids_input = arguments.get("note_ids", "")
+        fmt = arguments.get("format", "markdown").lower()
+        include_metadata = arguments.get("include_metadata", True)
+
+        if not note_ids_input:
+            from .error_helpers import empty_field_error
+
+            raise empty_field_error("note_ids")
+
+        # Parse note IDs (comma-separated)
+        if isinstance(note_ids_input, list):
+            note_ids = [str(nid).strip() for nid in note_ids_input if str(nid).strip()]
+        elif isinstance(note_ids_input, str):
+            note_ids = [
+                nid.strip() for nid in safe_split(note_ids_input, ",") if nid.strip()
+            ]
+        else:
+            note_ids = []
+
+        if not note_ids:
+            from .error_helpers import empty_field_error
+
+            raise empty_field_error("note_ids")
+
+        # Validate format
+        if fmt not in ("markdown", "json"):
+            fmt = "markdown"
+
+        try:
+            from .export import NoteExporter
+
+            exporter = NoteExporter()
+            notes = []
+            errors = []
+
+            for note_id in note_ids:
+                try:
+                    note = self._get_note_from_cache_or_api(note_id)
+                    notes.append(note)
+                except Exception:
+                    errors.append(note_id)
+
+            if not notes:
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": False,
+                                "message": "No notes found for the given IDs",
+                                "failed_ids": errors,
+                            }
+                        ),
+                    )
+                ]
+
+            exported = exporter.export_batch(notes, fmt, include_metadata)
+
+            response: dict[str, Any] = {
+                "success": True,
+                "format": fmt,
+                "count": len(notes),
+                "exported": exported,
+            }
+            if errors:
+                response["failed_ids"] = errors
+
+            return [types.TextContent(type="text", text=json.dumps(response))]
+
+        except Exception as e:
+            return self._format_error_response(e, "exporting notes")
+
+
 class ToolHandlerRegistry:
     """Registry for tool handlers."""
 
@@ -1006,6 +1332,8 @@ class ToolHandlerRegistry:
             "add_tags": AddTagsHandler,
             "remove_tags": RemoveTagsHandler,
             "replace_tags": ReplaceTagsHandler,
+            "export_notes": ExportNotesHandler,
+            "find_and_merge_duplicates": FindAndMergeDuplicatesHandler,
         }
 
     def get_handler(

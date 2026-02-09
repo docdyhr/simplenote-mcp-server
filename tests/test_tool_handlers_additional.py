@@ -362,10 +362,12 @@ class TestToolHandlerRegistryComplete:
             "add_tags",
             "remove_tags",
             "replace_tags",
+            "export_notes",
+            "find_and_merge_duplicates",
         ]
 
         assert set(tools) == set(expected_tools)
-        assert len(tools) == 8
+        assert len(tools) == 10
 
     def test_get_handler_types(self):
         """Test getting handlers of different types."""
