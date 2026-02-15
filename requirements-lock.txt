@@ -84,7 +84,7 @@ pip-api==0.0.34
 pip-requirements-parser==32.0.1
 pip-tools==7.5.2
 pip_audit==2.9.0
-platformdirs==4.4.0
+platformdirs==4.9.1
 pluggy==1.6.0
 pre_commit==4.5.1
 propcache==0.4.1
