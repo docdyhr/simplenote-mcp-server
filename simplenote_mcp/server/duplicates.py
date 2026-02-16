@@ -88,7 +88,7 @@ class DuplicateFinder:
                 group[0]["_similarity"] = 1.0
 
                 # Sort by modification date (newest first)
-                group.sort(key=lambda n: self._get_modify_timestamp(n), reverse=True)
+                group.sort(key=self._get_modify_timestamp, reverse=True)
                 groups.append(group)
                 assigned.add(key_a)
 

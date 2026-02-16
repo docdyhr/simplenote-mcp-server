@@ -191,8 +191,6 @@ class QueryParser:
         Returns:
             ISO format date string, or original string if not parseable.
         """
-        import re
-
         # If it already looks like an ISO date, keep it as-is
         if re.match(r"^\d{4}-\d{2}-\d{2}", date_str):
             return date_str

@@ -119,8 +119,8 @@ class FuzzyMatcher:
         return re.findall(r"\b\w+\b", text.lower())
 
 
-# Module-level default instance
-_default_matcher: FuzzyMatcher | None = None
+# Module-level default instance cache
+_matcher_cache: dict[str, FuzzyMatcher] = {}
 
 
 def get_fuzzy_matcher(threshold: float = 0.75) -> FuzzyMatcher:
@@ -134,10 +134,9 @@ def get_fuzzy_matcher(threshold: float = 0.75) -> FuzzyMatcher:
     Returns:
         A FuzzyMatcher instance.
     """
-    global _default_matcher
-    if threshold == 0.75 and _default_matcher is not None:
-        return _default_matcher
+    if threshold == 0.75 and "default" in _matcher_cache:
+        return _matcher_cache["default"]
     matcher = FuzzyMatcher(threshold)
     if threshold == 0.75:
-        _default_matcher = matcher
+        _matcher_cache["default"] = matcher
     return matcher
