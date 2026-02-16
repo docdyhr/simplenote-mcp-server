@@ -4,7 +4,7 @@ aiosignal==1.4.0
 annotated-types==0.7.0
 anyio==4.10.0
 attrs==25.3.0
-Authlib==1.6.7
+Authlib==1.6.8
 babel==2.18.0
 backrefs==6.1
 bandit==1.9.3
