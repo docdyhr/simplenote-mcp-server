@@ -472,9 +472,9 @@ class LogPatternMonitor:
                                 )
                                 # Add callback to handle any exceptions
                                 future.add_done_callback(
-                                    lambda f: f.exception()
-                                    if not f.cancelled()
-                                    else None
+                                    lambda f: (
+                                        f.exception() if not f.cancelled() else None
+                                    )
                                 )
 
         except Exception as e:

@@ -500,16 +500,32 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
             <p>Security vulnerabilities</p>
         </div>
 
-        <div class="metric-card {"pass" if report["coverage"]["total_coverage"] >= 80 else "warn" if report["coverage"]["total_coverage"] >= 60 else "fail"}">
+        <div class="metric-card {
+        "pass"
+        if report["coverage"]["total_coverage"] >= 80
+        else "warn"
+        if report["coverage"]["total_coverage"] >= 60
+        else "fail"
+    }">
             <h3>Test Coverage</h3>
             <div class="metric-value">{report["coverage"]["total_coverage"]}%</div>
             <p>Code coverage</p>
         </div>
 
-        <div class="metric-card {"pass" if report["docstring_coverage"]["docstring_coverage"] >= 80 else "warn" if report["docstring_coverage"]["docstring_coverage"] >= 60 else "fail"}">
+        <div class="metric-card {
+        "pass"
+        if report["docstring_coverage"]["docstring_coverage"] >= 80
+        else "warn"
+        if report["docstring_coverage"]["docstring_coverage"] >= 60
+        else "fail"
+    }">
             <h3>Docstring Coverage</h3>
-            <div class="metric-value">{report["docstring_coverage"]["docstring_coverage"]}%</div>
-            <p>{report["docstring_coverage"]["missing_docstrings"]} missing docstrings</p>
+            <div class="metric-value">{
+        report["docstring_coverage"]["docstring_coverage"]
+    }%</div>
+            <p>{
+        report["docstring_coverage"]["missing_docstrings"]
+    } missing docstrings</p>
         </div>
     </div>
 
@@ -527,7 +543,16 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
             <th>Rule</th>
             <th>Count</th>
         </tr>
-        {"".join(f"<tr><td>{rule}</td><td>{count}</td></tr>" for rule, count in sorted(report["lint"]["issues_by_rule"].items(), key=lambda x: x[1], reverse=True))}
+        {
+        "".join(
+            f"<tr><td>{rule}</td><td>{count}</td></tr>"
+            for rule, count in sorted(
+                report["lint"]["issues_by_rule"].items(),
+                key=lambda x: (x[1]),
+                reverse=True,
+            )
+        )
+    }
     </table>
 
     <h3>Type Checking</h3>
@@ -539,7 +564,16 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
             <th>Error Type</th>
             <th>Count</th>
         </tr>
-        {"".join(f"<tr><td>{error_type}</td><td>{count}</td></tr>" for error_type, count in sorted(report["type_checking"]["errors_by_type"].items(), key=lambda x: x[1], reverse=True))}
+        {
+        "".join(
+            f"<tr><td>{error_type}</td><td>{count}</td></tr>"
+            for error_type, count in sorted(
+                report["type_checking"]["errors_by_type"].items(),
+                key=lambda x: (x[1]),
+                reverse=True,
+            )
+        )
+    }
     </table>
 
     <h3>Security Analysis</h3>
@@ -551,14 +585,25 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
             <th>Severity</th>
             <th>Count</th>
         </tr>
-        {"".join(f"<tr><td>{severity}</td><td>{count}</td></tr>" for severity, count in sorted(report["security"]["issues_by_severity"].items(), key=lambda x: severity_value(x[0]), reverse=True))}
+        {
+        "".join(
+            f"<tr><td>{severity}</td><td>{count}</td></tr>"
+            for severity, count in sorted(
+                report["security"]["issues_by_severity"].items(),
+                key=lambda x: (severity_value(x[0])),
+                reverse=True,
+            )
+        )
+    }
     </table>
 
     <h3>Test Coverage</h3>
     <p>Total coverage: {report["coverage"]["total_coverage"]}%</p>
 
     <h3>Docstring Coverage</h3>
-    <p>Total docstring coverage: {report["docstring_coverage"]["docstring_coverage"]}%</p>
+    <p>Total docstring coverage: {
+        report["docstring_coverage"]["docstring_coverage"]
+    }%</p>
     <p>Missing docstrings: {report["docstring_coverage"]["missing_docstrings"]}</p>
 </body>
 </html>
