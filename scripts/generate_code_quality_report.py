@@ -548,7 +548,7 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
             f"<tr><td>{rule}</td><td>{count}</td></tr>"
             for rule, count in sorted(
                 report["lint"]["issues_by_rule"].items(),
-                key=lambda x: (x[1]),
+                key=lambda x: x[1],
                 reverse=True,
             )
         )
@@ -569,7 +569,7 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
             f"<tr><td>{error_type}</td><td>{count}</td></tr>"
             for error_type, count in sorted(
                 report["type_checking"]["errors_by_type"].items(),
-                key=lambda x: (x[1]),
+                key=lambda x: x[1],
                 reverse=True,
             )
         )
@@ -590,7 +590,7 @@ def generate_html_report(report_file: str, output_dir: str) -> str:
             f"<tr><td>{severity}</td><td>{count}</td></tr>"
             for severity, count in sorted(
                 report["security"]["issues_by_severity"].items(),
-                key=lambda x: (severity_value(x[0])),
+                key=lambda x: severity_value(x[0]),
                 reverse=True,
             )
         )
