@@ -12,7 +12,7 @@ black==26.1.0
 boolean.py==5.0
 build==1.4.0
 CacheControl==0.14.4
-certifi==2025.8.3
+certifi==2026.2.25
 cffi==2.0.0
 cfgv==3.4.0
 charset-normalizer==3.4.3
@@ -122,8 +122,7 @@ rpds-py==0.27.1
 ruamel.yaml==0.19.1
 ruamel.yaml.clib==0.2.15
 ruff==0.15.2
-safety==3.5.2
-safety-schemas==0.0.18
+
 setuptools==82.0.0
 shellingham==1.5.4
 simplenote==2.1.4
