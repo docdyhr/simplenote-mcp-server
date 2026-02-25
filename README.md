@@ -12,8 +12,8 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.10.1-blue.svg)](./CHANGELOG.md)
-[![Test Coverage](https://img.shields.io/badge/coverage-69.64%25-brightgreen)](./htmlcov/index.html)
+[![Version](https://img.shields.io/badge/version-1.11.0-blue.svg)](./CHANGELOG.md)
+[![Test Coverage](https://img.shields.io/badge/coverage-74%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <!-- Download & Stats Badges -->
@@ -30,25 +30,19 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b215d030-b511-457d-8a6d-3e1e6ea3b541)
 ---
 
-## 🎉 What's New in v1.9.0
+## 🎉 What's New in v1.11.0
 
-**Major Performance Breakthrough - Production Ready!**
+**New Tools, Dependency Refresh & CI/CD Improvements!**
 
-Version 1.9.0 delivers a **98% startup performance improvement** and marks the project as **fully production-ready** for Claude Desktop integration:
+Version 1.11.0 expands the note management toolset, resolves CI/CD pipeline failures, and delivers a comprehensive security-focused dependency refresh:
 
-- 🚀 **Startup Time**: Reduced from 55+ seconds to **< 1 second** (98% improvement)
-- ✅ **Claude Desktop Ready**: Fixed critical timeout issue preventing MCP integration
-- 📊 **Code Quality**: 21% reduction in high-complexity functions, Phase 1 refactoring complete
-- 📚 **Complete Documentation**: Comprehensive guides, templates, and production validation
-- 🎯 **Zero Technical Debt**: 0 open issues, 0 open PRs, all quality gates passing
-- 🏆 **Grade A+ Health**: 756 tests passing, 69.64% coverage, 100% CI success rate
-
-**Key Improvements:**
-- Thread pool execution for blocking Simplenote API calls
-- True non-blocking cache initialization with background loading
-- Graceful empty cache handling during startup
-- Enhanced monitoring and complexity analysis tools
-- GitHub issue templates for better community engagement
+- 🔍 **Fuzzy Search**: New `fuzzy_search_notes` tool for approximate string matching across notes
+- 📅 **Natural Language Dates**: New `search_notes_by_date` tool with human-friendly date expressions (e.g. "last week", "yesterday")
+- 📤 **Note Export**: New `export_notes` tool for bulk export in Markdown, plain text, or JSON
+- 🔁 **Duplicate Detection**: New `find_duplicate_notes` tool to identify near-duplicate content
+- 🔒 **Security**: cryptography upgraded to 46.0.5 (CVE fix), nltk upgraded to 3.9.3 (CVE fix)
+- 🛠️ **CI/CD**: Removed deprecated `safety` scanner; all security scanning now via `pip-audit`
+- 🏆 **975 tests passing**, 74% coverage, zero linting/type errors, zero open security alerts
 
 See the [CHANGELOG](./CHANGELOG.md) for complete details.
 
