@@ -1,9 +1,14 @@
 """Performance tests for the Simplenote MCP server."""
 
 import time
+from collections.abc import Callable
+from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
+from mcp import types as mcp_types
+from mcp.types import ReadResourceResult
+from pydantic import AnyUrl
 
 from simplenote_mcp.server.cache import NoteCache
 from simplenote_mcp.server.server import (
@@ -12,6 +17,12 @@ from simplenote_mcp.server.server import (
     initialize_cache,
 )
 from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
+
+# The MCP library's @server.list_resources() decorator constrains the function
+# signature to Callable[[], ...] in its type annotations (it doesn't use
+# ParamSpec/TypeVar to preserve extra keyword args). We cast back to the true
+# runtime signature so type checkers understand the full parameter set.
+_list_resources: Callable[..., Any] = cast(Callable[..., Any], handle_list_resources)
 
 
 @pytest.fixture
@@ -82,7 +93,7 @@ class TestPerformance:
 
             # 2. Listing with tag filter
             start_time = time.time()
-            filtered_resources = await handle_list_resources(tag="performance")
+            filtered_resources = await _list_resources(tag="performance")
             filter_time = time.time() - start_time
             print(f"Listing resources with tag filter took {filter_time:.4f} seconds")
             assert filter_time < 0.1, "Filtered listing should be fast"
@@ -90,7 +101,7 @@ class TestPerformance:
 
             # 3. Listing with larger limit
             start_time = time.time()
-            large_resources = await handle_list_resources(limit=500)
+            large_resources = await _list_resources(limit=500)
             large_listing_time = time.time() - start_time
             print(f"Listing 500 resources took {large_listing_time:.4f} seconds")
             assert large_listing_time < 0.5, (
@@ -143,13 +154,18 @@ class TestPerformance:
 
             # Measure read performance from cache
             start_time = time.time()
-            result = await handle_read_resource("simplenote://note/large_note")
+            result = cast(
+                ReadResourceResult,
+                await handle_read_resource(AnyUrl("simplenote://note/large_note")),
+            )
             cache_read_time = time.time() - start_time
             print(f"Reading large note from cache took {cache_read_time:.4f} seconds")
             assert cache_read_time < cache_read_threshold, (
                 "Reading from cache should be reasonably fast"
             )
-            assert len(result.contents[0].text) > 10000
+            first = result.contents[0]
+            assert isinstance(first, mcp_types.TextResourceContents)
+            assert len(first.text) > 10000
 
             # Simulate API read by removing from cache and setting up mock client
             del setup_performance_cache._notes["large_note"]
@@ -159,7 +175,10 @@ class TestPerformance:
 
             # Measure read performance from API
             start_time = time.time()
-            result = await handle_read_resource("simplenote://note/large_note")
+            result = cast(
+                ReadResourceResult,
+                await handle_read_resource(AnyUrl("simplenote://note/large_note")),
+            )
             api_read_time = time.time() - start_time
             print(f"Reading large note from API took {api_read_time:.4f} seconds")
             assert api_read_time < api_read_threshold, (
