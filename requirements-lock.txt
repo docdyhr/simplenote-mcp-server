@@ -7,7 +7,7 @@ attrs==25.3.0
 Authlib==1.6.8
 babel==2.18.0
 backrefs==6.2
-bandit==1.9.3
+bandit==1.9.4
 black==26.1.0
 boolean.py==5.0
 build==1.4.0
