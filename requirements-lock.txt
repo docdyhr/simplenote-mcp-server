@@ -93,7 +93,7 @@ py-serializable==2.1.0
 pycparser==3.0
 pydantic==2.11.9
 pydantic-settings==2.13.1
-pydantic_core==2.41.5
+pydantic_core==2.42.0
 Pygments==2.19.2
 PyJWT==2.11.0
 pymdown-extensions==10.21
