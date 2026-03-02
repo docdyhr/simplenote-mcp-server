@@ -416,7 +416,7 @@ jobs:
 
     steps:
       - name: Download security artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: security-reports-${{ needs.prepare-release.outputs.new_version }}
           path: security-reports/
