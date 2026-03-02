@@ -6,8 +6,8 @@ check_console_script() {
     command -v simplenote-mcp-server >/dev/null 2>&1
 }
 
-# If no arguments provided, show help
-if [ $# -eq 0 ] || [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+# Show help only when explicitly requested
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
     echo "Simplenote MCP Server"
     echo "A Model Context Protocol server for Simplenote integration"
     echo ""
