@@ -87,6 +87,12 @@ class Config:
         self.http_health_path: str = os.environ.get("HTTP_HEALTH_PATH", "/health")
         self.http_ready_path: str = os.environ.get("HTTP_READY_PATH", "/ready")
 
+        # MCP transport configuration
+        self.mcp_transport: str = os.environ.get("MCP_TRANSPORT", "stdio").lower()
+        self.mcp_http_host: str = os.environ.get("MCP_HTTP_HOST", "127.0.0.1")
+        self.mcp_http_port: int = int(os.environ.get("MCP_HTTP_PORT", "8000"))
+        self.mcp_http_path: str = os.environ.get("MCP_HTTP_PATH", "/mcp")
+
         # Logging configuration - check multiple possible environment variable names
         log_level_env = (
             os.environ.get("LOG_LEVEL")
@@ -194,6 +200,26 @@ class Config:
             raise ValueError(
                 f"RATE_LIMIT_BURST must be at least 1 (got {self.rate_limit_burst})"
             )
+
+        # Validate MCP transport configuration
+        if self.mcp_transport not in ("stdio", "http"):
+            raise ValueError(
+                f"MCP_TRANSPORT must be either 'stdio' or 'http' (got {self.mcp_transport})"
+            )
+
+        if self.mcp_transport == "http":
+            if not (1024 <= self.mcp_http_port <= 65535):
+                raise ValueError(
+                    f"MCP_HTTP_PORT must be between 1024 and 65535 (got {self.mcp_http_port})"
+                )
+
+            if not self.mcp_http_host:
+                raise ValueError("MCP_HTTP_HOST cannot be empty when MCP_TRANSPORT=http")
+
+            if not self.mcp_http_path.startswith("/"):
+                raise ValueError(
+                    f"MCP_HTTP_PATH must start with '/' (got {self.mcp_http_path})"
+                )
 
         # Validate HTTP endpoint configuration
         if self.enable_http_endpoint:
