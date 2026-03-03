@@ -14,6 +14,7 @@ from typing import Any, cast
 
 # MCP imports
 import mcp.server.stdio  # type: ignore  # noqa: E402
+import mcp.server.streamable_http  # type: ignore  # noqa: E402
 import mcp.types as types  # type: ignore  # noqa: E402
 from mcp.server import NotificationOptions, Server  # type: ignore  # noqa: E402
 from mcp.server.models import InitializationOptions  # type: ignore  # noqa: E402
@@ -1298,6 +1299,91 @@ async def run() -> None:
         await _stop_background_sync()
 
 
+async def run_http(host: str, port: int, path: str) -> None:
+    """Run the server using streamable HTTP transport."""
+    import time as time_module
+
+    import uvicorn
+    from starlette.responses import PlainTextResponse
+
+    startup_start = time_module.time()
+    normalized_path = path if path.startswith("/") else f"/{path}"
+    logger.info(
+        f"Starting MCP server HTTP transport on http://{host}:{port}{normalized_path}"
+    )
+
+    transport = mcp.server.streamable_http.StreamableHTTPServerTransport(
+        mcp_session_id=None
+    )
+
+    try:
+        async with transport.connect() as (read_stream, write_stream):
+            # Start server components (non-blocking)
+            components_start = time_module.time()
+            await _start_server_components()
+            components_time = time_module.time() - components_start
+            logger.info(f"Server components started in {components_time:.2f}s")
+
+            capabilities = _get_server_capabilities()
+
+            startup_time = time_module.time() - startup_start
+            logger.info(
+                f"MCP server ready in {startup_time:.2f}s (cache loading in background)"
+            )
+
+            shutdown_future = await _create_shutdown_monitor()
+            server_task = await _run_server_task(read_stream, write_stream, capabilities)
+
+            async def app(scope: Any, receive: Any, send: Any) -> None:
+                if scope.get("type") != "http":
+                    response = PlainTextResponse("Unsupported scope type", status_code=500)
+                    await response(scope, receive, send)
+                    return
+
+                request_path = cast(str, scope.get("path", ""))
+                if request_path != normalized_path:
+                    response = PlainTextResponse("Not Found", status_code=404)
+                    await response(scope, receive, send)
+                    return
+
+                await transport.handle_request(scope, receive, send)
+
+            uvicorn_config = uvicorn.Config(app=app, host=host, port=port, log_level="info")
+            uvicorn_server = uvicorn.Server(uvicorn_config)
+            http_task = asyncio.create_task(uvicorn_server.serve())
+
+            done, pending = await asyncio.wait(
+                [server_task, shutdown_future, http_task],
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+
+            if shutdown_future in done:
+                logger.info("Shutdown requested, stopping HTTP server")
+                uvicorn_server.should_exit = True
+
+            if server_task in done:
+                await _handle_server_completion(server_task, done, pending)
+
+            if http_task in done:
+                try:
+                    await http_task
+                    logger.info("HTTP transport server stopped")
+                except Exception as e:
+                    logger.error(f"HTTP transport server failed: {str(e)}", exc_info=True)
+                    raise
+
+            for task in pending:
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+
+    except Exception as e:
+        logger.error(f"Error creating HTTP server: {str(e)}", exc_info=True)
+        raise
+
+    finally:
+        await _stop_background_sync()
+
+
 def run_main() -> None:
     """Entry point for the console script."""
     try:
@@ -1360,7 +1446,16 @@ def run_main() -> None:
                 config = get_config()
                 max_size = getattr(note_cache, "_max_size", config.cache_max_size)
                 update_cache_size(len(note_cache._notes), max_size)
-            asyncio.run(run())
+            if config.mcp_transport == "http":
+                asyncio.run(
+                    run_http(
+                        host=config.mcp_http_host,
+                        port=config.mcp_http_port,
+                        path=config.mcp_http_path,
+                    )
+                )
+            else:
+                asyncio.run(run())
         except KeyboardInterrupt:
             # Handle Ctrl+C gracefully - signal handler will set shutdown_requested flag
             logger.info("KeyboardInterrupt received, shutting down gracefully")
