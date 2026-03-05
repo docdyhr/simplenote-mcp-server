@@ -338,6 +338,7 @@ async def _populate_cache_direct(cache: NoteCache, sn: Any) -> None:
             finally:
                 cache._lock.release()
             logger.info(f"Direct API load successful, loaded {len(all_notes)} notes")
+            cache._last_sync_cursor = sn.current
     except Exception as e:
         logger.warning(
             f"Direct API load failed, falling back to cache initialize: {str(e)}"
