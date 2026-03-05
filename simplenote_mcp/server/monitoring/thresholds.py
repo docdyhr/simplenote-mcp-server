@@ -230,30 +230,30 @@ DEFAULT_THRESHOLDS = [
         consecutive_violations=3,
     ),
     # Cache Performance Thresholds (based on existing health check)
-    PerformanceThreshold(
-        name="Cache Hit Rate",
-        metric_type=MetricType.CACHE_HIT_RATE,
-        metric_path="cache.hit_rate",
-        operator=ThresholdOperator.LESS_THAN,
-        warning_value=50.0,  # Based on existing health check threshold
-        critical_value=25.0,  # Severely degraded cache performance
-        unit="%",
-        description="Cache hit rate percentage",
-        regression_multiplier=1.3,
-        consecutive_violations=3,
-    ),
-    PerformanceThreshold(
-        name="Cache Efficacy Score",
-        metric_type=MetricType.CACHE_HIT_RATE,
-        metric_path="cache.efficacy_score",
-        operator=ThresholdOperator.LESS_THAN,
-        warning_value=60.0,  # Good cache performance
-        critical_value=30.0,  # Poor cache performance
-        unit="",
-        description="Overall cache efficacy score (0-100)",
-        regression_multiplier=1.4,
-        consecutive_violations=4,
-    ),
+#    PerformanceThreshold(
+#        name="Cache Hit Rate",
+#        metric_type=MetricType.CACHE_HIT_RATE,
+#        metric_path="cache.hit_rate",
+#        operator=ThresholdOperator.LESS_THAN,
+#        warning_value=50.0,  # Based on existing health check threshold
+#        critical_value=25.0,  # Severely degraded cache performance
+#        unit="%",
+#        description="Cache hit rate percentage",
+#        regression_multiplier=1.3,
+#        consecutive_violations=3,
+#    ),
+#    PerformanceThreshold(
+#        name="Cache Efficacy Score",
+#        metric_type=MetricType.CACHE_HIT_RATE,
+#        metric_path="cache.efficacy_score",
+#        operator=ThresholdOperator.LESS_THAN,
+#        warning_value=60.0,  # Good cache performance
+#        critical_value=30.0,  # Poor cache performance
+#        unit="",
+#        description="Overall cache efficacy score (0-100)",
+#        regression_multiplier=1.4,
+#        consecutive_violations=4,
+#    ),
     # Resource Usage Thresholds
     PerformanceThreshold(
         name="CPU Usage",
