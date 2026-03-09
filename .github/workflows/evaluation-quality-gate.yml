@@ -64,7 +64,7 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          # Note: npm cache disabled - package-lock.json may not exist
 
       - name: Install Python dependencies
         run: |
@@ -73,7 +73,7 @@ jobs:
 
       - name: Install Node.js dependencies
         run: |
-          npm ci
+          npm install
           npm run validate:evals
 
       - name: Determine evaluation suite
