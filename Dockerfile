@@ -45,6 +45,7 @@ WORKDIR /app
 # Install runtime dependencies and apply security updates
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     ca-certificates \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder

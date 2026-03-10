@@ -237,11 +237,10 @@ class TestPerformance:
         # Mock the Simplenote client and its response
         mock_client = MagicMock()
         mock_client.get_note_list.return_value = (large_note_list, 0)
-        # For the second call returning the index mark
         mock_client.get_note_list.side_effect = [
             (large_note_list, 0),
-            ({"notes": [], "mark": "test_mark"}, 0),
         ]
+        mock_client.current = "test_cursor"
 
         with (
             patch(
