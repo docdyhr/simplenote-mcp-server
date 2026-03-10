@@ -270,7 +270,10 @@ class HTTPEndpointsHandler(BaseHTTPRequestHandler):
         self._perform_health_checks()
 
         health_data = self.health_status.to_dict()
+
         status_code = 200 if health_data["status"] == "healthy" else 503
+        if status_code != 200:
+            logger.warning(f"Server unhealthy: {health_data}")
 
         self._send_json_response(health_data, status_code)
 
@@ -343,27 +346,31 @@ class HTTPEndpointsHandler(BaseHTTPRequestHandler):
                 "memory", "unhealthy", f"Memory check failed: {e}"
             )
 
-        try:
-            # Check cache status
-            cache_metrics = get_cache_metrics()
-            hit_rate = cache_metrics.get("hit_rate", 0)
+        if get_config().cache_health_checks:
+            try:
+                # Check cache status
+                cache_metrics = get_cache_metrics()
+                hit_rate = cache_metrics.get("hit_rate", 0)
 
-            if hit_rate < 0.5:  # 50% hit rate threshold
-                self.health_status.add_check(
-                    "cache",
-                    "degraded",
-                    f"Low cache hit rate: {hit_rate:.1%}",
-                    cache_metrics,
-                )
-            else:
-                self.health_status.add_check(
-                    "cache", "healthy", f"Cache hit rate: {hit_rate:.1%}", cache_metrics
-                )
+                if hit_rate < 0.5:  # 50% hit rate threshold
+                    self.health_status.add_check(
+                        "cache",
+                        "degraded",
+                        f"Low cache hit rate: {hit_rate:.1%}",
+                        cache_metrics,
+                    )
+                else:
+                    self.health_status.add_check(
+                        "cache",
+                        "healthy",
+                        f"Cache hit rate: {hit_rate:.1%}",
+                        cache_metrics,
+                    )
 
-        except Exception as e:
-            self.health_status.add_check(
-                "cache", "unhealthy", f"Cache check failed: {e}"
-            )
+            except Exception as e:
+                self.health_status.add_check(
+                    "cache", "unhealthy", f"Cache check failed: {e}"
+                )
 
         # Add basic connectivity check
         self.health_status.add_check(

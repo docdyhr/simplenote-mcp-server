@@ -122,6 +122,7 @@ async def initialize_cache_background(
                 logger.info(
                     f"Direct API load successful, loaded {len(all_notes)} notes"
                 )
+                note_cache._last_sync_cursor = sn.current
         except Exception as e:
             logger.warning(
                 f"Direct API load failed, falling back to cache initialize: {str(e)}"

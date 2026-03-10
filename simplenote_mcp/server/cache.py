@@ -89,6 +89,7 @@ class NoteCache:
         self._title_index: dict[
             str, list[str]
         ] = {}  # Map of first word in title to note IDs (for prefix search)
+        self._last_sync_cursor = None
 
     async def _fetch_all_notes_with_retry(self) -> list[dict[str, Any]]:
         """Fetch all notes from API with retry logic.
@@ -108,7 +109,7 @@ class NoteCache:
                 loop = asyncio.get_event_loop()
                 notes_result, status = await loop.run_in_executor(
                     None,
-                    lambda: self._client.get_note_list(tags=[]),
+                    lambda: self._fetch_note_list(),
                 )
 
                 if status != 0:
@@ -127,13 +128,7 @@ class NoteCache:
                             f"Failed to get notes from Simplenote (status {status}) after {max_retries} attempts"
                         )
 
-                # Extract notes from result
-                if isinstance(notes_result, list):
-                    return notes_result
-                elif isinstance(notes_result, dict) and "notes" in notes_result:
-                    return notes_result["notes"]
-                else:
-                    return []
+                return notes_result
 
             except Exception as e:
                 if retry_count < max_retries - 1:
@@ -154,26 +149,6 @@ class NoteCache:
                     ) from e
 
         return []
-
-    async def _fetch_index_mark(self) -> None:
-        """Fetch index mark from API for test compatibility."""
-        try:
-            loop = asyncio.get_event_loop()
-            index_result, index_status = await loop.run_in_executor(
-                None,
-                self._client.get_note_list,
-            )
-            if (
-                index_status == 0
-                and isinstance(index_result, dict)
-                and "mark" in index_result
-            ):
-                self._index_mark = index_result["mark"]
-            else:
-                self._index_mark = "test_mark"
-        except Exception as e:
-            logger.warning(f"Failed to get index mark (non-critical): {str(e)}")
-            self._index_mark = "test_mark"
 
     def _build_tag_index(self, note_id: str, tags: list[str]) -> None:
         """Build tag index for a note.
@@ -335,9 +310,6 @@ class NoteCache:
         self._initialized = True
         self._last_sync = time.time()
 
-        # Fetch index mark for test compatibility
-        await self._fetch_index_mark()
-
         # Build all indexes
         self._build_all_indexes()
 
@@ -350,9 +322,25 @@ class NoteCache:
 
         return len(self._notes)
 
-    async def _fetch_sync_data_with_retry(
-        self, since: float
-    ) -> list[dict[str, Any]] | dict[str, Any]:
+    def _fetch_note_list(
+        self,
+        since: str | None = None,
+        tags: list[str] | None = None,
+    ) -> tuple[list[dict[str, Any]], int]:
+        if not tags:
+            tags = []
+        api_result, status = self._client.get_note_list(since=since, tags=tags)
+        self._last_sync_cursor = self._client.current
+
+        # Normalize API response: extract notes list from dict responses
+        if isinstance(api_result, dict):
+            api_result = api_result.get("notes", [])
+        elif not isinstance(api_result, list):
+            api_result = []
+
+        return api_result, status
+
+    async def _fetch_sync_data_with_retry(self) -> list[dict[str, Any]]:
         """Fetch sync data from API with retry logic.
 
         Args:
@@ -367,10 +355,11 @@ class NoteCache:
         max_retries = 2
         retry_count = 0
         retry_delay = 1
+        since = self._last_sync_cursor
 
         while retry_count < max_retries:
             try:
-                api_result, status = self._client.get_note_list(since=since, tags=[])
+                api_result, status = self._fetch_note_list(since=since)
 
                 if status != 0:
                     if retry_count < max_retries - 1:
@@ -410,23 +399,6 @@ class NoteCache:
 
         # Should never reach here, but satisfy type checker
         return []
-
-    def _extract_notes_from_result(
-        self, result: list[dict[str, Any]] | dict[str, Any]
-    ) -> list[dict[str, Any]]:
-        """Extract notes array from API result.
-
-        Args:
-            result: API result (list or dict)
-
-        Returns:
-            List of note dictionaries
-        """
-        if isinstance(result, dict):
-            if "mark" in result:
-                self._index_mark = result["mark"]
-            return result.get("notes", [])
-        return result if isinstance(result, list) else []
 
     def _process_sync_notes(self, notes_data: list[dict[str, Any]]) -> int:
         """Process notes from sync and update cache.
@@ -489,13 +461,10 @@ class NoteCache:
 
         try:
             # Fetch data with retry logic
-            result = await self._fetch_sync_data_with_retry(self._last_sync)
-
-            # Extract notes from result
-            notes_data = self._extract_notes_from_result(result)
+            result = await self._fetch_sync_data_with_retry()
 
             # Process notes and update cache
-            change_count = self._process_sync_notes(notes_data)
+            change_count = self._process_sync_notes(result)
 
             # Rebuild tag cache
             self._rebuild_tag_cache()
@@ -1234,16 +1203,6 @@ class NoteCache:
 
         """
         return self._last_sync
-
-    @property
-    def _last_index_mark(self) -> str:
-        """Get the last index mark.
-
-        Returns:
-            The last index mark or an empty string.
-
-        """
-        return getattr(self, "_index_mark", "")
 
     def _update_cache_metrics(self) -> None:
         """Update cache metrics with current state."""

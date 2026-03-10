@@ -46,8 +46,8 @@ class TestNoteCache:
         mock_simplenote_client.get_note_list.return_value = (mock_note_data, 0)
         mock_simplenote_client.get_note_list.side_effect = [
             (mock_note_data, 0),  # First call for initial note list
-            ({"notes": [], "mark": "test_mark"}, 0),  # Second call for index mark
         ]
+        mock_simplenote_client.current = "test_cursor"
 
         # Create cache
         cache = NoteCache(mock_simplenote_client)
@@ -61,10 +61,10 @@ class TestNoteCache:
         assert cache.is_initialized
         assert cache.cache_size == 3
         assert sorted(cache.all_tags) == sorted(["test", "important", "archived"])
-        assert cache._last_index_mark == "test_mark"
+        assert cache._last_sync_cursor == "test_cursor"
 
-        # Check that get_note_list was called twice
-        assert mock_simplenote_client.get_note_list.call_count == 2
+        # Check that get_note_list was called once (no separate index mark fetch)
+        assert mock_simplenote_client.get_note_list.call_count == 1
 
     @pytest.mark.asyncio
     async def test_initialize_network_error(self, mock_simplenote_client):
@@ -87,25 +87,23 @@ class TestNoteCache:
     async def test_sync(self, mock_simplenote_client, mock_note_data):
         """Test sync updates the cache with changes."""
         # Set up initial cache state
+        sync_data = [
+            {"key": "note4", "content": "New note", "tags": ["new"]},
+            {"key": "note1", "content": "Updated note 1", "tags": ["test"]},
+            {"key": "note2", "deleted": True},
+        ]
         mock_simplenote_client.get_note_list.side_effect = [
             (mock_note_data, 0),  # Initial note list
-            ({"notes": [], "mark": "mark1"}, 0),  # Initial index mark
-            (
-                {
-                    "notes": [
-                        {"key": "note4", "content": "New note", "tags": ["new"]},
-                        {"key": "note1", "content": "Updated note 1", "tags": ["test"]},
-                        {"key": "note2", "deleted": True},
-                    ],
-                    "mark": "mark2",
-                },
-                0,
-            ),  # Sync update
+            (sync_data, 0),  # Sync update
         ]
+        mock_simplenote_client.current = "cursor1"
 
         # Create and initialize cache
         cache = NoteCache(mock_simplenote_client)
         await cache.initialize()
+
+        # Update cursor to simulate second API call
+        mock_simplenote_client.current = "cursor2"
 
         # Initial state should have 3 notes
         assert cache.cache_size == 3
@@ -125,7 +123,7 @@ class TestNoteCache:
         assert "note4" in cache._notes
         assert cache._notes["note1"]["content"] == "Updated note 1"
         assert sorted(cache.all_tags) == sorted(["test", "archived", "new"])
-        assert cache._last_index_mark == "mark2"
+        assert cache._last_sync_cursor == "cursor2"
 
     def test_get_note_cache_hit(self, mock_simplenote_client, mock_note_data):
         """Test get_note when note is in cache."""
@@ -206,11 +204,8 @@ class TestNoteCache:
         # Set up client mock for initialization
         mock_simplenote_client.get_note_list.side_effect = [
             (mock_note_data, 0),  # First call for initial note list
-            (
-                {"notes": [], "mark": "test_mark_get_all_notes"},
-                0,
-            ),  # Second call for index mark
         ]
+        mock_simplenote_client.current = "test_cursor"
 
         # Create and initialize cache
         cache = NoteCache(mock_simplenote_client)

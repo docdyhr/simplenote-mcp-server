@@ -20,6 +20,7 @@ def mock_simplenote_client():
         {"key": "note2", "content": "Test note 2", "tags": ["test"]},
     ]
     mock_client.get_note_list.return_value = (mock_notes, 0)
+    mock_client.current = "test_cursor"
 
     # Mock get_note
     mock_client.get_note.return_value = (

@@ -183,17 +183,12 @@ class TestCacheEdgeCases:
         mock_client = MagicMock()
         mock_client.get_note_list.side_effect = [
             (mock_note_data, 0),  # Initial load
-            ({"notes": [], "mark": "test_mark"}, 0),  # Index mark
             (
-                {
-                    "notes": [
-                        {"key": "sync_note", "content": "Sync note", "tags": ["sync"]}
-                    ],
-                    "mark": "new_mark",
-                },
+                [{"key": "sync_note", "content": "Sync note", "tags": ["sync"]}],
                 0,
             ),  # Sync update
         ]
+        mock_client.current = "test_cursor"
 
         cache = NoteCache(mock_client)
         await cache.initialize()
@@ -256,8 +251,8 @@ class TestCacheEdgeCases:
 
         mock_client.get_note_list.side_effect = [
             (malformed_data, 0),
-            ({"notes": [], "mark": "test_mark"}, 0),
         ]
+        mock_client.current = "test_cursor"
 
         cache = NoteCache(mock_client)
 
@@ -351,8 +346,8 @@ class TestCacheEdgeCases:
         # Reset for successful attempt
         mock_client.get_note_list.side_effect = [
             ([{"key": "test", "content": "test", "tags": []}], 0),
-            ({"notes": [], "mark": "test_mark"}, 0),
         ]
+        mock_client.current = "test_cursor"
 
         # Should succeed on retry
         result = await cache.initialize()
