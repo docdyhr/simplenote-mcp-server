@@ -2,8 +2,8 @@ apiVersion: v2
 name: simplenote-mcp-server
 description: A Helm chart for Simplenote MCP Server
 type: application
-version: 1.11.0
-appVersion: "1.11.0"
+version: 1.12.0
+appVersion: "1.12.0"
 home: https://github.com/docdyhr/simplenote-mcp-server
 sources:
   - https://github.com/docdyhr/simplenote-mcp-server
@@ -26,4 +26,4 @@ annotations:
     - Cursor-based sync and HTTP transport support
     - Improved health checks (validate app import)
     - Disabled unnecessary serviceAccount automount
-    - Updated image tag to v1.11.0
+    - Updated image tag to v1.12.0

@@ -4,7 +4,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="simplenote-mcp-server",
-    version="1.11.0",
+    version="1.12.0",
     description="Simplenote MCP Server for Claude Desktop",
     packages=find_packages(),
     install_requires=[
