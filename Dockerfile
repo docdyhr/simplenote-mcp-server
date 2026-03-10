@@ -1,5 +1,5 @@
 # Multi-stage build for optimal image size and security
-FROM python:3.13-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Build arguments for metadata
 ARG BUILDTIME
@@ -30,7 +30,7 @@ COPY simplenote_mcp/ simplenote_mcp/
 RUN pip install --no-cache-dir .[all]
 
 # Production stage
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 # Build arguments for metadata
 ARG BUILDTIME
