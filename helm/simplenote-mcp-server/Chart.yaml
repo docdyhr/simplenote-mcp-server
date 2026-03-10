@@ -23,7 +23,7 @@ annotations:
   artifacthub.io/prerelease: "false"
   artifacthub.io/containsSecurityUpdates: "false"
   artifacthub.io/changes: |
-    - Initial Helm chart release
-    - Multi-platform Docker support
-    - Security hardening
-    - Resource limits and health checks
+    - Cursor-based sync and HTTP transport support
+    - Improved health checks (validate app import)
+    - Disabled unnecessary serviceAccount automount
+    - Updated image tag to v1.11.0

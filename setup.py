@@ -14,7 +14,7 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "simplenote-mcp-server=simplenote_mcp.server.server:run_main",
+            "simplenote-mcp-server=simplenote_mcp.server:run_main",
         ],
     },
     classifiers=[
