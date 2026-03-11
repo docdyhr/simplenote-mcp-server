@@ -159,7 +159,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
         with:
           version: latest
           platforms: linux/amd64,linux/arm64
@@ -212,7 +212,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         if: github.event_name != 'pull_request'
-        uses: aquasecurity/trivy-action@0.35.0
+        uses: aquasecurity/trivy-action@0.35
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           format: "sarif"
@@ -266,10 +266,10 @@ jobs:
     steps:
       - name: Check status
         run: |
-          if [[ "${{ contains(needs.*.result, 'failure') }}" == "true" ]]; then
+          if [[ "${{ contains(join(needs.*.result, ','), 'failure') }}" == "true" ]]; then
             echo "❌ CI pipeline failed"
             exit 1
-          elif [[ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
+          elif [[ "${{ contains(join(needs.*.result, ','), 'cancelled') }}" == "true" ]]; then
             echo "⚠️ CI pipeline was cancelled"
             exit 1
           else
