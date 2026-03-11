@@ -166,7 +166,7 @@ jobs:
 
       - name: Upload changelog artifact
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: changelog-${{ steps.bump_version.outputs.new_version }}
           path: changelog.md
@@ -265,7 +265,7 @@ jobs:
           sbom = {
               "bomFormat": "CycloneDX",
               "specVersion": "1.4",
-              "serialNumber": "urn:uuid:simplenote-mcp-server-release-${{ needs.prepare-release.outputs.new_version }}",
+              "serialNumber": f"urn:uuid:{__import__('uuid').uuid4()}",
               "version": 1,
               "metadata": {
                   "timestamp": datetime.utcnow().isoformat() + "Z",
@@ -384,7 +384,7 @@ jobs:
           echo "✅ SBOM and vulnerability report generation completed"
 
       - name: Upload SBOM and vulnerability artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: security-reports-${{ needs.prepare-release.outputs.new_version }}
           path: |
@@ -416,7 +416,7 @@ jobs:
 
     steps:
       - name: Download security artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: security-reports-${{ needs.prepare-release.outputs.new_version }}
           path: security-reports/

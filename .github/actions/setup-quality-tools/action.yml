@@ -15,10 +15,10 @@ runs:
   steps:
     - name: Cache quality tools
       id: cache
-      uses: actions/cache@v4
+      uses: actions/cache@v5
       with:
         path: ~/.local/bin
-        key: quality-tools-${{ inputs.python-version }}-${{ hashFiles('pyproject.toml') }}
+        key: quality-tools-${{ inputs.python-version }}-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
         restore-keys: |
           quality-tools-${{ inputs.python-version }}-
           quality-tools-
@@ -28,5 +28,5 @@ runs:
       shell: bash
       run: |
         python -m pip install --upgrade pip
-        pip install ruff==0.12.9 mypy==1.17.1 black isort bandit
+        pip install ruff==0.15.5 mypy==1.17.1 isort bandit
         echo "✅ Quality tools installed and cached"
