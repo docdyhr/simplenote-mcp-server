@@ -61,7 +61,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ruff==0.15.4 black isort
+          pip install ruff==0.15.5 isort
 
       - name: Check for auto-fixable issues
         id: check-issues

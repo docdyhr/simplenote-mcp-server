@@ -42,33 +42,16 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
-      - name: ✅ Verify Installation
-        run: |
-          echo "📦 Testing package import..."
-          python -c "import sys; print(f'Python {sys.version}')"
-        continue-on-error: false
-
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -e . || pip install -e .[test] || echo "Package installation failed, continuing with minimal setup"
           pip install mkdocs mkdocs-material mkdocstrings[python] || echo "Some docs dependencies failed, continuing..."
-        continue-on-error: true
 
-      - name: ✅ Verify Installation
+      - name: Verify installation
         run: |
-          echo "📦 Testing package import..."
-          python -c "import simplenote_mcp; print('✅ Package import successful')" || echo "⚠️ Package import failed, continuing..."
-          echo "🔧 Checking documentation tools..."
-          mkdocs --version || echo "⚠️ MkDocs not found, will create basic structure"
-        continue-on-error: true
-
-      - name: ✅ Verify Documentation Tools
-        run: |
-          echo "🔧 Verifying documentation setup..."
-          mkdocs --version && echo "✅ MkDocs available" || echo "⚠️ MkDocs not available"
-          ls -la mkdocs.yml && echo "✅ MkDocs config found" || echo "⚠️ No mkdocs.yml found"
-          ls -la docs/ && echo "✅ Docs directory found" || echo "⚠️ No docs directory"
+          python -c "import simplenote_mcp; print('Package import successful')" || echo "Package import failed, continuing..."
+          mkdocs --version || echo "MkDocs not found, will create basic structure"
         continue-on-error: true
 
       - name: Verify docs structure
@@ -165,7 +148,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Download documentation artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: github-pages
           path: ./site
@@ -188,7 +171,7 @@ jobs:
 
       - name: Upload link check report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: link-check-report
           path: lychee-report.md

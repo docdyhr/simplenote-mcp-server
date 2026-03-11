@@ -1,10 +1,12 @@
 # Multi-stage build for optimal image size and security
-FROM python:3.14-slim AS builder
+ARG PYTHON_VERSION=3.14
+FROM python:${PYTHON_VERSION}-slim AS builder
 
 # Build arguments for metadata
 ARG BUILDTIME
 ARG VERSION
 ARG REVISION
+ARG PYTHON_VERSION
 
 WORKDIR /app
 
@@ -30,12 +32,14 @@ COPY simplenote_mcp/ simplenote_mcp/
 RUN pip install --no-cache-dir .[all]
 
 # Production stage
-FROM python:3.14-slim
+ARG PYTHON_VERSION
+FROM python:${PYTHON_VERSION}-slim
 
 # Build arguments for metadata
 ARG BUILDTIME
 ARG VERSION
 ARG REVISION
+ARG PYTHON_VERSION
 
 # Create non-root user for security
 RUN groupadd -g 1000 mcp && useradd -u 1000 -g mcp -m -d /home/mcp mcp
@@ -49,7 +53,7 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+COPY --from=builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
 # Copy application code with proper ownership
