@@ -109,7 +109,7 @@ class NoteCache:
                 loop = asyncio.get_event_loop()
                 notes_result, status = await loop.run_in_executor(
                     None,
-                    lambda: self._fetch_note_list(),
+                    self._fetch_note_list,
                 )
 
                 if status != 0:

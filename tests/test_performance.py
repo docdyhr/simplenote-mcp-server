@@ -175,10 +175,7 @@ class TestPerformance:
 
             # Measure read performance from API
             start_time = time.time()
-            result = cast(
-                ReadResourceResult,
-                await handle_read_resource(AnyUrl("simplenote://note/large_note")),
-            )
+            await handle_read_resource(AnyUrl("simplenote://note/large_note"))
             api_read_time = time.time() - start_time
             print(f"Reading large note from API took {api_read_time:.4f} seconds")
             assert api_read_time < api_read_threshold, (
