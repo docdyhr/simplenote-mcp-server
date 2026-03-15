@@ -123,7 +123,7 @@ ruamel.yaml==0.19.1
 ruamel.yaml.clib==0.2.15
 ruff==0.15.6
 
-setuptools==82.0.0
+setuptools==82.0.1
 shellingham==1.5.4
 simplenote==2.1.4
 -e git+https://github.com/docdyhr/simplenote-mcp-server.git@55c40fcf53daadcd5c3ee1b6f251adb3ea4aba0d#egg=simplenote_mcp_server
