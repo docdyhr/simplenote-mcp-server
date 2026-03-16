@@ -332,7 +332,9 @@ class DeleteNoteHandler(ToolHandlerBase):
             raise empty_field_error("note_id")
 
         try:
-            status = self.sn.trash_note(note_id)  # Using trash_note as it's safer
+            result = self.sn.trash_note(note_id)  # Using trash_note as it's safer
+            # trash_note returns a tuple (note, status)
+            _note, status = result if isinstance(result, tuple) else (None, result)
 
             if status == 0:
                 self._update_cache_after_operation(note_id, "delete")
@@ -1208,7 +1210,13 @@ class FindAndMergeDuplicatesHandler(ToolHandlerBase):
                 for note in group[1:]:
                     dup_id = note.get("key", "")
                     if dup_id and dup_id != winner_id:
-                        trash_status = self.sn.trash_note(dup_id)
+                        trash_result = self.sn.trash_note(dup_id)
+                        # trash_note returns a tuple (note, status)
+                        _trash_note, trash_status = (
+                            trash_result
+                            if isinstance(trash_result, tuple)
+                            else (None, trash_result)
+                        )
                         if trash_status == 0:
                             self._update_cache_after_operation(dup_id, "delete")
                             trashed_count += 1
