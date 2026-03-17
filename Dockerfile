@@ -46,10 +46,9 @@ RUN groupadd -g 1000 mcp && useradd -u 1000 -g mcp -m -d /home/mcp mcp
 
 WORKDIR /app
 
-# Install runtime dependencies and apply security updates
+# Apply security updates and install minimal runtime dependencies
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     ca-certificates \
-    wget \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed packages from builder

@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import mcp.types as types
 import pytest
 
+import simplenote_mcp.server.server as server_module
 from simplenote_mcp.server.errors import (
     ValidationError,
 )
@@ -321,8 +322,6 @@ class TestConcurrentOperations:
 
     def test_client_singleton_thread_safety(self):
         """Test that client singleton is thread-safe."""
-        import simplenote_mcp.server.server as server_module
-
         original_client = server_module.simplenote_client
         try:
             server_module.simplenote_client = None
