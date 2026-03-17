@@ -166,7 +166,7 @@ jobs:
 
       - name: Upload changelog artifact
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: changelog-${{ steps.bump_version.outputs.new_version }}
           path: changelog.md
@@ -384,7 +384,7 @@ jobs:
           echo "✅ SBOM and vulnerability report generation completed"
 
       - name: Upload SBOM and vulnerability artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: security-reports-${{ needs.prepare-release.outputs.new_version }}
           path: |
