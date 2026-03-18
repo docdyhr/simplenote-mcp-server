@@ -100,23 +100,12 @@ class SecurityValidator:
                 f"Content too long (max {self.MAX_CONTENT_LENGTH} characters)"
             )
 
-        # Strip code blocks and inline code before scanning — commands inside
-        # backticks are documentation, not injection attacks.
-        content_to_scan = re.sub(r"```[\s\S]*?```", "", content)
-        content_to_scan = re.sub(r"`[^`]+`", "", content_to_scan)
-
-        # Security pattern detection
-        for pattern in self.COMPILED_PATTERNS:
-            if pattern.search(content_to_scan):
-                self._log_security_event(
-                    "dangerous_pattern_detected",
-                    f"Potentially dangerous pattern found in {context}",
-                    context,
-                    severity="HIGH",
-                )
-                raise SecurityError(
-                    f"Potentially dangerous content detected in {context}"
-                )
+        # Note content is stored as plain text in Simplenote — there is no
+        # SQL database, HTML rendering, or shell execution involved, so
+        # pattern-based injection scanning produces false positives on
+        # legitimate technical content (shell scripts, code snippets,
+        # documentation) without providing real security value.
+        # Validation is limited to length checks above.
 
     def validate_note_id(self, note_id: str, context: str = "note ID") -> None:
         """Validate note ID for security and format.

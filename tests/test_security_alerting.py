@@ -378,10 +378,11 @@ class TestAlertIntegration:
         """Test that security events trigger alerts correctly."""
         from simplenote_mcp.server.security import security_validator
 
-        # Test dangerous content detection triggers alert
-        with pytest.raises(SecurityError):  # SecurityError expected
-            security_validator.validate_note_content(
-                "SELECT * FROM users WHERE 1=1", "test content"
+        # Note content no longer triggers security errors (notes are plain text).
+        # Use search query validation instead, which still applies pattern checks.
+        with pytest.raises(SecurityError):
+            security_validator.validate_search_query(
+                "SELECT * FROM users WHERE 1=1", "test query"
             )
 
         # Check that alert was triggered (this tests the integration)
