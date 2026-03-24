@@ -15,7 +15,7 @@ CacheControl==0.14.4
 certifi==2026.2.25
 cffi==2.0.0
 cfgv==3.4.0
-charset-normalizer==3.4.5
+charset-normalizer==3.4.6
 check-wheel-contents==0.6.3
 click==8.3.1
 colorama==0.4.6
