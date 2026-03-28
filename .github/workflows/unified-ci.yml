@@ -136,7 +136,8 @@ jobs:
         run: |
           bandit -r simplenote_mcp --severity-level high
           pip install -e .
-          pip-audit --desc
+          # CVE-2026-4539: pygments ReDoS (local-only, no fix available as of 2026-03-28)
+          pip-audit --desc --ignore-vuln CVE-2026-4539
 
   build_and_publish:
     name: Build and Publish
