@@ -111,7 +111,7 @@ jobs:
           python scripts/quality/check_coverage.py --threshold 65.0 --warn-only
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           file: ./coverage.xml
           fail_ci_if_error: true
