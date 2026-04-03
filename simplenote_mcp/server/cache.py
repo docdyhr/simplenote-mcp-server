@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import re
 import time
 from collections import OrderedDict
 from datetime import datetime
@@ -27,6 +28,41 @@ _cache_instance: Optional["NoteCache"] = None
 # Error messages
 CACHE_NOT_INITIALIZED = "Note cache not initialized. Call initialize_cache() first."
 CACHE_NOT_LOADED = "Cache not initialized"
+
+# Inverted index constants
+_STOP_WORDS: frozenset[str] = frozenset(
+    {
+        "the",
+        "and",
+        "for",
+        "are",
+        "but",
+        "not",
+        "you",
+        "all",
+        "can",
+        "had",
+        "her",
+        "was",
+        "one",
+        "our",
+        "out",
+        "get",
+        "has",
+        "him",
+        "his",
+        "how",
+        "its",
+        "may",
+        "new",
+        "now",
+        "see",
+        "two",
+        "who",
+        "did",
+    }
+)
+_MIN_INDEX_WORD_LEN: int = 3
 
 
 def get_cache() -> "NoteCache":
@@ -89,6 +125,10 @@ class NoteCache:
         self._title_index: dict[
             str, list[str]
         ] = {}  # Map of first word in title to note IDs (for prefix search)
+        self._word_index: dict[str, set[str]] = {}  # word → set of note_ids
+        self._query_cache_note_ids: dict[
+            str, set[str]
+        ] = {}  # cache_key → note_ids in result
         self._last_sync_cursor = None
 
     async def _fetch_all_notes_with_retry(self) -> list[dict[str, Any]]:
@@ -177,7 +217,7 @@ class NoteCache:
             self._title_index[first_word].append(note_id)
 
     def _build_all_indexes(self) -> None:
-        """Build tag and title indexes for all notes."""
+        """Build tag, title, and word indexes for all notes."""
         for note_id, note in self._notes.items():
             # Build tag index
             if "tags" in note and note["tags"]:
@@ -187,6 +227,10 @@ class NoteCache:
             content = note.get("content", "")
             if content:
                 self._build_title_index(note_id, content)
+
+            # Build word index
+            for word in self._tokenize_for_index(content):
+                self._word_index.setdefault(word, set()).add(note_id)
 
             # Initialize LRU tracking
             self._access_order[note_id] = time.time()
@@ -264,6 +308,13 @@ class NoteCache:
                     if not self._title_index[first_word]:
                         del self._title_index[first_word]
 
+            # Remove from word index
+            for word in self._tokenize_for_index(content):
+                if word in self._word_index:
+                    self._word_index[word].discard(note_id)
+                    if not self._word_index[word]:
+                        del self._word_index[word]
+
     def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics including eviction info.
 
@@ -281,6 +332,7 @@ class NoteCache:
             "tag_count": len(self._tags),
             "tag_index_size": len(self._tag_index),
             "title_index_size": len(self._title_index),
+            "word_index_size": len(self._word_index),
             "query_cache_size": len(self._query_cache),
             "initialized": self._initialized,
             "last_sync": self._last_sync,
@@ -400,16 +452,19 @@ class NoteCache:
         # Should never reach here, but satisfy type checker
         return []
 
-    def _process_sync_notes(self, notes_data: list[dict[str, Any]]) -> int:
+    def _process_sync_notes(
+        self, notes_data: list[dict[str, Any]]
+    ) -> tuple[int, set[str]]:
         """Process notes from sync and update cache.
 
         Args:
             notes_data: List of notes from API
 
         Returns:
-            Number of changes made
+            Tuple of (number of changes made, set of changed note IDs)
         """
         change_count = 0
+        changed_ids: set[str] = set()
 
         for note in notes_data:
             note_id = note["key"]
@@ -421,16 +476,18 @@ class NoteCache:
                     if note_id in self._access_order:
                         del self._access_order[note_id]
                     change_count += 1
+                    changed_ids.add(note_id)
             else:
                 # Note was created or updated
                 self._notes[note_id] = note
                 self._record_access(note_id)
                 change_count += 1
+                changed_ids.add(note_id)
 
         # Evict LRU notes if cache exceeds max size after sync
         self._evict_if_needed()
 
-        return change_count
+        return change_count, changed_ids
 
     def _rebuild_tag_cache(self) -> None:
         """Rebuild tag cache from all current notes."""
@@ -464,7 +521,7 @@ class NoteCache:
             result = await self._fetch_sync_data_with_retry()
 
             # Process notes and update cache
-            change_count = self._process_sync_notes(result)
+            change_count, changed_ids = self._process_sync_notes(result)
 
             # Rebuild tag cache
             self._rebuild_tag_cache()
@@ -472,8 +529,8 @@ class NoteCache:
             # Update last sync time
             self._last_sync = time.time()
 
-            # Clear query cache after sync
-            self._query_cache.clear()
+            # Invalidate only cache entries affected by changed notes
+            self._invalidate_query_cache_for_notes(changed_ids)
 
             elapsed = time.time() - start_time
             if change_count > 0:
@@ -663,6 +720,19 @@ class NoteCache:
             reverse=reverse_sort,
         )
 
+    def _invalidate_query_cache_for_notes(self, note_ids: set[str]) -> None:
+        """Invalidate only query cache entries that contain the given note IDs.
+
+        Args:
+            note_ids: Set of note IDs whose cache entries should be invalidated
+        """
+        keys_to_delete = [
+            k for k, ids in self._query_cache_note_ids.items() if ids & note_ids
+        ]
+        for k in keys_to_delete:
+            self._query_cache.pop(k, None)
+            self._query_cache_note_ids.pop(k, None)
+
     def _check_search_cache(
         self,
         cache_key: str,
@@ -774,6 +844,8 @@ class NoteCache:
         tag_filters: list[str] | None = None,
         date_range: tuple[datetime | None, datetime | None] | None = None,
         fuzzy: bool = False,
+        sort_by: str = "relevance",
+        sort_direction: str = "desc",
     ) -> list[dict[str, Any]]:
         """Search for notes in the cache using advanced search capabilities.
 
@@ -784,21 +856,24 @@ class NoteCache:
             tag_filters: Optional list of tags to filter by.
             date_range: Optional tuple of (from_date, to_date) for date filtering.
             fuzzy: Enable fuzzy matching for typo-tolerant search.
+            sort_by: Sort field — 'relevance', 'modifydate', or 'createdate'.
+            sort_direction: Sort direction — 'asc' or 'desc'.
 
         Returns:
-            List of matching notes sorted by relevance.
+            List of matching notes sorted by the requested field.
         """
         if not self._initialized:
             raise RuntimeError(CACHE_NOT_LOADED)
 
         logger.debug(
             f"Advanced search: query='{query}', tags={tag_filters}, "
-            f"date_range={date_range}, limit={limit}, offset={offset}, fuzzy={fuzzy}"
+            f"date_range={date_range}, limit={limit}, offset={offset}, "
+            f"fuzzy={fuzzy}, sort_by={sort_by}, sort_direction={sort_direction}"
         )
 
-        # Generate cache key
+        # Generate cache key (includes sort params so different sorts are cached separately)
         cache_key = self._generate_search_cache_key(
-            query, tag_filters, date_range, fuzzy
+            query, tag_filters, date_range, fuzzy, sort_by, sort_direction
         )
         search_start_time = time.time()
 
@@ -819,6 +894,30 @@ class NoteCache:
             else:
                 notes_to_search = self._filter_notes_by_tags(tag_filters)
 
+        # Fast pre-filter using inverted word index (reduces engine scan scope)
+        if self._word_index and not fuzzy:
+            terms = [
+                t
+                for t in re.findall(r"[a-z0-9]+", query.lower())
+                if len(t) >= _MIN_INDEX_WORD_LEN
+                and t not in _STOP_WORDS
+                and t not in {"and", "or", "not"}
+            ]
+            if terms:
+                candidate_ids = set.union(
+                    *(self._word_index.get(t, set()) for t in terms)
+                )
+                if candidate_ids:
+                    notes_to_search = {
+                        k: notes_to_search[k]
+                        for k in candidate_ids
+                        if k in notes_to_search
+                    }
+                    logger.debug(
+                        f"Word index pre-filter: {len(notes_to_search)} candidates "
+                        f"from {len(self._notes)} notes"
+                    )
+
         # Use search engine with fuzzy mode if requested
         search_engine = SearchEngine(fuzzy=fuzzy) if fuzzy else self._search_engine
         all_results = search_engine.search(
@@ -828,8 +927,13 @@ class NoteCache:
             date_range=date_range,
         )
 
-        # Cache results
+        # Apply date-based sort if requested (otherwise keep relevance order from engine)
+        if sort_by in ("modifydate", "createdate"):
+            all_results = self._sort_notes(all_results, sort_by, sort_direction)
+
+        # Cache results and track which note IDs are in this result set
         self._query_cache[cache_key] = (search_start_time, all_results)
+        self._query_cache_note_ids[cache_key] = {n.get("key", "") for n in all_results}
 
         # Manage cache size
         if len(self._query_cache) > 100:
@@ -837,7 +941,8 @@ class NoteCache:
                 self._query_cache.keys(), key=lambda k: self._query_cache[k][0]
             )[:10]
             for k in oldest_keys:
-                del self._query_cache[k]
+                self._query_cache.pop(k, None)
+                self._query_cache_note_ids.pop(k, None)
 
         # Record timing
         search_time = time.time() - search_start_time
@@ -854,6 +959,8 @@ class NoteCache:
         tag_filters: list[str] | None,
         date_range: tuple[datetime | None, datetime | None] | None,
         fuzzy: bool = False,
+        sort_by: str = "relevance",
+        sort_direction: str = "desc",
     ) -> str:
         """Generate a cache key for search results.
 
@@ -862,6 +969,8 @@ class NoteCache:
             tag_filters: List of tags to filter by
             date_range: Tuple of (from_date, to_date)
             fuzzy: Whether fuzzy matching is enabled
+            sort_by: Sort field
+            sort_direction: Sort direction
 
         Returns:
             A string key for the query cache
@@ -877,7 +986,7 @@ class NoteCache:
             date_str = f"{from_str},{to_str}"
 
         # Combine parameters and calculate hash - not used for security purposes
-        combined = f"{query}|{tag_str}|{date_str}|{fuzzy}|{self._last_sync}"
+        combined = f"{query}|{tag_str}|{date_str}|{fuzzy}|{sort_by}|{sort_direction}|{self._last_sync}"
         return hashlib.md5(combined.encode(), usedforsecurity=False).hexdigest()
 
     def _extract_first_word(self, content: str) -> str:
@@ -896,6 +1005,22 @@ class NoteCache:
             return ""
         words = first_line.split()
         return words[0] if words else ""
+
+    def _tokenize_for_index(self, content: str) -> set[str]:
+        """Tokenize note content into index words.
+
+        Args:
+            content: Note content to tokenize
+
+        Returns:
+            Set of words suitable for indexing
+        """
+        if not content:
+            return set()
+        words = re.findall(r"[a-z0-9]+", content.lower())
+        return {
+            w for w in words if len(w) >= _MIN_INDEX_WORD_LEN and w not in _STOP_WORDS
+        }
 
     def _add_tags_to_indexes(self, note_id: str, tags: list[str]) -> None:
         """Add tags to cache indexes.
@@ -997,11 +1122,16 @@ class NoteCache:
         if content:
             self._add_to_title_index(note_id, content)
 
+        # Update word index
+        for word in self._tokenize_for_index(content):
+            self._word_index.setdefault(word, set()).add(note_id)
+
         # Evict LRU notes if cache exceeds max size
         self._evict_if_needed()
 
-        # Clear query cache on note creation
+        # Clear query cache on note creation (new note could affect any result set)
         self._query_cache.clear()
+        self._query_cache_note_ids.clear()
 
     def _update_tags_on_update(
         self, note_id: str, old_tags: list[str], new_tags: list[str]
@@ -1035,6 +1165,7 @@ class NoteCache:
         note_id = note["key"]
 
         # Remove old tags from indexes if note was already in cache
+        old_content = ""
         if note_id in self._notes:
             old_tags = self._notes[note_id].get("tags", [])
             new_tags = note.get("tags", [])
@@ -1054,8 +1185,19 @@ class NoteCache:
         if content:
             self._add_to_title_index(note_id, content)
 
-        # Clear query cache on note update
-        self._query_cache.clear()
+        # Incrementally update word index
+        old_words = self._tokenize_for_index(old_content)
+        new_words = self._tokenize_for_index(content)
+        for word in old_words - new_words:
+            if word in self._word_index:
+                self._word_index[word].discard(note_id)
+                if not self._word_index[word]:
+                    del self._word_index[word]
+        for word in new_words - old_words:
+            self._word_index.setdefault(word, set()).add(note_id)
+
+        # Invalidate only cache entries that contained this note
+        self._invalidate_query_cache_for_notes({note_id})
 
     def update_cache_after_delete(self, note_id: str) -> None:
         """Update cache after deleting a note.
@@ -1075,10 +1217,17 @@ class NoteCache:
         if old_tags:
             self._remove_tags_from_indexes(note_id, old_tags)
 
-        # Update title index - remove deleted note
+        # Update title index and word index - remove deleted note
         content = self._notes[note_id].get("content", "")
         if content:
             self._remove_from_title_index(note_id, content)
+
+        # Remove from word index
+        for word in self._tokenize_for_index(content):
+            if word in self._word_index:
+                self._word_index[word].discard(note_id)
+                if not self._word_index[word]:
+                    del self._word_index[word]
 
         # Remove note from cache
         del self._notes[note_id]
@@ -1087,8 +1236,8 @@ class NoteCache:
         if note_id in self._access_order:
             del self._access_order[note_id]
 
-        # Clear query cache on note deletion
-        self._query_cache.clear()
+        # Invalidate only cache entries that contained this note
+        self._invalidate_query_cache_for_notes({note_id})
 
     def get_all_tags(self) -> list[str]:
         """Get all unique tags from the cache.

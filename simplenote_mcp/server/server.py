@@ -735,7 +735,12 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="search_notes",
-                description="Search for notes in Simplenote with advanced capabilities including fuzzy matching and pagination support",
+                description=(
+                    "Search for notes in Simplenote with advanced capabilities including "
+                    "fuzzy matching, pagination, and sorting support. "
+                    "To find the most recently updated note on a topic, use "
+                    "sort_by='modifydate' with sort_direction='desc' and limit=1."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -766,6 +771,20 @@ async def handle_list_tools() -> list[types.Tool]:
                         "fuzzy": {
                             "type": "boolean",
                             "description": "Enable fuzzy matching to handle typos and approximate matches (default: false)",
+                        },
+                        "sort_by": {
+                            "type": "string",
+                            "enum": ["relevance", "modifydate", "createdate"],
+                            "description": (
+                                "Sort results by field. Default: 'relevance' (by match quality). "
+                                "Use 'modifydate' to get the most recently updated notes first. "
+                                "Use 'createdate' to get the newest-created notes first."
+                            ),
+                        },
+                        "sort_direction": {
+                            "type": "string",
+                            "enum": ["asc", "desc"],
+                            "description": "Sort direction: 'desc' (newest/highest first, default) or 'asc' (oldest/lowest first).",
                         },
                     },
                     "required": ["query"],
@@ -910,7 +929,10 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="search_notes",
-                description="Search for notes in Simplenote with advanced capabilities",
+                description=(
+                    "Search for notes in Simplenote with advanced capabilities. "
+                    "Use sort_by='modifydate', sort_direction='desc' to retrieve the most recently updated note on a topic."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -921,6 +943,16 @@ async def handle_list_tools() -> list[types.Tool]:
                         "tags": {
                             "type": "string",
                             "description": "Tags to filter by (comma-separated list of tags that must all be present). Use 'untagged' to find notes without tags.",
+                        },
+                        "sort_by": {
+                            "type": "string",
+                            "enum": ["relevance", "modifydate", "createdate"],
+                            "description": "Sort results by field. Default: 'relevance'. Use 'modifydate' to get the most recently updated notes first.",
+                        },
+                        "sort_direction": {
+                            "type": "string",
+                            "enum": ["asc", "desc"],
+                            "description": "Sort direction: 'desc' (newest first, default) or 'asc' (oldest first).",
                         },
                     },
                     "required": ["query"],

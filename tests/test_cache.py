@@ -342,3 +342,161 @@ class TestBackgroundSync:
 
         # Verify sync was called despite the error
         mock_cache.sync.assert_called_once()
+
+
+@pytest.mark.unit
+class TestWordIndex:
+    """Tests for the inverted word index."""
+
+    def test_word_index_built_on_initialize(self, mock_simplenote_client):
+        """Word index should be populated after notes are loaded."""
+        notes = [
+            {"key": "n1", "content": "Hello world python", "tags": []},
+            {"key": "n2", "content": "Hello universe", "tags": []},
+        ]
+        cache = NoteCache(mock_simplenote_client)
+        for n in notes:
+            cache._notes[n["key"]] = n
+        cache._build_all_indexes()
+
+        assert "hello" in cache._word_index
+        assert "world" in cache._word_index
+        assert "python" in cache._word_index
+        assert "n1" in cache._word_index["hello"]
+        assert "n2" in cache._word_index["hello"]
+        assert "n1" in cache._word_index["world"]
+        assert "n2" not in cache._word_index["world"]
+
+    def test_word_index_incremental_update(self, mock_simplenote_client):
+        """Word index should update incrementally on note updates."""
+        note = {"key": "n1", "content": "initial content here", "tags": []}
+        cache = NoteCache(mock_simplenote_client)
+        cache._notes["n1"] = note
+        cache._initialized = True
+        cache._build_all_indexes()
+
+        assert "initial" in cache._word_index
+        assert "n1" in cache._word_index["initial"]
+
+        # Update the note — "initial" removed, "updated" added
+        updated = {"key": "n1", "content": "updated content here", "tags": []}
+        cache.update_cache_after_update(updated)
+
+        assert "initial" not in cache._word_index
+        assert "updated" in cache._word_index
+        assert "n1" in cache._word_index["updated"]
+
+    def test_word_index_remove_on_delete(self, mock_simplenote_client):
+        """Word index entries should be removed when a note is deleted."""
+        note = {"key": "n1", "content": "unique word xylophone", "tags": []}
+        cache = NoteCache(mock_simplenote_client)
+        cache._notes["n1"] = note
+        cache._initialized = True
+        cache._build_all_indexes()
+
+        assert "xylophone" in cache._word_index
+        cache.update_cache_after_delete("n1")
+        assert "xylophone" not in cache._word_index
+
+
+@pytest.mark.unit
+class TestSearchNotesSortBy:
+    """Tests for sort_by/sort_direction in search_notes."""
+
+    def _make_cache(self, mock_simplenote_client):
+        notes = [
+            {
+                "key": "old",
+                "content": "old note content",
+                "tags": [],
+                "modifydate": 1000.0,
+                "createdate": 900.0,
+            },
+            {
+                "key": "mid",
+                "content": "mid note content",
+                "tags": [],
+                "modifydate": 2000.0,
+                "createdate": 1900.0,
+            },
+            {
+                "key": "new",
+                "content": "new note content",
+                "tags": [],
+                "modifydate": 3000.0,
+                "createdate": 2900.0,
+            },
+        ]
+        cache = NoteCache(mock_simplenote_client)
+        for n in notes:
+            cache._notes[n["key"]] = n
+        cache._initialized = True
+        cache._build_all_indexes()
+        return cache
+
+    def test_sort_by_modifydate_desc(self, mock_simplenote_client):
+        """Results sorted by modifydate desc should be newest first."""
+        cache = self._make_cache(mock_simplenote_client)
+        results = cache.search_notes(
+            "note", sort_by="modifydate", sort_direction="desc"
+        )
+        keys = [r["key"] for r in results]
+        assert keys.index("new") < keys.index("mid") < keys.index("old")
+
+    def test_sort_by_modifydate_asc(self, mock_simplenote_client):
+        """Results sorted by modifydate asc should be oldest first."""
+        cache = self._make_cache(mock_simplenote_client)
+        results = cache.search_notes("note", sort_by="modifydate", sort_direction="asc")
+        keys = [r["key"] for r in results]
+        assert keys.index("old") < keys.index("mid") < keys.index("new")
+
+    def test_sort_by_relevance_default(self, mock_simplenote_client):
+        """Default sort should preserve relevance order (not date-sorted)."""
+        cache = self._make_cache(mock_simplenote_client)
+        # Just check it doesn't error and returns results
+        results = cache.search_notes("note")
+        assert len(results) == 3
+
+
+@pytest.mark.unit
+class TestSmartCacheInvalidation:
+    """Tests for smart query cache invalidation."""
+
+    def test_update_invalidates_only_affected_entries(self, mock_simplenote_client):
+        """Updating a note should only invalidate cache entries that contained it."""
+        cache = NoteCache(mock_simplenote_client)
+        cache._initialized = True
+
+        # Manually populate query cache with two entries
+        cache._query_cache["key_with_n1"] = (1000.0, [{"key": "n1"}])
+        cache._query_cache_note_ids["key_with_n1"] = {"n1"}
+        cache._query_cache["key_without_n1"] = (1000.0, [{"key": "n2"}])
+        cache._query_cache_note_ids["key_without_n1"] = {"n2"}
+
+        # Add n1 to notes so update_cache_after_update can find old content
+        cache._notes["n1"] = {"key": "n1", "content": "some content", "tags": []}
+
+        cache.update_cache_after_update(
+            {"key": "n1", "content": "new content", "tags": []}
+        )
+
+        # Only the entry containing n1 should be evicted
+        assert "key_with_n1" not in cache._query_cache
+        assert "key_without_n1" in cache._query_cache
+
+    def test_delete_invalidates_only_affected_entries(self, mock_simplenote_client):
+        """Deleting a note should only invalidate cache entries that contained it."""
+        cache = NoteCache(mock_simplenote_client)
+        cache._initialized = True
+        cache._notes["n1"] = {"key": "n1", "content": "some content", "tags": []}
+        cache._notes["n2"] = {"key": "n2", "content": "other content", "tags": []}
+
+        cache._query_cache["key_with_n1"] = (1000.0, [{"key": "n1"}])
+        cache._query_cache_note_ids["key_with_n1"] = {"n1"}
+        cache._query_cache["key_without_n1"] = (1000.0, [{"key": "n2"}])
+        cache._query_cache_note_ids["key_without_n1"] = {"n2"}
+
+        cache.update_cache_after_delete("n1")
+
+        assert "key_with_n1" not in cache._query_cache
+        assert "key_without_n1" in cache._query_cache

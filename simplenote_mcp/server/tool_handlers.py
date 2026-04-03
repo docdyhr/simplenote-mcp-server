@@ -428,15 +428,27 @@ class SearchNotesHandler(ToolHandlerBase):
             arguments.get("from_date"), arguments.get("to_date")
         )
         fuzzy = bool(arguments.get("fuzzy", False))
+        sort_by = arguments.get("sort_by", "relevance")
+        sort_direction = arguments.get("sort_direction", "desc")
+        if sort_by not in {"relevance", "modifydate", "createdate"}:
+            sort_by = "relevance"
 
         logger.debug(
             f"Advanced search called with: query='{query}', limit={limit}, "
-            + f"tags='{tag_filters}', date_range={date_range}, fuzzy={fuzzy}"
+            + f"tags='{tag_filters}', date_range={date_range}, fuzzy={fuzzy}, "
+            + f"sort_by={sort_by}, sort_direction={sort_direction}"
         )
 
         try:
             return await self._execute_search(
-                query, limit, tag_filters, date_range, arguments, fuzzy
+                query,
+                limit,
+                tag_filters,
+                date_range,
+                arguments,
+                fuzzy,
+                sort_by,
+                sort_direction,
             )
         except Exception as e:
             return self._handle_search_error(e, query)
@@ -514,6 +526,8 @@ class SearchNotesHandler(ToolHandlerBase):
         date_range: tuple | None,
         arguments: dict[str, Any],
         fuzzy: bool = False,
+        sort_by: str = "relevance",
+        sort_direction: str = "desc",
     ) -> list[types.TextContent]:
         """Execute search using cache or API."""
         cache_initialized = (
@@ -525,11 +539,24 @@ class SearchNotesHandler(ToolHandlerBase):
 
         if cache_initialized:
             return await self._search_with_cache(
-                query, limit, tag_filters, date_range, arguments, fuzzy
+                query,
+                limit,
+                tag_filters,
+                date_range,
+                arguments,
+                fuzzy,
+                sort_by,
+                sort_direction,
             )
         else:
             return await self._search_with_api(
-                query, limit, tag_filters, date_range, fuzzy
+                query,
+                limit,
+                tag_filters,
+                date_range,
+                fuzzy,
+                sort_by,
+                sort_direction,
             )
 
     def _handle_search_error(self, e: Exception, query: str) -> list[types.TextContent]:
@@ -546,6 +573,8 @@ class SearchNotesHandler(ToolHandlerBase):
         date_range: tuple | None,
         arguments: dict[str, Any],
         fuzzy: bool = False,
+        sort_by: str = "relevance",
+        sort_direction: str = "desc",
     ) -> list[types.TextContent]:
         """Search using cache."""
         logger.debug("Using advanced search with cache")
@@ -562,6 +591,8 @@ class SearchNotesHandler(ToolHandlerBase):
             tag_filters=tag_filters,
             date_range=date_range,
             fuzzy=fuzzy,
+            sort_by=sort_by,
+            sort_direction=sort_direction,
         )
         total_matching_notes = len(all_matching_notes)
 
@@ -573,6 +604,8 @@ class SearchNotesHandler(ToolHandlerBase):
             tag_filters=tag_filters,
             date_range=date_range,
             fuzzy=fuzzy,
+            sort_by=sort_by,
+            sort_direction=sort_direction,
         )
 
         # Format results
@@ -640,6 +673,8 @@ class SearchNotesHandler(ToolHandlerBase):
         tag_filters: list[str] | None,
         date_range: tuple | None,
         fuzzy: bool = False,
+        sort_by: str = "relevance",
+        sort_direction: str = "desc",
     ) -> list[types.TextContent]:
         """Search using API fallback."""
         logger.debug("Cache not available, using API with temporary search engine")
@@ -666,6 +701,14 @@ class SearchNotesHandler(ToolHandlerBase):
             tag_filters=tag_filters,
             date_range=date_range,
         )
+
+        # Apply date-based sort if requested
+        if sort_by in ("modifydate", "createdate"):
+            matching_notes.sort(
+                key=lambda n: n.get(sort_by, 0) or 0,
+                reverse=(sort_direction == "desc"),
+            )
+
         # Apply limit to results
         if limit is not None and limit > 0:
             matching_notes = matching_notes[:limit]

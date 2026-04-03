@@ -427,3 +427,43 @@ class TestTagParsing:
         call_args = mock_cache.search_notes.call_args
         # The tag_filters parameter should be a list of separate tags
         assert call_args[1].get("tag_filters") == ["work", "personal"]
+
+    @pytest.mark.asyncio
+    async def test_search_notes_sort_by_parameter(self, mock_cache):
+        """Test that sort_by parameter is forwarded to the cache."""
+        mock_cache.search_notes.return_value = []
+        mock_client = MagicMock()
+        handler = SearchNotesHandler(mock_client, mock_cache)
+        arguments = {"query": "test", "sort_by": "modifydate", "sort_direction": "desc"}
+
+        await handler.handle(arguments)
+
+        call_args = mock_cache.search_notes.call_args
+        assert call_args[1].get("sort_by") == "modifydate"
+        assert call_args[1].get("sort_direction") == "desc"
+
+    @pytest.mark.asyncio
+    async def test_search_notes_default_sort_is_relevance(self, mock_cache):
+        """Test that omitting sort_by defaults to relevance."""
+        mock_cache.search_notes.return_value = []
+        mock_client = MagicMock()
+        handler = SearchNotesHandler(mock_client, mock_cache)
+        arguments = {"query": "test"}
+
+        await handler.handle(arguments)
+
+        call_args = mock_cache.search_notes.call_args
+        assert call_args[1].get("sort_by") == "relevance"
+
+    @pytest.mark.asyncio
+    async def test_search_notes_invalid_sort_by_falls_back(self, mock_cache):
+        """Test that an invalid sort_by value falls back to relevance."""
+        mock_cache.search_notes.return_value = []
+        mock_client = MagicMock()
+        handler = SearchNotesHandler(mock_client, mock_cache)
+        arguments = {"query": "test", "sort_by": "invalid_field"}
+
+        await handler.handle(arguments)
+
+        call_args = mock_cache.search_notes.call_args
+        assert call_args[1].get("sort_by") == "relevance"
