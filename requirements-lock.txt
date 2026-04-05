@@ -113,7 +113,7 @@ pyyaml_env_tag==1.1
 radon==6.0.1
 readme_renderer==44.0
 referencing==0.36.2
-regex==2026.3.32
+regex==2026.4.4
 requests==2.33.0
 requests-toolbelt==1.0.0
 rfc3986==2.0.0
