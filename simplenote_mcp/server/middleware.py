@@ -231,31 +231,18 @@ class RateLimiter:
             # Get current rate limit info
             info = self.get_rate_limit_info(identifier)
 
-            # Create alert asynchronously
+            # Schedule or run the alert depending on whether a loop is already running.
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # Schedule the coroutine to run
-                    asyncio.create_task(
-                        alert_rate_limit_violation(
-                            identifier,
-                            info["current_requests"],
-                            100,  # Default limit
-                            {"rate_limit_info": info},
-                        )
+                asyncio.get_running_loop()
+                asyncio.create_task(
+                    alert_rate_limit_violation(
+                        identifier,
+                        info["current_requests"],
+                        100,  # Default limit
+                        {"rate_limit_info": info},
                     )
-                else:
-                    # Run in the current loop
-                    loop.run_until_complete(
-                        alert_rate_limit_violation(
-                            identifier,
-                            info["current_requests"],
-                            100,  # Default limit
-                            {"rate_limit_info": info},
-                        )
-                    )
+                )
             except RuntimeError:
-                # No event loop, create a new one
                 asyncio.run(
                     alert_rate_limit_violation(
                         identifier,

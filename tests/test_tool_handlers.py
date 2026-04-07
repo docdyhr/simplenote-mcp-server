@@ -14,6 +14,18 @@ from simplenote_mcp.server.tool_handlers import (
     UpdateNoteHandler,
 )
 
+# ---------------------------------------------------------------------------
+# Helpers shared by fallback-path tests
+# ---------------------------------------------------------------------------
+
+
+def _make_client_and_cache():
+    client = MagicMock()
+    cache = MagicMock()
+    cache.is_initialized = True
+    cache.get_note.return_value = {"key": "note-1", "content": "old", "tags": []}
+    return client, cache
+
 
 @pytest.mark.unit
 class TestToolHandlerRegistry:
@@ -467,3 +479,44 @@ class TestTagParsing:
 
         call_args = mock_cache.search_notes.call_args
         assert call_args[1].get("sort_by") == "relevance"
+
+
+@pytest.mark.unit
+class TestCreateNoteHandlerApiFallbackPaths:
+    """Cover the defensive branches when the API returns a non-dict on status 0."""
+
+    @pytest.mark.asyncio
+    async def test_api_returns_non_dict_still_succeeds(self):
+        """create_note succeeds even when the API returns a non-dict on status 0."""
+        client, cache = _make_client_and_cache()
+        # API returns a string instead of a dict — unexpected but should be handled
+        client.add_note.return_value = ("not-a-dict", 0)
+
+        handler = CreateNoteHandler(client, cache)
+        result = await handler.handle({"content": "hello"})
+
+        assert isinstance(result, list)
+        data = json.loads(result[0].text)
+        # Should still report success with a fallback note_id of "unknown"
+        assert data["success"] is True
+        assert data["note_id"] == "unknown"
+
+
+@pytest.mark.unit
+class TestUpdateNoteHandlerApiFallbackPaths:
+    """Cover the defensive branches when the API returns a non-dict on status 0."""
+
+    @pytest.mark.asyncio
+    async def test_api_returns_non_dict_still_succeeds(self):
+        """update_note succeeds even when the API returns a non-dict on status 0."""
+        client, cache = _make_client_and_cache()
+        client.update_note.return_value = ("not-a-dict", 0)
+
+        handler = UpdateNoteHandler(client, cache)
+        result = await handler.handle({"note_id": "note-1", "content": "new content"})
+
+        assert isinstance(result, list)
+        data = json.loads(result[0].text)
+        # Should still report success using the known note_id as fallback
+        assert data["success"] is True
+        assert data["note_id"] == "note-1"

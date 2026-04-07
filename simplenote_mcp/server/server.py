@@ -282,7 +282,7 @@ async def _test_simplenote_connection(sn: Any) -> None:
     logger.debug("Testing Simplenote client connection...")
     try:
         # Run blocking API call in thread pool to avoid blocking event loop
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         test_notes, status = await loop.run_in_executor(
             None,  # Use default executor
             sn.get_note_list,
@@ -320,7 +320,7 @@ async def _populate_cache_direct(cache: NoteCache, sn: Any) -> None:
     try:
         logger.debug("Attempting direct API call to get notes...")
         # Run blocking API call in thread pool
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         all_notes, status = await loop.run_in_executor(
             None,  # Use default executor
             sn.get_note_list,
@@ -1260,18 +1260,9 @@ async def _stop_background_sync() -> None:
     if background_sync is not None:
         logger.info("Stopping background sync")
         try:
-            # Create a temporary event loop if necessary
-            if not asyncio.get_event_loop().is_running():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(background_sync.stop())
-                if "start_time" in locals():
-                    loop.close()
-            else:
-                # Use the existing event loop
-                stop_task = asyncio.get_event_loop().create_task(background_sync.stop())
-                # Give it a moment to complete (use asyncio.sleep in async context)
-                await asyncio.sleep(0.5)
+            # This function is always called from an async context, so await directly.
+            asyncio.get_running_loop().create_task(background_sync.stop())
+            await asyncio.sleep(0.5)
 
         except Exception as e:
             logger.error(f"Error stopping background sync: {str(e)}", exc_info=True)

@@ -398,27 +398,17 @@ class MemoryMonitor:
 
             alerter = get_alerter()
 
-            # Try to create alert asynchronously
+            # Schedule or run the alert depending on whether a loop is already running.
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    asyncio.create_task(
-                        alerter.create_alert(
-                            mapped_alert_type,
-                            AlertSeverity.HIGH,
-                            f"Memory alert: {alert_type}",
-                            details,
-                        )
+                asyncio.get_running_loop()
+                asyncio.create_task(
+                    alerter.create_alert(
+                        mapped_alert_type,
+                        AlertSeverity.HIGH,
+                        f"Memory alert: {alert_type}",
+                        details,
                     )
-                else:
-                    loop.run_until_complete(
-                        alerter.create_alert(
-                            mapped_alert_type,
-                            AlertSeverity.HIGH,
-                            f"Memory alert: {alert_type}",
-                            details,
-                        )
-                    )
+                )
             except RuntimeError:
                 asyncio.run(
                     alerter.create_alert(

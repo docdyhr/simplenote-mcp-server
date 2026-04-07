@@ -22,6 +22,20 @@ from simplenote_mcp.server.server import (
 class TestAuthorizationBoundaries:
     """Test authorization boundaries and access controls."""
 
+    def setup_method(self):
+        """Reset global server state before each test for isolation."""
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
+    def teardown_method(self):
+        """Reset global server state after each test."""
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
     @pytest.mark.asyncio
     async def test_unauthenticated_access_prevention(self):
         """Test that unauthenticated access is prevented."""
@@ -195,13 +209,28 @@ class TestAuthorizationBoundaries:
             "/var/log/auth.log%00.txt",
         ]
 
-        for pattern in traversal_patterns:
-            with pytest.raises((ValidationError, Exception)):
-                await handle_read_resource(f"simplenote://note/{pattern}")
+        with patch("simplenote_mcp.server.server.get_simplenote_client") as mock_client:
+            mock_client.return_value.get_note.return_value = (None, 1)  # Not found
+
+            for pattern in traversal_patterns:
+                with pytest.raises((ValidationError, Exception)):
+                    await handle_read_resource(f"simplenote://note/{pattern}")
 
 
 class TestRateLimitingAndAbuse:
     """Test rate limiting and abuse prevention mechanisms."""
+
+    def setup_method(self):
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
+    def teardown_method(self):
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
 
     @pytest.mark.asyncio
     async def test_rapid_request_rate_limiting(self):
@@ -306,6 +335,18 @@ class TestRateLimitingAndAbuse:
 class TestInputSanitization:
     """Test input sanitization and validation."""
 
+    def setup_method(self):
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
+    def teardown_method(self):
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
     @pytest.mark.asyncio
     async def test_malformed_json_handling(self):
         """Test handling of malformed JSON in tool calls."""
@@ -385,6 +426,20 @@ class TestInputSanitization:
 class TestPrivilegeEscalation:
     """Test resistance to privilege escalation attempts."""
 
+    def setup_method(self):
+        """Reset global server state before each test for isolation."""
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
+    def teardown_method(self):
+        """Reset global server state after each test."""
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
     @pytest.mark.asyncio
     async def test_environment_variable_access(self):
         """Test that environment variables cannot be accessed."""
@@ -449,13 +504,28 @@ class TestPrivilegeEscalation:
             "/var/log/syslog",
         ]
 
-        for pattern in file_access_patterns:
-            with pytest.raises((ValidationError, Exception)):
-                await handle_read_resource(f"simplenote://note/{pattern}")
+        with patch("simplenote_mcp.server.server.get_simplenote_client") as mock_client:
+            mock_client.return_value.get_note.return_value = (None, 1)  # Not found
+
+            for pattern in file_access_patterns:
+                with pytest.raises((ValidationError, Exception)):
+                    await handle_read_resource(f"simplenote://note/{pattern}")
 
 
 class TestResourceExhaustion:
     """Test resistance to resource exhaustion attacks."""
+
+    def setup_method(self):
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
+    def teardown_method(self):
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
 
     @pytest.mark.asyncio
     async def test_cpu_exhaustion_prevention(self):
@@ -533,6 +603,20 @@ class TestResourceExhaustion:
 class TestSecurityHeaders:
     """Test security-related metadata and headers."""
 
+    def setup_method(self):
+        """Reset global server state before each test for isolation."""
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
+    def teardown_method(self):
+        """Reset global server state after each test."""
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
     @pytest.mark.asyncio
     async def test_sensitive_data_exposure(self):
         """Test that sensitive data is not exposed in responses."""
@@ -577,6 +661,18 @@ class TestSecurityHeaders:
 
 class TestSecurityMonitoring:
     """Test security monitoring and alerting."""
+
+    def setup_method(self):
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
+
+    def teardown_method(self):
+        import simplenote_mcp.server.server as srv
+
+        srv.simplenote_client = None
+        srv.note_cache = None
 
     @pytest.mark.asyncio
     async def test_suspicious_activity_logging(self):

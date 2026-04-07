@@ -104,11 +104,11 @@ jobs:
           SIMPLENOTE_EMAIL: test@example.com
           SIMPLENOTE_PASSWORD: test-password
         run: |
-          pytest tests/ -m "not integration" --cov=simplenote_mcp --cov-report=xml --cov-report=json --cov-report=term
+          pytest tests/ -m "not integration" --randomly-seed=${{ github.run_id }} --cov=simplenote_mcp --cov-report=xml --cov-report=json --cov-report=term
 
       - name: Check coverage threshold
         run: |
-          python scripts/quality/check_coverage.py --threshold 65.0 --warn-only
+          python scripts/quality/check_coverage.py --threshold 75.0
 
       - name: Upload coverage
         uses: codecov/codecov-action@v6

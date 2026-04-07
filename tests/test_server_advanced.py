@@ -13,9 +13,7 @@ import mcp.types as types
 import pytest
 
 import simplenote_mcp.server.server as server_module
-from simplenote_mcp.server.errors import (
-    ValidationError,
-)
+from simplenote_mcp.server.errors import ValidationError
 from simplenote_mcp.server.server import (
     cleanup_pid_file,
     get_simplenote_client,

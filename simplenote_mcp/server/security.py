@@ -530,8 +530,12 @@ class SecurityValidator:
         else:
             logger.info(f"SECURITY INFO [{event_type}]: {message} (context: {context})")
 
-        # Store for analysis (in a real system, this might go to a security database)
-        self.failed_validation_attempts[event_type].append(security_log)
+        # Store for analysis — cap each event_type bucket to the last 500 entries
+        # to prevent unbounded memory growth in long-running servers.
+        bucket = self.failed_validation_attempts[event_type]
+        bucket.append(security_log)
+        if len(bucket) > 500:
+            del bucket[: len(bucket) - 500]
 
         # Trigger alerting for high-severity events
         if severity == "HIGH":
@@ -569,31 +573,20 @@ class SecurityValidator:
             # Create alert asynchronously
             alerter = get_alerter()
 
-            # Try to get the current event loop, create one if none exists
+            # Schedule or run the alert depending on whether a loop is already running.
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # Schedule the coroutine to run
-                    asyncio.create_task(
-                        alerter.create_alert(
-                            alert_type,
-                            AlertSeverity.HIGH,
-                            message,
-                            {"event_type": event_type, "context": context},
-                        )
+                asyncio.get_running_loop()
+                # A loop is running — schedule the coroutine without blocking.
+                asyncio.create_task(
+                    alerter.create_alert(
+                        alert_type,
+                        AlertSeverity.HIGH,
+                        message,
+                        {"event_type": event_type, "context": context},
                     )
-                else:
-                    # Run in the current loop
-                    loop.run_until_complete(
-                        alerter.create_alert(
-                            alert_type,
-                            AlertSeverity.HIGH,
-                            message,
-                            {"event_type": event_type, "context": context},
-                        )
-                    )
+                )
             except RuntimeError:
-                # No event loop, create a new one
+                # No running loop (e.g. called from a background thread).
                 asyncio.run(
                     alerter.create_alert(
                         alert_type,

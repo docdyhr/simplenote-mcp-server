@@ -360,12 +360,16 @@ class TestConfigValidation:
 class TestConfigSingleton:
     """Test the global configuration singleton."""
 
-    def teardown_method(self):
-        """Reset global config after each test."""
-        # Import and reset the global config
+    def setup_method(self):
+        """Reset global config before each test."""
         import simplenote_mcp.server.config
 
-        # Reset the global config for clean tests  # noqa: SLF001
+        simplenote_mcp.server.config._config = None  # noqa: SLF001
+
+    def teardown_method(self):
+        """Reset global config after each test."""
+        import simplenote_mcp.server.config
+
         simplenote_mcp.server.config._config = None  # noqa: SLF001
 
     def test_get_config_singleton(self):
@@ -554,3 +558,163 @@ class TestConfigIntegration:
         ):
             config = Config()
             assert config.offline_mode is False, f"Expected False for '{env_value}'"
+
+
+class TestConfigAltEnvVars:
+    """Tests for alternative environment variable names."""
+
+    def test_simplenote_username_alias(self):
+        """SIMPLENOTE_USERNAME is accepted as alias for SIMPLENOTE_EMAIL."""
+        with patch.dict(
+            os.environ,
+            {"SIMPLENOTE_USERNAME": "user@example.com", "SIMPLENOTE_PASSWORD": "pw"},
+            clear=True,
+        ):
+            config = Config()
+            assert config.simplenote_email == "user@example.com"
+            assert config.has_credentials is True
+
+
+class TestConfigDebugMode:
+    """Tests for MCP_DEBUG env var handling (line 134 in config.py)."""
+
+    def test_debug_mode_overrides_log_level(self):
+        """MCP_DEBUG=true forces log level to DEBUG even if LOG_LEVEL is INFO."""
+        with patch.dict(
+            os.environ,
+            {
+                "SIMPLENOTE_EMAIL": "test@example.com",
+                "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
+                "MCP_DEBUG": "true",
+                "LOG_LEVEL": "INFO",
+            },
+            clear=True,
+        ):
+            config = Config()
+            assert config.debug_mode is True
+            assert config.log_level == LogLevel.DEBUG
+
+    def test_debug_mode_false_no_override(self):
+        """MCP_DEBUG=false leaves log level unchanged."""
+        with patch.dict(
+            os.environ,
+            {
+                "SIMPLENOTE_EMAIL": "test@example.com",
+                "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
+                "MCP_DEBUG": "false",
+                "LOG_LEVEL": "ERROR",
+            },
+            clear=True,
+        ):
+            config = Config()
+            assert config.debug_mode is False
+            assert config.log_level == LogLevel.ERROR
+
+
+class TestConfigValidateRateLimiting:
+    """Tests for validate() rate-limiting and transport sections (lines 153-250)."""
+
+    BASE_ENV = {
+        "SIMPLENOTE_EMAIL": "test@example.com",
+        "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
+    }
+
+    def test_invalid_rate_limit_requests(self):
+        with patch.dict(
+            os.environ, {**self.BASE_ENV, "RATE_LIMIT_REQUESTS": "0"}, clear=True
+        ):
+            config = Config()
+            with pytest.raises(
+                ValueError, match="RATE_LIMIT_REQUESTS must be at least 1"
+            ):
+                config.validate()
+
+    def test_invalid_rate_limit_window(self):
+        with patch.dict(
+            os.environ, {**self.BASE_ENV, "RATE_LIMIT_WINDOW_SECONDS": "0"}, clear=True
+        ):
+            config = Config()
+            with pytest.raises(
+                ValueError, match="RATE_LIMIT_WINDOW_SECONDS must be at least 1"
+            ):
+                config.validate()
+
+    def test_invalid_rate_limit_burst(self):
+        with patch.dict(
+            os.environ, {**self.BASE_ENV, "RATE_LIMIT_BURST": "0"}, clear=True
+        ):
+            config = Config()
+            with pytest.raises(ValueError, match="RATE_LIMIT_BURST must be at least 1"):
+                config.validate()
+
+    def test_invalid_mcp_transport(self):
+        with patch.dict(
+            os.environ, {**self.BASE_ENV, "MCP_TRANSPORT": "grpc"}, clear=True
+        ):
+            config = Config()
+            with pytest.raises(ValueError, match="MCP_TRANSPORT must be either"):
+                config.validate()
+
+    def test_http_transport_invalid_port(self):
+        with patch.dict(
+            os.environ,
+            {**self.BASE_ENV, "MCP_TRANSPORT": "http", "MCP_HTTP_PORT": "80"},
+            clear=True,
+        ):
+            config = Config()
+            with pytest.raises(ValueError, match="MCP_HTTP_PORT must be between"):
+                config.validate()
+
+    def test_http_transport_empty_host(self):
+        with patch.dict(
+            os.environ,
+            {**self.BASE_ENV, "MCP_TRANSPORT": "http", "MCP_HTTP_HOST": ""},
+            clear=True,
+        ):
+            config = Config()
+            with pytest.raises(ValueError, match="MCP_HTTP_HOST cannot be empty"):
+                config.validate()
+
+    def test_http_transport_path_missing_slash(self):
+        with patch.dict(
+            os.environ,
+            {**self.BASE_ENV, "MCP_TRANSPORT": "http", "MCP_HTTP_PATH": "mcp"},
+            clear=True,
+        ):
+            config = Config()
+            with pytest.raises(ValueError, match="MCP_HTTP_PATH must start with"):
+                config.validate()
+
+    def test_enable_http_endpoint_invalid_port(self):
+        with patch.dict(
+            os.environ,
+            {**self.BASE_ENV, "ENABLE_HTTP_ENDPOINT": "true", "HTTP_PORT": "80"},
+            clear=True,
+        ):
+            config = Config()
+            with pytest.raises(ValueError, match="HTTP_PORT must be between"):
+                config.validate()
+
+    def test_enable_http_endpoint_empty_host(self):
+        with patch.dict(
+            os.environ,
+            {**self.BASE_ENV, "ENABLE_HTTP_ENDPOINT": "true", "HTTP_HOST": ""},
+            clear=True,
+        ):
+            config = Config()
+            with pytest.raises(ValueError, match="HTTP_HOST cannot be empty"):
+                config.validate()
+
+    def test_enable_http_endpoint_metrics_path_missing_slash(self):
+        with patch.dict(
+            os.environ,
+            {
+                **self.BASE_ENV,
+                "ENABLE_HTTP_ENDPOINT": "true",
+                "HTTP_METRICS_PATH": "metrics",
+            },
+            clear=True,
+        ):
+            config = Config()
+            with pytest.raises(ValueError, match="HTTP_METRICS_PATH must start with"):
+                config.validate()

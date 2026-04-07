@@ -146,7 +146,7 @@ class NoteCache:
 
         while retry_count < max_retries:
             try:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
                 notes_result, status = await loop.run_in_executor(
                     None,
                     self._fetch_note_list,
