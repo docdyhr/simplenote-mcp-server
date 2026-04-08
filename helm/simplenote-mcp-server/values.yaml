@@ -4,7 +4,7 @@ replicaCount: 1
 image:
   repository: docdyhr/simplenote-mcp-server
   pullPolicy: IfNotPresent
-  tag: "v1.12.0"
+  tag: "v1.12.1"
 
 imagePullSecrets: []
 nameOverride: ""
