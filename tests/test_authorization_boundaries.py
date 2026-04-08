@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import sys
 import time
 from unittest.mock import patch
 
@@ -18,20 +19,23 @@ from simplenote_mcp.server.server import (
     handle_read_resource,
 )
 
+# Module reference for singleton reset in setup/teardown (avoids mixed import styles)
+_srv = sys.modules["simplenote_mcp.server.server"]
+
 
 class TestAuthorizationBoundaries:
     """Test authorization boundaries and access controls."""
 
     def setup_method(self):
         """Reset global server state before each test for isolation."""
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
 
     def teardown_method(self):
         """Reset global server state after each test."""
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
@@ -221,13 +225,13 @@ class TestRateLimitingAndAbuse:
     """Test rate limiting and abuse prevention mechanisms."""
 
     def setup_method(self):
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
 
     def teardown_method(self):
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
@@ -336,13 +340,13 @@ class TestInputSanitization:
     """Test input sanitization and validation."""
 
     def setup_method(self):
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
 
     def teardown_method(self):
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
@@ -428,14 +432,14 @@ class TestPrivilegeEscalation:
 
     def setup_method(self):
         """Reset global server state before each test for isolation."""
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
 
     def teardown_method(self):
         """Reset global server state after each test."""
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
@@ -516,13 +520,13 @@ class TestResourceExhaustion:
     """Test resistance to resource exhaustion attacks."""
 
     def setup_method(self):
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
 
     def teardown_method(self):
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
@@ -605,14 +609,14 @@ class TestSecurityHeaders:
 
     def setup_method(self):
         """Reset global server state before each test for isolation."""
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
 
     def teardown_method(self):
         """Reset global server state after each test."""
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
@@ -663,13 +667,13 @@ class TestSecurityMonitoring:
     """Test security monitoring and alerting."""
 
     def setup_method(self):
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None
 
     def teardown_method(self):
-        import simplenote_mcp.server.server as srv
+        srv = _srv
 
         srv.simplenote_client = None
         srv.note_cache = None

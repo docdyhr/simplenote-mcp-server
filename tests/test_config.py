@@ -1,6 +1,7 @@
 """Tests for server configuration management."""
 
 import os
+import sys
 from unittest.mock import patch
 
 import pytest
@@ -362,15 +363,11 @@ class TestConfigSingleton:
 
     def setup_method(self):
         """Reset global config before each test."""
-        import simplenote_mcp.server.config
-
-        simplenote_mcp.server.config._config = None  # noqa: SLF001
+        sys.modules["simplenote_mcp.server.config"]._config = None  # noqa: SLF001
 
     def teardown_method(self):
         """Reset global config after each test."""
-        import simplenote_mcp.server.config
-
-        simplenote_mcp.server.config._config = None  # noqa: SLF001
+        sys.modules["simplenote_mcp.server.config"]._config = None  # noqa: SLF001
 
     def test_get_config_singleton(self):
         """Test that get_config returns the same instance."""

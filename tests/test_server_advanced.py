@@ -6,13 +6,13 @@ and advanced error handling to increase server.py coverage.
 
 import asyncio
 import json
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import AsyncMock, Mock, patch
 
 import mcp.types as types
 import pytest
 
-import simplenote_mcp.server.server as server_module
 from simplenote_mcp.server.errors import ValidationError
 from simplenote_mcp.server.server import (
     cleanup_pid_file,
@@ -26,6 +26,9 @@ from simplenote_mcp.server.server import (
     setup_signal_handlers,
     write_pid_file,
 )
+
+# Module reference for patching module-level attributes (avoids mixed import styles)
+server_module = sys.modules["simplenote_mcp.server.server"]
 
 
 class TestMCPProtocolHandlers:
