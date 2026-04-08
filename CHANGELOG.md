@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-04-08
+
+### Fixed
+- Replace deprecated `asyncio.get_event_loop()` with `asyncio.get_running_loop()` across
+  `cache.py`, `security.py`, `middleware.py`, `memory_monitor.py`, `log_monitor.py`, and
+  `server.py` — eliminates `DeprecationWarning` on Python 3.10+
+- Fix memory leak in `SecurityValidator`: `failed_validation_attempts` buckets now capped
+  at 500 entries per event type, preventing unbounded growth in long-running servers
+- Fix order-dependent test flake in `test_log_monitoring.py` via `reset_log_monitor()`
+  singleton reset in `setup_method`
+- Fix 4 vacuous `assert True` assertions in `test_phase2_integration.py` with real checks
+- Fix isolated test state for all `TestAuthorizationBoundaries` classes — global
+  `note_cache` and `simplenote_client` singletons now reset before each test
+- Fix `TestConfigSingleton` isolation: add `setup_method` to reset `_config` before tests
+- Fix mixed import style in `test_server_advanced.py` (code scanning alert)
+
+### Security
+- Memory leak in `SecurityValidator.failed_validation_attempts` patched — unbounded
+  accumulation could be exploited to exhaust server memory under sustained load
+
+### Dependencies
+- `mcp`: 1.26.0 → 1.27.0
+- `aiohttp`: 3.13.4 → 3.13.5
+- `requests`: 2.33.0 → 2.33.1
+- `uvicorn`: 0.42.0 → 0.43.0
+- `pydantic-core`: 2.44.0 → 2.45.0
+- `more-itertools`: 10.8.0 → 11.0.1
+- `marshmallow`: 4.2.3 → 4.3.0
+- `mypy`: 1.19.1 → 1.20.0 (dev)
+- `ruff`: 0.15.8 → 0.15.9 (dev)
+- `pip-audit`: 2.9.0 → 2.10.0 (dev)
+- `click`, `regex`, `charset-normalizer`, `pymdown-extensions`, `pydantic-core` updated
+
+### Internal
+- Add `pytest-randomly` to test dependencies; CI uses `--randomly-seed=$GITHUB_RUN_ID`
+  for reproducible randomised test ordering
+- Harden coverage threshold to 75% hard-fail (was 65% warn-only)
+- Add `tests/test_server_handlers.py`: 26 focused tests covering `get_simplenote_client`,
+  PID file management, signal handlers, `handle_list_tools` exception fallback,
+  `handle_call_tool` unknown-tool and `ServerError` paths, `handle_list_prompts`,
+  `handle_get_prompt` (all 3 branches), and `handle_read_resource` invalid-URI /
+  cache-miss / not-found paths
+
 ## [1.11.0] - 2026-02-25
 
 ### 🚀 Minor Release: New Tools, Dependency Refresh, and CI/CD Improvements
@@ -370,7 +413,9 @@ This release marks a significant milestone with **98% startup performance improv
 - **1.1.0** - Note creation
 - **1.0.0** - Initial release
 
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.12.1...HEAD
+[1.12.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.12.0...v1.12.1
+[1.12.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.1...v1.11.0
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
