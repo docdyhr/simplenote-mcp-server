@@ -35,7 +35,10 @@ mypy simplenote_mcp --config-file=mypy.ini --show-error-codes
 
 echo ""
 echo "🧪 Step 7: Running tests..."
-python -m pytest tests/test_main_module.py -v --tb=short
+# Use --no-cov to skip coverage collection: the global addopts enforce 75% fail-under,
+# but this script runs only test_main_module.py (~3 tests, 14% coverage).
+# Full coverage is enforced in the dedicated CI 'test' job which runs the entire suite.
+python -m pytest tests/test_main_module.py -v --tb=short --no-cov
 
 echo ""
 echo "📦 Step 8: Building package..."
