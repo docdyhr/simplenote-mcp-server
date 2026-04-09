@@ -104,7 +104,7 @@ jobs:
           SIMPLENOTE_EMAIL: test@example.com
           SIMPLENOTE_PASSWORD: test-password
         run: |
-          pytest tests/ -m "not integration" --randomly-seed=${{ github.run_id }} --cov=simplenote_mcp --cov-report=xml --cov-report=json --cov-report=term
+          pytest tests/ --randomly-seed=${{ github.run_id }} --cov=simplenote_mcp --cov-report=xml --cov-report=json --cov-report=term
 
       - name: Check coverage threshold
         run: |
