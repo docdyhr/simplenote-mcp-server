@@ -103,13 +103,27 @@ jobs:
           echo "SIMPLENOTE_OFFLINE_MODE=true" >> $GITHUB_ENV
           echo "SIMPLENOTE_EMAIL=test@example.com" >> $GITHUB_ENV
           echo "SIMPLENOTE_PASSWORD=test_password" >> $GITHUB_ENV
-          
+
           # Create test data directory
           mkdir -p test-data/
           echo '{"test": "data"}' > test-data/sample.json
 
+      - name: Check API key availability
+        id: check-api-key
+        run: |
+          if [[ -n "${{ secrets.ANTHROPIC_API_KEY }}" ]]; then
+            echo "has-api-key=true" >> $GITHUB_OUTPUT
+            echo "✅ Anthropic API key is available"
+          else
+            echo "has-api-key=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Anthropic API key not available (Dependabot/fork PR) — skipping LLM evaluations"
+            # Write a placeholder result so downstream steps don't fail
+            echo "Evaluations skipped: API key not available" > evaluation-output.txt
+          fi
+
       - name: Run MCP evaluations
         id: run-evals
+        if: steps.check-api-key.outputs.has-api-key == 'true'
         timeout-minutes: ${{ fromJSON(steps.eval-suite.outputs.timeout) }}
         run: |
           echo "Running ${{ steps.eval-suite.outputs.description }}..."
