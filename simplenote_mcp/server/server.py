@@ -1004,6 +1004,28 @@ async def handle_list_tools() -> list[types.Tool]:
                     "required": ["note_id", "version"],
                 },
             ),
+            types.Tool(
+                name="rename_tag",
+                description="Rename a tag across all notes that use it. Supports dry_run to preview changes.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "old_tag": {
+                            "type": "string",
+                            "description": "The current tag name to rename",
+                        },
+                        "new_tag": {
+                            "type": "string",
+                            "description": "The new tag name",
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "If true, preview changes without writing (default: false)",
+                        },
+                    },
+                    "required": ["old_tag", "new_tag"],
+                },
+            ),
         ]
         logger.info(
             f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"

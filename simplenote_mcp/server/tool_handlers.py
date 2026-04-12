@@ -1571,6 +1571,100 @@ class RestoreVersionHandler(ToolHandlerBase):
             )
 
 
+class RenameTagHandler(ToolHandlerBase):
+    """Handler for rename_tag tool — atomically rename a tag across all notes."""
+
+    @validate_tool_security("rename_tag")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle rename_tag tool call."""
+        from .errors import ValidationError
+
+        old_tag = arguments.get("old_tag", "")
+        new_tag = arguments.get("new_tag", "")
+        dry_run = bool(arguments.get("dry_run", False))
+
+        if not old_tag:
+            raise ValidationError("old_tag is required")
+        if not new_tag:
+            raise ValidationError("new_tag is required")
+
+        # Sanitize: spaces to hyphens
+        new_tag = new_tag.strip().replace(" ", "-")
+        old_tag = old_tag.strip()
+
+        try:
+            # Find notes that have the old tag
+            note_ids: set[str] = set()
+            if self.note_cache is not None and self.note_cache.is_initialized:
+                note_ids = self.note_cache._tag_index.get(old_tag, set())
+
+            if not note_ids:
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "updated_count": 0,
+                                "note_ids": [],
+                                "dry_run": dry_run,
+                                "message": f"Tag '{old_tag}' not found on any notes",
+                            }
+                        ),
+                    )
+                ]
+
+            updated_ids = []
+            errors = []
+
+            for note_id in note_ids:
+                note = None
+                if self.note_cache is not None and self.note_cache.is_initialized:
+                    note = self.note_cache._notes.get(note_id)
+                if note is None:
+                    note_data, status = self.sn.get_note(note_id)
+                    if status != 0 or not isinstance(note_data, dict):
+                        errors.append(note_id)
+                        continue
+                    note = note_data
+
+                current_tags = list(note.get("tags", []))
+                if old_tag not in current_tags:
+                    continue
+
+                new_tags = [new_tag if t == old_tag else t for t in current_tags]
+
+                if not dry_run:
+                    note_copy = dict(note)
+                    note_copy["tags"] = new_tags
+                    updated, ustatus = self.sn.update_note(note_copy)
+                    if ustatus == 0 and isinstance(updated, dict):
+                        self._update_cache_after_operation(updated, "update")
+                        updated_ids.append(note_id)
+                    else:
+                        errors.append(note_id)
+                else:
+                    updated_ids.append(note_id)
+
+            response: dict[str, Any] = {
+                "success": True,
+                "updated_count": len(updated_ids),
+                "note_ids": sorted(updated_ids),
+                "dry_run": dry_run,
+                "old_tag": old_tag,
+                "new_tag": new_tag,
+            }
+            if errors:
+                response["failed_ids"] = errors
+
+            return [types.TextContent(type="text", text=json.dumps(response))]
+
+        except Exception as e:
+            return self._format_error_response(
+                e, f"renaming tag '{old_tag}' to '{new_tag}'"
+            )
+
+
 class ListTagsHandler(ToolHandlerBase):
     """Handler for list_tags tool — list all tags with note counts."""
 
@@ -1635,6 +1729,7 @@ class ToolHandlerRegistry:
             "list_tags": ListTagsHandler,
             "get_note_versions": GetNoteVersionsHandler,
             "restore_version": RestoreVersionHandler,
+            "rename_tag": RenameTagHandler,
         }
 
     def get_handler(

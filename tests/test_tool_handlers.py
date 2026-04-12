@@ -56,6 +56,7 @@ class TestToolHandlerRegistry:
             "list_tags",
             "get_note_versions",
             "restore_version",
+            "rename_tag",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -1240,3 +1241,110 @@ class TestRestoreVersionHandler:
         result = await handler.handle({"note_id": "note1", "version": 99})
         data = json.loads(result[0].text)
         assert data["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 7: rename_tag tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestRenameTagHandler:
+    """Test the rename_tag handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        client.update_note.return_value = (
+            {"key": "note1", "content": "content", "tags": ["new-tag"]},
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache._tag_index = {
+            "old-tag": {"note1", "note2", "note3"},
+        }
+        cache._notes = {
+            "note1": {"key": "note1", "content": "c1", "tags": ["old-tag", "other"]},
+            "note2": {"key": "note2", "content": "c2", "tags": ["old-tag"]},
+            "note3": {"key": "note3", "content": "c3", "tags": ["old-tag", "extra"]},
+        }
+        cache.update_cache_after_update = MagicMock()
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import RenameTagHandler
+
+        return RenameTagHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_renames_tag_across_all_notes(self, handler, mock_client, mock_cache):
+        """3 notes with old_tag, all get new_tag after rename."""
+        result = await handler.handle({"old_tag": "old-tag", "new_tag": "new-tag"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["updated_count"] == 3
+        assert mock_client.update_note.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_dry_run_returns_preview_without_writing(
+        self, handler, mock_client, mock_cache
+    ):
+        """dry_run=True, update_note never called."""
+        result = await handler.handle(
+            {"old_tag": "old-tag", "new_tag": "new-tag", "dry_run": True}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        mock_client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_returns_updated_count_and_note_ids(
+        self, handler, mock_client, mock_cache
+    ):
+        """Response includes updated_count and note_ids."""
+        result = await handler.handle({"old_tag": "old-tag", "new_tag": "new-tag"})
+        data = json.loads(result[0].text)
+        assert "updated_count" in data
+        assert "note_ids" in data
+        assert len(data["note_ids"]) == 3
+
+    @pytest.mark.asyncio
+    async def test_old_tag_not_found_returns_zero_count(self, handler, mock_cache):
+        """No error, just {updated_count: 0} when old_tag doesn't exist."""
+        mock_cache._tag_index = {}
+        result = await handler.handle(
+            {"old_tag": "nonexistent-tag", "new_tag": "new-tag"}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["updated_count"] == 0
+
+    @pytest.mark.asyncio
+    async def test_invalid_new_tag_raises_validation_error(self, handler):
+        """Empty string for new_tag raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle({"old_tag": "old-tag", "new_tag": ""})
+
+    @pytest.mark.asyncio
+    async def test_missing_old_tag_raises_error(self, handler):
+        """Missing old_tag raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle({"new_tag": "new-tag"})
+
+    @pytest.mark.asyncio
+    async def test_missing_new_tag_raises_error(self, handler):
+        """Missing new_tag raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle({"old_tag": "old-tag"})
