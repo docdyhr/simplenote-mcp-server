@@ -150,9 +150,26 @@ class ToolHandlerBase(ABC):
             if status != 0 or not isinstance(note, dict):
                 error_msg = FAILED_GET_NOTE.format(note_id=note_id)
                 logger.error(error_msg)
-                raise ResourceNotFoundError(error_msg)
+                raise ResourceNotFoundError(error_msg, resource_id=note_id)
 
         return note
+
+    def _parse_tags(self, tags_input: Any) -> list[str]:
+        """Parse tags from various input formats.
+
+        Tags are expected to be comma-separated when provided as a string.
+        Spaces within individual tags are converted to hyphens.
+        """
+        if isinstance(tags_input, list):
+            return [tag.strip().replace(" ", "-") for tag in tags_input]
+        elif isinstance(tags_input, str):
+            return (
+                [tag.strip().replace(" ", "-") for tag in safe_split(tags_input, ",")]
+                if tags_input
+                else []
+            )
+        else:
+            return []
 
     def _update_cache_after_operation(
         self, note: dict[str, Any], operation: str
@@ -188,16 +205,8 @@ class CreateNoteHandler(ToolHandlerBase):
         tags_input = arguments.get("tags", "")
 
         # Handle tags which can be either a string or a list (comma-separated)
-        if isinstance(tags_input, list):
-            tags = [str(tag).strip() for tag in tags_input]
-        elif isinstance(tags_input, str):
-            tags = (
-                [tag.strip() for tag in safe_split(tags_input, ",")]
-                if tags_input
-                else []
-            )
-        else:
-            tags = []
+        # Spaces in tags are converted to hyphens via _parse_tags
+        tags = self._parse_tags(tags_input) if tags_input else []
 
         try:
             note = {"content": content}
@@ -760,21 +769,7 @@ class SearchNotesHandler(ToolHandlerBase):
 class TagOperationHandler(ToolHandlerBase):
     """Base handler for tag operations (add, remove, replace)."""
 
-    def _parse_tags(self, tags_input: Any) -> list[str]:
-        """Parse tags from various input formats.
-
-        Tags are expected to be comma-separated when provided as a string.
-        """
-        if isinstance(tags_input, list):
-            return [tag.strip() for tag in tags_input]
-        elif isinstance(tags_input, str):
-            return (
-                [tag.strip() for tag in safe_split(tags_input, ",")]
-                if tags_input
-                else []
-            )
-        else:
-            return []
+    # _parse_tags is inherited from ToolHandlerBase
 
 
 class AddTagsHandler(TagOperationHandler):
@@ -833,6 +828,7 @@ class AddTagsHandler(TagOperationHandler):
 
                     self._update_cache_after_operation(updated_note, "update")
 
+                    final_tags = updated_note.get("tags", [])
                     return [
                         types.TextContent(
                             type="text",
@@ -841,7 +837,9 @@ class AddTagsHandler(TagOperationHandler):
                                     "success": True,
                                     "message": f"Added tags: {', '.join(added_tags)}",
                                     "note_id": updated_note.get("key"),
-                                    "tags": updated_note.get("tags", []),
+                                    "tags_added": added_tags,
+                                    "tags_now": final_tags,
+                                    "tags": final_tags,
                                 }
                             ),
                         )
@@ -859,6 +857,8 @@ class AddTagsHandler(TagOperationHandler):
                                 "success": True,
                                 "message": "No new tags to add (all tags already present)",
                                 "note_id": note_id,
+                                "tags_added": [],
+                                "tags_now": current_tags,
                                 "tags": current_tags,
                             }
                         ),
@@ -912,6 +912,8 @@ class RemoveTagsHandler(TagOperationHandler):
                                 "success": True,
                                 "message": "Note had no tags to remove",
                                 "note_id": note_id,
+                                "tags_removed": [],
+                                "tags_now": [],
                                 "tags": [],
                             }
                         ),
@@ -945,6 +947,7 @@ class RemoveTagsHandler(TagOperationHandler):
 
                     self._update_cache_after_operation(updated_note, "update")
 
+                    final_tags = updated_note.get("tags", [])
                     return [
                         types.TextContent(
                             type="text",
@@ -953,7 +956,9 @@ class RemoveTagsHandler(TagOperationHandler):
                                     "success": True,
                                     "message": f"Removed tags: {', '.join(removed_tags)}",
                                     "note_id": updated_note.get("key"),
-                                    "tags": updated_note.get("tags", []),
+                                    "tags_removed": removed_tags,
+                                    "tags_now": final_tags,
+                                    "tags": final_tags,
                                 }
                             ),
                         )
@@ -971,6 +976,8 @@ class RemoveTagsHandler(TagOperationHandler):
                                 "success": True,
                                 "message": "No tags were removed (specified tags not present on note)",
                                 "note_id": note_id,
+                                "tags_removed": [],
+                                "tags_now": current_tags,
                                 "tags": current_tags,
                             }
                         ),
@@ -999,12 +1006,8 @@ class ReplaceTagsHandler(TagOperationHandler):
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
 
-            # Parse the new tags (comma-separated)
+            # Parse the new tags (comma-separated), spaces → hyphens
             new_tags = self._parse_tags(tags_input)
-            if tags_input and isinstance(tags_input, str):
-                new_tags = [
-                    tag.strip() for tag in safe_split(tags_input, ",") if tag.strip()
-                ]
 
             # Get current tags
             current_tags = safe_get(existing_note, "tags", [])
@@ -1033,6 +1036,7 @@ class ReplaceTagsHandler(TagOperationHandler):
                 else:
                     message = f"Replaced tags: {', '.join(current_tags)} → {', '.join(new_tags)}"
 
+                final_tags = updated_note.get("tags", [])
                 return [
                     types.TextContent(
                         type="text",
@@ -1041,7 +1045,8 @@ class ReplaceTagsHandler(TagOperationHandler):
                                 "success": True,
                                 "message": message,
                                 "note_id": updated_note.get("key"),
-                                "tags": updated_note.get("tags", []),
+                                "tags_now": final_tags,
+                                "tags": final_tags,
                             }
                         ),
                     )

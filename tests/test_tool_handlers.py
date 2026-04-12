@@ -8,7 +8,12 @@ import pytest
 
 from simplenote_mcp.server.errors import ValidationError
 from simplenote_mcp.server.tool_handlers import (
+    AddTagsHandler,
     CreateNoteHandler,
+    DeleteNoteHandler,
+    GetNoteHandler,
+    RemoveTagsHandler,
+    ReplaceTagsHandler,
     SearchNotesHandler,
     ToolHandlerRegistry,
     UpdateNoteHandler,
@@ -520,3 +525,247 @@ class TestUpdateNoteHandlerApiFallbackPaths:
         # Should still report success using the known note_id as fallback
         assert data["success"] is True
         assert data["note_id"] == "note-1"
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 Bug Fix Tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestTagSanitization:
+    """Test tag sanitization — spaces converted to hyphens in _parse_tags."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        client.add_note.return_value = (
+            {"key": "note1", "content": "test", "tags": ["my-tag"]},
+            0,
+        )
+        client.get_note.return_value = (
+            {"key": "note1", "content": "old", "tags": []},
+            0,
+        )
+        client.update_note.return_value = (
+            {"key": "note1", "content": "old", "tags": ["my-tag"]},
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.get_note.return_value = {"key": "note1", "content": "old", "tags": []}
+        cache.update_cache_after_create = MagicMock()
+        cache.update_cache_after_update = MagicMock()
+        return cache
+
+    def test_parse_tags_converts_spaces_to_hyphens(self, mock_client, mock_cache):
+        """_parse_tags must replace spaces in tags with hyphens."""
+        handler = AddTagsHandler(mock_client, mock_cache)
+        result = handler._parse_tags(["my tag"])
+        assert result == ["my-tag"]
+
+    def test_parse_tags_handles_multiple_spaces(self, mock_client, mock_cache):
+        """Multiple spaces in a tag should all become hyphens."""
+        handler = AddTagsHandler(mock_client, mock_cache)
+        result = handler._parse_tags(["hello world foo"])
+        assert result == ["hello-world-foo"]
+
+    def test_parse_tags_handles_mixed_valid_and_space_tags(
+        self, mock_client, mock_cache
+    ):
+        """Mix of normal tags and space-containing tags."""
+        handler = AddTagsHandler(mock_client, mock_cache)
+
+        result = handler._parse_tags(["work", "my project", "urgent"])
+        assert result == ["work", "my-project", "urgent"]
+
+    @pytest.mark.asyncio
+    async def test_create_note_sanitizes_tags_with_spaces(
+        self, mock_client, mock_cache
+    ):
+        """CreateNoteHandler must sanitize tags with spaces to hyphens."""
+        handler = CreateNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"content": "test", "tags": ["my tag"]})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        # The note passed to add_note must have sanitized tags
+        call_args = mock_client.add_note.call_args[0][0]
+        assert call_args["tags"] == ["my-tag"]
+
+    @pytest.mark.asyncio
+    async def test_tags_always_list_in_create_note_response(
+        self, mock_client, mock_cache
+    ):
+        """create_note response tags field must be a list."""
+        handler = CreateNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"content": "test", "tags": ["work"]})
+        data = json.loads(result[0].text)
+        assert isinstance(data["tags"], list)
+
+    @pytest.mark.asyncio
+    async def test_tags_always_list_in_update_note_response(
+        self, mock_client, mock_cache
+    ):
+        """update_note response tags field must be a list."""
+        handler = UpdateNoteHandler(mock_client, mock_cache)
+        result = await handler.handle(
+            {"note_id": "note1", "content": "new", "tags": ["work"]}
+        )
+        data = json.loads(result[0].text)
+        assert isinstance(data["tags"], list)
+
+    @pytest.mark.asyncio
+    async def test_tags_always_list_in_get_note_response(self, mock_client, mock_cache):
+        """get_note response tags field must be a list."""
+        handler = GetNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+        assert isinstance(data["tags"], list)
+
+    @pytest.mark.asyncio
+    async def test_add_tags_response_has_tags_added_and_tags_now(
+        self, mock_client, mock_cache
+    ):
+        """add_tags response must contain tags_added and tags_now fields."""
+        mock_cache.get_note.return_value = {
+            "key": "note1",
+            "content": "old",
+            "tags": ["existing"],
+        }
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "old", "tags": ["existing", "new"]},
+            0,
+        )
+        handler = AddTagsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1", "tags": ["new"]})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert "tags_added" in data
+        assert "tags_now" in data
+        assert isinstance(data["tags_now"], list)
+
+    @pytest.mark.asyncio
+    async def test_remove_tags_response_has_tags_removed_and_tags_now(
+        self, mock_client, mock_cache
+    ):
+        """remove_tags response must contain tags_removed and tags_now fields."""
+        mock_cache.get_note.return_value = {
+            "key": "note1",
+            "content": "old",
+            "tags": ["work", "personal"],
+        }
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "old", "tags": ["personal"]},
+            0,
+        )
+        handler = RemoveTagsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1", "tags": ["work"]})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert "tags_removed" in data
+        assert "tags_now" in data
+        assert isinstance(data["tags_now"], list)
+
+    @pytest.mark.asyncio
+    async def test_replace_tags_response_has_tags_now(self, mock_client, mock_cache):
+        """replace_tags response must contain tags_now field."""
+        mock_cache.get_note.return_value = {
+            "key": "note1",
+            "content": "old",
+            "tags": ["old-tag"],
+        }
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "old", "tags": ["new-tag"]},
+            0,
+        )
+        handler = ReplaceTagsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1", "tags": ["new-tag"]})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert "tags_now" in data
+        assert isinstance(data["tags_now"], list)
+
+    @pytest.mark.asyncio
+    async def test_add_tags_adding_existing_tag_no_update(
+        self, mock_client, mock_cache
+    ):
+        """Adding a tag already present should not call update_note but return tags_now."""
+        mock_cache.get_note.return_value = {
+            "key": "note1",
+            "content": "old",
+            "tags": ["work"],
+        }
+        handler = AddTagsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1", "tags": ["work"]})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert "tags_now" in data
+        mock_client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_remove_tags_removing_absent_tag_no_update(
+        self, mock_client, mock_cache
+    ):
+        """Removing a tag not present should not call update_note but return tags_now."""
+        mock_cache.get_note.return_value = {
+            "key": "note1",
+            "content": "old",
+            "tags": ["work"],
+        }
+        handler = RemoveTagsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1", "tags": ["nonexistent"]})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert "tags_now" in data
+        mock_client.update_note.assert_not_called()
+
+
+@pytest.mark.unit
+class TestResourceNotFoundErrors:
+    """Test that ResourceNotFoundError carries resource_id."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        # Simulate not-found by returning status -1
+        client.get_note.return_value = ({}, -1)
+        client.trash_note.return_value = (None, -1)
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = False  # Force API path
+        return cache
+
+    @pytest.mark.asyncio
+    async def test_get_note_not_found_includes_note_id_in_error(
+        self, mock_client, mock_cache
+    ):
+        """GetNoteHandler error response must include the note_id."""
+        handler = GetNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "missing-note"})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+        # resource_id should appear in error dict
+        error = data["error"]
+        assert error.get("resource_id") == "missing-note"
+
+    @pytest.mark.asyncio
+    async def test_delete_note_not_found_includes_note_id_in_error(
+        self, mock_client, mock_cache
+    ):
+        """DeleteNoteHandler error response must include the note_id."""
+        handler = DeleteNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "missing-note"})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+        error = data["error"]
+        # note_id should appear in context or resource_id
+        assert error.get("resource_id") == "missing-note" or (
+            error.get("context", {}).get("note_id") == "missing-note"
+        )
