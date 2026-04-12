@@ -110,7 +110,7 @@ jobs:
 
       - name: Run MCP evaluations
         id: run-evals
-        timeout-minutes: ${{ steps.eval-suite.outputs.timeout }}
+        timeout-minutes: ${{ fromJSON(steps.eval-suite.outputs.timeout) }}
         run: |
           echo "Running ${{ steps.eval-suite.outputs.description }}..."
           
