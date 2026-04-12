@@ -1437,6 +1437,71 @@ class AddTextHandler(ToolHandlerBase):
             )
 
 
+class GetNoteVersionsHandler(ToolHandlerBase):
+    """Handler for get_note_versions tool — retrieve version history of a note."""
+
+    MAX_VERSIONS = 10
+    PREVIEW_MAX_LENGTH = 200
+
+    @validate_tool_security("get_note_versions")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle get_note_versions tool call."""
+        from .errors import ValidationError
+
+        note_id = arguments.get("note_id", "")
+        if not note_id:
+            raise ValidationError("note_id is required")
+
+        try:
+            # Get the current note to find its version number
+            current_note, status = self.sn.get_note(note_id)
+            if status != 0 or not isinstance(current_note, dict):
+                raise ResourceNotFoundError(
+                    FAILED_GET_NOTE.format(note_id=note_id), resource_id=note_id
+                )
+
+            current_version = current_note.get("version", 1)
+            versions = []
+
+            for v in range(current_version, 0, -1):
+                if len(versions) >= self.MAX_VERSIONS:
+                    break
+                versioned_note, vstatus = self.sn.get_note(note_id, v)
+                if vstatus != 0 or not isinstance(versioned_note, dict):
+                    break
+                content = versioned_note.get("content", "")
+                if len(content) > self.PREVIEW_MAX_LENGTH:
+                    preview = content[: self.PREVIEW_MAX_LENGTH] + "..."
+                else:
+                    preview = content
+                versions.append(
+                    {
+                        "version": v,
+                        "preview": preview,
+                        "modifydate": versioned_note.get("modifydate", ""),
+                    }
+                )
+
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "note_id": note_id,
+                            "total_versions": len(versions),
+                            "versions": versions,
+                        }
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(
+                e, f"getting versions for note {note_id}", {"note_id": note_id}
+            )
+
+
 class ListTagsHandler(ToolHandlerBase):
     """Handler for list_tags tool — list all tags with note counts."""
 
@@ -1499,6 +1564,7 @@ class ToolHandlerRegistry:
             "find_and_merge_duplicates": FindAndMergeDuplicatesHandler,
             "add_text": AddTextHandler,
             "list_tags": ListTagsHandler,
+            "get_note_versions": GetNoteVersionsHandler,
         }
 
     def get_handler(

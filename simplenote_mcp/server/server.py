@@ -972,6 +972,20 @@ async def handle_list_tools() -> list[types.Tool]:
                     "required": [],
                 },
             ),
+            types.Tool(
+                name="get_note_versions",
+                description="Retrieve the version history of a note (up to 10 most recent versions).",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note",
+                        },
+                    },
+                    "required": ["note_id"],
+                },
+            ),
         ]
         logger.info(
             f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"

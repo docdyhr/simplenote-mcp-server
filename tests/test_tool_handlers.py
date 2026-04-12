@@ -54,6 +54,7 @@ class TestToolHandlerRegistry:
             "find_and_merge_duplicates",
             "add_text",
             "list_tags",
+            "get_note_versions",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -1022,3 +1023,133 @@ class TestListTagsHandler:
         result = await handler.handle({})
         data = json.loads(result[0].text)
         assert data["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 5: get_note_versions tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestGetNoteVersionsHandler:
+    """Test the get_note_versions handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        note_v3 = {"key": "note1", "content": "Version 3 content", "version": 3}
+        note_v2 = {"key": "note1", "content": "Version 2 content", "version": 2}
+        note_v1 = {"key": "note1", "content": "Version 1 content", "version": 1}
+        # get_note(id) returns current note, get_note(id, version) returns versioned note
+        client.get_note.side_effect = [
+            (note_v3, 0),
+            (note_v3, 0),
+            (note_v2, 0),
+            (note_v1, 0),
+            ({}, -1),
+        ]
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = False  # Force API path
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import GetNoteVersionsHandler
+
+        return GetNoteVersionsHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_returns_version_list_newest_first(self, handler, mock_client):
+        """Note at version 3 returns versions [3, 2, 1] in that order."""
+        result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        versions = data["versions"]
+        version_nums = [v["version"] for v in versions]
+        assert version_nums == sorted(version_nums, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_preview_is_first_200_chars(self, mock_client, mock_cache):
+        """Content > 200 chars is truncated to 200 chars with '...'"""
+        from simplenote_mcp.server.tool_handlers import GetNoteVersionsHandler
+
+        long_content = "A" * 300
+        note_v2 = {"key": "note1", "content": long_content, "version": 2}
+        note_v1 = {"key": "note1", "content": "short", "version": 1}
+        mock_client.get_note.side_effect = [
+            (note_v2, 0),
+            (note_v2, 0),
+            (note_v1, 0),
+            ({}, -1),
+        ]
+        handler = GetNoteVersionsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        preview = data["versions"][0]["preview"]
+        assert preview.endswith("...")
+        # preview should be 200 + "..." = 203 chars
+        assert len(preview) == 203
+
+    @pytest.mark.asyncio
+    async def test_caps_at_10_versions(self, mock_client, mock_cache):
+        """Stops at 10 versions even if note has more."""
+        from simplenote_mcp.server.tool_handlers import GetNoteVersionsHandler
+
+        note_v12 = {"key": "note1", "content": "content", "version": 12}
+        side_effects = [(note_v12, 0)]  # first call gets current
+        for v in range(12, 2, -1):
+            side_effects.append(({"key": "note1", "content": f"v{v}", "version": v}, 0))
+        mock_client.get_note.side_effect = side_effects
+        handler = GetNoteVersionsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+        assert len(data["versions"]) <= 10
+
+    @pytest.mark.asyncio
+    async def test_stops_when_version_fetch_fails(self, mock_client, mock_cache):
+        """Stops collecting versions when API returns status != 0."""
+        from simplenote_mcp.server.tool_handlers import GetNoteVersionsHandler
+
+        note_v3 = {"key": "note1", "content": "v3", "version": 3}
+        note_v2 = {"key": "note1", "content": "v2", "version": 2}
+        mock_client.get_note.side_effect = [
+            (note_v3, 0),  # get current
+            (note_v3, 0),  # v3
+            (note_v2, 0),  # v2
+            ({}, -1),  # v1 fails
+        ]
+        handler = GetNoteVersionsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert len(data["versions"]) == 2
+
+    @pytest.mark.asyncio
+    async def test_note_with_single_version(self, mock_client, mock_cache):
+        """Note with version=1 returns exactly 1 version."""
+        from simplenote_mcp.server.tool_handlers import GetNoteVersionsHandler
+
+        note_v1 = {"key": "note1", "content": "only version", "version": 1}
+        mock_client.get_note.side_effect = [
+            (note_v1, 0),  # get current
+            (note_v1, 0),  # v1
+            ({}, -1),  # stop
+        ]
+        handler = GetNoteVersionsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert len(data["versions"]) == 1
+
+    @pytest.mark.asyncio
+    async def test_missing_note_id_raises_error(self, handler):
+        """Missing note_id raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle({})
