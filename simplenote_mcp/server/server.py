@@ -986,6 +986,24 @@ async def handle_list_tools() -> list[types.Tool]:
                     "required": ["note_id"],
                 },
             ),
+            types.Tool(
+                name="restore_version",
+                description="Restore a note to a specific earlier version. Use get_note_versions first to see available versions.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to restore",
+                        },
+                        "version": {
+                            "type": "integer",
+                            "description": "The version number to restore to",
+                        },
+                    },
+                    "required": ["note_id", "version"],
+                },
+            ),
         ]
         logger.info(
             f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"

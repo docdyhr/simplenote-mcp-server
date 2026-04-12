@@ -55,6 +55,7 @@ class TestToolHandlerRegistry:
             "add_text",
             "list_tags",
             "get_note_versions",
+            "restore_version",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -1153,3 +1154,89 @@ class TestGetNoteVersionsHandler:
 
         with pytest.raises(ValidationError):
             await handler.handle({})
+
+
+# ---------------------------------------------------------------------------
+# Phase 6: restore_version tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestRestoreVersionHandler:
+    """Test the restore_version handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        note_v2 = {
+            "key": "note1",
+            "content": "Version 2 content",
+            "tags": ["work"],
+            "version": 2,
+        }
+        client.get_note.return_value = (note_v2, 0)
+        client.update_note.return_value = (
+            {"key": "note1", "content": "Version 2 content", "tags": ["work"]},
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = False
+        cache.update_cache_after_update = MagicMock()
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import RestoreVersionHandler
+
+        return RestoreVersionHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_restores_note_to_specified_version(self, handler, mock_client):
+        """Fetches v2, strips version field, calls update_note."""
+        result = await handler.handle({"note_id": "note1", "version": 2})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        # get_note should have been called with version=2
+        mock_client.get_note.assert_called_once_with("note1", 2)
+        # update_note should have been called
+        mock_client.update_note.assert_called_once()
+        # The note passed to update_note should not have version key
+        updated_note_arg = mock_client.update_note.call_args[0][0]
+        assert "version" not in updated_note_arg
+
+    @pytest.mark.asyncio
+    async def test_returns_updated_note(self, handler, mock_client):
+        """Response contains restored content."""
+        result = await handler.handle({"note_id": "note1", "version": 2})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert "note_id" in data
+        assert "content" in data or "restored_version" in data
+
+    @pytest.mark.asyncio
+    async def test_missing_note_id_raises_error(self, handler):
+        """Missing note_id raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle({"version": 2})
+
+    @pytest.mark.asyncio
+    async def test_missing_version_number_raises_error(self, handler):
+        """Missing version raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle({"note_id": "note1"})
+
+    @pytest.mark.asyncio
+    async def test_invalid_version_returns_error(self, handler, mock_client):
+        """If get_note(id, N) fails, return error response."""
+        mock_client.get_note.return_value = ({}, -1)
+        result = await handler.handle({"note_id": "note1", "version": 99})
+        data = json.loads(result[0].text)
+        assert data["success"] is False

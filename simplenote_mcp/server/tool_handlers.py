@@ -1502,6 +1502,75 @@ class GetNoteVersionsHandler(ToolHandlerBase):
             )
 
 
+class RestoreVersionHandler(ToolHandlerBase):
+    """Handler for restore_version tool — roll back a note to an earlier version."""
+
+    @validate_tool_security("restore_version")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle restore_version tool call."""
+        from .errors import ValidationError
+
+        note_id = arguments.get("note_id", "")
+        version = arguments.get("version")
+
+        if not note_id:
+            raise ValidationError("note_id is required")
+        if version is None:
+            raise ValidationError("version is required")
+
+        try:
+            version = int(version)
+        except (TypeError, ValueError) as exc:
+            from .errors import ValidationError as VE
+
+            raise VE(f"version must be an integer, got: {version}") from exc
+
+        try:
+            versioned_note, status = self.sn.get_note(note_id, version)
+            if status != 0 or not isinstance(versioned_note, dict):
+                raise ResourceNotFoundError(
+                    f"Could not fetch version {version} of note {note_id}",
+                    resource_id=note_id,
+                )
+
+            # Strip the version field so the API treats this as a new update
+            restore_note = {k: v for k, v in versioned_note.items() if k != "version"}
+
+            updated_note, ustatus = self.sn.update_note(restore_note)
+            if ustatus != 0:
+                raise NetworkError(
+                    f"Failed to restore note {note_id} to version {version}"
+                )
+
+            if isinstance(updated_note, dict):
+                self._update_cache_after_operation(updated_note, "update")
+
+            result_note = (
+                updated_note if isinstance(updated_note, dict) else restore_note
+            )
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "note_id": result_note.get("key", note_id),
+                            "restored_version": version,
+                            "content": result_note.get("content", ""),
+                            "tags": result_note.get("tags", []),
+                        }
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(
+                e,
+                f"restoring note {note_id} to version {version}",
+                {"note_id": note_id},
+            )
+
+
 class ListTagsHandler(ToolHandlerBase):
     """Handler for list_tags tool — list all tags with note counts."""
 
@@ -1565,6 +1634,7 @@ class ToolHandlerRegistry:
             "add_text": AddTextHandler,
             "list_tags": ListTagsHandler,
             "get_note_versions": GetNoteVersionsHandler,
+            "restore_version": RestoreVersionHandler,
         }
 
     def get_handler(
