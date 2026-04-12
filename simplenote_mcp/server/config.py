@@ -55,7 +55,7 @@ class Config:
 
         # Content display configuration
         self.title_max_length: int = int(os.environ.get("TITLE_MAX_LENGTH", "30"))
-        self.snippet_max_length: int = int(os.environ.get("SNIPPET_MAX_LENGTH", "100"))
+        self.snippet_max_length: int = int(os.environ.get("SNIPPET_MAX_LENGTH", "300"))
 
         # Cache configuration
         self.cache_max_size: int = int(os.environ.get("CACHE_MAX_SIZE", "1000"))
