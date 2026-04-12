@@ -930,6 +930,25 @@ async def handle_list_tools() -> list[types.Tool]:
                     "required": ["note_id", "text"],
                 },
             ),
+            types.Tool(
+                name="list_tags",
+                description=(
+                    "List all tags used across notes with note counts. "
+                    "Use this before creating or searching by tags to discover existing tags "
+                    "and avoid fragmentation."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "sort_by": {
+                            "type": "string",
+                            "enum": ["alpha", "count"],
+                            "description": "Sort order: 'alpha' (alphabetical, default) or 'count' (by note count descending)",
+                        },
+                    },
+                    "required": [],
+                },
+            ),
         ]
         logger.info(
             f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"

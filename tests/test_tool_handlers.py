@@ -53,6 +53,7 @@ class TestToolHandlerRegistry:
             "export_notes",
             "find_and_merge_duplicates",
             "add_text",
+            "list_tags",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -917,5 +918,107 @@ class TestAddTextHandler:
         """update_note returning (None, -1) yields error response."""
         mock_client.update_note.return_value = (None, -1)
         result = await handler.handle({"note_id": "note1", "text": "New text"})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: list_tags tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestListTagsHandler:
+    """Test the list_tags handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache._tag_index = {}
+        return cache
+
+    @pytest.fixture
+    def mock_cache_with_tags(self, mock_cache):
+        mock_cache._tag_index = {
+            "python": {"note1", "note2"},
+            "work": {"note1"},
+            "alpha": {"note3"},
+        }
+        return mock_cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import ListTagsHandler
+
+        return ListTagsHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_returns_tags_with_note_counts(
+        self, mock_client, mock_cache_with_tags
+    ):
+        """Returns list of {tag, note_count} dicts."""
+        from simplenote_mcp.server.tool_handlers import ListTagsHandler
+
+        handler = ListTagsHandler(mock_client, mock_cache_with_tags)
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        tags = data["tags"]
+        assert isinstance(tags, list)
+        # all 3 tags present
+        tag_names = {t["tag"] for t in tags}
+        assert "python" in tag_names
+        assert "work" in tag_names
+        assert "alpha" in tag_names
+        # counts
+        counts = {t["tag"]: t["note_count"] for t in tags}
+        assert counts["python"] == 2
+        assert counts["work"] == 1
+
+    @pytest.mark.asyncio
+    async def test_sort_by_alpha_default(self, mock_client, mock_cache_with_tags):
+        """Default sort is alphabetical."""
+        from simplenote_mcp.server.tool_handlers import ListTagsHandler
+
+        handler = ListTagsHandler(mock_client, mock_cache_with_tags)
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        tags = [t["tag"] for t in data["tags"]]
+        assert tags == sorted(tags)
+
+    @pytest.mark.asyncio
+    async def test_sort_by_count(self, mock_client, mock_cache_with_tags):
+        """sort_by='count' returns tags sorted descending by note_count."""
+        from simplenote_mcp.server.tool_handlers import ListTagsHandler
+
+        handler = ListTagsHandler(mock_client, mock_cache_with_tags)
+        result = await handler.handle({"sort_by": "count"})
+        data = json.loads(result[0].text)
+        counts = [t["note_count"] for t in data["tags"]]
+        assert counts == sorted(counts, reverse=True)
+
+    @pytest.mark.asyncio
+    async def test_empty_tags_returns_empty_list(self, handler, mock_cache):
+        """Empty _tag_index returns empty list."""
+        mock_cache._tag_index = {}
+        mock_cache.is_initialized = True
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["tags"] == []
+
+    @pytest.mark.asyncio
+    async def test_uninitialized_cache_returns_error(self, mock_client, mock_cache):
+        """Uninitialized cache returns error response."""
+        from simplenote_mcp.server.tool_handlers import ListTagsHandler
+
+        mock_cache.is_initialized = False
+        handler = ListTagsHandler(mock_client, mock_cache)
+        result = await handler.handle({})
         data = json.loads(result[0].text)
         assert data["success"] is False

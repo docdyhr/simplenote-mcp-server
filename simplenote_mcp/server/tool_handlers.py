@@ -1437,6 +1437,50 @@ class AddTextHandler(ToolHandlerBase):
             )
 
 
+class ListTagsHandler(ToolHandlerBase):
+    """Handler for list_tags tool — list all tags with note counts."""
+
+    @validate_tool_security("list_tags")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle list_tags tool call."""
+        sort_by = arguments.get("sort_by", "alpha")
+
+        if self.note_cache is None or not self.note_cache.is_initialized:
+            return self._format_error_response(
+                InternalError("Note cache is not initialized. Cannot list tags."),
+                "listing tags",
+            )
+
+        try:
+            tag_index = self.note_cache._tag_index
+            tags = [
+                {"tag": tag, "note_count": len(note_ids)}
+                for tag, note_ids in tag_index.items()
+            ]
+
+            if sort_by == "count":
+                tags.sort(key=lambda t: t["note_count"], reverse=True)
+            else:
+                tags.sort(key=lambda t: t["tag"])
+
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "tags": tags,
+                            "total_tags": len(tags),
+                            "sort_by": sort_by,
+                        }
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(e, "listing tags")
+
+
 class ToolHandlerRegistry:
     """Registry for tool handlers."""
 
@@ -1454,6 +1498,7 @@ class ToolHandlerRegistry:
             "export_notes": ExportNotesHandler,
             "find_and_merge_duplicates": FindAndMergeDuplicatesHandler,
             "add_text": AddTextHandler,
+            "list_tags": ListTagsHandler,
         }
 
     def get_handler(
