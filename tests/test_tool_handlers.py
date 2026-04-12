@@ -1348,3 +1348,127 @@ class TestRenameTagHandler:
 
         with pytest.raises(ValidationError):
             await handler.handle({"old_tag": "old-tag"})
+
+
+# ---------------------------------------------------------------------------
+# Phase 8: search_notes pinned filter + typed date params tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestSearchNotesPinnedFilter:
+    """Test the pinned filter in search_notes."""
+
+    @pytest.fixture
+    def mock_client(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.get_pagination_info.return_value = {
+            "page": 1,
+            "total_pages": 1,
+            "has_more": False,
+            "next_offset": None,
+            "prev_offset": None,
+        }
+        return cache
+
+    @pytest.mark.asyncio
+    async def test_pinned_true_returns_only_pinned_notes(self, mock_client, mock_cache):
+        """pinned=True filters to only notes with systemtags=['pinned']."""
+        mock_cache.search_notes.return_value = [
+            {
+                "key": "pinned1",
+                "content": "Pinned note",
+                "tags": [],
+                "systemtags": ["pinned"],
+            },
+            {
+                "key": "normal1",
+                "content": "Normal note",
+                "tags": [],
+                "systemtags": [],
+            },
+        ]
+        handler = SearchNotesHandler(mock_client, mock_cache)
+        result = await handler.handle({"query": "note", "pinned": True})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        ids = [r["id"] for r in data["results"]]
+        assert "pinned1" in ids
+        assert "normal1" not in ids
+
+    @pytest.mark.asyncio
+    async def test_pinned_false_returns_only_unpinned_notes(
+        self, mock_client, mock_cache
+    ):
+        """pinned=False filters to only notes without 'pinned' in systemtags."""
+        mock_cache.search_notes.return_value = [
+            {
+                "key": "pinned1",
+                "content": "Pinned note",
+                "tags": [],
+                "systemtags": ["pinned"],
+            },
+            {
+                "key": "normal1",
+                "content": "Normal note",
+                "tags": [],
+                "systemtags": [],
+            },
+        ]
+        handler = SearchNotesHandler(mock_client, mock_cache)
+        result = await handler.handle({"query": "note", "pinned": False})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        ids = [r["id"] for r in data["results"]]
+        assert "normal1" in ids
+        assert "pinned1" not in ids
+
+    @pytest.mark.asyncio
+    async def test_pinned_omitted_returns_all_notes(self, mock_client, mock_cache):
+        """Omitting pinned returns all notes regardless of pin status."""
+        mock_cache.search_notes.return_value = [
+            {
+                "key": "pinned1",
+                "content": "Pinned note",
+                "tags": [],
+                "systemtags": ["pinned"],
+            },
+            {
+                "key": "normal1",
+                "content": "Normal note",
+                "tags": [],
+                "systemtags": [],
+            },
+        ]
+        handler = SearchNotesHandler(mock_client, mock_cache)
+        result = await handler.handle({"query": "note"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_created_after_filters_by_creation_date(
+        self, mock_client, mock_cache
+    ):
+        """created_after typed date param is accepted without error."""
+        mock_cache.search_notes.return_value = []
+        handler = SearchNotesHandler(mock_client, mock_cache)
+        result = await handler.handle({"query": "test", "created_after": "2023-01-01"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_modified_after_filters_by_modification_date(
+        self, mock_client, mock_cache
+    ):
+        """modified_after typed date param is accepted without error."""
+        mock_cache.search_notes.return_value = []
+        handler = SearchNotesHandler(mock_client, mock_cache)
+        result = await handler.handle({"query": "test", "modified_after": "2023-06-01"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True

@@ -436,16 +436,27 @@ class SearchNotesHandler(ToolHandlerBase):
         date_range = self._process_date_range(
             arguments.get("from_date"), arguments.get("to_date")
         )
+        # Also handle typed date aliases: created_after, modified_after
+        if date_range is None:
+            date_range = self._process_date_range(
+                arguments.get("created_after"), arguments.get("modified_after")
+            )
         fuzzy = bool(arguments.get("fuzzy", False))
         sort_by = arguments.get("sort_by", "relevance")
         sort_direction = arguments.get("sort_direction", "desc")
         if sort_by not in {"relevance", "modifydate", "createdate"}:
             sort_by = "relevance"
 
+        # Pinned filter: None = no filter, True = only pinned, False = only unpinned
+        pinned_raw = arguments.get("pinned")
+        pinned_filter: bool | None = None
+        if pinned_raw is not None:
+            pinned_filter = bool(pinned_raw)
+
         logger.debug(
             f"Advanced search called with: query='{query}', limit={limit}, "
             + f"tags='{tag_filters}', date_range={date_range}, fuzzy={fuzzy}, "
-            + f"sort_by={sort_by}, sort_direction={sort_direction}"
+            + f"sort_by={sort_by}, sort_direction={sort_direction}, pinned={pinned_filter}"
         )
 
         try:
@@ -458,6 +469,7 @@ class SearchNotesHandler(ToolHandlerBase):
                 fuzzy,
                 sort_by,
                 sort_direction,
+                pinned_filter=pinned_filter,
             )
         except Exception as e:
             return self._handle_search_error(e, query)
@@ -537,6 +549,7 @@ class SearchNotesHandler(ToolHandlerBase):
         fuzzy: bool = False,
         sort_by: str = "relevance",
         sort_direction: str = "desc",
+        pinned_filter: bool | None = None,
     ) -> list[types.TextContent]:
         """Execute search using cache or API."""
         cache_initialized = (
@@ -556,6 +569,7 @@ class SearchNotesHandler(ToolHandlerBase):
                 fuzzy,
                 sort_by,
                 sort_direction,
+                pinned_filter=pinned_filter,
             )
         else:
             return await self._search_with_api(
@@ -584,6 +598,7 @@ class SearchNotesHandler(ToolHandlerBase):
         fuzzy: bool = False,
         sort_by: str = "relevance",
         sort_direction: str = "desc",
+        pinned_filter: bool | None = None,
     ) -> list[types.TextContent]:
         """Search using cache."""
         logger.debug("Using advanced search with cache")
@@ -603,6 +618,14 @@ class SearchNotesHandler(ToolHandlerBase):
             sort_by=sort_by,
             sort_direction=sort_direction,
         )
+
+        # Apply pinned filter to total count
+        if pinned_filter is not None:
+            all_matching_notes = [
+                n
+                for n in all_matching_notes
+                if ("pinned" in n.get("systemtags", [])) == pinned_filter
+            ]
         total_matching_notes = len(all_matching_notes)
 
         # Use the enhanced search implementation with pagination
@@ -616,6 +639,14 @@ class SearchNotesHandler(ToolHandlerBase):
             sort_by=sort_by,
             sort_direction=sort_direction,
         )
+
+        # Apply pinned filter post-search
+        if pinned_filter is not None:
+            notes = [
+                n
+                for n in notes
+                if ("pinned" in n.get("systemtags", [])) == pinned_filter
+            ]
 
         # Format results
         results = []

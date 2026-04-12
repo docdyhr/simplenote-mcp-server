@@ -797,6 +797,18 @@ async def handle_list_tools() -> list[types.Tool]:
                             "enum": ["asc", "desc"],
                             "description": "Sort direction: 'desc' (newest/highest first, default) or 'asc' (oldest/lowest first).",
                         },
+                        "pinned": {
+                            "type": "boolean",
+                            "description": "Filter by pin status: true = only pinned notes, false = only unpinned notes, omit = all notes",
+                        },
+                        "created_after": {
+                            "type": "string",
+                            "description": "Filter notes created after this date (ISO format e.g. 2023-01-01)",
+                        },
+                        "modified_after": {
+                            "type": "string",
+                            "description": "Filter notes modified after this date (ISO format e.g. 2023-06-01)",
+                        },
                     },
                     "required": ["query"],
                 },
