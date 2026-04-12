@@ -59,6 +59,7 @@ class TestToolHandlerRegistry:
             "rename_tag",
             "get_or_create_note",
             "append_to_daily_note",
+            "replace_section",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -1742,3 +1743,151 @@ class TestAppendToDailyNoteHandler:
         handler = AppendToDailyNoteHandler(mock_client, mock_cache_empty)
         with pytest.raises(ValidationError):
             await handler.handle({})
+
+
+# ---------------------------------------------------------------------------
+# Phase 11: replace_section tool tests
+# ---------------------------------------------------------------------------
+
+TEST_NOTE_SECTIONS = (
+    "# Note Title\n\n## Section One\nold content\n\n## Section Two\nother content"
+)
+
+
+@pytest.mark.unit
+class TestReplaceSectionHandler:
+    """Test the replace_section handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        client.update_note.return_value = (
+            {"key": "note1", "content": "updated", "tags": []},
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.get_note.return_value = {
+            "key": "note1",
+            "content": TEST_NOTE_SECTIONS,
+            "tags": [],
+        }
+        cache.update_cache_after_update = MagicMock()
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import ReplaceSectionHandler
+
+        return ReplaceSectionHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_replaces_section_content(self, handler, mock_client):
+        """Replaces content of target section while leaving others unchanged."""
+        result = await handler.handle(
+            {"note_id": "note1", "header": "Section One", "new_content": "new content"}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        updated_note_arg = mock_client.update_note.call_args[0][0]
+        content = updated_note_arg["content"]
+        assert "new content" in content
+        assert "## Section One" in content
+        assert "## Section Two" in content
+        assert "other content" in content
+        assert "old content" not in content
+
+    @pytest.mark.asyncio
+    async def test_section_at_end_of_note(self, handler, mock_client):
+        """Last section (no following section) is replaced correctly."""
+        result = await handler.handle(
+            {"note_id": "note1", "header": "Section Two", "new_content": "replaced two"}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        updated_note_arg = mock_client.update_note.call_args[0][0]
+        content = updated_note_arg["content"]
+        assert "replaced two" in content
+        assert "## Section One" in content
+        assert "old content" in content
+
+    @pytest.mark.asyncio
+    async def test_section_not_found_raises_error(self, handler):
+        """Missing header returns error response."""
+
+        result = await handler.handle(
+            {
+                "note_id": "note1",
+                "header": "Nonexistent Section",
+                "new_content": "new content",
+            }
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_missing_note_id_raises_error(self, handler):
+        """Missing note_id raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle(
+                {"header": "Section One", "new_content": "new content"}
+            )
+
+    @pytest.mark.asyncio
+    async def test_missing_header_raises_error(self, handler):
+        """Missing header raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle({"note_id": "note1", "new_content": "new content"})
+
+    @pytest.mark.asyncio
+    async def test_last_section_replaced_to_eof(self, handler, mock_client):
+        """Last section content is replaced all the way to EOF."""
+        result = await handler.handle(
+            {
+                "note_id": "note1",
+                "header": "Section Two",
+                "new_content": "eof replacement",
+            }
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        updated = mock_client.update_note.call_args[0][0]
+        assert "eof replacement" in updated["content"]
+        # Should not have trailing garbage after replacement
+        assert updated["content"].endswith("eof replacement")
+
+    @pytest.mark.asyncio
+    async def test_section_at_start_of_note(self, mock_client, mock_cache):
+        """Section that appears at the start (after title) is replaced."""
+        from simplenote_mcp.server.tool_handlers import ReplaceSectionHandler
+
+        mock_cache.get_note.return_value = {
+            "key": "note1",
+            "content": "## First Section\nfirst content\n\n## Second Section\nsecond content",
+            "tags": [],
+        }
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "updated", "tags": []},
+            0,
+        )
+        handler = ReplaceSectionHandler(mock_client, mock_cache)
+        result = await handler.handle(
+            {
+                "note_id": "note1",
+                "header": "First Section",
+                "new_content": "new first",
+            }
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        updated = mock_client.update_note.call_args[0][0]
+        assert "new first" in updated["content"]
+        assert "second content" in updated["content"]

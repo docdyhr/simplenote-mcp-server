@@ -1017,6 +1017,28 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
             ),
             types.Tool(
+                name="replace_section",
+                description="Replace the content of a Markdown section (## heading) in a note without touching other sections.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to update",
+                        },
+                        "header": {
+                            "type": "string",
+                            "description": "The section header text (without ## prefix)",
+                        },
+                        "new_content": {
+                            "type": "string",
+                            "description": "The new content to replace the section body with",
+                        },
+                    },
+                    "required": ["note_id", "header", "new_content"],
+                },
+            ),
+            types.Tool(
                 name="append_to_daily_note",
                 description="Append a timestamped entry to today's daily note. Creates it if it doesn't exist.",
                 inputSchema={

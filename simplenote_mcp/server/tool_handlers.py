@@ -1603,6 +1603,97 @@ class RestoreVersionHandler(ToolHandlerBase):
             )
 
 
+class ReplaceSectionHandler(ToolHandlerBase):
+    """Handler for replace_section tool — surgical Markdown section replacement."""
+
+    @validate_tool_security("replace_section")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle replace_section tool call."""
+        from .errors import ValidationError
+
+        note_id = arguments.get("note_id", "")
+        header = arguments.get("header", "")
+        new_content = arguments.get("new_content", "")
+
+        if not note_id:
+            raise ValidationError("note_id is required")
+        if not header:
+            raise ValidationError("header is required")
+
+        try:
+            note = self._get_note_from_cache_or_api(note_id)
+            content = note.get("content", "")
+
+            # Split content into lines and find the target section
+            lines = content.split("\n")
+            section_start = None
+            section_end = None
+
+            # Find the section start (line matching ## <header> or # <header>)
+            for i, line in enumerate(lines):
+                stripped = line.strip()
+                if stripped == f"## {header}" or stripped == f"# {header}":
+                    section_start = i
+                    break
+
+            if section_start is None:
+                return self._format_error_response(
+                    ResourceNotFoundError(
+                        f"Section '{header}' not found in note {note_id}",
+                        resource_id=note_id,
+                    ),
+                    f"replacing section '{header}' in note {note_id}",
+                )
+
+            # Find the end of this section (next ## or # heading or EOF)
+            for i in range(section_start + 1, len(lines)):
+                if lines[i].startswith("## ") or lines[i].startswith("# "):
+                    section_end = i
+                    break
+
+            # Rebuild content
+            header_line = lines[section_start]
+            before = lines[:section_start]
+            if section_end is not None:
+                after = lines[section_end:]
+                new_lines = before + [header_line, new_content, ""] + after
+            else:
+                new_lines = before + [header_line, new_content]
+
+            updated_content = "\n".join(new_lines).rstrip("\n")
+
+            note["content"] = updated_content
+            updated_note, status = self.sn.update_note(note)
+            if status != 0:
+                raise NetworkError(
+                    f"Failed to update note {note_id} after section replacement"
+                )
+
+            if isinstance(updated_note, dict):
+                self._update_cache_after_operation(updated_note, "update")
+
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "note_id": note_id,
+                            "header": header,
+                            "content_length": len(updated_content),
+                        }
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(
+                e,
+                f"replacing section '{header}' in note {note_id}",
+                {"note_id": note_id},
+            )
+
+
 class AppendToDailyNoteHandler(ToolHandlerBase):
     """Handler for append_to_daily_note tool — timestamped journaling."""
 
@@ -1935,6 +2026,7 @@ class ToolHandlerRegistry:
             "rename_tag": RenameTagHandler,
             "get_or_create_note": GetOrCreateNoteHandler,
             "append_to_daily_note": AppendToDailyNoteHandler,
+            "replace_section": ReplaceSectionHandler,
         }
 
     def get_handler(
