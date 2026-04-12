@@ -117,7 +117,7 @@ regex==2026.4.4
 requests==2.33.1
 requests-toolbelt==1.0.0
 rfc3986==2.0.0
-rich==14.3.3
+rich==15.0.0
 rpds-py==0.30.0
 ruamel.yaml==0.19.1
 ruamel.yaml.clib==0.2.15
