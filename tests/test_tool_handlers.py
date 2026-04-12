@@ -60,6 +60,7 @@ class TestToolHandlerRegistry:
             "get_or_create_note",
             "append_to_daily_note",
             "replace_section",
+            "find_untagged_notes",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -1891,3 +1892,94 @@ class TestReplaceSectionHandler:
         updated = mock_client.update_note.call_args[0][0]
         assert "new first" in updated["content"]
         assert "second content" in updated["content"]
+
+
+# ---------------------------------------------------------------------------
+# Phase 12: find_untagged_notes tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestFindUntaggedNotesHandler:
+    """Test the find_untagged_notes handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        untagged = [
+            {"key": "u1", "content": "Untagged one", "tags": []},
+            {"key": "u2", "content": "Untagged two", "tags": []},
+        ]
+        cache._filter_notes_by_untagged.return_value = {n["key"]: n for n in untagged}
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import FindUntaggedNotesHandler
+
+        return FindUntaggedNotesHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_returns_untagged_notes(self, handler, mock_cache):
+        """Returns notes with tags=[]."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        ids = [n["id"] for n in data["notes"]]
+        assert "u1" in ids
+        assert "u2" in ids
+
+    @pytest.mark.asyncio
+    async def test_does_not_return_tagged_notes(self, handler, mock_cache):
+        """Tagged notes are not included."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        ids = [n["id"] for n in data["notes"]]
+        assert "t1" not in ids
+
+    @pytest.mark.asyncio
+    async def test_limit_respected(self, handler, mock_cache):
+        """limit=1 returns max 1 note."""
+        result = await handler.handle({"limit": 1})
+        data = json.loads(result[0].text)
+        assert len(data["notes"]) <= 1
+
+    @pytest.mark.asyncio
+    async def test_default_limit_is_50(self, mock_client, mock_cache):
+        """Default limit is 50."""
+        from simplenote_mcp.server.tool_handlers import FindUntaggedNotesHandler
+
+        # Create 60 untagged notes
+        many_untagged = {
+            f"note{i}": {"key": f"note{i}", "content": f"Note {i}", "tags": []}
+            for i in range(60)
+        }
+        mock_cache._filter_notes_by_untagged.return_value = many_untagged
+        handler = FindUntaggedNotesHandler(mock_client, mock_cache)
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert len(data["notes"]) <= 50
+
+    @pytest.mark.asyncio
+    async def test_includes_snippet_in_results(self, handler):
+        """Each result includes a snippet field."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        for note in data["notes"]:
+            assert "snippet" in note
+
+    @pytest.mark.asyncio
+    async def test_uninitialized_cache_returns_error(self, mock_client, mock_cache):
+        """Uninitialized cache returns error response."""
+        from simplenote_mcp.server.tool_handlers import FindUntaggedNotesHandler
+
+        mock_cache.is_initialized = False
+        handler = FindUntaggedNotesHandler(mock_client, mock_cache)
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is False

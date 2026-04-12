@@ -2003,6 +2003,64 @@ class ListTagsHandler(ToolHandlerBase):
             return self._format_error_response(e, "listing tags")
 
 
+class FindUntaggedNotesHandler(ToolHandlerBase):
+    """Handler for find_untagged_notes tool — list notes with no tags."""
+
+    @validate_tool_security("find_untagged_notes")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle find_untagged_notes tool call."""
+        if self.note_cache is None or not self.note_cache.is_initialized:
+            return self._format_error_response(
+                InternalError(
+                    "Note cache is not initialized. Cannot find untagged notes."
+                ),
+                "finding untagged notes",
+            )
+
+        try:
+            limit = arguments.get("limit", 50)
+            try:
+                limit = int(limit)
+                if limit <= 0:
+                    limit = 50
+            except (TypeError, ValueError):
+                limit = 50
+
+            untagged = self.note_cache._filter_notes_by_untagged()
+            notes_list = list(untagged.values())[:limit]
+
+            results = []
+            for note in notes_list:
+                content = note.get("content", "")
+                snippet = content[:100].replace("\n", " ") if content else ""
+                results.append(
+                    {
+                        "id": note.get("key", ""),
+                        "title": extract_title_from_content(
+                            content, note.get("key", "")
+                        ),
+                        "snippet": snippet,
+                        "tags": note.get("tags", []),
+                    }
+                )
+
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "notes": results,
+                            "count": len(results),
+                        }
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(e, "finding untagged notes")
+
+
 class ToolHandlerRegistry:
     """Registry for tool handlers."""
 
@@ -2027,6 +2085,7 @@ class ToolHandlerRegistry:
             "get_or_create_note": GetOrCreateNoteHandler,
             "append_to_daily_note": AppendToDailyNoteHandler,
             "replace_section": ReplaceSectionHandler,
+            "find_untagged_notes": FindUntaggedNotesHandler,
         }
 
     def get_handler(

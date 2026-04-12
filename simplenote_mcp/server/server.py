@@ -1100,6 +1100,22 @@ async def handle_list_tools() -> list[types.Tool]:
                     "required": ["old_tag", "new_tag"],
                 },
             ),
+            types.Tool(
+                name="find_untagged_notes",
+                description=(
+                    "List notes that have no tags. "
+                    "Useful for tag housekeeping — find notes that need to be organized."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of notes to return (default: 50)",
+                        },
+                    },
+                },
+            ),
         ]
         logger.info(
             f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"
