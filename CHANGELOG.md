@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-04-12
+
+### Added
+- `add_text` tool: append a text block to an existing note without fetching the full note first
+- `list_tags` tool: list all tags with note counts, sortable by name or count
+- `get_note_versions` tool: retrieve version history for a note (up to 10 versions with previews)
+- `restore_version` tool: restore a note to a specific historical version
+- `rename_tag` tool: rename a tag across all notes atomically, with `dry_run` preview support
+- `get_or_create_note` tool: find an existing note by title or create it atomically to avoid duplicates
+- `append_to_daily_note` tool: append a timestamped entry to today's daily note, creating it if needed
+- `replace_section` tool: replace the content of a named Markdown section without touching other sections
+- `find_untagged_notes` tool: list notes with no tags for housekeeping, with configurable limit
+- `bulk_tag` tool: add, remove, or set tags on multiple notes in a single operation
+- `restore_note` tool: un-trash a deleted note (reverses `delete_note`)
+- Tag sanitization: spaces in tags are replaced with hyphens at input time
+- `search_notes` supports `pinned`, `created_after`, and `modified_after` filter parameters
+
+### Changed
+- Default `SNIPPET_MAX_LENGTH` increased from 100 to 300 characters for richer search result context
+- `ResourceNotFoundError` now includes `resource_id` in all tool handlers for better error tracing
+- `_parse_tags()` moved to `ToolHandlerBase` so all handlers can use consistent tag parsing
+- Tool descriptions updated across all tools with use-vs-alternatives guidance
+
+### Fixed
+- `AddTagsHandler`, `RemoveTagsHandler`, `ReplaceTagsHandler` responses now include `tags_added`, `tags_removed`, `tags_now` fields for auditability
+
 ## [1.12.1] - 2026-04-08
 
 ### Fixed

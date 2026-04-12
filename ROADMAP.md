@@ -40,7 +40,7 @@ These capabilities exist in the codebase today and directly enable upcoming feat
 
 ---
 
-## Known Bugs — Patch Release (pre-v1.13)
+## Known Bugs — Patch Release (pre-v1.13) ✅ Fixed in v1.13.0
 
 Confirmed real-world pain points observed in Claude Desktop usage.
 
@@ -53,7 +53,7 @@ Confirmed real-world pain points observed in Claude Desktop usage.
 
 ---
 
-## Phase 1 — v1.13.0: Bear Parity
+## Phase 1 — v1.13.0: Bear Parity ✅ Complete
 
 > Close the two gaps that matter most for daily Claude workflows.
 
@@ -76,7 +76,7 @@ All 10 existing tool descriptions get a **"use this vs. alternatives"** clause s
 
 ---
 
-## Phase 2 — v1.14.0: Simplenote Differentiators
+## Phase 2 — v1.14.0: Simplenote Differentiators ✅ Complete (shipped in v1.13.0)
 
 > Expose capabilities that Bear, Notion Notes, and macOS Notes MCP servers cannot offer.
 
@@ -99,7 +99,7 @@ All 10 existing tool descriptions get a **"use this vs. alternatives"** clause s
 
 ---
 
-## Phase 3 — v1.15.0: Claude Companion Tools
+## Phase 3 — v1.15.0: Claude Companion Tools ✅ Complete (shipped in v1.13.0)
 
 > Eliminate multi-round-trip patterns. Make Simplenote the most ergonomic note backend for agentic Claude workflows.
 
@@ -130,7 +130,7 @@ These tools unlock the following patterns:
 
 ---
 
-## Phase 4 — v1.16.0: Polish
+## Phase 4 — v1.16.0: Polish ✅ Mostly complete (shipped in v1.13.0)
 
 | Item | File | Notes |
 |---|---|---|
