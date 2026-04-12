@@ -681,7 +681,10 @@ async def handle_list_tools() -> list[types.Tool]:
         tools = [
             types.Tool(
                 name="create_note",
-                description="Create a new note in Simplenote",
+                description=(
+                    "Create a new note in Simplenote. "
+                    "Use get_or_create_note (once available) if you need to avoid duplicate notes."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -699,7 +702,11 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="update_note",
-                description="Update an existing note in Simplenote",
+                description=(
+                    "Replaces the full note content in Simplenote. "
+                    "Use add_text instead when you only want to append or prepend content "
+                    "without overwriting the full note."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -721,7 +728,10 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="delete_note",
-                description="Delete a note from Simplenote",
+                description=(
+                    "Soft-deletes a note from Simplenote (moves to Trash). "
+                    "Use restore_note to undo. The note is not permanently deleted."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -739,7 +749,8 @@ async def handle_list_tools() -> list[types.Tool]:
                     "Search for notes in Simplenote with advanced capabilities including "
                     "fuzzy matching, pagination, and sorting support. "
                     "To find the most recently updated note on a topic, use "
-                    "sort_by='modifydate' with sort_direction='desc' and limit=1."
+                    "sort_by='modifydate' with sort_direction='desc' and limit=1. "
+                    "Use list_tags first if you need to discover available tags before filtering."
                 ),
                 inputSchema={
                     "type": "object",
@@ -792,7 +803,10 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="get_note",
-                description="Get a note by ID from Simplenote",
+                description=(
+                    "Retrieves the full content of a note by ID from Simplenote. "
+                    "Use search_notes when you don't know the exact note ID."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -806,7 +820,10 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="add_tags",
-                description="Add tags to an existing note",
+                description=(
+                    "Add tags to an existing note without replacing existing ones. "
+                    "Use replace_tags to set the complete tag list from scratch."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -824,7 +841,10 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="remove_tags",
-                description="Remove tags from an existing note",
+                description=(
+                    "Remove specific tags from an existing note. "
+                    "Use replace_tags to set an entirely new tag list."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
@@ -842,7 +862,10 @@ async def handle_list_tools() -> list[types.Tool]:
             ),
             types.Tool(
                 name="replace_tags",
-                description="Replace all tags on an existing note",
+                description=(
+                    "Replace ALL tags on an existing note. "
+                    "Use add_tags or remove_tags for partial changes."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
