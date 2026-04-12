@@ -1017,6 +1017,20 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
             ),
             types.Tool(
+                name="append_to_daily_note",
+                description="Append a timestamped entry to today's daily note. Creates it if it doesn't exist.",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "text": {
+                            "type": "string",
+                            "description": "The text to append to today's daily note",
+                        },
+                    },
+                    "required": ["text"],
+                },
+            ),
+            types.Tool(
                 name="get_or_create_note",
                 description=(
                     "Find an existing note by title or create it if not found. "

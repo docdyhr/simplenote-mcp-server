@@ -58,6 +58,7 @@ class TestToolHandlerRegistry:
             "restore_version",
             "rename_tag",
             "get_or_create_note",
+            "append_to_daily_note",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -1605,5 +1606,139 @@ class TestGetOrCreateNoteHandler:
         from simplenote_mcp.server.tool_handlers import GetOrCreateNoteHandler
 
         handler = GetOrCreateNoteHandler(mock_client, mock_cache_empty)
+        with pytest.raises(ValidationError):
+            await handler.handle({})
+
+
+# ---------------------------------------------------------------------------
+# Phase 10: append_to_daily_note tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestAppendToDailyNoteHandler:
+    """Test the append_to_daily_note handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        client.add_note.return_value = (
+            {"key": "daily-note", "content": "# 2026-04-12\n", "tags": []},
+            0,
+        )
+        client.update_note.return_value = (
+            {"key": "daily-note", "content": "# 2026-04-12\nentry", "tags": []},
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache_empty(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.search_notes.return_value = []
+        cache.update_cache_after_create = MagicMock()
+        cache.update_cache_after_update = MagicMock()
+        cache.get_note.return_value = {
+            "key": "daily-note",
+            "content": "# 2026-04-12\n",
+            "tags": [],
+        }
+        return cache
+
+    @pytest.fixture
+    def mock_cache_with_daily(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.search_notes.return_value = [
+            {
+                "key": "daily-note",
+                "content": "# 2026-04-12\nExisting entry",
+                "tags": [],
+            },
+        ]
+        cache.update_cache_after_update = MagicMock()
+        cache.get_note.return_value = {
+            "key": "daily-note",
+            "content": "# 2026-04-12\nExisting entry",
+            "tags": [],
+        }
+        return cache
+
+    @pytest.mark.asyncio
+    async def test_creates_daily_note_if_absent(self, mock_client, mock_cache_empty):
+        """Today's date used as title, created=True when not found."""
+        from unittest.mock import patch
+
+        from simplenote_mcp.server.tool_handlers import AppendToDailyNoteHandler
+
+        with patch("simplenote_mcp.server.tool_handlers.date") as mock_date:
+            mock_date.today.return_value.isoformat.return_value = "2026-04-12"
+            handler = AppendToDailyNoteHandler(mock_client, mock_cache_empty)
+            result = await handler.handle({"text": "New entry"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_appends_to_existing_daily_note(
+        self, mock_client, mock_cache_with_daily
+    ):
+        """Finds existing daily note and appends timestamped text."""
+        from unittest.mock import patch
+
+        from simplenote_mcp.server.tool_handlers import AppendToDailyNoteHandler
+
+        with patch("simplenote_mcp.server.tool_handlers.date") as mock_date:
+            mock_date.today.return_value.isoformat.return_value = "2026-04-12"
+            handler = AppendToDailyNoteHandler(mock_client, mock_cache_with_daily)
+            result = await handler.handle({"text": "New entry"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        # update_note should have been called (appending to existing)
+        mock_client.update_note.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_entry_has_hhmm_timestamp(self, mock_client, mock_cache_with_daily):
+        """Appended entry starts with HH:MM timestamp."""
+        from unittest.mock import patch
+
+        from simplenote_mcp.server.tool_handlers import AppendToDailyNoteHandler
+
+        with (
+            patch("simplenote_mcp.server.tool_handlers.date") as mock_date,
+            patch("simplenote_mcp.server.tool_handlers.datetime") as mock_datetime,
+        ):
+            mock_date.today.return_value.isoformat.return_value = "2026-04-12"
+            mock_datetime.now.return_value.strftime.return_value = "09:45"
+            handler = AppendToDailyNoteHandler(mock_client, mock_cache_with_daily)
+            result = await handler.handle({"text": "Morning entry"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        # The updated content should contain a timestamp
+        call_note = mock_client.update_note.call_args[0][0]
+        assert "09:45" in call_note["content"] or "09:45" in str(data)
+
+    @pytest.mark.asyncio
+    async def test_daily_note_title_is_iso_date(self, mock_client, mock_cache_empty):
+        """Daily note title is YYYY-MM-DD format."""
+        from unittest.mock import patch
+
+        from simplenote_mcp.server.tool_handlers import AppendToDailyNoteHandler
+
+        with patch("simplenote_mcp.server.tool_handlers.date") as mock_date:
+            mock_date.today.return_value.isoformat.return_value = "2026-04-12"
+            handler = AppendToDailyNoteHandler(mock_client, mock_cache_empty)
+            await handler.handle({"text": "entry"})
+        # check add_note was called with content starting with the date
+        call_args = mock_client.add_note.call_args[0][0]
+        assert "2026-04-12" in call_args["content"]
+
+    @pytest.mark.asyncio
+    async def test_missing_text_raises_error(self, mock_client, mock_cache_empty):
+        """Missing text raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+        from simplenote_mcp.server.tool_handlers import AppendToDailyNoteHandler
+
+        handler = AppendToDailyNoteHandler(mock_client, mock_cache_empty)
         with pytest.raises(ValidationError):
             await handler.handle({})

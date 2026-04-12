@@ -12,6 +12,7 @@ provides a centralized way to manage and dispatch tool calls.
 import contextlib
 import json
 from abc import ABC, abstractmethod
+from datetime import date, datetime
 from typing import Any
 
 import mcp.types as types
@@ -1602,6 +1603,97 @@ class RestoreVersionHandler(ToolHandlerBase):
             )
 
 
+class AppendToDailyNoteHandler(ToolHandlerBase):
+    """Handler for append_to_daily_note tool — timestamped journaling."""
+
+    @validate_tool_security("append_to_daily_note")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle append_to_daily_note tool call."""
+        from .errors import ValidationError
+
+        text = arguments.get("text", "")
+        if not text:
+            raise ValidationError("text is required")
+
+        today_str = date.today().isoformat()
+        time_str = datetime.now().strftime("%H:%M")
+        timestamped_entry = f"{time_str} {text}"
+
+        try:
+            # Find or create today's daily note
+            daily_note = None
+            note_id = None
+
+            if self.note_cache is not None and self.note_cache.is_initialized:
+                results = self.note_cache.search_notes(query=today_str)
+                for note in results:
+                    content = note.get("content", "")
+                    first_line = content.split("\n", 1)[0].strip()
+                    clean = first_line.lstrip("#").strip()
+                    if clean == today_str or first_line == today_str:
+                        daily_note = note
+                        note_id = note.get("key")
+                        break
+
+            if daily_note is None:
+                # Create the daily note
+                initial_content = f"# {today_str}\n{timestamped_entry}"
+                new_note_data: dict[str, Any] = {"content": initial_content}
+                created_note, status = self.sn.add_note(new_note_data)
+                if status != 0:
+                    raise NetworkError("Failed to create daily note")
+                if isinstance(created_note, dict):
+                    self._update_cache_after_operation(created_note, "create")
+                result_note = created_note if isinstance(created_note, dict) else {}
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "note_id": result_note.get("key"),
+                                "date": today_str,
+                                "created": True,
+                                "entry": timestamped_entry,
+                            }
+                        ),
+                    )
+                ]
+            else:
+                # Append to existing daily note
+                existing_content = daily_note.get("content", "")
+                new_content = f"{existing_content}\n{timestamped_entry}"
+                daily_note = dict(daily_note)
+                daily_note["content"] = new_content
+                updated_note, ustatus = self.sn.update_note(daily_note)
+                if ustatus != 0:
+                    raise NetworkError("Failed to update daily note")
+                if isinstance(updated_note, dict):
+                    self._update_cache_after_operation(updated_note, "update")
+                result_note = (
+                    updated_note if isinstance(updated_note, dict) else daily_note
+                )
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "note_id": result_note.get("key", note_id),
+                                "date": today_str,
+                                "created": False,
+                                "entry": timestamped_entry,
+                            }
+                        ),
+                    )
+                ]
+
+        except Exception as e:
+            return self._format_error_response(
+                e, f"appending to daily note for {today_str}"
+            )
+
+
 class GetOrCreateNoteHandler(ToolHandlerBase):
     """Handler for get_or_create_note tool — atomic find-or-create."""
 
@@ -1842,6 +1934,7 @@ class ToolHandlerRegistry:
             "restore_version": RestoreVersionHandler,
             "rename_tag": RenameTagHandler,
             "get_or_create_note": GetOrCreateNoteHandler,
+            "append_to_daily_note": AppendToDailyNoteHandler,
         }
 
     def get_handler(
