@@ -2061,6 +2061,80 @@ class FindUntaggedNotesHandler(ToolHandlerBase):
             return self._format_error_response(e, "finding untagged notes")
 
 
+class BulkTagHandler(ToolHandlerBase):
+    """Handler for bulk_tag tool — add/remove/set tags on multiple notes at once."""
+
+    VALID_ACTIONS = {"add", "remove", "set"}
+
+    @validate_tool_security("bulk_tag")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle bulk_tag tool call."""
+        note_ids = arguments.get("note_ids")
+        action = arguments.get("action")
+        tags_input = arguments.get("tags", [])
+
+        if not note_ids:
+            return self._format_error_response(
+                ValueError("note_ids is required"),
+                "bulk tagging notes",
+            )
+        if not action:
+            return self._format_error_response(
+                ValueError("action is required (add, remove, or set)"),
+                "bulk tagging notes",
+            )
+        if action not in self.VALID_ACTIONS:
+            return self._format_error_response(
+                ValueError(
+                    f"Unknown action '{action}'. Must be one of: "
+                    f"{', '.join(sorted(self.VALID_ACTIONS))}"
+                ),
+                "bulk tagging notes",
+            )
+
+        tags = self._parse_tags(tags_input)
+
+        updated = 0
+        failed: list[str] = []
+
+        for note_id in note_ids:
+            try:
+                note_data, status = self.sn.get_note(note_id)
+                if status != 0:
+                    failed.append(note_id)
+                    continue
+
+                current_tags: list[str] = note_data.get("tags") or []
+
+                if action == "add":
+                    new_tags = list(dict.fromkeys(current_tags + tags))
+                elif action == "remove":
+                    new_tags = [t for t in current_tags if t not in tags]
+                else:  # set
+                    new_tags = tags
+
+                note_data["tags"] = new_tags
+                _, upd_status = self.sn.update_note(note_data)
+                if upd_status == 0:
+                    updated += 1
+                    if self.note_cache:
+                        self.note_cache._notes[note_id] = note_data
+                else:
+                    failed.append(note_id)
+
+            except Exception:
+                failed.append(note_id)
+
+        response: dict[str, Any] = {
+            "success": True,
+            "action": action,
+            "updated": updated,
+            "failed": failed,
+        }
+
+        return [types.TextContent(type="text", text=json.dumps(response))]
+
+
 class ToolHandlerRegistry:
     """Registry for tool handlers."""
 
@@ -2086,6 +2160,7 @@ class ToolHandlerRegistry:
             "append_to_daily_note": AppendToDailyNoteHandler,
             "replace_section": ReplaceSectionHandler,
             "find_untagged_notes": FindUntaggedNotesHandler,
+            "bulk_tag": BulkTagHandler,
         }
 
     def get_handler(

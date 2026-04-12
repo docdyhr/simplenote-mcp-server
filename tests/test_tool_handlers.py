@@ -61,6 +61,7 @@ class TestToolHandlerRegistry:
             "append_to_daily_note",
             "replace_section",
             "find_untagged_notes",
+            "bulk_tag",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -1983,3 +1984,122 @@ class TestFindUntaggedNotesHandler:
         result = await handler.handle({})
         data = json.loads(result[0].text)
         assert data["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# Phase 13: bulk_tag tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestBulkTagHandler:
+    """Test the bulk_tag handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        notes = {
+            "n1": {"key": "n1", "content": "Note one", "tags": ["old"]},
+            "n2": {"key": "n2", "content": "Note two", "tags": []},
+            "n3": {"key": "n3", "content": "Note three", "tags": ["other"]},
+        }
+        cache._notes = notes
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import BulkTagHandler
+
+        return BulkTagHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_add_tag_to_all_notes(self, handler, mock_client, mock_cache):
+        """add action adds a tag to all specified note IDs."""
+        mock_client.get_note.return_value = (
+            {"key": "n1", "content": "Note one", "tags": ["old"]},
+            0,
+        )
+        mock_client.update_note.return_value = (
+            {"key": "n1", "content": "Note one", "tags": ["old", "new"]},
+            0,
+        )
+        result = await handler.handle(
+            {"note_ids": ["n1"], "action": "add", "tags": ["new"]}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["updated"] >= 1
+
+    @pytest.mark.asyncio
+    async def test_remove_tag_from_notes(self, handler, mock_client, mock_cache):
+        """remove action removes a tag from specified notes."""
+        mock_client.get_note.return_value = (
+            {"key": "n1", "content": "Note one", "tags": ["old"]},
+            0,
+        )
+        mock_client.update_note.return_value = (
+            {"key": "n1", "content": "Note one", "tags": []},
+            0,
+        )
+        result = await handler.handle(
+            {"note_ids": ["n1"], "action": "remove", "tags": ["old"]}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_set_replaces_all_tags(self, handler, mock_client, mock_cache):
+        """set action replaces all tags on specified notes."""
+        mock_client.get_note.return_value = (
+            {"key": "n1", "content": "Note one", "tags": ["old"]},
+            0,
+        )
+        mock_client.update_note.return_value = (
+            {"key": "n1", "content": "Note one", "tags": ["fresh"]},
+            0,
+        )
+        result = await handler.handle(
+            {"note_ids": ["n1"], "action": "set", "tags": ["fresh"]}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_missing_note_ids_returns_error(self, handler):
+        """Missing note_ids returns an error."""
+        result = await handler.handle({"action": "add", "tags": ["x"]})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_missing_action_returns_error(self, handler):
+        """Missing action returns an error."""
+        result = await handler.handle({"note_ids": ["n1"], "tags": ["x"]})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_invalid_action_returns_error(self, handler):
+        """Unknown action returns an error."""
+        result = await handler.handle(
+            {"note_ids": ["n1"], "action": "explode", "tags": ["x"]}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_reports_failed_note_ids(self, handler, mock_client):
+        """API failure for a note is reported in failed list."""
+        mock_client.get_note.return_value = ({}, -1)  # API error
+        result = await handler.handle(
+            {"note_ids": ["bad_id"], "action": "add", "tags": ["x"]}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True  # overall op succeeded (partial)
+        assert "failed" in data
+        assert len(data["failed"]) >= 1

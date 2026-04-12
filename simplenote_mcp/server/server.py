@@ -1101,6 +1101,34 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
             ),
             types.Tool(
+                name="bulk_tag",
+                description=(
+                    "Add, remove, or set tags on multiple notes in one operation. "
+                    "Actions: 'add' appends tags, 'remove' strips tags, 'set' replaces all tags."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_ids": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "List of note IDs to operate on",
+                        },
+                        "action": {
+                            "type": "string",
+                            "enum": ["add", "remove", "set"],
+                            "description": "Tag action: add, remove, or set",
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Tags to apply",
+                        },
+                    },
+                    "required": ["note_ids", "action", "tags"],
+                },
+            ),
+            types.Tool(
                 name="find_untagged_notes",
                 description=(
                     "List notes that have no tags. "
