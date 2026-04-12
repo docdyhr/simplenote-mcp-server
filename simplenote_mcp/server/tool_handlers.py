@@ -2135,6 +2135,69 @@ class BulkTagHandler(ToolHandlerBase):
         return [types.TextContent(type="text", text=json.dumps(response))]
 
 
+class RestoreNoteHandler(ToolHandlerBase):
+    """Handler for restore_note tool — un-trash a deleted note."""
+
+    @validate_tool_security("restore_note")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle restore_note tool call."""
+        note_id = arguments.get("note_id", "")
+
+        if not note_id:
+            return self._format_error_response(
+                ValueError("note_id is required"),
+                "restoring note",
+            )
+
+        try:
+            note_data, status = self.sn.get_note(note_id)
+            if status != 0:
+                raise ResourceNotFoundError(
+                    f"Note {note_id} not found", resource_id=note_id
+                )
+
+            if not note_data.get("deleted", False):
+                # Note is already active — no-op
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "note_id": note_id,
+                                "message": "Note was not in trash; no changes made.",
+                            }
+                        ),
+                    )
+                ]
+
+            note_data["deleted"] = False
+            updated_note, upd_status = self.sn.update_note(note_data)
+            if upd_status != 0:
+                raise NetworkError(f"Failed to restore note {note_id}")
+
+            if self.note_cache:
+                self.note_cache.update_cache_after_update(updated_note)
+
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "note_id": note_id,
+                            "message": "Note restored from trash successfully.",
+                        }
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(
+                e, f"restoring note {note_id}", {"note_id": note_id}
+            )
+
+
 class ToolHandlerRegistry:
     """Registry for tool handlers."""
 
@@ -2161,6 +2224,7 @@ class ToolHandlerRegistry:
             "replace_section": ReplaceSectionHandler,
             "find_untagged_notes": FindUntaggedNotesHandler,
             "bulk_tag": BulkTagHandler,
+            "restore_note": RestoreNoteHandler,
         }
 
     def get_handler(

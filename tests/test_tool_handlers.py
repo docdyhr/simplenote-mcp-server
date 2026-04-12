@@ -62,6 +62,7 @@ class TestToolHandlerRegistry:
             "replace_section",
             "find_untagged_notes",
             "bulk_tag",
+            "restore_note",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -2103,3 +2104,80 @@ class TestBulkTagHandler:
         assert data["success"] is True  # overall op succeeded (partial)
         assert "failed" in data
         assert len(data["failed"]) >= 1
+
+
+# ---------------------------------------------------------------------------
+# Phase 14: restore_note tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestRestoreNoteHandler:
+    """Test the restore_note handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_cache(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import RestoreNoteHandler
+
+        return RestoreNoteHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_restore_trashed_note(self, handler, mock_client):
+        """A trashed note (deleted=True) is restored successfully."""
+        trashed_note = {
+            "key": "abc",
+            "content": "Hello",
+            "tags": [],
+            "deleted": True,
+        }
+        mock_client.get_note.return_value = (trashed_note, 0)
+        mock_client.update_note.return_value = (
+            {**trashed_note, "deleted": False},
+            0,
+        )
+        result = await handler.handle({"note_id": "abc"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["note_id"] == "abc"
+        # update_note should be called with deleted=False
+        call_args = mock_client.update_note.call_args[0][0]
+        assert call_args["deleted"] is False
+
+    @pytest.mark.asyncio
+    async def test_restore_already_active_note(self, handler, mock_client):
+        """Restoring a note that is not deleted is a no-op success."""
+        active_note = {
+            "key": "abc",
+            "content": "Hello",
+            "tags": [],
+            "deleted": False,
+        }
+        mock_client.get_note.return_value = (active_note, 0)
+        result = await handler.handle({"note_id": "abc"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        # update_note should NOT be called for an active note
+        mock_client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_restore_missing_note_id(self, handler):
+        """Missing note_id returns error."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_restore_api_failure(self, handler, mock_client):
+        """API failure on get_note returns error."""
+        mock_client.get_note.return_value = ({}, -1)
+        result = await handler.handle({"note_id": "bad"})
+        data = json.loads(result[0].text)
+        assert data["success"] is False

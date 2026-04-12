@@ -374,10 +374,11 @@ class TestToolHandlerRegistryComplete:
             "replace_section",
             "find_untagged_notes",
             "bulk_tag",
+            "restore_note",
         ]
 
         assert set(tools) == set(expected_tools)
-        assert len(tools) == 20
+        assert len(tools) == 21
 
     def test_get_handler_types(self):
         """Test getting handlers of different types."""

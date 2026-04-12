@@ -1129,6 +1129,23 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
             ),
             types.Tool(
+                name="restore_note",
+                description=(
+                    "Restore a note from the trash. "
+                    "Reverses a delete_note operation — un-trashes the note."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to restore",
+                        },
+                    },
+                    "required": ["note_id"],
+                },
+            ),
+            types.Tool(
                 name="find_untagged_notes",
                 description=(
                     "List notes that have no tags. "
