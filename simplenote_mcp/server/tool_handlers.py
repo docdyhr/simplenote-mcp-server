@@ -1602,6 +1602,86 @@ class RestoreVersionHandler(ToolHandlerBase):
             )
 
 
+class GetOrCreateNoteHandler(ToolHandlerBase):
+    """Handler for get_or_create_note tool — atomic find-or-create."""
+
+    @validate_tool_security("get_or_create_note")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle get_or_create_note tool call."""
+        from .errors import ValidationError
+
+        title = arguments.get("title", "")
+        default_content = arguments.get("content", "")
+        tags_input = arguments.get("tags", [])
+
+        if not title:
+            raise ValidationError("title is required")
+
+        tags = self._parse_tags(tags_input) if tags_input else []
+
+        try:
+            # Search for an existing note with this title
+            existing = None
+            if self.note_cache is not None and self.note_cache.is_initialized:
+                results = self.note_cache.search_notes(query=title)
+                for note in results:
+                    content = note.get("content", "")
+                    first_line = content.split("\n", 1)[0].strip()
+                    # Match by first line (title), strip markdown heading prefix
+                    clean_first = first_line.lstrip("#").strip()
+                    if clean_first == title or first_line == title:
+                        existing = note
+                        break
+
+            if existing is not None:
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "created": False,
+                                "note_id": existing.get("key"),
+                                "content": existing.get("content", ""),
+                                "tags": existing.get("tags", []),
+                            }
+                        ),
+                    )
+                ]
+
+            # Not found — create a new note
+            content = default_content if default_content else f"# {title}\n"
+            note_data: dict[str, Any] = {"content": content}
+            if tags:
+                note_data["tags"] = tags
+
+            created_note, status = self.sn.add_note(note_data)
+            if status != 0:
+                raise NetworkError("Failed to create note in get_or_create_note")
+
+            if isinstance(created_note, dict):
+                self._update_cache_after_operation(created_note, "create")
+
+            result_note = created_note if isinstance(created_note, dict) else {}
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "created": True,
+                            "note_id": result_note.get("key"),
+                            "content": result_note.get("content", content),
+                            "tags": result_note.get("tags", tags),
+                        }
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(e, f"get_or_create_note for '{title}'")
+
+
 class RenameTagHandler(ToolHandlerBase):
     """Handler for rename_tag tool — atomically rename a tag across all notes."""
 
@@ -1761,6 +1841,7 @@ class ToolHandlerRegistry:
             "get_note_versions": GetNoteVersionsHandler,
             "restore_version": RestoreVersionHandler,
             "rename_tag": RenameTagHandler,
+            "get_or_create_note": GetOrCreateNoteHandler,
         }
 
     def get_handler(

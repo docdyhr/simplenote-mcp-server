@@ -1017,6 +1017,32 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
             ),
             types.Tool(
+                name="get_or_create_note",
+                description=(
+                    "Find an existing note by title or create it if not found. "
+                    "Use this for atomic find-or-create to avoid duplicate notes."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "title": {
+                            "type": "string",
+                            "description": "The title (first line) to search for or use when creating",
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "Default content when creating (defaults to '# <title>')",
+                        },
+                        "tags": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Tags to apply when creating the note",
+                        },
+                    },
+                    "required": ["title"],
+                },
+            ),
+            types.Tool(
                 name="rename_tag",
                 description="Rename a tag across all notes that use it. Supports dry_run to preview changes.",
                 inputSchema={

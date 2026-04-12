@@ -57,6 +57,7 @@ class TestToolHandlerRegistry:
             "get_note_versions",
             "restore_version",
             "rename_tag",
+            "get_or_create_note",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -1472,3 +1473,137 @@ class TestSearchNotesPinnedFilter:
         result = await handler.handle({"query": "test", "modified_after": "2023-06-01"})
         data = json.loads(result[0].text)
         assert data["success"] is True
+
+
+# ---------------------------------------------------------------------------
+# Phase 9: get_or_create_note tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestGetOrCreateNoteHandler:
+    """Test the get_or_create_note handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        client.add_note.return_value = (
+            {"key": "new-note", "content": "# My Title\n\nDefault content", "tags": []},
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache_with_results(self):
+        """Cache that returns a matching note for search."""
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.search_notes.return_value = [
+            {
+                "key": "existing-note",
+                "content": "# My Title\n\nExisting content",
+                "tags": ["work"],
+            },
+        ]
+        cache.update_cache_after_create = MagicMock()
+        return cache
+
+    @pytest.fixture
+    def mock_cache_empty(self):
+        """Cache that returns no matching notes."""
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.search_notes.return_value = []
+        cache.update_cache_after_create = MagicMock()
+        return cache
+
+    @pytest.mark.asyncio
+    async def test_returns_existing_note_when_found(
+        self, mock_client, mock_cache_with_results
+    ):
+        """Search finds a match — returns it with created=False."""
+        from simplenote_mcp.server.tool_handlers import GetOrCreateNoteHandler
+
+        handler = GetOrCreateNoteHandler(mock_client, mock_cache_with_results)
+        result = await handler.handle({"title": "My Title"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["created"] is False
+        assert data["note_id"] == "existing-note"
+
+    @pytest.mark.asyncio
+    async def test_creates_note_when_not_found(self, mock_client, mock_cache_empty):
+        """Search returns empty — create_note called, created=True."""
+        from simplenote_mcp.server.tool_handlers import GetOrCreateNoteHandler
+
+        handler = GetOrCreateNoteHandler(mock_client, mock_cache_empty)
+        result = await handler.handle({"title": "My Title"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["created"] is True
+        mock_client.add_note.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_idempotent_second_call_returns_existing(
+        self, mock_client, mock_cache_with_results
+    ):
+        """Calling twice returns same existing note both times."""
+        from simplenote_mcp.server.tool_handlers import GetOrCreateNoteHandler
+
+        handler = GetOrCreateNoteHandler(mock_client, mock_cache_with_results)
+        r1 = await handler.handle({"title": "My Title"})
+        r2 = await handler.handle({"title": "My Title"})
+        d1 = json.loads(r1[0].text)
+        d2 = json.loads(r2[0].text)
+        assert d1["note_id"] == d2["note_id"]
+        assert d1["created"] is False
+        assert d2["created"] is False
+        mock_client.add_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_returns_created_flag_in_response(
+        self, mock_client, mock_cache_empty
+    ):
+        """Response always contains created field."""
+        from simplenote_mcp.server.tool_handlers import GetOrCreateNoteHandler
+
+        handler = GetOrCreateNoteHandler(mock_client, mock_cache_empty)
+        result = await handler.handle({"title": "New Note"})
+        data = json.loads(result[0].text)
+        assert "created" in data
+
+    @pytest.mark.asyncio
+    async def test_default_content_used_when_creating(
+        self, mock_client, mock_cache_empty
+    ):
+        """Default content is used when note is created without explicit content."""
+        from simplenote_mcp.server.tool_handlers import GetOrCreateNoteHandler
+
+        handler = GetOrCreateNoteHandler(mock_client, mock_cache_empty)
+        await handler.handle({"title": "New Note"})
+        call_args = mock_client.add_note.call_args[0][0]
+        assert "New Note" in call_args["content"]
+
+    @pytest.mark.asyncio
+    async def test_tags_applied_when_creating(self, mock_client, mock_cache_empty):
+        """Tags are applied to the newly created note."""
+        from simplenote_mcp.server.tool_handlers import GetOrCreateNoteHandler
+
+        mock_client.add_note.return_value = (
+            {"key": "new-note", "content": "# Tagged", "tags": ["work"]},
+            0,
+        )
+        handler = GetOrCreateNoteHandler(mock_client, mock_cache_empty)
+        await handler.handle({"title": "Tagged", "tags": ["work"]})
+        call_args = mock_client.add_note.call_args[0][0]
+        assert "work" in call_args.get("tags", [])
+
+    @pytest.mark.asyncio
+    async def test_missing_title_raises_error(self, mock_client, mock_cache_empty):
+        """Missing title raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+        from simplenote_mcp.server.tool_handlers import GetOrCreateNoteHandler
+
+        handler = GetOrCreateNoteHandler(mock_client, mock_cache_empty)
+        with pytest.raises(ValidationError):
+            await handler.handle({})
