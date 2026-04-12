@@ -12,8 +12,8 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.12.1-blue.svg)](./CHANGELOG.md)
-[![Test Coverage](https://img.shields.io/badge/coverage-74%25-brightgreen)](./htmlcov/index.html)
+[![Version](https://img.shields.io/badge/version-1.13.0-blue.svg)](./CHANGELOG.md)
+[![Test Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <!-- Download & Stats Badges -->
@@ -30,19 +30,25 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b215d030-b511-457d-8a6d-3e1e6ea3b541)
 ---
 
-## 🎉 What's New in v1.11.0
+## What's New in v1.13.0
 
-**New Tools, Dependency Refresh & CI/CD Improvements!**
+**21 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
 
-Version 1.11.0 expands the note management toolset, resolves CI/CD pipeline failures, and delivers a comprehensive security-focused dependency refresh:
+Version 1.13.0 is a major expansion from 10 to 21 tools, fixing all known tag bugs and adding capabilities no other note MCP server offers:
 
-- 🔍 **Fuzzy Search**: New `fuzzy_search_notes` tool for approximate string matching across notes
-- 📅 **Natural Language Dates**: New `search_notes_by_date` tool with human-friendly date expressions (e.g. "last week", "yesterday")
-- 📤 **Note Export**: New `export_notes` tool for bulk export in Markdown, plain text, or JSON
-- 🔁 **Duplicate Detection**: New `find_duplicate_notes` tool to identify near-duplicate content
-- 🔒 **Security**: cryptography upgraded to 46.0.5 (CVE fix), nltk upgraded to 3.9.3 (CVE fix)
-- 🛠️ **CI/CD**: Removed deprecated `safety` scanner; all security scanning now via `pip-audit`
-- 🏆 **975 tests passing**, 74% coverage, zero linting/type errors, zero open security alerts
+- **`add_text`**: Append or prepend text without overwriting — Bear's most-used pattern
+- **`list_tags`**: Discover all tags with note counts — stops Claude from guessing tag names
+- **`get_note_versions` / `restore_version`**: Full version history and rollback — unique to Simplenote MCP
+- **`rename_tag`**: Rename a tag across all notes atomically, with dry-run preview
+- **`get_or_create_note`**: Atomic find-or-create — eliminates the 3-round-trip search→check→create pattern
+- **`append_to_daily_note`**: Timestamped journal entries on a `YYYY-MM-DD` note — the standard Claude logging tool
+- **`replace_section`**: Update one Markdown section without touching the rest
+- **`find_untagged_notes`**: Surface notes with no tags for housekeeping
+- **`bulk_tag`**: Apply tags to multiple notes in one call
+- **`restore_note`**: Untrash a note — completes the soft-delete/restore lifecycle
+- **Search enhancements**: `pinned` filter, typed `created_after` / `modified_after` ISO date params
+- **Tag sanitization**: Spaces auto-converted to hyphens; all tag responses are JSON arrays
+- **1135 tests passing**, 77% coverage, zero linting/type errors
 
 See the [CHANGELOG](./CHANGELOG.md) for complete details.
 
@@ -57,7 +63,7 @@ See the [CHANGELOG](./CHANGELOG.md) for complete details.
 - 🧩 **MCP Compatible**: Works with Claude Desktop and other MCP clients
 - 🐳 **Docker Ready**: Full containerization with multi-stage builds and security hardening
 - 📊 **Monitoring**: Optional HTTP endpoints for health, readiness, and metrics
-- 🧪 **Robust Testing**: Comprehensive test suite with 700+ tests and continuous integration
+- 🧪 **Robust Testing**: Comprehensive test suite with 1135+ tests and continuous integration
 - 🔒 **Security Hardened**: Regular security scanning with Bandit, pip-audit, and dependency checks
 
 ---
@@ -312,16 +318,29 @@ project from:2023-01-01 to:2023-12-31
 
 ## 🛠️ Available Tools
 
-| Tool           | Description                  | Parameters                                                 |
-| -------------- | ---------------------------- | ---------------------------------------------------------- |
-| `create_note`  | Create a new note            | `content`, `tags` (optional)                               |
-| `update_note`  | Update an existing note      | `note_id`, `content`, `tags` (optional)                    |
-| `delete_note`  | Move a note to trash         | `note_id`                                                  |
-| `get_note`     | Get a note by ID             | `note_id`                                                  |
-| `search_notes` | Advanced search with filters | `query`, `limit`, `offset`, `tags`, `from_date`, `to_date` |
-| `add_tags`     | Add tags to a note           | `note_id`, `tags`                                          |
-| `remove_tags`  | Remove tags from a note      | `note_id`, `tags`                                          |
-| `replace_tags` | Replace all tags on a note   | `note_id`, `tags`                                          |
+| Tool                      | Description                                              | Parameters                                                                                              |
+| ------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `create_note`             | Create a new note                                        | `content`, `tags` (optional)                                                                            |
+| `update_note`             | Replace full note content (destructive)                  | `note_id`, `content`, `tags` (optional)                                                                 |
+| `delete_note`             | Soft-delete: move note to Trash                          | `note_id`                                                                                               |
+| `restore_note`            | Untrash a note — move it back from Trash                 | `note_id`                                                                                               |
+| `get_note`                | Get a note by ID with full content and metadata          | `note_id`                                                                                               |
+| `add_text`                | Append or prepend text without overwriting               | `note_id`, `text`, `position` (`"end"` \| `"beginning"`)                                               |
+| `search_notes`            | Full-text search with filters and pagination             | `query`, `limit`, `offset`, `tags`, `from_date`, `to_date`, `created_after`, `modified_after`, `pinned`, `fuzzy`, `sort_by` |
+| `add_tags`                | Add tags to a note                                       | `note_id`, `tags`                                                                                       |
+| `remove_tags`             | Remove specific tags from a note                         | `note_id`, `tags`                                                                                       |
+| `replace_tags`            | Replace all tags on a note                               | `note_id`, `tags`                                                                                       |
+| `list_tags`               | List all tags with note counts                           | `sort_by` (`"alpha"` \| `"count"`)                                                                      |
+| `rename_tag`              | Rename a tag across all notes atomically                 | `old_tag`, `new_tag`, `dry_run` (optional)                                                              |
+| `get_note_versions`       | List version history for a note                          | `note_id`                                                                                               |
+| `restore_version`         | Roll back a note to a previous version                   | `note_id`, `version_number`                                                                             |
+| `get_or_create_note`      | Atomic find-or-create by title                           | `title`, `tags` (optional), `default_content` (optional)                                               |
+| `append_to_daily_note`    | Append a timestamped entry to today's note               | `text`, `tags` (optional)                                                                               |
+| `replace_section`         | Replace one Markdown section without touching others     | `note_id`, `header`, `content`                                                                          |
+| `find_untagged_notes`     | Find notes with no tags                                  | `limit` (optional)                                                                                      |
+| `bulk_tag`                | Apply tags to multiple notes in one call                 | `note_ids`, `tags`                                                                                      |
+| `export_notes`            | Export notes to Markdown or JSON                         | `format`, `tags` (optional), `query` (optional)                                                         |
+| `find_and_merge_duplicates` | Detect and merge duplicate notes                       | `dry_run` (optional), `similarity_threshold` (optional)                                                 |
 
 ---
 
