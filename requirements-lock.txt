@@ -39,7 +39,7 @@ httpx-sse==0.4.3
 id==1.6.1
 identify==2.6.18
 idna==3.10
-iniconfig==2.1.0
+iniconfig==2.3.0
 jaraco.classes==3.4.0
 jaraco.context==6.1.2
 jaraco.functools==4.4.0
