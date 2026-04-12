@@ -903,6 +903,33 @@ async def handle_list_tools() -> list[types.Tool]:
                     "required": [],
                 },
             ),
+            types.Tool(
+                name="add_text",
+                description=(
+                    "Append or prepend text to an existing note without overwriting the full note. "
+                    "Use this instead of update_note when you only want to append or prepend content "
+                    "without overwriting the full note."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to modify",
+                        },
+                        "text": {
+                            "type": "string",
+                            "description": "The text to add to the note",
+                        },
+                        "position": {
+                            "type": "string",
+                            "enum": ["end", "beginning"],
+                            "description": "Where to add the text: 'end' (default) or 'beginning'",
+                        },
+                    },
+                    "required": ["note_id", "text"],
+                },
+            ),
         ]
         logger.info(
             f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"

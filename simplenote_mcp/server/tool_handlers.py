@@ -1374,6 +1374,69 @@ class ExportNotesHandler(ToolHandlerBase):
             return self._format_error_response(e, "exporting notes")
 
 
+class AddTextHandler(ToolHandlerBase):
+    """Handler for add_text tool — non-destructive append/prepend to a note."""
+
+    @validate_tool_security("add_text")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle add_text tool call."""
+        from .errors import ValidationError
+
+        note_id = arguments.get("note_id", "")
+        text = arguments.get("text", "")
+        position = arguments.get("position", "end")
+
+        if not note_id:
+            raise ValidationError("note_id is required")
+        if not text:
+            raise ValidationError("text is required")
+        if position not in ("end", "beginning"):
+            raise ValidationError(
+                f"Invalid position '{position}'. Must be 'end' or 'beginning'."
+            )
+
+        try:
+            existing_note = self._get_note_from_cache_or_api(note_id)
+            existing_content = existing_note.get("content", "")
+
+            if position == "end":
+                new_content = (
+                    f"{existing_content}\n{text}" if existing_content else text
+                )
+            else:
+                new_content = (
+                    f"{text}\n{existing_content}" if existing_content else text
+                )
+
+            existing_note["content"] = new_content
+            updated_note, status = self.sn.update_note(existing_note)
+
+            if status == 0 and isinstance(updated_note, dict):
+                self._update_cache_after_operation(updated_note, "update")
+                final_content = updated_note.get("content", new_content)
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "note_id": updated_note.get("key", note_id),
+                                "position": position,
+                                "content_length": len(final_content),
+                                "tags": updated_note.get("tags", []),
+                            }
+                        ),
+                    )
+                ]
+            else:
+                raise NetworkError("Failed to update note after adding text")
+
+        except Exception as e:
+            return self._format_error_response(
+                e, f"adding text to note {note_id}", {"note_id": note_id}
+            )
+
+
 class ToolHandlerRegistry:
     """Registry for tool handlers."""
 
@@ -1390,6 +1453,7 @@ class ToolHandlerRegistry:
             "replace_tags": ReplaceTagsHandler,
             "export_notes": ExportNotesHandler,
             "find_and_merge_duplicates": FindAndMergeDuplicatesHandler,
+            "add_text": AddTextHandler,
         }
 
     def get_handler(

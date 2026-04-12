@@ -52,6 +52,7 @@ class TestToolHandlerRegistry:
             "replace_tags",
             "export_notes",
             "find_and_merge_duplicates",
+            "add_text",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -769,3 +770,152 @@ class TestResourceNotFoundErrors:
         assert error.get("resource_id") == "missing-note" or (
             error.get("context", {}).get("note_id") == "missing-note"
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 2: add_text tool tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.unit
+class TestAddTextHandler:
+    """Test the add_text handler."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        note = {
+            "key": "note1",
+            "content": "Original content",
+            "tags": ["test"],
+            "version": 2,
+        }
+        client.get_note.return_value = (note, 0)
+        client.update_note.return_value = (
+            {"key": "note1", "content": "Original content\nappended", "tags": ["test"]},
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.get_note.return_value = {
+            "key": "note1",
+            "content": "Original content",
+            "tags": ["test"],
+            "version": 2,
+        }
+        cache.update_cache_after_update = MagicMock()
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import AddTextHandler
+
+        return AddTextHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_append_text_to_end(self, handler, mock_client):
+        """position='end' appends text after existing content."""
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "Original content\nNew text", "tags": ["test"]},
+            0,
+        )
+        result = await handler.handle(
+            {"note_id": "note1", "text": "New text", "position": "end"}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        # verify update_note was called with appended content
+        call_note = mock_client.update_note.call_args[0][0]
+        assert call_note["content"].endswith("New text")
+        assert call_note["content"].startswith("Original content")
+
+    @pytest.mark.asyncio
+    async def test_prepend_text_to_beginning(self, handler, mock_client):
+        """position='beginning' puts text before existing content."""
+        mock_client.update_note.return_value = (
+            {
+                "key": "note1",
+                "content": "New text\nOriginal content",
+                "tags": ["test"],
+            },
+            0,
+        )
+        result = await handler.handle(
+            {"note_id": "note1", "text": "New text", "position": "beginning"}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        call_note = mock_client.update_note.call_args[0][0]
+        assert call_note["content"].startswith("New text")
+        assert "Original content" in call_note["content"]
+
+    @pytest.mark.asyncio
+    async def test_default_position_is_end(self, handler, mock_client):
+        """Omitting position defaults to 'end'."""
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "Original content\nNew text", "tags": ["test"]},
+            0,
+        )
+        result = await handler.handle({"note_id": "note1", "text": "New text"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        call_note = mock_client.update_note.call_args[0][0]
+        assert call_note["content"].startswith("Original content")
+        assert call_note["content"].endswith("New text")
+
+    @pytest.mark.asyncio
+    async def test_missing_note_id_raises_error(self, handler):
+        """Missing note_id raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle({"text": "some text"})
+
+    @pytest.mark.asyncio
+    async def test_missing_text_raises_error(self, handler):
+        """Missing text raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle({"note_id": "note1"})
+
+    @pytest.mark.asyncio
+    async def test_invalid_position_raises_validation_error(self, handler):
+        """Invalid position value raises ValidationError."""
+        from simplenote_mcp.server.errors import ValidationError
+
+        with pytest.raises(ValidationError):
+            await handler.handle(
+                {"note_id": "note1", "text": "some text", "position": "middle"}
+            )
+
+    @pytest.mark.asyncio
+    async def test_response_includes_content_length_and_position(
+        self, handler, mock_client
+    ):
+        """Response has note_id, content_length, position, tags fields."""
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "Original content\nNew text", "tags": ["test"]},
+            0,
+        )
+        result = await handler.handle(
+            {"note_id": "note1", "text": "New text", "position": "end"}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert "note_id" in data
+        assert "content_length" in data
+        assert "position" in data
+        assert "tags" in data
+
+    @pytest.mark.asyncio
+    async def test_api_error_returns_error_response(self, handler, mock_client):
+        """update_note returning (None, -1) yields error response."""
+        mock_client.update_note.return_value = (None, -1)
+        result = await handler.handle({"note_id": "note1", "text": "New text"})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
