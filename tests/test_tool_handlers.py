@@ -63,6 +63,7 @@ class TestToolHandlerRegistry:
             "find_untagged_notes",
             "bulk_tag",
             "restore_note",
+            "get_server_info",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -2181,3 +2182,98 @@ class TestRestoreNoteHandler:
         result = await handler.handle({"note_id": "bad"})
         data = json.loads(result[0].text)
         assert data["success"] is False
+
+
+@pytest.mark.unit
+class TestGetServerInfoHandler:
+    """Tests for the get_server_info tool."""
+
+    @pytest.fixture
+    def mock_client(self):
+        return MagicMock()
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache._tag_index = {"work": {"n1"}, "test": {"n1", "n2"}}
+        cache._notes = {"n1": {}, "n2": {}}
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import GetServerInfoHandler
+
+        return GetServerInfoHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_returns_success(self, handler):
+        """Returns success=True."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+
+    @pytest.mark.asyncio
+    async def test_returns_version(self, handler):
+        """Returns the current server version."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert "version" in data
+        assert data["version"] == "1.13.0"
+
+    @pytest.mark.asyncio
+    async def test_returns_author(self, handler):
+        """Returns the author field."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert "author" in data
+        assert "Thomas" in data["author"]
+
+    @pytest.mark.asyncio
+    async def test_returns_tool_count(self, handler):
+        """Returns the number of registered tools."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert "tool_count" in data
+        assert data["tool_count"] >= 21  # at least 21 tools registered
+
+    @pytest.mark.asyncio
+    async def test_returns_debug_info(self, handler):
+        """Returns a debug block with python_version, platform, cache_initialized."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert "debug" in data
+        debug = data["debug"]
+        assert "python_version" in debug
+        assert "platform" in debug
+        assert "cache_initialized" in debug
+        assert debug["cache_initialized"] is True
+
+    @pytest.mark.asyncio
+    async def test_debug_cache_not_initialized(self, mock_client):
+        """Reports cache_initialized=False when cache is not ready."""
+        from simplenote_mcp.server.tool_handlers import GetServerInfoHandler
+
+        uninit_cache = MagicMock()
+        uninit_cache.is_initialized = False
+        handler = GetServerInfoHandler(mock_client, uninit_cache)
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["debug"]["cache_initialized"] is False
+
+    @pytest.mark.asyncio
+    async def test_no_cache_graceful(self, mock_client):
+        """Works without a cache instance (cache=None)."""
+        from simplenote_mcp.server.tool_handlers import GetServerInfoHandler
+
+        handler = GetServerInfoHandler(mock_client, None)
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["debug"]["cache_initialized"] is False
+
+    @pytest.mark.asyncio
+    async def test_registry_includes_get_server_info(self):
+        """get_server_info is registered in the tool registry."""
+        registry = ToolHandlerRegistry()
+        assert "get_server_info" in registry.list_tools()

@@ -2198,6 +2198,56 @@ class RestoreNoteHandler(ToolHandlerBase):
             )
 
 
+class GetServerInfoHandler(ToolHandlerBase):
+    """Handler for get_server_info tool — returns version, author, and debug info."""
+
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle get_server_info tool call."""
+        import platform
+        import sys
+
+        import simplenote_mcp
+
+        config = get_config()
+        registry = ToolHandlerRegistry()
+
+        cache_initialized = bool(self.note_cache and self.note_cache.is_initialized)
+        note_count: int | None = None
+        if cache_initialized and self.note_cache is not None:
+            try:
+                note_count = len(self.note_cache._notes)
+            except Exception:
+                note_count = None
+
+        return [
+            types.TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "success": True,
+                        "name": "simplenote-mcp-server",
+                        "version": simplenote_mcp.__version__,
+                        "author": "Thomas Juul Dyhr",
+                        "description": "MCP server integrating Simplenote with Claude Desktop",
+                        "tool_count": len(registry.list_tools()),
+                        "debug": {
+                            "python_version": sys.version,
+                            "platform": platform.platform(),
+                            "cache_initialized": cache_initialized,
+                            "note_count": note_count,
+                            "sync_interval_seconds": config.sync_interval_seconds,
+                            "log_level": config.log_level.value
+                            if hasattr(config.log_level, "value")
+                            else str(config.log_level),
+                            "offline_mode": config.offline_mode,
+                            "cache_max_size": config.cache_max_size,
+                        },
+                    }
+                ),
+            )
+        ]
+
+
 class ToolHandlerRegistry:
     """Registry for tool handlers."""
 
@@ -2225,6 +2275,7 @@ class ToolHandlerRegistry:
             "find_untagged_notes": FindUntaggedNotesHandler,
             "bulk_tag": BulkTagHandler,
             "restore_note": RestoreNoteHandler,
+            "get_server_info": GetServerInfoHandler,
         }
 
     def get_handler(

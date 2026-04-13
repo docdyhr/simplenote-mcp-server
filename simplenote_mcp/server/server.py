@@ -1161,6 +1161,19 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                 },
             ),
+            types.Tool(
+                name="get_server_info",
+                description=(
+                    "Return version, author, and debug information about this MCP server. "
+                    "Use this to confirm which version is running, check whether the cache "
+                    "is initialized, and see runtime settings (log level, sync interval, "
+                    "offline mode). No parameters required."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                },
+            ),
         ]
         logger.info(
             f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"
