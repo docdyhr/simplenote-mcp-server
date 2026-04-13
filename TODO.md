@@ -190,7 +190,7 @@ Fix these before any feature work begins. All are confirmed real-world pain poin
   - Also update any test asserting exact snippet length
   - Criterion: Default snippet is 300 chars; `SNIPPET_MAX_LENGTH` env var override still works
 
-- [ ] `[P2]` **Search relevance scoring improvements**
+- [x] `[P2]` **Search relevance scoring improvements** ✅ v1.13.0
   - File: `simplenote_mcp/server/search/engine.py`
   - Criterion: Scoring model documented in code; short search terms return more relevant results first
   - Workflow: `/test-first`

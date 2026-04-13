@@ -493,6 +493,36 @@ class SearchEngine:
     def _calculate_relevance(self, note: dict[str, Any], query: str) -> int:
         """Calculate relevance score for a note.
 
+        Scoring model (TF-lite with positional and recency boosts):
+
+        1. **Term frequency** — each occurrence of a search term in the full
+           note content adds 1 point. Rewards notes that discuss the topic
+           more extensively.
+
+        2. **Title bonus** (+10 per term) — a term found on the first line
+           (treated as the note title) is weighted 10× over body occurrences.
+           This surfaces notes whose primary subject matches the query rather
+           than notes that merely mention it in passing.
+
+        3. **Tag bonus** (+5 per term) — an exact tag match adds 5 points.
+           Notes explicitly filed under a relevant tag rank above notes where
+           the term appears only in prose.
+
+        4. **Recency bonus** (0–5 points) — notes modified in the last 30 days
+           receive +5; the bonus decreases by 1 for every additional 30 days,
+           reaching 0 after 5 months. This keeps recently edited notes visible
+           for short, ambiguous queries while not burying older authoritative
+           notes with many term hits.
+
+        5. **Fuzzy bonuses** (fuzzy mode only) — when ``fuzzy=True``, terms
+           that do not match exactly are scored via ``FuzzyMatcher.fuzzy_score``
+           and contribute a proportionally reduced score (capped at 3×
+           fuzzy_score for title, max(1, 3×) for body).
+
+        No IDF component is applied — the corpus is a personal note collection
+        where common words are already filtered by the query, and IDF would
+        penalise notes on well-documented topics.
+
         Args:
             note: The note to score
             query: The original search query

@@ -2,154 +2,111 @@
 
 > Make Simplenote the best note-taking companion for Claude Desktop: achieve full Bear parity, then surpass it with Simplenote-native capabilities no other note MCP can offer.
 
-**Current version**: v1.12.1 — 10 tools  
-**Working checklist**: see [TODO.md](TODO.md)  
+**Current version**: v1.13.0 — 22 tools
+**Working checklist**: see [TODO.md](TODO.md)
 **Supersedes**: `docs/ROADMAP.md` (deprecated)
 
 ---
 
-## Current State — v1.12.1
+## Current State — v1.13.0
 
-### Shipped Tools
+### All Shipped Tools
 
 | Tool | What it does |
 |---|---|
 | `create_note` | Create a note with content and optional tags |
 | `update_note` | Replace full note content (destructive — overwrites) |
-| `delete_note` | Soft-delete: move note to Trash (`trash_note` internally) |
+| `delete_note` | Soft-delete: move note to Trash |
+| `restore_note` | Un-trash a note — reverses `delete_note` |
 | `get_note` | Retrieve a note by ID with full content and metadata |
-| `search_notes` | Full-text search with fuzzy matching, boolean operators, date filters, tag filters, pagination |
+| `add_text` | Append or prepend text without overwriting the full note |
+| `search_notes` | Full-text search with fuzzy, boolean, date, tag, pinned filters, pagination |
 | `add_tags` | Add tags to an existing note |
 | `remove_tags` | Remove specific tags from a note |
 | `replace_tags` | Replace all tags on a note |
+| `list_tags` | List all tags with note counts, sorted by name or count |
+| `rename_tag` | Rename a tag across all notes atomically (dry-run supported) |
+| `get_note_versions` | Retrieve version history for a note (up to 10 versions with previews) |
+| `restore_version` | Restore a note to a specific historical version |
+| `get_or_create_note` | Atomic find-or-create by title — eliminates 3-round-trip pattern |
+| `append_to_daily_note` | Append a timestamped entry to today's `YYYY-MM-DD` note |
+| `replace_section` | Replace one Markdown section without touching the rest |
+| `find_untagged_notes` | List notes with no tags for housekeeping |
+| `bulk_tag` | Apply tags to multiple notes in a single call |
 | `export_notes` | Export notes to Markdown or JSON |
 | `find_and_merge_duplicates` | Detect and merge duplicate notes |
-
-### Infrastructure Already in Place
-
-These capabilities exist in the codebase today and directly enable upcoming features:
-
-- **`NoteCache._tag_index`** — inverted index of `tag → set[note_ids]`, updated on every sync. `list_tags` needs only a read of this index (no API call).
-- **`NoteCache._filter_notes_by_untagged()`** — `cache.py:769`, already implemented.
-- **`sn.get_note(noteid, version=N)`** — the simplenote library accepts a `version` integer, enabling full note version history.
-- **`sn.trash_note()` + `update_note(deleted=False)`** — soft-delete and restore are already API-accessible.
-- **`publishURL` / `shareURL`** fields exist on every note object in the Simperium API response.
-- **`systemTags`** field contains `"pinned"` string — pinned filter needs only a cache scan.
-- **Structured error codes** — `ResourceNotFoundError`, `ValidationError`, etc. all emit typed codes (e.g. `NF_NOTE_xxxx`, `VAL_REQ_xxxx`).
-- **`SNIPPET_MAX_LENGTH`** configurable in `config.py:58` — currently defaults to 100 chars.
-
----
-
-## Known Bugs — Patch Release (pre-v1.13) ✅ Fixed in v1.13.0
-
-Confirmed real-world pain points observed in Claude Desktop usage.
-
-| # | Problem | Root Cause | Fix |
-|---|---|---|---|
-| 1 | Tags with spaces accepted silently | `_parse_tags()` only strips whitespace, no sanitization | Sanitize to hyphens or raise `VAL_TAG_xxxx` error |
-| 2 | Tags response format inconsistency | Some edge-case paths may return comma-separated string | Audit all response paths; enforce JSON array everywhere |
-| 3 | Tag operations don't always return final tag state | Some paths return `{"status": "ok"}` stub | All tag ops must return `{note_id, tags_added/removed, tags_now: []}` |
-| 4 | Note-not-found errors are generic | `resource_id` field not always populated | `ResourceNotFoundError` must carry `resource_id=note_id` in every path |
-
----
-
-## Phase 1 — v1.13.0: Bear Parity ✅ Complete
-
-> Close the two gaps that matter most for daily Claude workflows.
-
-Bear MCP has 12 tools; Simplenote MCP has 10. The two highest-impact missing tools are `add_text` and `list_tags` — without them, Claude must overwrite notes to append anything, and guesses at tag names rather than reusing existing ones.
-
-### New Tools
-
-| Tool | Signature | Notes |
-|---|---|---|
-| `add_text` | `add_text(note_id, text, position="end"\|"beginning")` | Appends or prepends without fetching or overwriting full content. Uses `_get_note_from_cache_or_api()` → concatenate → `update_note`. |
-| `list_tags` | `list_tags(sort_by="alpha"\|"count")` | Returns `[{tag, note_count}]`. Reads `NoteCache._tag_index` — no API call. Handles uninitialized cache gracefully. |
-
-### Tool Description Quality Pass
-
-All 10 existing tool descriptions get a **"use this vs. alternatives"** clause so Claude picks the right tool. Examples:
-
-- `update_note`: *"Use `add_text` instead when you only need to append or prepend content — this tool replaces the full note."*
-- `delete_note`: *"This soft-deletes (moves to Trash). Use `restore_note` to undo. The note is not permanently removed."*
-- `search_notes`: *"Use `list_tags` first if you need to discover what tags exist before filtering by tag."*
-
----
-
-## Phase 2 — v1.14.0: Simplenote Differentiators ✅ Complete (shipped in v1.13.0)
-
-> Expose capabilities that Bear, Notion Notes, and macOS Notes MCP servers cannot offer.
-
-### New Tools
-
-| Tool | Signature | API Basis | Notes |
-|---|---|---|---|
-| `get_note_versions` | `get_note_versions(note_id)` → `[{version, modified_date, preview}]` | `sn.get_note(id, version=N)` | Fetch current note to get version N, walk backwards. Cap at 10 versions. Preview = first 200 chars. |
-| `restore_version` | `restore_version(note_id, version_number)` → note | `sn.get_note(id, v)` → strip version → `update_note` | Returns the restored note. Pair with `get_note_versions`. |
-| `rename_tag` | `rename_tag(old_tag, new_tag, dry_run=False)` → `{updated_count, notes_updated}` | Iterate `_tag_index[old_tag]`, call `update_note` on each | Atomic from Claude's perspective. `dry_run=True` previews changes without writing. |
-| `publish_note` | `publish_note(note_id)` → `{public_url}` | Simperium HTTP PATCH | ⚠️ **Feasibility spike complete (v1.13)**: `publishURL` field exists on note objects; `simplenote.py` has no `publish_note()`. Implementation requires direct HTTP PATCH to `api2.simplenote.com/api2/data/<bucket>/<note_id>` with `{"systemTags": ["published"]}`. Token available from `sn.token`. Deferred to v1.15 — out of scope for v1.13. |
-| `unpublish_note` | `unpublish_note(note_id)` | Same as above | Bundle with `publish_note` — deferred to v1.15. |
-
-### Search Enhancements
-
-| Enhancement | Parameter | Notes |
-|---|---|---|
-| Pinned filter | `pinned: bool` | Filter by `systemTags` containing `"pinned"`. Cache-only, no API call. |
-| Typed date params | `created_after`, `modified_after` (ISO datetime) | Complements existing natural-language date syntax (`from:last_week`). Adds explicit typed parameters to the tool schema. |
-
----
-
-## Phase 3 — v1.15.0: Claude Companion Tools ✅ Complete (shipped in v1.13.0)
-
-> Eliminate multi-round-trip patterns. Make Simplenote the most ergonomic note backend for agentic Claude workflows.
-
-Without these tools, Claude needs 3 round trips to find-or-create a note, and another 2 to append a daily log entry. These tools collapse common patterns into single calls.
-
-### New Tools
-
-| Tool | Signature | Notes |
-|---|---|---|
-| `get_or_create_note` | `get_or_create_note(title, tags?, default_content?)` → `{note, created: bool}` | Search by title (exact, limit=1) → return if found, create if not. Eliminates search + conditional create pattern. |
-| `append_to_daily_note` | `append_to_daily_note(text, tags?)` → note | Find-or-create note titled `YYYY-MM-DD`. Append `HH:MM text` with timestamp. The standard Claude journaling tool. |
-| `replace_section` | `replace_section(note_id, header, content)` → note | Parse Markdown `## header` boundaries. Replace content between matched header and next header (or EOF). Raises error if header not found. |
-| `find_untagged_notes` | `find_untagged_notes(limit?)` → `[note]` | Thin wrapper over `NoteCache._filter_notes_by_untagged()` (already implemented). |
-| `bulk_tag` | `bulk_tag(note_ids[], tags[])` → `{updated_count, failed_ids[]}` | Apply tags to N notes. Returns per-note success/failure — not all-or-nothing. |
+| `get_server_info` | Server version, author, registered tools, and runtime debug info |
 
 ### Recommended Claude Workflows
 
-These tools unlock the following patterns:
-
-| Workflow | Tools Required |
+| Workflow | Tools |
 |---|---|
-| **Session continuity** — write handover note at end, read at start | `get_or_create_note`, `add_text`, `search_notes` |
+| **Session continuity** — handover note at end, read at start | `get_or_create_note`, `add_text`, `search_notes` |
 | **Daily log** — timestamped entries throughout the day | `append_to_daily_note` |
 | **Project state notes** — one note per project, updated each session | `get_or_create_note`, `replace_section`, `add_text` |
 | **Prompt library** — store/retrieve reusable prompts by tag | `search_notes` (tag filter), `get_note` |
 | **Research capture** — save summaries and outputs during agentic tasks | `create_note`, `add_text` |
 | **Tag housekeeping** — discover and clean up tag fragmentation | `list_tags`, `rename_tag`, `find_untagged_notes` |
+| **Version safety** — inspect history before making destructive edits | `get_note_versions`, `restore_version` |
 
 ---
 
-## Phase 4 — v1.16.0: Polish ✅ Mostly complete (shipped in v1.13.0)
+## Completed Phases
 
-| Item | File | Notes |
+### Bugs Fixed (pre-v1.13) ✅
+
+| # | Problem | Fix |
 |---|---|---|
-| `restore_note(note_id)` — untrash | `tool_handlers.py` | `get_note` → set `deleted=False` → `update_note`. Completes the trash/restore cycle. |
-| Snippet preview: 100 → 300 chars default | `config.py:58` | One-line default change. Env var override still works. Fewer follow-up `get_note` calls needed. |
-| Search relevance scoring improvements | `search/engine.py` | Profile and document chosen scoring model. |
-| `delete_note` description: clarify soft-delete, mention `restore_note` as undo | `server.py` | Non-breaking; improves Claude's tool selection. |
+| 1 | Tags with spaces accepted silently | `_parse_tags()` sanitizes spaces → hyphens |
+| 2 | Tags returned as comma-separated string in some paths | All paths return JSON array |
+| 3 | Tag operations returned `{"status": "ok"}` stub | All tag ops return `{tags_added, tags_removed, tags_now}` |
+| 4 | Note-not-found errors missing `note_id` | `ResourceNotFoundError` carries `resource_id=note_id` everywhere |
+
+### Phase 1 — Bear Parity ✅ (v1.13.0)
+
+`add_text`, `list_tags`, tool description quality pass (use-vs-alternatives guidance on all tools).
+
+### Phase 2 — Simplenote Differentiators ✅ (v1.13.0)
+
+`get_note_versions`, `restore_version`, `rename_tag` (with dry-run), `pinned` filter, typed `created_after`/`modified_after` date params.
+
+`publish_note`/`unpublish_note`: feasibility spike complete — direct Simperium HTTP PATCH using `sn.token` is viable. Deferred to v1.15.
+
+### Phase 3 — Claude Companion Tools ✅ (v1.13.0)
+
+`get_or_create_note`, `append_to_daily_note`, `replace_section`, `find_untagged_notes`, `bulk_tag`.
+
+### Phase 4 — Polish ✅ (v1.13.0)
+
+`restore_note`, default snippet 100 → 300 chars, `delete_note` description clarified.
+Search relevance scoring model documented in `search/engine.py:_calculate_relevance` (TF-lite with title/tag/recency boosts).
+
+### Unplanned Additions ✅ (post-v1.13.0)
+
+`get_server_info` — version, author, tool count, runtime debug info.
+Python 3.13 fix: `log_monitor._process_log_file` unawaited coroutine eliminated.
+
+---
+
+## Next — v1.15.0: Publish / Unpublish
+
+| Tool | Signature | Notes |
+|---|---|---|
+| `publish_note` | `publish_note(note_id)` → `{public_url}` | Direct HTTP PATCH to Simperium. Auth token available from `sn.token`. Sets `systemTags: ["published"]`. |
+| `unpublish_note` | `unpublish_note(note_id)` | Removes `published` from `systemTags`. Bundle with `publish_note`. |
 
 ---
 
 ## v2.0 Horizon
 
-These require significant investigation or introduce breaking changes.
+These require significant investigation or introduce breaking/irreversible changes.
 
 | Item | Notes |
 |---|---|
-| **Permanent delete** | `sn.delete_note()` exists in the library but requires the note to be trashed first. Has irreversibility concerns; deliberate placement at v2.0. |
+| **`empty_trash`** | Permanently delete all trashed notes. `confirm=True` safeguard required. Tracked in issue #504. |
+| **`permanent_delete_note`** | Permanently delete a single note by ID. `sn.delete_note()` exists; irreversibility concerns place this at v2.0. Tracked in issue #504. |
 | **Multi-account support** | Needs config and auth refactor. |
-| **Real-time sync** | Replaces current polling model. Requires Simperium websocket integration. |
+| **Real-time sync** | Replaces polling model. Requires Simperium websocket integration. |
 
 ---
 
@@ -157,7 +114,7 @@ These require significant investigation or introduce breaking changes.
 
 Every feature addition must respect these three invariants:
 
-1. **Test-first**: Write failing tests (reviewed and approved) before any handler code. Use `/test-first` workflow. Pattern: `@pytest.mark.unit` class, `@pytest.fixture` for `mock_client` / `mock_cache`, `@pytest.mark.asyncio` on each test method.
+1. **Test-first**: Write failing tests before any handler code. Use `/test-first` workflow. Pattern: `@pytest.mark.unit` class, `@pytest.fixture` for `mock_client`/`mock_cache`, `@pytest.mark.asyncio` on each test method.
 
 2. **Handler pattern**: Every new tool is a class inheriting from `ToolHandlerBase`, registered in `ToolHandlerRegistry._handlers`, and declared in `handle_list_tools()` in `server.py`. No exceptions.
 
@@ -167,7 +124,7 @@ Every feature addition must respect these three invariants:
 
 ## Tag Taxonomy Convention
 
-From v1.13, the server will sanitize tags: spaces → hyphens, enforced at input. Recommended naming convention:
+Tags are sanitized at input: spaces → hyphens, lowercase enforced. Recommended naming convention:
 
 | Prefix | Purpose | Example |
 |---|---|---|
@@ -180,5 +137,3 @@ From v1.13, the server will sanitize tags: spaces → hyphens, enforced at input
 | `inbox` | Unprocessed captures | `inbox` |
 | `active` | Currently in use | `active` |
 | `archive` | Completed / inactive | `archive` |
-
-Tags should be lowercase. Avoid special characters beyond hyphens.
