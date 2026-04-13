@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 env:
-  PYTHON_VERSION: "3.12"
+  PYTHON_VERSION: "3.13"
   NODE_VERSION: "20"
   SIMPLENOTE_OFFLINE_MODE: "true"
   TSX_CACHE_DIR: /tmp/tsx-cache
