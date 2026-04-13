@@ -64,6 +64,8 @@ class TestToolHandlerRegistry:
             "bulk_tag",
             "restore_note",
             "get_server_info",
+            "publish_note",
+            "unpublish_note",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -2279,3 +2281,243 @@ class TestGetServerInfoHandler:
         """get_server_info is registered in the tool registry."""
         registry = ToolHandlerRegistry()
         assert "get_server_info" in registry.list_tools()
+
+
+@pytest.mark.unit
+class TestPublishNoteHandler:
+    """Tests for the publish_note tool."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        client.get_note.return_value = (
+            {
+                "key": "note123",
+                "content": "My note",
+                "tags": [],
+                "systemTags": [],
+                "publishURL": "",
+                "deleted": False,
+            },
+            0,
+        )
+        client.update_note.return_value = (
+            {
+                "key": "note123",
+                "content": "My note",
+                "tags": [],
+                "systemTags": ["published"],
+                "publishURL": "https://app.simplenote.com/p/abc123",
+                "deleted": False,
+            },
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.get_note.return_value = {
+            "key": "note123",
+            "content": "My note",
+            "tags": [],
+            "systemTags": [],
+            "publishURL": "",
+            "deleted": False,
+        }
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import PublishNoteHandler
+
+        return PublishNoteHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_publish_note_success(self, handler, mock_client):
+        """publish_note returns success and a public_url."""
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert "public_url" in data
+        assert data["public_url"] == "https://app.simplenote.com/p/abc123"
+
+    @pytest.mark.asyncio
+    async def test_publish_note_adds_published_system_tag(self, handler, mock_client):
+        """publish_note sets 'published' in systemTags on the update call."""
+        await handler.handle({"note_id": "note123"})
+        called_note = mock_client.update_note.call_args[0][0]
+        assert "published" in called_note["systemTags"]
+
+    @pytest.mark.asyncio
+    async def test_publish_note_idempotent(self, mock_client, mock_cache):
+        """publish_note is idempotent when note is already published."""
+        from simplenote_mcp.server.tool_handlers import PublishNoteHandler
+
+        already_published = {
+            "key": "note123",
+            "content": "My note",
+            "tags": [],
+            "systemTags": ["published"],
+            "publishURL": "https://app.simplenote.com/p/abc123",
+            "deleted": False,
+        }
+        mock_cache.get_note.return_value = already_published
+        mock_client.update_note.return_value = (already_published, 0)
+        handler = PublishNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        # Should not duplicate the "published" tag
+        called_note = mock_client.update_note.call_args[0][0]
+        assert called_note["systemTags"].count("published") == 1
+
+    @pytest.mark.asyncio
+    async def test_publish_note_missing_note_id(self, handler):
+        """publish_note returns error when note_id is missing."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_publish_note_not_found(self, mock_client, mock_cache):
+        """publish_note returns error when note does not exist."""
+        from simplenote_mcp.server.tool_handlers import PublishNoteHandler
+
+        mock_cache.is_initialized = False
+        mock_client.get_note.return_value = (None, -1)
+        handler = PublishNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "bad"})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_publish_note_api_error(self, mock_client, mock_cache):
+        """publish_note returns error when update fails."""
+        from simplenote_mcp.server.tool_handlers import PublishNoteHandler
+
+        mock_client.update_note.return_value = (None, -1)
+        handler = PublishNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_publish_note_in_registry(self):
+        """publish_note is registered in the tool registry."""
+        registry = ToolHandlerRegistry()
+        assert "publish_note" in registry.list_tools()
+
+
+@pytest.mark.unit
+class TestUnpublishNoteHandler:
+    """Tests for the unpublish_note tool."""
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        client.get_note.return_value = (
+            {
+                "key": "note123",
+                "content": "My note",
+                "tags": [],
+                "systemTags": ["published"],
+                "publishURL": "https://app.simplenote.com/p/abc123",
+                "deleted": False,
+            },
+            0,
+        )
+        client.update_note.return_value = (
+            {
+                "key": "note123",
+                "content": "My note",
+                "tags": [],
+                "systemTags": [],
+                "publishURL": "",
+                "deleted": False,
+            },
+            0,
+        )
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.get_note.return_value = {
+            "key": "note123",
+            "content": "My note",
+            "tags": [],
+            "systemTags": ["published"],
+            "publishURL": "https://app.simplenote.com/p/abc123",
+            "deleted": False,
+        }
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import UnpublishNoteHandler
+
+        return UnpublishNoteHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_unpublish_note_success(self, handler):
+        """unpublish_note returns success."""
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["note_id"] == "note123"
+
+    @pytest.mark.asyncio
+    async def test_unpublish_note_removes_published_tag(self, handler, mock_client):
+        """unpublish_note removes 'published' from systemTags."""
+        await handler.handle({"note_id": "note123"})
+        called_note = mock_client.update_note.call_args[0][0]
+        assert "published" not in called_note["systemTags"]
+
+    @pytest.mark.asyncio
+    async def test_unpublish_note_already_unpublished(self, mock_client, mock_cache):
+        """unpublish_note is a no-op when note is not published."""
+        from simplenote_mcp.server.tool_handlers import UnpublishNoteHandler
+
+        not_published = {
+            "key": "note123",
+            "content": "My note",
+            "tags": [],
+            "systemTags": [],
+            "publishURL": "",
+            "deleted": False,
+        }
+        mock_cache.get_note.return_value = not_published
+        handler = UnpublishNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        # No update call needed since nothing changed
+        mock_client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_unpublish_note_missing_note_id(self, handler):
+        """unpublish_note returns error when note_id is missing."""
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_unpublish_note_not_found(self, mock_client, mock_cache):
+        """unpublish_note returns error when note does not exist."""
+        from simplenote_mcp.server.tool_handlers import UnpublishNoteHandler
+
+        mock_cache.is_initialized = False
+        mock_client.get_note.return_value = (None, -1)
+        handler = UnpublishNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "bad"})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_unpublish_note_in_registry(self):
+        """unpublish_note is registered in the tool registry."""
+        registry = ToolHandlerRegistry()
+        assert "unpublish_note" in registry.list_tools()
