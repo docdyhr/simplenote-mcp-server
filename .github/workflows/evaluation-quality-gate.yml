@@ -399,7 +399,7 @@ jobs:
 
       - name: Comment on PR
         if: github.event_name == 'pull_request' && steps.report.outputs.report_created == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
@@ -444,7 +444,7 @@ jobs:
 
       - name: Create check run
         if: always()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const passRate = '${{ needs.run-evaluations.outputs.pass-rate || '0' }}';
