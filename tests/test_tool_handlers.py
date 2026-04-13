@@ -2216,10 +2216,12 @@ class TestGetServerInfoHandler:
     @pytest.mark.asyncio
     async def test_returns_version(self, handler):
         """Returns the current server version."""
+        import simplenote_mcp
+
         result = await handler.handle({})
         data = json.loads(result[0].text)
         assert "version" in data
-        assert data["version"] == "1.13.0"
+        assert data["version"] == simplenote_mcp.__version__
 
     @pytest.mark.asyncio
     async def test_returns_author(self, handler):
