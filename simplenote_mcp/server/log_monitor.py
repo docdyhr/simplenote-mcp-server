@@ -465,17 +465,19 @@ class LogPatternMonitor:
                                 # The task will run in background and we don't need to await it
                                 task.add_done_callback(lambda t: None)
                             except RuntimeError:
-                                # No running loop, create one for this thread
+                                # No running event loop in this thread — run
+                                # the coroutine synchronously on a fresh loop.
+                                # (run_coroutine_threadsafe requires a *running*
+                                # loop; scheduling onto a stopped loop leaves the
+                                # coroutine unawaited and triggers a
+                                # RuntimeWarning in Python 3.13+.)
                                 loop = self._get_or_create_event_loop()
-                                future = asyncio.run_coroutine_threadsafe(
-                                    self._process_log_line(line), loop
-                                )
-                                # Add callback to handle any exceptions
-                                future.add_done_callback(
-                                    lambda f: (
-                                        f.exception() if not f.cancelled() else None
+                                try:
+                                    loop.run_until_complete(
+                                        self._process_log_line(line)
                                     )
-                                )
+                                except Exception:
+                                    pass
 
         except Exception as e:
             logger.error(
