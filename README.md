@@ -48,7 +48,8 @@ Version 1.13.0 is a major expansion from 10 to 21 tools, fixing all known tag bu
 - **`restore_note`**: Untrash a note — completes the soft-delete/restore lifecycle
 - **Search enhancements**: `pinned` filter, typed `created_after` / `modified_after` ISO date params
 - **Tag sanitization**: Spaces auto-converted to hyphens; all tag responses are JSON arrays
-- **1135 tests passing**, 77% coverage, zero linting/type errors
+- **`get_server_info`**: Confirm which version is running, check cache status, and inspect runtime settings
+- **1143 tests passing**, 77% coverage, zero linting/type errors
 
 See the [CHANGELOG](./CHANGELOG.md) for complete details.
 
@@ -341,6 +342,7 @@ project from:2023-01-01 to:2023-12-31
 | `bulk_tag`                | Apply tags to multiple notes in one call                 | `note_ids`, `tags`                                                                                      |
 | `export_notes`            | Export notes to Markdown or JSON                         | `format`, `tags` (optional), `query` (optional)                                                         |
 | `find_and_merge_duplicates` | Detect and merge duplicate notes                       | `dry_run` (optional), `similarity_threshold` (optional)                                                 |
+| `get_server_info`           | Server version, author, and runtime debug info         | *(no parameters)*                                                                                       |
 
 ---
 
