@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `get_server_info` tool: returns server name, version, author, registered tool count, and a debug block (Python version, platform, cache status, sync interval, log level, offline mode)
 
+### Changed
+- Search relevance scoring model documented in `search/engine.py:_calculate_relevance()` (TF-lite with title/tag/recency boosts)
+- ROADMAP.md rewritten to reflect v1.13.0 state: all 22 tools, completed phases, v1.15 publish/unpublish roadmap
+
+### Removed
+- 48 stale historical docs (planning drafts, completed-work summaries, evaluation reports from 2025) that were superseded by root ROADMAP.md and TODO.md
+
 ## [1.13.0] - 2026-04-12
 
 ### Added
