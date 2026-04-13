@@ -155,7 +155,7 @@ jobs:
       - name: Create GitHub Release
         id: create_release
         if: ${{ github.event.inputs.dry_run != 'true' }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           name: "v${{ steps.bump_version.outputs.new_version }}"
           tag_name: "v${{ steps.bump_version.outputs.new_version }}"
@@ -427,7 +427,7 @@ jobs:
           ls -la security-reports/
           
       - name: Attach SBOM and vulnerability reports to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: "v${{ needs.prepare-release.outputs.new_version }}"
           files: |
