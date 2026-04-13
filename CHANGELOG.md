@@ -7,15 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-04-13
+
 ### Added
 - `get_server_info` tool: returns server name, version, author, registered tool count, and a debug block (Python version, platform, cache status, sync interval, log level, offline mode)
 
+### Fixed
+- `log_monitor._process_log_file`: eliminated unawaited coroutine RuntimeWarning on Python 3.13+ by replacing `run_coroutine_threadsafe` with `loop.run_until_complete()` in background thread context
+
 ### Changed
-- Search relevance scoring model documented in `search/engine.py:_calculate_relevance()` (TF-lite with title/tag/recency boosts)
-- ROADMAP.md rewritten to reflect v1.13.0 state: all 22 tools, completed phases, v1.15 publish/unpublish roadmap
+- Python runtime upgraded to 3.13.13 (pyenv); CI `PYTHON_VERSION` updated to match
+- Search relevance scoring model documented in `search/engine.py:_calculate_relevance()`
 
 ### Removed
-- 48 stale historical docs (planning drafts, completed-work summaries, evaluation reports from 2025) that were superseded by root ROADMAP.md and TODO.md
+- 48 stale historical docs (planning drafts, completed-work summaries, evaluation reports from 2025) superseded by root ROADMAP.md and TODO.md
 
 ## [1.13.0] - 2026-04-12
 
@@ -454,6 +459,14 @@ This release marks a significant milestone with **98% startup performance improv
 [1.12.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.12.0...v1.12.1
 [1.12.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.1...v1.11.0
+[1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
+[1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
+[1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.13.0...v1.14.0
+[1.13.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.12.1...v1.13.0
+[1.12.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.12.0...v1.12.1
+[1.12.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.1...v1.12.0
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0

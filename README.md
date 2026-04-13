@@ -12,7 +12,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.13.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.14.0-blue.svg)](./CHANGELOG.md)
 [![Test Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -30,26 +30,17 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b215d030-b511-457d-8a6d-3e1e6ea3b541)
 ---
 
-## What's New in v1.13.0
+## What's New in v1.14.0
 
-**21 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
+**22 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
 
-Version 1.13.0 is a major expansion from 10 to 21 tools, fixing all known tag bugs and adding capabilities no other note MCP server offers:
+Version 1.14.0 adds server introspection and fixes a Python 3.13 asyncio bug:
 
-- **`add_text`**: Append or prepend text without overwriting — Bear's most-used pattern
-- **`list_tags`**: Discover all tags with note counts — stops Claude from guessing tag names
-- **`get_note_versions` / `restore_version`**: Full version history and rollback — unique to Simplenote MCP
-- **`rename_tag`**: Rename a tag across all notes atomically, with dry-run preview
-- **`get_or_create_note`**: Atomic find-or-create — eliminates the 3-round-trip search→check→create pattern
-- **`append_to_daily_note`**: Timestamped journal entries on a `YYYY-MM-DD` note — the standard Claude logging tool
-- **`replace_section`**: Update one Markdown section without touching the rest
-- **`find_untagged_notes`**: Surface notes with no tags for housekeeping
-- **`bulk_tag`**: Apply tags to multiple notes in one call
-- **`restore_note`**: Untrash a note — completes the soft-delete/restore lifecycle
-- **Search enhancements**: `pinned` filter, typed `created_after` / `modified_after` ISO date params
-- **Tag sanitization**: Spaces auto-converted to hyphens; all tag responses are JSON arrays
 - **`get_server_info`**: Confirm which version is running, check cache status, and inspect runtime settings
+- **Python 3.13 fix**: Eliminated unawaited coroutine `RuntimeWarning` in `log_monitor` background thread
 - **1143 tests passing**, 77% coverage, zero linting/type errors
+
+See the [CHANGELOG](./CHANGELOG.md) for complete details including all 22 tools added since v1.12.
 
 See the [CHANGELOG](./CHANGELOG.md) for complete details.
 

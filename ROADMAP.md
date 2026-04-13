@@ -2,7 +2,7 @@
 
 > Make Simplenote the best note-taking companion for Claude Desktop: achieve full Bear parity, then surpass it with Simplenote-native capabilities no other note MCP can offer.
 
-**Current version**: v1.13.0 — 22 tools
+**Current version**: v1.14.0 — 22 tools
 **Working checklist**: see [TODO.md](TODO.md)
 **Supersedes**: `docs/ROADMAP.md` (deprecated)
 
