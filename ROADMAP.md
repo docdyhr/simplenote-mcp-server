@@ -2,7 +2,7 @@
 
 > Make Simplenote the best note-taking companion for Claude Desktop: achieve full Bear parity, then surpass it with Simplenote-native capabilities no other note MCP can offer.
 
-**Current version**: v1.14.0 — 22 tools
+**Current version**: v1.15.0 — 24 tools
 **Working checklist**: see [TODO.md](TODO.md)
 **Supersedes**: `docs/ROADMAP.md` (deprecated)
 
@@ -86,14 +86,9 @@ Search relevance scoring model documented in `search/engine.py:_calculate_releva
 `get_server_info` — version, author, tool count, runtime debug info.
 Python 3.13 fix: `log_monitor._process_log_file` unawaited coroutine eliminated.
 
----
+### Phase 5 — Publish / Unpublish ✅ (v1.15.0)
 
-## Next — v1.15.0: Publish / Unpublish
-
-| Tool | Signature | Notes |
-|---|---|---|
-| `publish_note` | `publish_note(note_id)` → `{public_url}` | Direct HTTP PATCH to Simperium. Auth token available from `sn.token`. Sets `systemTags: ["published"]`. |
-| `unpublish_note` | `unpublish_note(note_id)` | Removes `published` from `systemTags`. Bundle with `publish_note`. |
+`publish_note`, `unpublish_note` — via `systemTags: ["published"]`; `publish_note` returns `public_url`.
 
 ---
 

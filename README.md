@@ -12,7 +12,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.14.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.15.0-blue.svg)](./CHANGELOG.md)
 [![Test Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -30,17 +30,17 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b215d030-b511-457d-8a6d-3e1e6ea3b541)
 ---
 
-## What's New in v1.14.0
+## What's New in v1.15.0
 
-**22 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
+**24 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
 
-Version 1.14.0 adds server introspection and fixes a Python 3.13 asyncio bug:
+Version 1.15.0 completes the Simplenote-native publish/unpublish capability:
 
-- **`get_server_info`**: Confirm which version is running, check cache status, and inspect runtime settings
-- **Python 3.13 fix**: Eliminated unawaited coroutine `RuntimeWarning` in `log_monitor` background thread
-- **1143 tests passing**, 77% coverage, zero linting/type errors
+- **`publish_note`**: Publish a note to a public URL — unique to Simplenote MCP; returns `public_url`
+- **`unpublish_note`**: Remove a note from public access; no-op if already unpublished
+- **1156 tests passing**, 77% coverage, zero linting/type errors
 
-See the [CHANGELOG](./CHANGELOG.md) for complete details including all 22 tools added since v1.12.
+See the [CHANGELOG](./CHANGELOG.md) for complete details.
 
 See the [CHANGELOG](./CHANGELOG.md) for complete details.
 
