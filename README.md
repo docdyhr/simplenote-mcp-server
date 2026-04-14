@@ -162,7 +162,7 @@ docker-compose up -d
 Available tags:
 
 - `latest` - Latest stable release
-- `v1.14.0` - Specific version
+- `v1.15.0` - Specific version
 - `main` - Latest development build
 
 ### Production Deployment
