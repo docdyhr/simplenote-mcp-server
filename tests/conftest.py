@@ -72,6 +72,20 @@ def simplenote_env_vars():
         del os.environ["SIMPLENOTE_PASSWORD"]
 
 
+@pytest.fixture(autouse=True)
+def reset_config_cache():
+    """Reset the global config singleton before each test.
+
+    Prevents stale Config objects (e.g. offline_mode=False) from leaking between
+    tests that use patch.dict to temporarily change environment variables.
+    """
+    from simplenote_mcp.server import config as config_module
+
+    config_module._config = None
+    yield
+    config_module._config = None
+
+
 @pytest_asyncio.fixture(autouse=True)
 async def cleanup_asyncio_tasks():
     """Clean up all pending tasks after each test."""

@@ -577,6 +577,7 @@ class TestRateLimiterOfflineMode:
         """Test that rate limiting is enforced when offline mode is disabled."""
         from unittest.mock import patch
 
+        from simplenote_mcp.server import config as config_module
         from simplenote_mcp.server.errors import SecurityError
         from simplenote_mcp.server.middleware import RateLimiter
 
@@ -590,8 +591,6 @@ class TestRateLimiterOfflineMode:
             clear=True,
         ):
             # Clear any cached config
-            from simplenote_mcp.server import config as config_module
-
             config_module._config = None
 
             limiter = RateLimiter()
@@ -603,3 +602,6 @@ class TestRateLimiterOfflineMode:
             # Next request should fail
             with pytest.raises(SecurityError, match="Rate limit exceeded"):
                 limiter.check_rate_limit("test_user_online")
+
+        # Reset stale config so subsequent tests see offline_mode=True again
+        config_module._config = None
