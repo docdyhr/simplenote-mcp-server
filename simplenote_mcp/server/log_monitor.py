@@ -476,8 +476,10 @@ class LogPatternMonitor:
                                     loop.run_until_complete(
                                         self._process_log_line(line)
                                     )
-                                except Exception:
-                                    pass
+                                except Exception as exc:
+                                    logger.debug(
+                                        f"Log line processing error in background thread: {exc}"
+                                    )
 
         except Exception as e:
             logger.error(
