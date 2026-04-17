@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- `list_tags` returning empty results after startup: `_populate_cache_direct` now calls `_build_tag_index` when loading tagged notes, fixing the issue where `_tag_index` stayed empty because `cache.initialize()` short-circuited on the eagerly-set `_initialized=True` flag (closes #507)
+
 ## [1.15.0] - 2026-04-14
 
 ### Added
