@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import mcp.types as types
 import pytest
 
+import simplenote_mcp.server.server as server_module
 from simplenote_mcp.server.errors import (
     AuthenticationError,
     ResourceNotFoundError,
@@ -22,8 +23,6 @@ class TestGetSimpleNoteClient:
 
     def test_get_client_no_credentials(self):
         """Test error when credentials are missing."""
-        import simplenote_mcp.server.server as server_module
-
         # Reset the client
         server_module.simplenote_client = None
 
@@ -42,8 +41,6 @@ class TestGetSimpleNoteClient:
 
     def test_get_client_with_credentials(self):
         """Test client creation with valid credentials."""
-        import simplenote_mcp.server.server as server_module
-
         # Reset the client
         server_module.simplenote_client = None
 
@@ -70,8 +67,6 @@ class TestGetSimpleNoteClient:
 
     def test_get_client_singleton(self):
         """Test that client is a singleton."""
-        import simplenote_mcp.server.server as server_module
-
         with (
             patch("simplenote_mcp.server.server.get_config") as mock_get_config,
             patch("simplenote_mcp.server.server.Simplenote") as mock_simplenote,

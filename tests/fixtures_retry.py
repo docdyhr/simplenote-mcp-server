@@ -30,6 +30,7 @@ def async_retry(max_attempts: int = 3, delay: float = 0.1):
                         raise
             if last_exception:
                 raise last_exception
+            return None  # unreachable when max_attempts >= 1
 
         return wrapper
 

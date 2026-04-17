@@ -148,6 +148,7 @@ class SecurityValidator:
         Raises:
             ValidationError: If tags fail validation
         """
+        tag_list: list[str] = []
         if isinstance(tags, str):
             if not tags.strip():
                 return []
@@ -155,7 +156,7 @@ class SecurityValidator:
         elif isinstance(tags, list):
             tag_list = [str(tag).strip() for tag in tags if str(tag).strip()]
         else:
-            validate_list_or_string("tags", tags)
+            validate_list_or_string("tags", tags)  # always raises
 
         if len(tag_list) > self.MAX_TAGS_COUNT:
             raise range_validation_error(

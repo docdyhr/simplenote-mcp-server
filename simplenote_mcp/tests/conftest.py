@@ -62,6 +62,7 @@ def simplenote_client():
         return client
     except AuthenticationError as e:
         pytest.fail(f"Authentication error: {str(e)}")
+        return None  # unreachable; satisfies mixed-returns check
 
 
 @pytest.fixture

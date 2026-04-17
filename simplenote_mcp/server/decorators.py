@@ -198,6 +198,7 @@ def with_retry(
             # Re-raise the last exception after all attempts failed
             if last_exception:
                 raise last_exception
+            return None  # unreachable when max_attempts >= 1
 
         return wrapper
 

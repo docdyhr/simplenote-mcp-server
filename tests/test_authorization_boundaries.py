@@ -365,14 +365,11 @@ class TestInputSanitization:
                 '{"deeply": {"nested": {"object": {"too": {"deep": 1}}}}}',  # Very deep nesting
             ]
 
-            # These should be caught at the MCP protocol level, but test graceful handling
-            for _malformed_json in malformed_inputs:
+            # Each malformed string is used as note content; handler must not crash
+            for malformed_json in malformed_inputs:
                 try:
-                    # Direct JSON parsing would fail, but our tool handlers should be robust
-                    test_data = json.loads('{"content": "test"}')  # Valid fallback
-                    await handle_call_tool("create_note", test_data)
+                    await handle_call_tool("create_note", {"content": malformed_json})
                 except (json.JSONDecodeError, ValidationError, SecurityError):
-                    # Expected for malformed input or security validation
                     pass
 
     @pytest.mark.asyncio

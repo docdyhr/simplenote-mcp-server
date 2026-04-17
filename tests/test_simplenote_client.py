@@ -4,7 +4,9 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+import simplenote_mcp.server.server as server_module
 from simplenote_mcp.server.errors import AuthenticationError
+from simplenote_mcp.server.server import get_simplenote_client
 
 
 def test_simplenote_client_creation(simplenote_env_vars):
@@ -27,12 +29,7 @@ def test_simplenote_client_creation(simplenote_env_vars):
         mock_simplenote.return_value = mock_client
 
         # Reset client
-        import simplenote_mcp.server.server
-
-        simplenote_mcp.server.server.simplenote_client = None
-
-        # Get client
-        from simplenote_mcp.server.server import get_simplenote_client
+        server_module.simplenote_client = None
 
         client = get_simplenote_client()
         assert client == mock_client
@@ -46,9 +43,7 @@ def test_simplenote_client_creation(simplenote_env_vars):
 def test_missing_credentials():
     """Test that missing credentials raise an error."""
     # Reset the simplenote_client global variable
-    import simplenote_mcp.server.server
-
-    simplenote_mcp.server.server.simplenote_client = None
+    server_module.simplenote_client = None
 
     # Mock config with missing credentials
     with patch("simplenote_mcp.server.server.get_config") as mock_get_config:
@@ -56,8 +51,6 @@ def test_missing_credentials():
         mock_config.offline_mode = False
         mock_config.has_credentials = False
         mock_get_config.return_value = mock_config
-
-        from simplenote_mcp.server.server import get_simplenote_client
 
         with pytest.raises(AuthenticationError) as excinfo:
             get_simplenote_client()

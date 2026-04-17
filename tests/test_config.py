@@ -1,11 +1,11 @@
 """Tests for server configuration management."""
 
 import os
-import sys
 from unittest.mock import patch
 
 import pytest
 
+import simplenote_mcp.server.config as config_module
 from simplenote_mcp.server.config import Config, LogLevel, get_config
 
 
@@ -363,11 +363,11 @@ class TestConfigSingleton:
 
     def setup_method(self):
         """Reset global config before each test."""
-        sys.modules["simplenote_mcp.server.config"]._config = None  # noqa: SLF001
+        config_module._config = None  # noqa: SLF001
 
     def teardown_method(self):
         """Reset global config after each test."""
-        sys.modules["simplenote_mcp.server.config"]._config = None  # noqa: SLF001
+        config_module._config = None  # noqa: SLF001
 
     def test_get_config_singleton(self):
         """Test that get_config returns the same instance."""
@@ -379,12 +379,7 @@ class TestConfigSingleton:
 
     def test_get_config_creates_instance(self):
         """Test that get_config creates instance on first call."""
-        # Ensure global config is None
-        import simplenote_mcp.server.config
-
-        # Reset the global config for clean tests  # noqa: SLF001
-        simplenote_mcp.server.config._config = None  # noqa: SLF001
-
+        config_module._config = None  # noqa: SLF001
         config = get_config()
         assert isinstance(config, Config)
 
