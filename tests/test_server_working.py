@@ -4,8 +4,10 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from simplenote_mcp.server.cache import NoteCache
 from simplenote_mcp.server.errors import ResourceNotFoundError, ValidationError
 from simplenote_mcp.server.server import (
+    _populate_cache_direct,
     extract_title_from_content,
     get_simplenote_client,
     handle_list_resources,
@@ -89,6 +91,32 @@ class TestWorkingFunctions:
         content = ""
         result = extract_title_from_content(content, "Fallback Title")
         assert result == "Fallback Title"
+
+    @pytest.mark.asyncio
+    async def test_populate_cache_direct_builds_tag_index(self):
+        """Regression test for issue #507: _populate_cache_direct must build tag index."""
+        mock_sn = Mock()
+        mock_sn.get_note_list.return_value = (
+            [
+                {"key": "note1", "content": "Tagged note", "tags": ["work", "urgent"]},
+                {"key": "note2", "content": "Another note", "tags": ["work"]},
+                {"key": "note3", "content": "No tags note", "tags": []},
+            ],
+            0,
+        )
+        mock_sn.current = "cursor123"
+
+        cache = NoteCache(Mock())
+        cache._initialized = True  # simulate _create_minimal_cache eager-set
+
+        await _populate_cache_direct(cache, mock_sn)
+
+        assert len(cache._notes) == 3
+        assert "work" in cache._tag_index
+        assert "urgent" in cache._tag_index
+        assert "note1" in cache._tag_index["work"]
+        assert "note2" in cache._tag_index["work"]
+        assert "note1" in cache._tag_index["urgent"]
 
     def test_get_simplenote_client_success(self):
         """Test successful client creation."""

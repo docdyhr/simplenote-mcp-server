@@ -335,6 +335,7 @@ async def _populate_cache_direct(cache: NoteCache, sn: Any) -> None:
                         cache._notes[note_id] = note
                         if "tags" in note and note["tags"]:
                             cache._tags.update(note["tags"])
+                            cache._build_tag_index(note_id, note["tags"])
             finally:
                 cache._lock.release()
             logger.info(f"Direct API load successful, loaded {len(all_notes)} notes")
