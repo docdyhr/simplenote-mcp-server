@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 # Use standard logging to avoid circular import with .logging module
 logger = logging.getLogger("simplenote_mcp.alerting")
@@ -462,8 +463,9 @@ Client Info:
         Returns:
             Formatted payload dictionary
         """
-        # Detect service type from URL
-        if "slack.com" in url or "hooks.slack.com" in url:
+        # Detect service type from URL by checking the parsed hostname
+        _hostname = urlparse(url).hostname or ""
+        if _hostname == "hooks.slack.com" or _hostname.endswith(".slack.com"):
             # Slack format
             color = (
                 "#FF0000"
@@ -503,7 +505,12 @@ Client Info:
                 ]
             }
 
-        elif "discord.com" in url or "discordapp.com" in url:
+        elif (
+            _hostname.endswith(".discord.com")
+            or _hostname == "discord.com"
+            or _hostname.endswith(".discordapp.com")
+            or _hostname == "discordapp.com"
+        ):
             # Discord format
             color = (
                 0xFF0000
