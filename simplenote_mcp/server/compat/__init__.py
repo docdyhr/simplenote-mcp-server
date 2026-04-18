@@ -6,12 +6,10 @@ This module handles compatibility issues between different Python versions.
 """
 
 import importlib
-import os
-import sys
 
 # Import directly from pathlib (works with Python 3.12)
 from pathlib import Path, PurePath
-from typing import Any, Optional, Type, TypeVar, Union
+from typing import Any
 
 # Export Path for project-wide use
 __all__ = ["Path", "PurePath", "get_optional_module", "is_module_available"]
@@ -31,9 +29,6 @@ def is_module_available(module_name: str) -> bool:
         return True
     except ImportError:
         return False
-
-
-T = TypeVar("T")
 
 
 def get_optional_module(module_name: str, default: Any = None) -> Any | None:

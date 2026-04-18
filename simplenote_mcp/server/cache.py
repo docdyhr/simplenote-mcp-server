@@ -1310,7 +1310,7 @@ class NoteCache:
             ),
             "prev_offset": max(0, offset - limit) if offset > 0 else 0,
             "page": (offset // limit) + 1,
-            "total_pages": (total_items + limit - 1) // limit if limit > 0 else 1,
+            "total_pages": (total_items + limit - 1) // limit,
         }
 
     @property
@@ -1472,7 +1472,6 @@ class BackgroundSync:
 
                         # Success - reset backoff parameters
                         consecutive_failures = 0
-                        current_retry_delay = base_retry_delay
 
                         elapsed = time.time() - start_time
                         if changes > 0:

@@ -149,7 +149,7 @@ def create_ascii_chart(data: list[float], height: int = 10, width: int = 40) -> 
     else:
         data = data[-width:]
 
-    config = {"height": height, "format": lambda x: format_number(x)}
+    config = {"height": height, "format": format_number}
 
     return asciichartpy.plot(data, config)
 

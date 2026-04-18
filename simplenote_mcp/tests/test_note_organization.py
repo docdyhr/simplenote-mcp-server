@@ -202,9 +202,8 @@ class NoteOrganizer:
 # Add organization features to NoteCache for testing
 def add_organization_to_cache(cache_instance):
     """Add organization features to a specific cache instance."""
-    # Store the original get_all_notes method and update_cache_after_update method
+    # Store the original get_all_notes method
     original_get_all_notes = cache_instance.get_all_notes
-    original_update_cache = cache_instance.update_cache_after_update
 
     # Define the new get_all_notes method
     def enhanced_get_all_notes(
@@ -228,14 +227,6 @@ def add_organization_to_cache(cache_instance):
             return NoteOrganizer.get_sorted_notes(
                 self, limit, tag_filter, sort_by, pinned_only, include_pinned_first
             )
-
-    # Define an enhanced update_cache method
-    def enhanced_update_cache(_self, note):
-        """Enhanced update_cache with better pinned status preservation."""
-        # Make sure pinned status is preserved
-        original_update_cache(note)
-        # The update is complete
-        return note
 
     # Define pin_note method
     def pin_note(self, note_id):

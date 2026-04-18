@@ -176,7 +176,7 @@ def run_bandit(project_dir: str) -> dict[str, Any]:
         Dictionary with security check results
     """
     print("Running security analysis...")
-    stdout, stderr, return_code = run_command(
+    run_command(
         ["bandit", "-r", "simplenote_mcp", "-f", "json", "-o", "bandit-results.json"],
         cwd=project_dir,
     )

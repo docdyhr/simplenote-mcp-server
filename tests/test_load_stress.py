@@ -225,11 +225,6 @@ class TestStressTesting:
         mock_cache = MagicMock()
         mock_cache._notes = {}
 
-        # Mock API call with small delay
-        async def delayed_get(note_id):
-            await asyncio.sleep(0.01)  # Simulate network latency
-            return {"key": note_id, "content": "Test"}, 0
-
         mock_client.get_note = MagicMock(
             side_effect=lambda nid: ({"key": nid, "content": "Test"}, 0)
         )

@@ -336,6 +336,7 @@ def example_error_handling_patterns() -> None:
                     raise error from e
                 print(f"Retry {retry_count}/{max_retries}...")
                 time.sleep(0.1)  # Small delay for example purposes
+        return {}  # unreachable when max_retries >= 1
 
     # Example usage
     try:

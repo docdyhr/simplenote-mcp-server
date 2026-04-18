@@ -250,12 +250,9 @@ class SecurityAlertMonitor:
                 [
                     "## 📋 Recommendations",
                     "",
-                    "1. **Immediate Action Required**: "
-                    "Address critical and regression alerts first",
-                    "2. **Review Changes**: "
-                    "Check recent commits that may have introduced regressions",
-                    "3. **Update Tests**: "
-                    "Ensure security tests cover the regression scenarios",
+                    "1. **Immediate Action Required**: Address critical and regression alerts first",
+                    "2. **Review Changes**: Check recent commits that may have introduced regressions",
+                    "3. **Update Tests**: Ensure security tests cover the regression scenarios",
                     "4. **Monitor**: Set up automated monitoring for these alert types",
                     "",
                 ]
