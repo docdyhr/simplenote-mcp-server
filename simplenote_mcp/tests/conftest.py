@@ -23,13 +23,13 @@ import pytest  # noqa: E402
 
 from simplenote_mcp.server import get_simplenote_client  # noqa: E402
 from simplenote_mcp.server.cache import NoteCache  # noqa: E402
-from simplenote_mcp.server.server import initialize_cache  # noqa: E402
 from simplenote_mcp.server.compat import Path  # noqa: E402
 from simplenote_mcp.server.config import get_config  # noqa: E402
 from simplenote_mcp.server.errors import (  # noqa: E402
     AuthenticationError,
 )
 from simplenote_mcp.server.logging import logger as mcp_logger  # noqa: E402
+from simplenote_mcp.server.server import initialize_cache  # noqa: E402
 
 # Add project root to sys.path
 project_root = Path(__file__).parent.parent.parent

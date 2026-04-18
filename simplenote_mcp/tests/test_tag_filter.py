@@ -14,9 +14,11 @@ sys.path.insert(0, str(project_root))
 
 # Now import the modules
 # Skip these tests for now
-from simplenote_mcp.server.server import initialize_cache  # noqa: E402
 from simplenote_mcp.server.logging import logger  # noqa: E402
-from simplenote_mcp.server.server import handle_list_resources  # noqa: E402
+from simplenote_mcp.server.server import (
+    handle_list_resources,  # noqa: E402
+    initialize_cache,  # noqa: E402
+)
 
 pytestmark = pytest.mark.skip(
     reason="Tests need to be refactored to use server instance directly"
