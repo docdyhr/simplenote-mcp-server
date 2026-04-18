@@ -14,7 +14,7 @@ sys.path.insert(0, str(project_root))
 
 # Now import the modules
 # Skip these tests for now
-from simplenote_mcp.server.cache import initialize_cache  # noqa: E402
+from simplenote_mcp.server.server import initialize_cache  # noqa: E402
 from simplenote_mcp.server.logging import logger  # noqa: E402
 from simplenote_mcp.server.server import handle_list_resources  # noqa: E402
 

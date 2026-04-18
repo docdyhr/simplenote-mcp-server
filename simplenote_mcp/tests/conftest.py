@@ -22,7 +22,8 @@ sys.path.insert(0, PROJECT_ROOT)
 import pytest  # noqa: E402
 
 from simplenote_mcp.server import get_simplenote_client  # noqa: E402
-from simplenote_mcp.server.cache import NoteCache, initialize_cache  # noqa: E402
+from simplenote_mcp.server.cache import NoteCache  # noqa: E402
+from simplenote_mcp.server.server import initialize_cache  # noqa: E402
 from simplenote_mcp.server.compat import Path  # noqa: E402
 from simplenote_mcp.server.config import get_config  # noqa: E402
 from simplenote_mcp.server.errors import (  # noqa: E402

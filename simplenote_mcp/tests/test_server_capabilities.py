@@ -15,7 +15,7 @@ import time
 import mcp.types as types
 import pytest
 
-from simplenote_mcp.server.cache import initialize_cache
+from simplenote_mcp.server.server import initialize_cache
 from simplenote_mcp.server.compat import Path
 from simplenote_mcp.server.errors import ResourceNotFoundError, ValidationError
 from simplenote_mcp.server.logging import logger as mcp_logger
