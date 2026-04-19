@@ -120,6 +120,7 @@ def test_tls_connection() -> bool:
 
     domains = [SIMPLENOTE_API_HOST, SIMPERIUM_API_HOST]
     context = ssl.create_default_context()
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
     success = True
 
     for domain in domains:

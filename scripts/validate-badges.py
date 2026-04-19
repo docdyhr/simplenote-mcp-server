@@ -140,7 +140,7 @@ class BadgeValidator:
 
         if "actions/workflows" in path:
             return "GitHub Actions"
-        elif hostname.endswith("codecov.io") or hostname == "codecov.io":
+        elif hostname == "codecov.io" or hostname.endswith(".codecov.io"):
             return "Coverage"
         elif hostname == "img.shields.io" or hostname.endswith(".shields.io"):
             if any(keyword in url for keyword in ["python", "version", "license"]):
