@@ -66,6 +66,8 @@ class TestToolHandlerRegistry:
             "get_server_info",
             "publish_note",
             "unpublish_note",
+            "permanent_delete_note",
+            "empty_trash",
         }
 
         assert set(registry.list_tools()) == expected_tools

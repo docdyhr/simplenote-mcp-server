@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `permanent_delete_note` tool: irreversibly destroy a single note; requires `confirm=true` to execute; returns a dry-run description when `confirm=false` (default) — operation cannot be undone
+- `empty_trash` tool: permanently delete all trashed notes in one operation; defaults to `dry_run=true` (lists trashed notes without deleting); requires `dry_run=false` AND `confirm=true` to execute — operation cannot be undone
+
 ### Fixed
 - `list_tags` returning empty results after startup: `_populate_cache_direct` now calls `_build_tag_index` when loading tagged notes, fixing the issue where `_tag_index` stayed empty because `cache.initialize()` short-circuited on the eagerly-set `_initialized=True` flag (closes #507)
 

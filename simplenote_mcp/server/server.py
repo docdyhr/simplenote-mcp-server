@@ -1214,6 +1214,61 @@ async def handle_list_tools() -> list[types.Tool]:
                     "required": ["note_id"],
                 },
             ),
+            types.Tool(
+                name="permanent_delete_note",
+                description=(
+                    "Permanently and irreversibly delete a single note. "
+                    "Unlike delete_note (which moves to trash), this operation CANNOT be undone. "
+                    "Requires confirm=true to execute; omit or pass confirm=false for a dry-run preview. "
+                    "Use empty_trash to permanently delete all trashed notes at once."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to permanently delete",
+                        },
+                        "confirm": {
+                            "type": "boolean",
+                            "description": (
+                                "Safety guard — must be true to execute deletion. "
+                                "Pass false (or omit) for a dry-run that describes "
+                                "what would happen without making any changes."
+                            ),
+                        },
+                    },
+                    "required": ["note_id", "confirm"],
+                },
+            ),
+            types.Tool(
+                name="empty_trash",
+                description=(
+                    "Permanently delete all notes currently in the trash. "
+                    "This operation CANNOT be undone. "
+                    "By default (dry_run=true) returns a list of trashed notes without deleting them. "
+                    "Pass dry_run=false AND confirm=true to actually empty the trash."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": (
+                                "When true (default), list trashed notes without deleting them. "
+                                "Set to false (combined with confirm=true) to permanently delete."
+                            ),
+                        },
+                        "confirm": {
+                            "type": "boolean",
+                            "description": (
+                                "Safety guard — must be true to execute deletion. "
+                                "Has no effect when dry_run=true."
+                            ),
+                        },
+                    },
+                },
+            ),
         ]
         logger.info(
             f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"

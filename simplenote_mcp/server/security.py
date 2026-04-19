@@ -455,6 +455,7 @@ class SecurityValidator:
             "add_tags",
             "remove_tags",
             "replace_tags",
+            "permanent_delete_note",
         ]:
             if "note_id" in arguments:
                 self.validate_note_id(arguments["note_id"], f"{tool_name} note_id")

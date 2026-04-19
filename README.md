@@ -30,15 +30,20 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b215d030-b511-457d-8a6d-3e1e6ea3b541)
 ---
 
-## What's New in v1.15.0
+## What's New (Unreleased)
 
-**24 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
+**26 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
 
-Version 1.15.0 completes the Simplenote-native publish/unpublish capability:
+Two new irreversible-deletion tools with mandatory safety guards:
+
+- **`permanent_delete_note`**: Permanently destroy a single note; requires `confirm=true`; dry-run preview by default
+- **`empty_trash`**: Permanently delete all trashed notes; defaults to `dry_run=true` (preview); requires `dry_run=false` AND `confirm=true`
+- **1178 tests passing**, 77% coverage, zero linting/type errors
+
+### v1.15.0
 
 - **`publish_note`**: Publish a note to a public URL — unique to Simplenote MCP; returns `public_url`
 - **`unpublish_note`**: Remove a note from public access; no-op if already unpublished
-- **1156 tests passing**, 77% coverage, zero linting/type errors
 
 See the [CHANGELOG](./CHANGELOG.md) for complete details.
 
@@ -316,6 +321,8 @@ project from:2023-01-01 to:2023-12-31
 | `update_note`             | Replace full note content (destructive)                  | `note_id`, `content`, `tags` (optional)                                                                 |
 | `delete_note`             | Soft-delete: move note to Trash                          | `note_id`                                                                                               |
 | `restore_note`            | Untrash a note — move it back from Trash                 | `note_id`                                                                                               |
+| `permanent_delete_note`   | Irreversibly destroy a single note (requires `confirm=true`) | `note_id`, `confirm`                                                                                |
+| `empty_trash`             | Permanently delete all trashed notes (dry-run by default) | `dry_run` (default `true`), `confirm` (default `false`)                                               |
 | `get_note`                | Get a note by ID with full content and metadata          | `note_id`                                                                                               |
 | `add_text`                | Append or prepend text without overwriting               | `note_id`, `text`, `position` (`"end"` \| `"beginning"`)                                               |
 | `search_notes`            | Full-text search with filters and pagination             | `query`, `limit`, `offset`, `tags`, `from_date`, `to_date`, `created_after`, `modified_after`, `pinned`, `fuzzy`, `sort_by` |
