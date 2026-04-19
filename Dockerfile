@@ -1,5 +1,5 @@
 # Multi-stage build for optimal image size and security
-ARG PYTHON_VERSION=3.14
+ARG PYTHON_VERSION=3.13
 FROM python:${PYTHON_VERSION}-slim AS builder
 
 # Build arguments for metadata
@@ -10,8 +10,8 @@ ARG PYTHON_VERSION
 
 WORKDIR /app
 
-# Install build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Install build dependencies (upgrade first to pick up latest security patches)
+RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
     build-essential \
     git \

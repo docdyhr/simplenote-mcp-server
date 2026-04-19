@@ -134,22 +134,26 @@ class BadgeValidator:
 
     def categorize_badge(self, url: str) -> str:
         """Categorize badge by URL pattern."""
-        if "actions/workflows" in url:
+        parsed = urlparse(url)
+        hostname = parsed.hostname or ""
+        path = parsed.path
+
+        if "actions/workflows" in path:
             return "GitHub Actions"
-        elif "codecov" in url:
+        elif hostname.endswith("codecov.io") or hostname == "codecov.io":
             return "Coverage"
-        elif "shields.io" in url:
+        elif hostname == "img.shields.io" or hostname.endswith(".shields.io"):
             if any(keyword in url for keyword in ["python", "version", "license"]):
                 return "Project Info"
             else:
                 return "Development Tool"
-        elif "smithery.ai" in url:
+        elif hostname == "smithery.ai" or hostname.endswith(".smithery.ai"):
             return "MCP Registry"
-        elif "github.com" in url and ("issues" in url or "stars" in url):
-            return "GitHub Stats"
-        elif any(
-            domain in url for domain in ["pypi.org", "badge.fury.io", "pepy.tech"]
+        elif (hostname == "github.com" or hostname.endswith(".github.com")) and (
+            "issues" in path or "stars" in path
         ):
+            return "GitHub Stats"
+        elif hostname in {"pypi.org", "badge.fury.io", "pepy.tech"}:
             return "PyPI"
         else:
             return "External Service"

@@ -1443,7 +1443,6 @@ class BackgroundSync:
         # Exponential backoff parameters
         base_retry_delay = 5  # Start with 5 seconds
         max_retry_delay = 300  # Maximum 5 minutes
-        current_retry_delay = base_retry_delay
         consecutive_failures = 0
 
         try:
