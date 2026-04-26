@@ -20,7 +20,7 @@ check-wheel-contents==0.6.3
 click==8.3.2
 colorama==0.4.6
 coverage==7.13.5
-cryptography==46.0.7
+cryptography==47.0.0
 cyclonedx-python-lib==11.7.0
 defusedxml==0.7.1
 distlib==0.4.0
