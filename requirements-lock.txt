@@ -78,7 +78,7 @@ nodeenv==1.10.0
 packageurl-python==0.17.6
 packaging==26.1
 paginate==0.5.7
-pathspec==1.0.4
+pathspec==1.1.0
 pbr==7.0.3
 pip-api==0.0.34
 pip-requirements-parser==32.0.1
