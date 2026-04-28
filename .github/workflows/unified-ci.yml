@@ -221,6 +221,7 @@ jobs:
           output: "trivy-results.sarif"
           severity: "CRITICAL,HIGH"
           ignore-unfixed: true
+          trivyignores: ".trivyignore"
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: github.event_name != 'pull_request'

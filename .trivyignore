@@ -1,0 +1,26 @@
+# Trivy ignore file — CVEs accepted as no Debian package fix is available.
+# These all have upstream patches, but the patched packages are not yet in
+# the Debian stable apt repository, so apt-get upgrade cannot resolve them.
+# Revisit when python:3.13-slim ships a Debian stable refresh that includes fixes.
+
+# perl: CPAN.pm skips TLS certificate verification over HTTPS
+# Risk: low — CPAN.pm is not used by this application at runtime
+CVE-2023-31484
+
+# zlib: integer overflow in zipOpenNewFileInZip4_6
+# Risk: low — zlib is used by Python internals; the vulnerable code path
+# requires crafted ZIP inputs not reachable from the MCP API surface
+CVE-2023-45853
+
+# glibc: static setuid binary dlopen may search LD_LIBRARY_PATH incorrectly
+# Risk: low — container runs as non-root (uid 1000); no setuid binaries in use
+CVE-2025-4802
+
+# linux-pam: directory traversal
+# Risk: low — PAM is not used by this application
+CVE-2025-6020
+
+# sqlite: integer truncation
+# Risk: low — sqlite3 is a Python stdlib dependency; the vulnerable code path
+# is not reachable through the MCP API surface
+CVE-2025-6965
