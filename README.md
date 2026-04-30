@@ -12,7 +12,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.15.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.16.0-blue.svg)](./CHANGELOG.md)
 [![Test Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -40,7 +40,7 @@ Two new irreversible-deletion tools with mandatory safety guards:
 - **`empty_trash`**: Permanently delete all trashed notes; defaults to `dry_run=true` (preview); requires `dry_run=false` AND `confirm=true`
 - **1178 tests passing**, 77% coverage, zero linting/type errors
 
-### v1.15.0
+### v1.16.0
 
 - **`publish_note`**: Publish a note to a public URL — unique to Simplenote MCP; returns `public_url`
 - **`unpublish_note`**: Remove a note from public access; no-op if already unpublished
@@ -167,7 +167,7 @@ docker-compose up -d
 Available tags:
 
 - `latest` - Latest stable release
-- `v1.15.0` - Specific version
+- `v1.16.0` - Specific version
 - `main` - Latest development build
 
 ### Production Deployment
