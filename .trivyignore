@@ -24,3 +24,36 @@ CVE-2025-6020
 # Risk: low — sqlite3 is a Python stdlib dependency; the vulnerable code path
 # is not reachable through the MCP API surface
 CVE-2025-6965
+
+# ncurses: segmentation fault via _nc_wrap_entry()
+# Risk: low — ncurses is a system library; the vulnerable code path is not
+# reachable from the MCP API surface
+CVE-2023-50495
+
+# pam: libpam vulnerable to read hashed password
+# Risk: low — PAM is not used by this application
+CVE-2024-10041
+
+# pam: unprivileged user to block another user namespace
+# Risk: low — PAM is not used by this application
+CVE-2024-22365
+
+# sqlite: Denial of Service in SQLite
+# Risk: low — sqlite3 is a Python stdlib dependency; not reachable from the MCP API surface
+CVE-2025-29088
+
+# perl: working directory race condition across threads
+# Risk: low — perl is not used by this application at runtime
+CVE-2025-40909
+
+# tar: path traversal
+# Risk: low — tar is not invoked by this application at runtime
+CVE-2025-45582
+
+# sqlite: integer overflow
+# Risk: low — sqlite3 is a Python stdlib dependency; not reachable from the MCP API surface
+CVE-2025-7458
+
+# glibc: double free
+# Risk: low — container runs as non-root (uid 1000); not exploitable from the MCP API surface
+CVE-2025-8058
