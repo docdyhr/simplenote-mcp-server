@@ -138,7 +138,8 @@ jobs:
           pip install -e .
           # CVE-2026-4539: pygments ReDoS (local-only, no fix available as of 2026-03-28)
           # CVE-2026-3219: affects pip itself (CI runner tool), not a project dependency; no fix available
-          pip-audit --desc --ignore-vuln CVE-2026-4539 --ignore-vuln CVE-2026-3219
+          # CVE-2026-6357: affects pip itself (CI runner tool); fix is pip>=26.1
+          pip-audit --desc --ignore-vuln CVE-2026-4539 --ignore-vuln CVE-2026-3219 --ignore-vuln CVE-2026-6357
 
   build_and_publish:
     name: Build and Publish
