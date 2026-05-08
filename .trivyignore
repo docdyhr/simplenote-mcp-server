@@ -57,3 +57,7 @@ CVE-2025-7458
 # glibc: double free
 # Risk: low — container runs as non-root (uid 1000); not exploitable from the MCP API surface
 CVE-2025-8058
+
+# pip: arbitrary code execution via malicious wheel package installation (self-update check)
+# Risk: low — pip tool itself, not a project dependency; fix in pip>=26.1. Also ignored in pip-audit CI.
+CVE-2026-6357
