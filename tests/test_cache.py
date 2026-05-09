@@ -7,7 +7,11 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from simplenote_mcp.server.cache import BackgroundSync, NoteCache
-from simplenote_mcp.server.errors import NetworkError, ResourceNotFoundError
+from simplenote_mcp.server.errors import (
+    AuthenticationError,
+    NetworkError,
+    ResourceNotFoundError,
+)
 
 
 @pytest.fixture
@@ -65,6 +69,21 @@ class TestNoteCache:
 
         # Check that get_note_list was called once (no separate index mark fetch)
         assert mock_simplenote_client.get_note_list.call_count == 1
+
+    def test_fetch_note_list_raises_auth_error_on_none_token(
+        self, mock_simplenote_client
+    ):
+        """_fetch_note_list must raise AuthenticationError when get_token() is None.
+
+        When credentials are missing/invalid, simplenote's get_token() returns None.
+        Passing None as the Authorization header causes an opaque TypeError
+        ('expected string or bytes-like object, got NoneType').  We detect it
+        early and raise a clear AuthenticationError instead.
+        """
+        mock_simplenote_client.get_token.return_value = None
+        cache = NoteCache(mock_simplenote_client)
+        with pytest.raises(AuthenticationError, match="[Aa]uth"):
+            cache._fetch_note_list()
 
     @pytest.mark.asyncio
     async def test_initialize_network_error(self, mock_simplenote_client):

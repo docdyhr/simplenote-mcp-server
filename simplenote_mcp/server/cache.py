@@ -381,6 +381,13 @@ class NoteCache:
     ) -> tuple[list[dict[str, Any]], int]:
         if not tags:
             tags = []
+        token = self._client.get_token()
+        if token is None:
+            from .errors import AuthenticationError
+
+            raise AuthenticationError(
+                "Simplenote authentication failed — check SIMPLENOTE_EMAIL and SIMPLENOTE_PASSWORD"
+            )
         api_result, status = self._client.get_note_list(since=since, tags=tags)
         self._last_sync_cursor = self._client.current
 

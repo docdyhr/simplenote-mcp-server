@@ -113,12 +113,12 @@ class SecurityAlerter:
             "time_window_minutes": self.config.get("time_window_minutes", 5),
         }
 
-        # Setup alert output
-        self.alert_log_path = Path(
-            self.config.get(
-                "alert_log_path", "simplenote_mcp/logs/security_alerts.json"
-            )
+        # Setup alert output — default to a user-writable absolute path so the
+        # server works when CWD is read-only (e.g. Claude Desktop uses CWD=/).
+        default_alert_log = str(
+            Path.home() / ".simplenote_mcp" / "logs" / "security_alerts.json"
         )
+        self.alert_log_path = Path(self.config.get("alert_log_path", default_alert_log))
         self.alert_log_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Notification settings

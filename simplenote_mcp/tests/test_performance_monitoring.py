@@ -227,6 +227,38 @@ class TestPerformanceMonitoring:
         assert data["memory"]["avg"] == 42.5  # (40 + 45) / 2
         assert data["disk"]["usage_percent"] == 60.0
 
+    @patch("psutil.virtual_memory")
+    @patch("psutil.disk_usage")
+    def test_resource_metrics_cpu_percent_called_positionally(
+        self, mock_disk_usage, mock_virtual_memory
+    ):
+        """ResourceMetrics.update() must not call cpu_percent with interval= keyword.
+
+        Newer psutil renamed the kwarg to _interval; passing interval=... raises TypeError.
+        """
+
+        def strict_cpu_percent(*args, **kwargs):
+            if "interval" in kwargs:
+                raise TypeError(
+                    "cpu_percent() got an unexpected keyword argument 'interval'."
+                    " Did you mean '_interval'?"
+                )
+            return 42.0
+
+        memory_mock = MagicMock()
+        memory_mock.percent = 50.0
+        mock_virtual_memory.return_value = memory_mock
+        disk_mock = MagicMock()
+        disk_mock.percent = 30.0
+        mock_disk_usage.return_value = disk_mock
+
+        with patch("psutil.cpu_percent", side_effect=strict_cpu_percent):
+            resource_metrics = ResourceMetrics()
+            resource_metrics.update()
+
+        assert len(resource_metrics.cpu_samples) == 1
+        assert resource_metrics.cpu_samples[0] == 42.0
+
     def test_metrics_recording(self):
         """Test the metrics recording functions."""
         # Record API calls

@@ -159,6 +159,18 @@ class TestSecurityAlerter:
         assert alerter.thresholds["suspicious_pattern_threshold"] == 3
         assert alerter.thresholds["time_window_minutes"] == 5
 
+    def test_default_alert_log_path_is_absolute(self):
+        """SecurityAlerter default alert_log_path must be absolute.
+
+        Claude Desktop runs MCP servers with CWD=/. A relative default like
+        'simplenote_mcp/logs/...' tries to create /simplenote_mcp/ which is
+        read-only, causing [Errno 30] Read-only file system.
+        """
+        alerter = SecurityAlerter()
+        assert alerter.alert_log_path.is_absolute(), (
+            f"Default alert_log_path must be absolute, got: {alerter.alert_log_path}"
+        )
+
     def test_init_custom_config(self):
         """Test SecurityAlerter with custom config."""
         config = {

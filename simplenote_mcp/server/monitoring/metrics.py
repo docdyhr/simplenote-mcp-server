@@ -57,7 +57,7 @@ logger = get_logger("monitoring.metrics")
 
 # Constants
 MAX_SAMPLES = 1000  # Maximum number of samples to keep for time-series metrics
-METRICS_DIR = Path(__file__).parent.parent.parent / "logs" / "metrics"
+METRICS_DIR = Path.home() / ".simplenote_mcp" / "logs" / "metrics"
 METRICS_FILE = METRICS_DIR / "performance_metrics.json"
 
 # Ensure metrics directory exists
@@ -435,7 +435,7 @@ class ResourceMetrics:
         """Update resource metrics with current system values."""
         try:
             # CPU usage (percentage)
-            cpu_percent = psutil.cpu_percent(interval=None)
+            cpu_percent = psutil.cpu_percent(None)
             self.cpu_samples.append(cpu_percent)
 
             # Memory usage (percentage)
