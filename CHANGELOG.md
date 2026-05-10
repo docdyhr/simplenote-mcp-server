@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Three Claude Desktop deployment errors resolved: `psutil.cpu_percent()` called with renamed keyword
+  argument (`interval` → positional), security alerter writing to a relative path that fails under
+  read-only CWD (`/`), and opaque `TypeError` when Simplenote auth token is `None` (now raises a
+  clear `AuthenticationError`)
+- Silent note eviction during server start-up: `cache.initialize()` now calls `_evict_if_needed()`
+  after loading all notes, preventing data loss when note count exceeds `CACHE_MAX_SIZE`
+- `CACHE_MAX_SIZE` default raised from 1 000 to 10 000 to cover most users without extra configuration
+
 ## [1.16.0] - 2026-04-28
 
 ### Added
@@ -481,7 +490,6 @@ This release marks a significant milestone with **98% startup performance improv
 - **1.1.0** - Note creation
 - **1.0.0** - Initial release
 
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.15.0...HEAD
 [1.15.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.14.0...v1.15.0
 [1.14.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.12.1...v1.13.0

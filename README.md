@@ -262,12 +262,14 @@ resources:
 
 ### Environment Variables
 
-| Variable                | Required | Default | Description                                 |
-| ----------------------- | -------- | ------- | ------------------------------------------- |
-| `SIMPLENOTE_EMAIL`      | Yes      | -       | Your Simplenote account email               |
-| `SIMPLENOTE_PASSWORD`   | Yes      | -       | Your Simplenote account password            |
-| `SYNC_INTERVAL_SECONDS` | No       | 120     | Cache synchronization interval              |
-| `LOG_LEVEL`             | No       | INFO    | Logging level (DEBUG, INFO, WARNING, ERROR) |
+| Variable                | Required | Default | Description                                              |
+| ----------------------- | -------- | ------- | -------------------------------------------------------- |
+| `SIMPLENOTE_EMAIL`      | Yes      | -       | Your Simplenote account email                            |
+| `SIMPLENOTE_PASSWORD`   | Yes      | -       | Your Simplenote account password                         |
+| `SYNC_INTERVAL_SECONDS` | No       | 120     | Cache synchronization interval in seconds                |
+| `CACHE_MAX_SIZE`        | No       | 10000   | Max notes held in memory — set ≥ your total note count   |
+| `LOG_LEVEL`             | No       | INFO    | Logging level (DEBUG, INFO, WARNING, ERROR)              |
+| `SIMPLENOTE_OFFLINE_MODE` | No     | false   | Skip API calls; used for testing without credentials     |
 
 ### Claude Desktop Integration
 
@@ -281,7 +283,8 @@ Add to your `claude_desktop_config.json`:
       "command": "simplenote-mcp-server",
       "env": {
         "SIMPLENOTE_EMAIL": "your.email@example.com",
-        "SIMPLENOTE_PASSWORD": "your-password"
+        "SIMPLENOTE_PASSWORD": "your-password",
+        "CACHE_MAX_SIZE": "10000"
       }
     }
   }
