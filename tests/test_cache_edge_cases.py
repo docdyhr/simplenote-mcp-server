@@ -44,7 +44,7 @@ class TestCacheEdgeCases:
         cache._query_cache_ttl = 0.1  # Very short TTL for testing
 
         # Perform initial search to populate cache
-        results1 = cache.search_notes("test")
+        results1 = await cache.search_notes("test")
         assert len(results1) == 2
 
         # Wait for cache to expire
@@ -52,7 +52,7 @@ class TestCacheEdgeCases:
 
         # Perform concurrent searches that should trigger race condition
         async def search_task():
-            return cache.search_notes("test")
+            return await cache.search_notes("test")
 
         tasks = []
         for _i in range(5):
@@ -77,18 +77,18 @@ class TestCacheEdgeCases:
         cache._query_cache_ttl = -1  # Negative TTL
 
         # First search should work
-        results1 = cache.search_notes("test")
+        results1 = await cache.search_notes("test")
         assert len(results1) == 2
 
         # Second search should not use cache (negative TTL means always expired)
-        results2 = cache.search_notes("test")
+        results2 = await cache.search_notes("test")
         assert len(results2) == 2
         assert results1 == results2
 
         # Cache should be empty or not used due to negative TTL
         # Verify by checking cache size or behavior
         len(cache._query_cache)
-        cache.search_notes("different query")
+        await cache.search_notes("different query")
         cache_keys_after = len(cache._query_cache)
 
         # With negative TTL, cache entries should not persist effectively
@@ -106,7 +106,7 @@ class TestCacheEdgeCases:
 
         # Fill query cache to boundary (100 entries)
         for i in range(102):  # Exceed the limit
-            cache.search_notes(f"query{i}")
+            await cache.search_notes(f"query{i}")
 
         # Verify cache size management
         assert len(cache._query_cache) <= 100
@@ -116,7 +116,7 @@ class TestCacheEdgeCases:
         empty_cache._initialized = True
         empty_cache._notes = {}
 
-        results = empty_cache.search_notes("anything")
+        results = await empty_cache.search_notes("anything")
         assert len(results) == 0
 
     @pytest.mark.asyncio
@@ -150,7 +150,7 @@ class TestCacheEdgeCases:
             cache.update_cache_after_delete(f"concurrent_{note_id}")
 
         async def search_cache():
-            return cache.search_notes("concurrent")
+            return await cache.search_notes("concurrent")
 
         # Run concurrent operations
         tasks = []
@@ -199,7 +199,7 @@ class TestCacheEdgeCases:
             """Simulate heavy read load."""
             while not sync_complete.is_set():
                 try:
-                    cache.search_notes("test")
+                    await cache.search_notes("test")
                     cache.get_all_notes(limit=10)
                     await asyncio.sleep(0.001)  # Small delay to prevent tight loop
                 except Exception:
@@ -271,7 +271,7 @@ class TestCacheEdgeCases:
         assert len(cache._notes) >= 1  # At least the good note
 
         # Search should work despite malformed data
-        results = cache.search_notes("test")
+        results = await cache.search_notes("test")
         assert len(results) >= 0  # Should not crash
 
     @pytest.mark.asyncio
@@ -287,14 +287,14 @@ class TestCacheEdgeCases:
         # Simulate memory pressure by creating many large query cache entries
         large_query_results = []
         for i in range(200):  # Create more entries than the cache limit
-            results = cache.search_notes(f"large_query_{i}")
+            results = await cache.search_notes(f"large_query_{i}")
             large_query_results.append(results)
 
         # Verify cache size is managed
         assert len(cache._query_cache) <= 100
 
         # Original functionality should still work
-        normal_results = cache.search_notes("test")
+        normal_results = await cache.search_notes("test")
         assert len(normal_results) == 2
 
     @pytest.mark.asyncio
@@ -309,16 +309,16 @@ class TestCacheEdgeCases:
 
         # Test with zero TTL
         cache._query_cache_ttl = 0
-        results1 = cache.search_notes("test")
-        results2 = cache.search_notes("test")  # Should bypass cache
+        results1 = await cache.search_notes("test")
+        results2 = await cache.search_notes("test")  # Should bypass cache
         assert results1 == results2
 
         # Test with very large TTL
         cache._query_cache_ttl = 86400 * 365  # 1 year
         cache._query_cache.clear()
 
-        results3 = cache.search_notes("test")
-        results4 = cache.search_notes("test")  # Should use cache
+        results3 = await cache.search_notes("test")
+        results4 = await cache.search_notes("test")  # Should use cache
         assert results3 == results4
 
         # Verify cache was used by checking it's not empty

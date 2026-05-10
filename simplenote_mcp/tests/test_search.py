@@ -138,7 +138,7 @@ async def test_cache_search(query: str = "markdown") -> dict:
         # First search - should be uncached
         print("\nRunning first search (uncached)...")
         timer.start()
-        results1 = cache.search_notes(query=query)
+        results1 = await cache.search_notes(query=query)
         first_search_time = timer.stop()
         print(
             f"First search completed in {first_search_time:.4f} seconds - found {len(results1)} results"
@@ -147,7 +147,7 @@ async def test_cache_search(query: str = "markdown") -> dict:
         # Second search - should use cache
         print("\nRunning second search (should use cache)...")
         timer.start()
-        results2 = cache.search_notes(query=query)
+        results2 = await cache.search_notes(query=query)
         second_search_time = timer.stop()
         print(f"Second search completed in {second_search_time:.4f} seconds")
 
@@ -198,7 +198,7 @@ async def test_cached_pagination(query: str = "the") -> dict:
 
         # Get total results first
         print("Getting total results...")
-        all_results = cache.search_notes(query=query)
+        all_results = await cache.search_notes(query=query)
         total_count = len(all_results)
         print(f"Total notes matching '{query}': {total_count}")
 
@@ -212,14 +212,14 @@ async def test_cached_pagination(query: str = "the") -> dict:
         # Get first page
         print(f"\nGetting first page (offset=0, limit={page_size})...")
         timer.start()
-        page1 = cache.search_notes(query=query, offset=0, limit=page_size)
+        page1 = await cache.search_notes(query=query, offset=0, limit=page_size)
         page1_time = timer.stop()
         print(f"First page retrieved in {page1_time:.4f} seconds, {len(page1)} results")
 
         # Get second page
         print(f"\nGetting second page (offset={page_size}, limit={page_size})...")
         timer.start()
-        page2 = cache.search_notes(query=query, offset=page_size, limit=page_size)
+        page2 = await cache.search_notes(query=query, offset=page_size, limit=page_size)
         page2_time = timer.stop()
         print(
             f"Second page retrieved in {page2_time:.4f} seconds, {len(page2)} results"

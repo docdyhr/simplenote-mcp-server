@@ -146,7 +146,8 @@ class TestNoteCacheEdgeCases:
         assert len(untagged_notes) == 1
         assert untagged_notes[0]["key"] == "3"
 
-    def test_note_cache_search_notes(self):
+    @pytest.mark.asyncio
+    async def test_note_cache_search_notes(self):
         """Test searching notes functionality."""
         mock_client = Mock()
         cache = NoteCache(mock_client)
@@ -191,12 +192,12 @@ class TestNoteCacheEdgeCases:
         cache._query_cache_ttl = 300  # 5 minutes
 
         # Search for programming - should find in content
-        results = cache.search_notes("programming")
+        results = await cache.search_notes("programming")
         assert len(results) >= 1
         assert any(note["key"] == "1" for note in results)
 
         # Search with tag filter instead of searching for tag in content
-        tag_results = cache.search_notes("", tag_filters=["code"])
+        tag_results = await cache.search_notes("", tag_filters=["code"])
         # Should match notes with code tag
         assert len(tag_results) == 2
         assert all(note["key"] in ["1", "2"] for note in tag_results)
@@ -310,7 +311,8 @@ class TestCacheConcurrency:
         for i in range(10):
             assert f"note{i}" in cache._notes
 
-    def test_cache_memory_efficiency(self):
+    @pytest.mark.asyncio
+    async def test_cache_memory_efficiency(self):
         """Test cache with large number of notes."""
         mock_client = Mock()
         cache = NoteCache(mock_client)
@@ -324,7 +326,7 @@ class TestCacheConcurrency:
         assert len(cache._notes) == 1000
 
         # Search should still work efficiently
-        results = cache.search_notes("Content 500")
+        results = await cache.search_notes("Content 500")
         assert len(results) == 1
         assert results[0]["key"] == "note500"
 

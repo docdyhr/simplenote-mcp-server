@@ -85,16 +85,21 @@ def test_filter_untagged_notes(note_cache_with_data):
         assert "tags" not in note or not note["tags"]
 
 
-def test_search_with_tag_filters(note_cache_with_data):
+@pytest.mark.asyncio
+async def test_search_with_tag_filters(note_cache_with_data):
     """Test searching notes with tag filters."""
     # Search for notes matching "note" with tag "work"
-    results = note_cache_with_data.search_notes(query="note", tag_filters=["work"])
+    results = await note_cache_with_data.search_notes(
+        query="note", tag_filters=["work"]
+    )
     assert len(results) == 2
     for note in results:
         assert "work" in note["tags"]
 
     # Search for notes matching "note" with untagged filter
-    results = note_cache_with_data.search_notes(query="note", tag_filters=["untagged"])
+    results = await note_cache_with_data.search_notes(
+        query="note", tag_filters=["untagged"]
+    )
     assert len(results) == 2
     for note in results:
         assert "tags" not in note or not note["tags"]

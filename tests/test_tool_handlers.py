@@ -1,7 +1,7 @@
 """Tests for the new tool handlers module."""
 
 import json
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import mcp.types as types
 import pytest
@@ -199,22 +199,24 @@ class TestSearchNotesHandler:
         """Create a mock note cache with search results."""
         cache = MagicMock()
         cache.is_initialized = True
-        cache.search_notes.return_value = [
-            {
-                "key": "note1",
-                "content": "First test note",
-                "tags": ["test"],
-                "createdate": "2025-01-01",
-                "modifydate": "2025-01-01",
-            },
-            {
-                "key": "note2",
-                "content": "Second test note",
-                "tags": ["work"],
-                "createdate": "2025-01-02",
-                "modifydate": "2025-01-02",
-            },
-        ]
+        cache.search_notes = AsyncMock(
+            return_value=[
+                {
+                    "key": "note1",
+                    "content": "First test note",
+                    "tags": ["test"],
+                    "createdate": "2025-01-01",
+                    "modifydate": "2025-01-01",
+                },
+                {
+                    "key": "note2",
+                    "content": "Second test note",
+                    "tags": ["work"],
+                    "createdate": "2025-01-02",
+                    "modifydate": "2025-01-02",
+                },
+            ]
+        )
         cache.get_pagination_info.return_value = {
             "page": 1,
             "total_pages": 1,
@@ -1378,6 +1380,7 @@ class TestSearchNotesPinnedFilter:
     def mock_cache(self):
         cache = MagicMock()
         cache.is_initialized = True
+        cache.search_notes = AsyncMock()
         cache.get_pagination_info.return_value = {
             "page": 1,
             "total_pages": 1,
@@ -1508,13 +1511,15 @@ class TestGetOrCreateNoteHandler:
         """Cache that returns a matching note for search."""
         cache = MagicMock()
         cache.is_initialized = True
-        cache.search_notes.return_value = [
-            {
-                "key": "existing-note",
-                "content": "# My Title\n\nExisting content",
-                "tags": ["work"],
-            },
-        ]
+        cache.search_notes = AsyncMock(
+            return_value=[
+                {
+                    "key": "existing-note",
+                    "content": "# My Title\n\nExisting content",
+                    "tags": ["work"],
+                },
+            ]
+        )
         cache.update_cache_after_create = MagicMock()
         return cache
 
@@ -1523,7 +1528,7 @@ class TestGetOrCreateNoteHandler:
         """Cache that returns no matching notes."""
         cache = MagicMock()
         cache.is_initialized = True
-        cache.search_notes.return_value = []
+        cache.search_notes = AsyncMock(return_value=[])
         cache.update_cache_after_create = MagicMock()
         return cache
 
@@ -1645,7 +1650,7 @@ class TestAppendToDailyNoteHandler:
     def mock_cache_empty(self):
         cache = MagicMock()
         cache.is_initialized = True
-        cache.search_notes.return_value = []
+        cache.search_notes = AsyncMock(return_value=[])
         cache.update_cache_after_create = MagicMock()
         cache.update_cache_after_update = MagicMock()
         cache.get_note.return_value = {
@@ -1659,13 +1664,15 @@ class TestAppendToDailyNoteHandler:
     def mock_cache_with_daily(self):
         cache = MagicMock()
         cache.is_initialized = True
-        cache.search_notes.return_value = [
-            {
-                "key": "daily-note",
-                "content": "# 2026-04-12\nExisting entry",
-                "tags": [],
-            },
-        ]
+        cache.search_notes = AsyncMock(
+            return_value=[
+                {
+                    "key": "daily-note",
+                    "content": "# 2026-04-12\nExisting entry",
+                    "tags": [],
+                },
+            ]
+        )
         cache.update_cache_after_update = MagicMock()
         cache.get_note.return_value = {
             "key": "daily-note",

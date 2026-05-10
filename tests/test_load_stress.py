@@ -48,7 +48,7 @@ class TestLoadTesting:
         # Setup mock cache with notes
         notes = self._generate_mock_notes(100)
         mock_cache._notes = notes
-        mock_cache.search_notes = MagicMock(return_value=list(notes.values())[:10])
+        mock_cache.search_notes = AsyncMock(return_value=list(notes.values())[:10])
         mock_cache.get_pagination_info = MagicMock(
             return_value={
                 "total": 100,
@@ -146,7 +146,7 @@ class TestLoadTesting:
                 return matching[offset : offset + limit]
             return matching
 
-        mock_cache.search_notes = MagicMock(side_effect=mock_search)
+        mock_cache.search_notes = AsyncMock(side_effect=mock_search)
         mock_cache.get_pagination_info = MagicMock(
             return_value={
                 "total": large_note_count,
@@ -409,7 +409,7 @@ class TestPerformanceBenchmarks:
             }
             for i in range(200)
         }
-        mock_cache.search_notes = MagicMock(
+        mock_cache.search_notes = AsyncMock(
             return_value=list(mock_cache._notes.values())[:20]
         )
         mock_cache.get_pagination_info = MagicMock(

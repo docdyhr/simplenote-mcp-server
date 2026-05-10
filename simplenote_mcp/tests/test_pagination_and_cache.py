@@ -181,7 +181,7 @@ async def test_pagination_search_notes(cache: NoteCache) -> bool:
 
         # First run the search to get total results
         with PerformanceTest("Initial search"):
-            all_results = cache.search_notes(query=query)
+            all_results = await cache.search_notes(query=query)
 
         total_results = len(all_results)
         print(f"Found {total_results} notes matching '{query}'")
@@ -201,7 +201,7 @@ async def test_pagination_search_notes(cache: NoteCache) -> bool:
 
         # Get first page
         with PerformanceTest("Search page 1"):
-            page1 = cache.search_notes(query=query, limit=page_size, offset=0)
+            page1 = await cache.search_notes(query=query, limit=page_size, offset=0)
 
         assert len(page1) <= page_size, (
             f"Page 1 should have at most {page_size} notes, got {len(page1)}"
@@ -209,7 +209,9 @@ async def test_pagination_search_notes(cache: NoteCache) -> bool:
 
         # Get second page
         with PerformanceTest("Search page 2"):
-            page2 = cache.search_notes(query=query, limit=page_size, offset=page_size)
+            page2 = await cache.search_notes(
+                query=query, limit=page_size, offset=page_size
+            )
 
         assert len(page2) <= page_size, (
             f"Page 2 should have at most {page_size} notes, got {len(page2)}"
@@ -248,15 +250,15 @@ async def test_cache_performance(cache: NoteCache) -> bool:
 
         # First search - should be uncached
         with PerformanceTest("First search (uncached)"):
-            results1 = cache.search_notes(query=query)
+            results1 = await cache.search_notes(query=query)
 
         # Second search with same query - should use cache
         with PerformanceTest("Second search (cached)"):
-            results2 = cache.search_notes(query=query)
+            results2 = await cache.search_notes(query=query)
 
         # Third search with same query - should also use cache
         with PerformanceTest("Third search (cached)"):
-            results3 = cache.search_notes(query=query)
+            results3 = await cache.search_notes(query=query)
 
         # Verify results consistency
         assert len(results1) == len(results2) == len(results3), (
@@ -316,7 +318,9 @@ async def test_tag_index_performance(cache: NoteCache) -> bool:
 
         # Test tag filtering via search with tag_filters parameter
         with PerformanceTest("Search with tag filter"):
-            tag_results1 = cache.search_notes(query="", tag_filters=[selected_tag])
+            tag_results1 = await cache.search_notes(
+                query="", tag_filters=[selected_tag]
+            )
 
         print(f"Found {len(tag_results1)} notes with tag '{selected_tag}'")
 
@@ -359,17 +363,17 @@ async def test_query_cache(cache: NoteCache) -> bool:
         # First run - uncached
         print("Running complex query first time (uncached)...")
         with PerformanceTest("Complex query (uncached)"):
-            results1 = cache.search_notes(query=complex_query)
+            results1 = await cache.search_notes(query=complex_query)
 
         # Second run - should use cached result
         print("Running same query again (should use cache)...")
         with PerformanceTest("Complex query (cached)"):
-            results2 = cache.search_notes(query=complex_query)
+            results2 = await cache.search_notes(query=complex_query)
 
         # Third run with pagination - should use cached result but apply pagination
         print("Running same query with pagination...")
         with PerformanceTest("Complex query with pagination (cached)"):
-            results3 = cache.search_notes(query=complex_query, limit=5, offset=0)
+            results3 = await cache.search_notes(query=complex_query, limit=5, offset=0)
 
         # Results should be consistent
         assert len(results1) == len(results2), (

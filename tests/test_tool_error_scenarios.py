@@ -5,7 +5,7 @@ the MCP evaluation error handling score (currently 1.4/5).
 """
 
 import json
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -42,7 +42,7 @@ def mock_note_cache():
     cache = MagicMock()
     cache.is_initialized = True
     cache.get_note = MagicMock()
-    cache.search_notes = MagicMock()
+    cache.search_notes = AsyncMock()
     cache.update_cache_after_create = MagicMock()
     cache.update_cache_after_update = MagicMock()
     cache.update_cache_after_delete = MagicMock()

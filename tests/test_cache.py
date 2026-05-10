@@ -219,7 +219,8 @@ class TestNoteCache:
         with pytest.raises(ResourceNotFoundError):
             cache.get_note("nonexistent")
 
-    def test_search_notes(self, mock_simplenote_client, mock_note_data):
+    @pytest.mark.asyncio
+    async def test_search_notes(self, mock_simplenote_client, mock_note_data):
         """Test searching notes in the cache."""
         # Create cache with notes
         cache = NoteCache(mock_simplenote_client)
@@ -228,18 +229,18 @@ class TestNoteCache:
         cache._initialized = True
 
         # Search for notes
-        results = cache.search_notes("test")
+        results = await cache.search_notes("test")
 
         # Verify search results (all notes contain "test")
         assert len(results) == 3
 
         # Search for a more specific term
-        results = cache.search_notes("note 1")
+        results = await cache.search_notes("note 1")
         assert len(results) == 1
         assert results[0]["key"] == "note1"
 
         # Test with limit
-        results = cache.search_notes("note", limit=2)
+        results = await cache.search_notes("note", limit=2)
         assert len(results) == 2
 
     @pytest.mark.asyncio
@@ -478,28 +479,83 @@ class TestSearchNotesSortBy:
         cache._build_all_indexes()
         return cache
 
-    def test_sort_by_modifydate_desc(self, mock_simplenote_client):
+    @pytest.mark.asyncio
+    async def test_sort_by_modifydate_desc(self, mock_simplenote_client):
         """Results sorted by modifydate desc should be newest first."""
         cache = self._make_cache(mock_simplenote_client)
-        results = cache.search_notes(
+        results = await cache.search_notes(
             "note", sort_by="modifydate", sort_direction="desc"
         )
         keys = [r["key"] for r in results]
         assert keys.index("new") < keys.index("mid") < keys.index("old")
 
-    def test_sort_by_modifydate_asc(self, mock_simplenote_client):
+    @pytest.mark.asyncio
+    async def test_sort_by_modifydate_asc(self, mock_simplenote_client):
         """Results sorted by modifydate asc should be oldest first."""
         cache = self._make_cache(mock_simplenote_client)
-        results = cache.search_notes("note", sort_by="modifydate", sort_direction="asc")
+        results = await cache.search_notes(
+            "note", sort_by="modifydate", sort_direction="asc"
+        )
         keys = [r["key"] for r in results]
         assert keys.index("old") < keys.index("mid") < keys.index("new")
 
-    def test_sort_by_relevance_default(self, mock_simplenote_client):
+    @pytest.mark.asyncio
+    async def test_sort_by_relevance_default(self, mock_simplenote_client):
         """Default sort should preserve relevance order (not date-sorted)."""
         cache = self._make_cache(mock_simplenote_client)
         # Just check it doesn't error and returns results
-        results = cache.search_notes("note")
+        results = await cache.search_notes("note")
         assert len(results) == 3
+
+    @pytest.mark.asyncio
+    async def test_search_notes_is_awaitable(self, mock_simplenote_client):
+        """search_notes() must be an async coroutine function."""
+        import inspect
+
+        cache = NoteCache(mock_simplenote_client)
+        cache._notes["n1"] = {"key": "n1", "content": "hello", "tags": []}
+        cache._initialized = True
+        assert inspect.iscoroutinefunction(cache.search_notes)
+
+    @pytest.mark.asyncio
+    async def test_boolean_and_search_returns_correct_results(
+        self, mock_simplenote_client
+    ):
+        """Boolean AND search must return only notes containing both terms without blocking."""
+        cache = NoteCache(mock_simplenote_client)
+        cache._notes = {
+            "a": {"key": "a", "content": "python testing guide", "tags": []},
+            "b": {"key": "b", "content": "python reference", "tags": []},
+            "c": {"key": "c", "content": "testing best practices", "tags": []},
+        }
+        cache._initialized = True
+        cache._build_all_indexes()
+
+        results = await cache.search_notes("python AND testing")
+        keys = {r["key"] for r in results}
+        assert "a" in keys, "Note with both 'python' and 'testing' must match"
+        assert "b" not in keys, "Note with only 'python' must not match"
+        assert "c" not in keys, "Note with only 'testing' must not match"
+
+    @pytest.mark.asyncio
+    async def test_search_short_term_finds_substring_matches(
+        self, mock_simplenote_client
+    ):
+        """Searching 'test' must match notes that contain 'testing' (substring match)."""
+        cache = NoteCache(mock_simplenote_client)
+        cache._notes = {
+            "a": {"key": "a", "content": "running testing suite", "tags": []},
+            "b": {"key": "b", "content": "test note title", "tags": []},
+            "c": {"key": "c", "content": "unrelated note about cooking", "tags": []},
+        }
+        cache._initialized = True
+        cache._build_all_indexes()
+
+        results = await cache.search_notes("test")
+        keys = {r["key"] for r in results}
+        assert "a" in keys, "Note with 'testing' must be found by query 'test'"
+        assert "b" in keys, "Note with 'test' must be found by query 'test'"
+        assert "c" not in keys, "Unrelated note must not appear"
 
 
 @pytest.mark.unit

@@ -852,7 +852,7 @@ class NoteCache:
 
         return self._notes
 
-    def search_notes(
+    async def search_notes(
         self,
         query: str,
         limit: int | None = None,
@@ -910,7 +910,11 @@ class NoteCache:
             else:
                 notes_to_search = self._filter_notes_by_tags(tag_filters)
 
-        # Fast pre-filter using inverted word index (reduces engine scan scope)
+        # Fast pre-filter using inverted word index (reduces engine scan scope).
+        # Use substring matching (term IN indexed_word) to stay consistent with the
+        # engine's _content_contains(), which uses substring search.  Exact-word lookup
+        # (word_index[term]) would miss notes where the term appears inside a longer
+        # word (e.g. "test" inside "testing").
         if self._word_index and not fuzzy:
             terms = [
                 t
@@ -920,9 +924,11 @@ class NoteCache:
                 and t not in {"and", "or", "not"}
             ]
             if terms:
-                candidate_ids = set.union(
-                    *(self._word_index.get(t, set()) for t in terms)
-                )
+                candidate_ids: set[str] = set()
+                for t in terms:
+                    for indexed_word, note_ids in self._word_index.items():
+                        if t in indexed_word:
+                            candidate_ids.update(note_ids)
                 if candidate_ids:
                     notes_to_search = {
                         k: notes_to_search[k]
@@ -934,14 +940,31 @@ class NoteCache:
                         f"from {len(self._notes)} notes"
                     )
 
-        # Use search engine with fuzzy mode if requested
+        # Use search engine with fuzzy mode if requested.
+        # Run the CPU-bound engine call in a thread-pool executor so the asyncio
+        # event loop stays responsive to other tool calls during the search.
+        # Take a shallow snapshot of the notes dict first: once we await the
+        # executor the event loop is free to run background sync, which could
+        # mutate self._notes and cause "dict changed size during iteration".
         search_engine = SearchEngine(fuzzy=fuzzy) if fuzzy else self._search_engine
-        all_results = search_engine.search(
-            notes=notes_to_search,
-            query=query,
-            tag_filters=tag_filters,
-            date_range=date_range,
-        )
+        notes_snapshot = dict(notes_to_search)
+        loop = asyncio.get_running_loop()
+        try:
+            all_results = await asyncio.wait_for(
+                loop.run_in_executor(
+                    None,
+                    lambda: search_engine.search(
+                        notes=notes_snapshot,
+                        query=query,
+                        tag_filters=tag_filters,
+                        date_range=date_range,
+                    ),
+                ),
+                timeout=30.0,
+            )
+        except asyncio.TimeoutError:
+            logger.error(f"Search timed out after 30 s for query: {query!r}")
+            return []
 
         # Apply date-based sort if requested (otherwise keep relevance order from engine)
         if sort_by in ("modifydate", "createdate"):

@@ -5,7 +5,7 @@ that are not covered by the existing tests.
 """
 
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -228,7 +228,7 @@ class TestSearchNotesHandlerEdgeCases:
             {"key": "1", "content": "First note", "tags": []},
             {"key": "2", "content": "Second note", "tags": []},
         ]
-        handler.note_cache.search_notes.return_value = mock_notes
+        handler.note_cache.search_notes = AsyncMock(return_value=mock_notes)
         handler.note_cache.get_pagination_info.return_value = {
             "page": 1,
             "total_pages": 1,

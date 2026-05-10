@@ -611,7 +611,7 @@ class SearchNotesHandler(ToolHandlerBase):
         if self.note_cache is None:
             return [types.TextContent(type="text", text="Note cache not available")]
 
-        all_matching_notes = self.note_cache.search_notes(
+        all_matching_notes = await self.note_cache.search_notes(
             query=query,
             tag_filters=tag_filters,
             date_range=date_range,
@@ -630,7 +630,7 @@ class SearchNotesHandler(ToolHandlerBase):
         total_matching_notes = len(all_matching_notes)
 
         # Use the enhanced search implementation with pagination
-        notes = self.note_cache.search_notes(
+        notes = await self.note_cache.search_notes(
             query=query,
             limit=limit,
             offset=offset,
@@ -1716,7 +1716,7 @@ class AppendToDailyNoteHandler(ToolHandlerBase):
             note_id = None
 
             if self.note_cache is not None and self.note_cache.is_initialized:
-                results = self.note_cache.search_notes(query=today_str)
+                results = await self.note_cache.search_notes(query=today_str)
                 for note in results:
                     content = note.get("content", "")
                     first_line = content.split("\n", 1)[0].strip()
@@ -1806,7 +1806,7 @@ class GetOrCreateNoteHandler(ToolHandlerBase):
             # Search for an existing note with this title
             existing = None
             if self.note_cache is not None and self.note_cache.is_initialized:
-                results = self.note_cache.search_notes(query=title)
+                results = await self.note_cache.search_notes(query=title)
                 for note in results:
                     content = note.get("content", "")
                     first_line = content.split("\n", 1)[0].strip()

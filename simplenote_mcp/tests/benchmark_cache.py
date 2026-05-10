@@ -197,19 +197,19 @@ async def benchmark_search(cache: NoteCache, result: BenchmarkResult) -> None:
 
     # First search - simple query
     with Timer("search_simple_first", result):
-        simple_results = cache.search_notes(query=simple_query)
+        simple_results = await cache.search_notes(query=simple_query)
 
     # Second search - simple query, should use cache
     with Timer("search_simple_second", result):
-        cache.search_notes(query=simple_query)
+        await cache.search_notes(query=simple_query)
 
     # First search - complex query
     with Timer("search_complex_first", result):
-        complex_results = cache.search_notes(query=complex_query)
+        complex_results = await cache.search_notes(query=complex_query)
 
     # Second search - complex query, should use cache
     with Timer("search_complex_second", result):
-        cache.search_notes(query=complex_query)
+        await cache.search_notes(query=complex_query)
 
     # Record result counts
     result.add_metadata("simple_query_results", len(simple_results))
@@ -220,7 +220,7 @@ async def benchmark_search(cache: NoteCache, result: BenchmarkResult) -> None:
     if tags:
         test_tag = tags[0]
         with Timer("search_with_tag_filter", result):
-            tag_search_results = cache.search_notes(
+            tag_search_results = await cache.search_notes(
                 query=simple_query, tag_filters=[test_tag]
             )
 
@@ -257,11 +257,11 @@ async def benchmark_pagination(cache: NoteCache, result: BenchmarkResult) -> Non
 
     # Get first page of search results
     with Timer("pagination_search_page1", result):
-        search_page1 = cache.search_notes(query=query, limit=page_size, offset=0)
+        search_page1 = await cache.search_notes(query=query, limit=page_size, offset=0)
 
     # Get second page of search results
     with Timer("pagination_search_page2", result):
-        search_page2 = cache.search_notes(
+        search_page2 = await cache.search_notes(
             query=query, limit=page_size, offset=page_size
         )
 
