@@ -142,7 +142,7 @@ twine==6.2.0
 typer==0.25.1
 typing-inspection==0.4.2
 typing_extensions==4.15.0
-urllib3==2.6.3
+urllib3==2.7.0
 uvicorn==0.46.0
 virtualenv==21.3.0
 watchdog==6.0.0
