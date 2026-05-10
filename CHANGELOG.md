@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Silent note eviction during server start-up: `cache.initialize()` now calls `_evict_if_needed()`
   after loading all notes, preventing data loss when note count exceeds `CACHE_MAX_SIZE`
 - `CACHE_MAX_SIZE` default raised from 1 000 to 10 000 to cover most users without extra configuration
+- `search_notes` blocking the asyncio event loop: it is now `async` and runs the search engine in a
+  thread-pool executor with a 30 s timeout, preventing Boolean AND queries (and other slow searches)
+  from permanently hanging the server under Claude Desktop's MCP timeout
+- `search_notes` returning far fewer results than expected when using short query terms (e.g. "test"
+  missed notes containing "testing"): the word-index pre-filter now uses substring matching, consistent
+  with the search engine's `_content_contains()` behaviour
 
 ## [1.16.0] - 2026-04-28
 
