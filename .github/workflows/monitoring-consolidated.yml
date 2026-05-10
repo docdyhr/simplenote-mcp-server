@@ -138,8 +138,9 @@ jobs:
           # Check configuration validation
           python -c "from simplenote_mcp.server.config import get_config; config = get_config(); print('✅ Configuration loads successfully')"
 
-          # Run smoke tests
-          python -m pytest tests/test_config.py -v --tb=short
+          # Run smoke tests (disable coverage plugin — only test_config.py runs here,
+          # global --cov-fail-under=75 in pyproject.toml would otherwise cause a false failure)
+          python -m pytest tests/test_config.py -v --tb=short -p no:cov
 
           echo "✅ All health checks passed"
 
