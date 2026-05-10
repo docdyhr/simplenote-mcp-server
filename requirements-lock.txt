@@ -52,7 +52,7 @@ librt==0.9.0
 license-expression==30.4.4
 mando==0.8.2
 Markdown==3.10.2
-markdown-it-py==4.0.0
+markdown-it-py==4.2.0
 MarkupSafe==3.0.3
 marshmallow==4.3.0
 mcp==1.27.0
