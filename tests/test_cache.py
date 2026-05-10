@@ -70,6 +70,31 @@ class TestNoteCache:
         # Check that get_note_list was called once (no separate index mark fetch)
         assert mock_simplenote_client.get_note_list.call_count == 1
 
+    @pytest.mark.asyncio
+    async def test_initialize_evicts_to_cache_max_size(
+        self, mock_simplenote_client, mock_note_data
+    ):
+        """initialize() must evict down to cache_max_size, not load unbounded notes.
+
+        With the default cache_max_size=1000 and a user who has 1752 notes, the
+        first sync call evicts 752 notes and they silently disappear from search.
+        initialize() must respect the limit from the start.
+        """
+        mock_simplenote_client.get_note_list.side_effect = [
+            (mock_note_data, 0),  # 3 notes
+        ]
+        mock_simplenote_client.current = "test_cursor"
+
+        cache = NoteCache(mock_simplenote_client)
+        cache._max_cache_size = 2  # lower than the 3 notes that will be loaded
+
+        await cache.initialize()
+
+        assert cache.cache_size <= 2, (
+            f"cache_size {cache.cache_size} exceeds cache_max_size 2 after initialize()"
+        )
+        assert cache.is_initialized
+
     def test_fetch_note_list_raises_auth_error_on_none_token(
         self, mock_simplenote_client
     ):

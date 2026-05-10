@@ -69,7 +69,7 @@ class TestConfig:
             assert config.default_resource_limit == 100
             assert config.title_max_length == 30
             assert config.snippet_max_length == 300
-            assert config.cache_max_size == 1000
+            assert config.cache_max_size == 10000
             assert config.cache_initialization_timeout == 60
             assert config.metrics_collection_interval == 60
             assert config.log_level == LogLevel.INFO

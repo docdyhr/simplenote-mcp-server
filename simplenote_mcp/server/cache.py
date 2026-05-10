@@ -365,6 +365,15 @@ class NoteCache:
         # Build all indexes
         self._build_all_indexes()
 
+        # Enforce cache size limit (same as sync path — evict LRU notes if needed)
+        if len(self._notes) > self._max_cache_size:
+            logger.warning(
+                f"Note count ({len(self._notes)}) exceeds CACHE_MAX_SIZE "
+                f"({self._max_cache_size}). Evicting oldest notes. "
+                f"Set CACHE_MAX_SIZE >= {len(self._notes)} to keep all notes searchable."
+            )
+        self._evict_if_needed()
+
         elapsed = time.time() - start_time
         logger.info(f"Loaded {len(self._notes)} notes into cache in {elapsed:.2f}s")
         logger.info(f"Found {len(self._tags)} unique tags")
