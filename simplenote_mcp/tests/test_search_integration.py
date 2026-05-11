@@ -26,7 +26,6 @@ from simplenote_mcp.server.tool_handlers import (
     GetOrCreateNoteHandler,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
