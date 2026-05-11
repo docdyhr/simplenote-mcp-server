@@ -3,6 +3,18 @@ from typing import Any
 import mcp.types as types
 
 
+async def handle_read_resource(uri: str) -> types.ReadResourceResult:
+    return await helper_handle_read_resource(uri)
+
+
+async def handle_call_tool(name: str, arguments: dict[str, Any]) -> Any:
+    return await helper_handle_call_tool(name, arguments)
+
+
+async def handle_list_tools() -> Any:
+    return await helper_handle_list_tools()
+
+
 async def helper_handle_read_resource(uri: str) -> types.ReadResourceResult:
     """Helper to read a resource by URI."""
     from simplenote_mcp.server.server import server_instance

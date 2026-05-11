@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.1] - 2026-05-11
+
 ### Fixed
 - Three Claude Desktop deployment errors resolved: `psutil.cpu_percent()` called with renamed keyword
   argument (`interval` → positional), security alerter writing to a relative path that fails under
@@ -21,6 +23,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `search_notes` returning far fewer results than expected when using short query terms (e.g. "test"
   missed notes containing "testing"): the word-index pre-filter now uses substring matching, consistent
   with the search engine's `_content_contains()` behaviour
+
+### Tests
+- Added real-engine integration tests for `search_notes` (`test_search_integration.py`): six pytest
+  tests exercise the full async executor path against an in-memory `NoteCache` fixture (no live
+  credentials required), guarding against the production `TypeError: object list can't be used in
+  'await' expression` regression, Boolean AND correctness, OR union semantics, substring pre-filter
+  inflection matching, 5-second performance bound, and result-set stability
+- Fixed `ImportError` in `test_server_capabilities.py` caused by missing public aliases
+  (`handle_call_tool`, `handle_list_tools`, `handle_read_resource`) in `test_helpers.py`; aliases
+  now forward to the existing `helper_*` functions
 
 ## [1.16.0] - 2026-04-28
 
@@ -510,7 +522,8 @@ This release marks a significant milestone with **98% startup performance improv
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.1...HEAD
+[1.16.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.15.0...v1.16.0
 [1.8.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.7.0...v1.8.0

@@ -2,7 +2,7 @@ apiVersion: v2
 name: simplenote-mcp-server
 description: A Helm chart for Simplenote MCP Server
 type: application
-version: 1.16.0
+version: 1.16.1
 appVersion: "1.16.0"
 home: https://github.com/docdyhr/simplenote-mcp-server
 sources:

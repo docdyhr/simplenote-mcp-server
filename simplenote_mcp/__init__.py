@@ -2,4 +2,4 @@
 
 """Simplenote MCP Server - Connect Simplenote to Claude Desktop."""
 
-__version__ = "1.16.0"
+__version__ = "1.16.1"
