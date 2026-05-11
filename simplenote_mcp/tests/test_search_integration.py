@@ -14,7 +14,7 @@ These tests confirm the real call path works without mocks.
 
 import json
 import time
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 from unittest.mock import MagicMock
 
