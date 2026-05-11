@@ -61,3 +61,147 @@ CVE-2025-8058
 # pip: arbitrary code execution via malicious wheel package installation (self-update check)
 # Risk: low — pip tool itself, not a project dependency; fix in pip>=26.1. Also ignored in pip-audit CI.
 CVE-2026-6357
+
+# --- Debian base image system package CVEs — no fix available in Debian Bookworm repos ---
+# These affect system tools not invoked by this application at runtime. The container
+# runs as a non-root user (uid 1000). All have no Debian backport at time of writing.
+
+# tar: does not warn about setuid/setgid files on extraction
+# Risk: low — tar not invoked by this application at runtime
+CVE-2005-2541
+
+# initscripts: insecure permissions for /var/log
+# Risk: low — initscripts not relevant in a container environment
+CVE-2007-5686
+
+# glibc: glob implementation excessive CPU/memory with crafted expressions
+# Risk: low — not reachable from MCP API surface
+CVE-2010-4756
+
+# apt-key: does not validate signatures correctly
+# Risk: low — apt-key is a build-time tool, not available in production stage
+CVE-2011-3374
+
+# HTTPS: BEAST (block-wise chosen-plaintext) attack against SSL/TLS
+# Risk: low — mitigated by modern TLS client defaults; not exploitable in this context
+CVE-2011-3389
+
+# perl: File::Temp insecure temporary file handling
+# Risk: low — perl not used by this application at runtime
+CVE-2011-4116
+
+# systemd: TOCTOU race condition updating file permissions and SELinux contexts
+# Risk: low — systemd not used inside this container
+CVE-2013-4392
+
+# coreutils: non-privileged session can escape chroot
+# Risk: low — container is isolated; coreutils not invoked by the MCP server
+CVE-2016-2781
+
+# coreutils: race condition in chown/chgrp
+# Risk: low — coreutils not invoked by the MCP server at runtime
+CVE-2017-18018
+
+# glibc: uncontrolled recursion in check_dst_limits_calc_pos_1 (regex)
+# Risk: low — not reachable from MCP API surface
+CVE-2018-20796
+
+# libgcrypt: ElGamal implementation semantic security issue
+# Risk: low — libgcrypt not directly used by this application
+CVE-2018-6829
+
+# glibc: stack guard protection bypass
+# Risk: low — container runs as non-root; not exploitable from MCP API surface
+CVE-2019-1010022
+
+# glibc: running ldd on malicious ELF leads to code execution
+# Risk: low — ldd not invoked at runtime; no untrusted ELF loading
+CVE-2019-1010023
+
+# glibc: ASLR bypass using thread stack/heap cache
+# Risk: low — not reachable from MCP API surface
+CVE-2019-1010024
+
+# glibc: heap address disclosure via pthread
+# Risk: low — not reachable from MCP API surface
+CVE-2019-1010025
+
+# glibc: uncontrolled recursion in check_dst_limits_calc_pos_1 (regex)
+# Risk: low — not reachable from MCP API surface
+CVE-2019-9192
+
+# sqlite: crafted SQL query allows sensitive information disclosure
+# Risk: low — sqlite3 is a Python stdlib dependency; MCP API does not accept raw SQL
+CVE-2021-45346
+
+# util-linux: partial disclosure of arbitrary files in chfn/chsh with libreadline
+# Risk: low — chfn/chsh are not invoked by this application
+CVE-2022-0563
+
+# binutils: libiberty stack exhaustion in rust-demangle.c
+# Risk: low — binutils not present in production stage
+CVE-2022-27943
+
+# gnupg: resource consumption with crafted compressed packets
+# Risk: low — gnupg not used by this application at runtime
+CVE-2022-3219
+
+# systemd: attacker can modify sealed log file
+# Risk: low — systemd not used inside this container
+CVE-2023-31437
+
+# systemd: attacker can truncate sealed log file
+# Risk: low — systemd not used inside this container
+CVE-2023-31438
+
+# systemd: attacker can modify sealed log contents
+# Risk: low — systemd not used inside this container
+CVE-2023-31439
+
+# http-tiny: insecure TLS certificate default
+# Risk: low — http-tiny (Perl) not used by this application
+CVE-2023-31486
+
+# libgcrypt: vulnerable to Marvin Attack (RSA timing side-channel)
+# Risk: low — libgcrypt not directly used by this application
+CVE-2024-2236
+
+# shadow-utils: default subordinate ID config could lead to compromise
+# Risk: low — container runs as non-root; subordinate IDs not configured
+CVE-2024-56433
+
+# OpenSSL 3.0-3.3.2: integer overflow on PowerPC architecture only
+# Risk: none — container targets linux/amd64 and linux/arm64, not PowerPC
+CVE-2025-27587
+
+# gnupg: verification DoS via malicious subkey
+# Risk: low — gnupg not used by this application at runtime
+CVE-2025-30258
+
+# coreutils: heap buffer under-read in sort via key specification
+# Risk: low — coreutils not invoked by the MCP server at runtime
+CVE-2025-5278
+
+# gnu-ncurses: stack buffer overflow
+# Risk: low — ncurses is a system library; not reachable from MCP API surface
+CVE-2025-6141
+
+# dpkg-deb: does not properly sanitize directory path during extraction
+# Risk: low — dpkg-deb is a build-time tool, not present in production stage
+CVE-2025-6297
+
+# tar: rmt command may have undesired side effects (TEMP ID)
+# Risk: low — tar not invoked by this application at runtime
+TEMP-0290435-0B57B5
+
+# sysvinit: no-root option in expert installer (TEMP ID)
+# Risk: low — sysvinit not relevant in a container environment
+TEMP-0517018-A83CE6
+
+# shadow: privilege escalation related to CVE-2005-4890 (TEMP ID)
+# Risk: low — container runs as non-root; not exploitable from MCP API surface
+TEMP-0628843-DBAD28
+
+# shadow: privilege escalation to other users (TEMP ID)
+# Risk: low — container runs as non-root; not exploitable from MCP API surface
+TEMP-0841856-B18BAF
