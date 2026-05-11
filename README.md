@@ -173,7 +173,7 @@ docker-compose up -d
 Available tags:
 
 - `latest` - Latest stable release
-- `v1.16.0` - Specific version
+- `v1.16.1` - Specific version
 - `main` - Latest development build
 
 ### Production Deployment
