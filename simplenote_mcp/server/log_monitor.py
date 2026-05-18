@@ -212,7 +212,8 @@ class LogPatternMonitor:
                 time_window_minutes=5,
                 field_filters={"level": "ERROR"},
             ),
-            # Security-related warnings
+            # Security-related warnings (WARNING+ only to avoid matching routine
+            # INFO messages like "Security alerter initialized")
             SuspiciousPattern(
                 name="security_warnings",
                 pattern=r"(security|suspicious|malicious|attack|breach|unauthorized)",
@@ -220,6 +221,7 @@ class LogPatternMonitor:
                 description="Security-related warnings detected",
                 threshold=3,
                 time_window_minutes=10,
+                field_filters={"level": "WARNING"},
             ),
             # Unusual resource access patterns
             SuspiciousPattern(
@@ -286,21 +288,18 @@ class LogPatternMonitor:
         Args:
             log_entry: Log entry data to analyze
         """
+        # Skip own-logger entries to prevent a feedback loop: the debug message
+        # "Pattern matched: security_warnings" contains "security", which
+        # matches the security_warnings pattern, which logs again, and so on.
+        if log_entry.get("logger", "").startswith("simplenote_mcp.log_monitor"):
+            return
+
         self.stats["logs_processed"] += 1
 
         # Check each pattern
         for pattern in self.patterns:
             if pattern.check_match(log_entry):
                 self.stats["patterns_matched"] += 1
-
-                logger.debug(
-                    f"Pattern matched: {pattern.name}",
-                    extra={
-                        "pattern_name": pattern.name,
-                        "log_message": log_entry.get("message", ""),
-                        "match_count": len(pattern.matches),
-                    },
-                )
 
                 # Check if we should trigger an alert
                 if pattern.should_trigger_alert():
