@@ -13,3 +13,4 @@ jobs:
     with:
       scan_paths: "simplenote_mcp/"
       install_project: true
+      bandit_exclude: ".venv,simplenote_mcp/tests,test_*.py"
