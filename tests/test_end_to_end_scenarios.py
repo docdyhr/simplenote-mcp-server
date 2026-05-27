@@ -52,6 +52,9 @@ async def end_to_end_setup():
         mock_config.max_resource_limit = 1000
         mock_config.cache_initialization_timeout = 30  # Proper timeout value
         mock_config.sync_interval_seconds = 120
+        mock_config.write_mode = True
+        mock_config.write_budget_max = 100
+        mock_config.write_budget_window_seconds = 60
         mock_get_config.return_value = mock_config
 
         # Initialize cache

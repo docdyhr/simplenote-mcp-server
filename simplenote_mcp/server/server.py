@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import time
+from collections import deque
 from typing import Any, cast
 
 # MCP imports
@@ -94,6 +95,66 @@ FAILED_GET_NOTE = "Failed to find note with ID {note_id}"
 FAILED_UPDATE_TAGS = "Failed to update note tags"
 FAILED_TRASH_NOTE = "Failed to move note to trash"
 FAILED_RETRIEVE_NOTES = "Failed to retrieve notes for search"
+
+# Tools that mutate Simplenote data. Only exposed when write_mode is enabled,
+# and counted against the per-session write budget.
+WRITE_TOOLS: frozenset[str] = frozenset(
+    {
+        "create_note",
+        "update_note",
+        "delete_note",
+        "add_tags",
+        "remove_tags",
+        "replace_tags",
+        "add_text",
+        "restore_version",
+        "replace_section",
+        "append_to_daily_note",
+        "get_or_create_note",
+        "rename_tag",
+        "bulk_tag",
+        "restore_note",
+        "publish_note",
+        "unpublish_note",
+        "permanent_delete_note",
+        "empty_trash",
+        "find_and_merge_duplicates",
+    }
+)
+
+# Per-session rolling write-budget tracker (not reset across reconnects —
+# intentional: keeps the guard effective during a single server process).
+_write_timestamps: deque[float] = deque()
+_write_budget_lock = threading.Lock()
+
+
+def _check_write_budget() -> None:
+    """Raise ValidationError if the session write budget is exhausted.
+
+    Uses a rolling window defined by config write_budget_max /
+    write_budget_window_seconds.  Called immediately before each write tool
+    dispatch so idempotency short-circuits (no-ops) don't consume budget.
+    """
+    config = get_config()
+    now = time.monotonic()
+    window_start = now - config.write_budget_window_seconds
+    with _write_budget_lock:
+        while _write_timestamps and _write_timestamps[0] < window_start:
+            _write_timestamps.popleft()
+        if len(_write_timestamps) >= config.write_budget_max:
+            raise ValidationError(
+                f"Write budget exhausted: {config.write_budget_max} writes in "
+                f"{config.write_budget_window_seconds}s. "
+                "Confirm with the user that this bulk operation should continue before retrying.",
+                subcategory="rate_limited",
+            )
+
+
+def _record_write() -> None:
+    """Record a successful write operation against the session budget."""
+    with _write_budget_lock:
+        _write_timestamps.append(time.monotonic())
+
 
 # Create a server instance
 try:
@@ -677,72 +738,69 @@ async def handle_list_tools() -> list[types.Tool]:
         List of available tools
 
     """
+    # Annotation presets
+    _READ = types.ToolAnnotations(
+        readOnlyHint=True,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=True,
+    )
+    _ADD = types.ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=False,
+        openWorldHint=True,
+    )
+    _ADD_IDEM = types.ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=False,
+        idempotentHint=True,
+        openWorldHint=True,
+    )
+    _WRITE = types.ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=True,
+        idempotentHint=False,
+        openWorldHint=True,
+    )
+    _WRITE_IDEM = types.ToolAnnotations(
+        readOnlyHint=False,
+        destructiveHint=True,
+        idempotentHint=True,
+        openWorldHint=True,
+    )
+
     try:
+        config = get_config()
         logger.info("Listing available tools")
-        tools = [
+
+        read_tools = [
             types.Tool(
-                name="create_note",
+                name="list_notes",
                 description=(
-                    "Create a new note in Simplenote. "
-                    "Use get_or_create_note (once available) if you need to avoid duplicate notes."
+                    "List recent notes, optionally filtered by tag. "
+                    "Use search_notes for full-text or boolean queries. "
+                    "Use list_tags first to discover available tag names."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "content": {
+                        "tag": {
                             "type": "string",
-                            "description": "The content of the note",
+                            "description": "Filter by tag name (exact match)",
                         },
-                        "tags": {
-                            "type": "string",
-                            "description": "Tags for the note (comma-separated)",
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of notes to return (default: 20, max: 100)",
                         },
-                    },
-                    "required": ["content"],
-                },
-            ),
-            types.Tool(
-                name="update_note",
-                description=(
-                    "Replaces the full note content in Simplenote. "
-                    "Use add_text instead when you only want to append or prepend content "
-                    "without overwriting the full note."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "note_id": {
-                            "type": "string",
-                            "description": "The ID of the note to update",
-                        },
-                        "content": {
-                            "type": "string",
-                            "description": "The new content of the note",
-                        },
-                        "tags": {
-                            "type": "string",
-                            "description": "Tags for the note (comma-separated)",
+                        "include_deleted": {
+                            "type": "boolean",
+                            "description": "Include trashed notes (default: false)",
                         },
                     },
-                    "required": ["note_id", "content"],
+                    "required": [],
                 },
-            ),
-            types.Tool(
-                name="delete_note",
-                description=(
-                    "Soft-deletes a note from Simplenote (moves to Trash). "
-                    "Use restore_note to undo. The note is not permanently deleted."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "note_id": {
-                            "type": "string",
-                            "description": "The ID of the note to delete",
-                        }
-                    },
-                    "required": ["note_id"],
-                },
+                annotations=_READ,
             ),
             types.Tool(
                 name="search_notes",
@@ -813,6 +871,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["query"],
                 },
+                annotations=_READ,
             ),
             types.Tool(
                 name="get_note",
@@ -830,69 +889,59 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["note_id"],
                 },
+                annotations=_READ,
             ),
             types.Tool(
-                name="add_tags",
+                name="list_tags",
                 description=(
-                    "Add tags to an existing note without replacing existing ones. "
-                    "Use replace_tags to set the complete tag list from scratch."
+                    "List all tags used across notes with note counts. "
+                    "Use this before creating or searching by tags to discover existing tags "
+                    "and avoid fragmentation."
                 ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "sort_by": {
+                            "type": "string",
+                            "enum": ["alpha", "count"],
+                            "description": "Sort order: 'alpha' (alphabetical, default) or 'count' (by note count descending)",
+                        },
+                    },
+                    "required": [],
+                },
+                annotations=_READ,
+            ),
+            types.Tool(
+                name="get_note_versions",
+                description="Retrieve the version history of a note (up to 10 most recent versions).",
                 inputSchema={
                     "type": "object",
                     "properties": {
                         "note_id": {
                             "type": "string",
-                            "description": "The ID of the note to modify",
-                        },
-                        "tags": {
-                            "type": "string",
-                            "description": "Tags to add (comma-separated)",
+                            "description": "The ID of the note",
                         },
                     },
-                    "required": ["note_id", "tags"],
+                    "required": ["note_id"],
                 },
+                annotations=_READ,
             ),
             types.Tool(
-                name="remove_tags",
+                name="find_untagged_notes",
                 description=(
-                    "Remove specific tags from an existing note. "
-                    "Use replace_tags to set an entirely new tag list."
+                    "List notes that have no tags. "
+                    "Useful for tag housekeeping — find notes that need to be organized."
                 ),
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "note_id": {
-                            "type": "string",
-                            "description": "The ID of the note to modify",
-                        },
-                        "tags": {
-                            "type": "string",
-                            "description": "Tags to remove (comma-separated)",
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of notes to return (default: 50)",
                         },
                     },
-                    "required": ["note_id", "tags"],
                 },
-            ),
-            types.Tool(
-                name="replace_tags",
-                description=(
-                    "Replace ALL tags on an existing note. "
-                    "Use add_tags or remove_tags for partial changes."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "note_id": {
-                            "type": "string",
-                            "description": "The ID of the note to modify",
-                        },
-                        "tags": {
-                            "type": "string",
-                            "description": "New tags (comma-separated)",
-                        },
-                    },
-                    "required": ["note_id", "tags"],
-                },
+                annotations=_READ,
             ),
             types.Tool(
                 name="export_notes",
@@ -916,28 +965,158 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["note_ids"],
                 },
+                annotations=_READ,
             ),
             types.Tool(
-                name="find_and_merge_duplicates",
-                description="Find duplicate or near-duplicate notes and optionally merge them",
+                name="get_server_info",
+                description=(
+                    "Return version, author, and debug information about this MCP server. "
+                    "Use this to confirm which version is running, check whether the cache "
+                    "is initialized, and see runtime settings (log level, sync interval, "
+                    "offline mode). No parameters required."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                },
+                annotations=_READ,
+            ),
+        ]
+
+        write_tools = [
+            types.Tool(
+                name="create_note",
+                description=(
+                    "Create a new note in Simplenote. "
+                    "Use get_or_create_note if you need to avoid duplicate notes."
+                ),
                 inputSchema={
                     "type": "object",
                     "properties": {
-                        "threshold": {
-                            "type": "number",
-                            "description": "Similarity threshold from 0.0 to 1.0 (default: 0.8). Higher values require more similarity.",
-                        },
-                        "dry_run": {
-                            "type": "boolean",
-                            "description": "If true (default), only report duplicates without merging. Set to false to actually merge.",
-                        },
-                        "tag_filter": {
+                        "content": {
                             "type": "string",
-                            "description": "Only check notes with this tag (optional, helps narrow scope)",
+                            "description": "The content of the note",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "Tags for the note (comma-separated)",
                         },
                     },
-                    "required": [],
+                    "required": ["content"],
                 },
+                annotations=_ADD,
+            ),
+            types.Tool(
+                name="update_note",
+                description=(
+                    "Replaces the full note content in Simplenote. "
+                    "IMPORTANT: content replaces the entire note — call get_note first when "
+                    "changing only part of it. "
+                    "Use add_text to append or prepend without overwriting."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to update",
+                        },
+                        "content": {
+                            "type": "string",
+                            "description": "The new content of the note",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "Tags for the note (comma-separated)",
+                        },
+                    },
+                    "required": ["note_id", "content"],
+                },
+                annotations=_WRITE,
+            ),
+            types.Tool(
+                name="delete_note",
+                description=(
+                    "Soft-deletes a note from Simplenote (moves to Trash). "
+                    "Use restore_note to undo. The note is not permanently deleted."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to delete",
+                        }
+                    },
+                    "required": ["note_id"],
+                },
+                annotations=_WRITE_IDEM,
+            ),
+            types.Tool(
+                name="add_tags",
+                description=(
+                    "Add tags to an existing note without replacing existing ones. "
+                    "Use replace_tags to set the complete tag list from scratch."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to modify",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "Tags to add (comma-separated)",
+                        },
+                    },
+                    "required": ["note_id", "tags"],
+                },
+                annotations=_ADD_IDEM,
+            ),
+            types.Tool(
+                name="remove_tags",
+                description=(
+                    "Remove specific tags from an existing note. "
+                    "Use replace_tags to set an entirely new tag list."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to modify",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "Tags to remove (comma-separated)",
+                        },
+                    },
+                    "required": ["note_id", "tags"],
+                },
+                annotations=_WRITE_IDEM,
+            ),
+            types.Tool(
+                name="replace_tags",
+                description=(
+                    "Replace ALL tags on an existing note. "
+                    "Use add_tags or remove_tags for partial changes."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to modify",
+                        },
+                        "tags": {
+                            "type": "string",
+                            "description": "New tags (comma-separated)",
+                        },
+                    },
+                    "required": ["note_id", "tags"],
+                },
+                annotations=_WRITE,
             ),
             types.Tool(
                 name="add_text",
@@ -965,57 +1144,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["note_id", "text"],
                 },
-            ),
-            types.Tool(
-                name="list_tags",
-                description=(
-                    "List all tags used across notes with note counts. "
-                    "Use this before creating or searching by tags to discover existing tags "
-                    "and avoid fragmentation."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "sort_by": {
-                            "type": "string",
-                            "enum": ["alpha", "count"],
-                            "description": "Sort order: 'alpha' (alphabetical, default) or 'count' (by note count descending)",
-                        },
-                    },
-                    "required": [],
-                },
-            ),
-            types.Tool(
-                name="get_note_versions",
-                description="Retrieve the version history of a note (up to 10 most recent versions).",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "note_id": {
-                            "type": "string",
-                            "description": "The ID of the note",
-                        },
-                    },
-                    "required": ["note_id"],
-                },
-            ),
-            types.Tool(
-                name="restore_version",
-                description="Restore a note to a specific earlier version. Use get_note_versions first to see available versions.",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "note_id": {
-                            "type": "string",
-                            "description": "The ID of the note to restore",
-                        },
-                        "version": {
-                            "type": "integer",
-                            "description": "The version number to restore to",
-                        },
-                    },
-                    "required": ["note_id", "version"],
-                },
+                annotations=_ADD,
             ),
             types.Tool(
                 name="replace_section",
@@ -1038,6 +1167,30 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["note_id", "header", "new_content"],
                 },
+                annotations=_WRITE,
+            ),
+            types.Tool(
+                name="restore_version",
+                description=(
+                    "Restore a note to a specific earlier version. "
+                    "Use get_note_versions first to see available versions. "
+                    "No-op (returns no_op=true) if the target version is identical to current."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to restore",
+                        },
+                        "version": {
+                            "type": "integer",
+                            "description": "The version number to restore to",
+                        },
+                    },
+                    "required": ["note_id", "version"],
+                },
+                annotations=_WRITE_IDEM,
             ),
             types.Tool(
                 name="append_to_daily_note",
@@ -1052,6 +1205,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["text"],
                 },
+                annotations=_ADD,
             ),
             types.Tool(
                 name="get_or_create_note",
@@ -1078,6 +1232,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["title"],
                 },
+                annotations=_ADD,
             ),
             types.Tool(
                 name="rename_tag",
@@ -1100,6 +1255,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["old_tag", "new_tag"],
                 },
+                annotations=_WRITE,
             ),
             types.Tool(
                 name="bulk_tag",
@@ -1128,6 +1284,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["note_ids", "action", "tags"],
                 },
+                annotations=_WRITE,
             ),
             types.Tool(
                 name="restore_note",
@@ -1145,44 +1302,14 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["note_id"],
                 },
-            ),
-            types.Tool(
-                name="find_untagged_notes",
-                description=(
-                    "List notes that have no tags. "
-                    "Useful for tag housekeeping — find notes that need to be organized."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "limit": {
-                            "type": "integer",
-                            "description": "Maximum number of notes to return (default: 50)",
-                        },
-                    },
-                },
-            ),
-            types.Tool(
-                name="get_server_info",
-                description=(
-                    "Return version, author, and debug information about this MCP server. "
-                    "Use this to confirm which version is running, check whether the cache "
-                    "is initialized, and see runtime settings (log level, sync interval, "
-                    "offline mode). No parameters required."
-                ),
-                inputSchema={
-                    "type": "object",
-                    "properties": {},
-                },
+                annotations=_ADD_IDEM,
             ),
             types.Tool(
                 name="publish_note",
                 description=(
                     "Publish a note to a public URL accessible without login. "
                     "Sets the 'published' system tag and returns the public_url. "
-                    "Use this to share a note publicly. "
-                    "Use unpublish_note to reverse. "
-                    "Note: the public URL is generated by Simperium after the first publish."
+                    "Use unpublish_note to reverse."
                 ),
                 inputSchema={
                     "type": "object",
@@ -1194,14 +1321,13 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["note_id"],
                 },
+                annotations=_ADD_IDEM,
             ),
             types.Tool(
                 name="unpublish_note",
                 description=(
                     "Remove a note from public access by clearing its 'published' system tag. "
-                    "Reverses publish_note. "
-                    "Use this when a previously-shared note should no longer be publicly accessible. "
-                    "No-op if the note is already unpublished."
+                    "Reverses publish_note. No-op if the note is already unpublished."
                 ),
                 inputSchema={
                     "type": "object",
@@ -1213,6 +1339,30 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["note_id"],
                 },
+                annotations=_WRITE_IDEM,
+            ),
+            types.Tool(
+                name="find_and_merge_duplicates",
+                description="Find duplicate or near-duplicate notes and optionally merge them",
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "threshold": {
+                            "type": "number",
+                            "description": "Similarity threshold from 0.0 to 1.0 (default: 0.8). Higher values require more similarity.",
+                        },
+                        "dry_run": {
+                            "type": "boolean",
+                            "description": "If true (default), only report duplicates without merging. Set to false to actually merge.",
+                        },
+                        "tag_filter": {
+                            "type": "string",
+                            "description": "Only check notes with this tag (optional, helps narrow scope)",
+                        },
+                    },
+                    "required": [],
+                },
+                annotations=_WRITE,
             ),
             types.Tool(
                 name="permanent_delete_note",
@@ -1240,6 +1390,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "required": ["note_id", "confirm"],
                 },
+                annotations=_WRITE_IDEM,
             ),
             types.Tool(
                 name="empty_trash",
@@ -1268,31 +1419,21 @@ async def handle_list_tools() -> list[types.Tool]:
                         },
                     },
                 },
+                annotations=_WRITE_IDEM,
             ),
         ]
+
+        tools = read_tools + (write_tools if config.write_mode else [])
         logger.info(
-            f"Returning {len(tools)} tools: {', '.join([t.name for t in tools])}"
+            f"Returning {len(tools)} tools "
+            f"(write_mode={'on' if config.write_mode else 'off'}): "
+            f"{', '.join(t.name for t in tools)}"
         )
         return tools
 
     except Exception as e:
         logger.error(f"Error listing tools: {str(e)}", exc_info=True)
-        # Return at least the core tools to prevent errors
         return [
-            types.Tool(
-                name="create_note",
-                description="Create a new note in Simplenote",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "content": {
-                            "type": "string",
-                            "description": "The content of the note",
-                        }
-                    },
-                    "required": ["content"],
-                },
-            ),
             types.Tool(
                 name="search_notes",
                 description=(
@@ -1304,25 +1445,12 @@ async def handle_list_tools() -> list[types.Tool]:
                     "properties": {
                         "query": {
                             "type": "string",
-                            "description": "The search query (supports boolean operators AND, OR, NOT; phrase matching with quotes; tag filters like tag:work; date filters like from:2023-01-01 to:2023-12-31)",
-                        },
-                        "tags": {
-                            "type": "string",
-                            "description": "Tags to filter by (comma-separated list of tags that must all be present). Use 'untagged' to find notes without tags.",
-                        },
-                        "sort_by": {
-                            "type": "string",
-                            "enum": ["relevance", "modifydate", "createdate"],
-                            "description": "Sort results by field. Default: 'relevance'. Use 'modifydate' to get the most recently updated notes first.",
-                        },
-                        "sort_direction": {
-                            "type": "string",
-                            "enum": ["asc", "desc"],
-                            "description": "Sort direction: 'desc' (newest first, default) or 'asc' (oldest first).",
+                            "description": "The search query",
                         },
                     },
                     "required": ["query"],
                 },
+                annotations=types.ToolAnnotations(readOnlyHint=True),
             ),
         ]
 
@@ -1370,6 +1498,20 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         if not note_cache.is_initialized:
             asyncio.create_task(initialize_cache())
 
+        # Enforce write-mode gate and write budget before dispatch.
+        if name in WRITE_TOOLS:
+            config = get_config()
+            if not config.write_mode:
+                error = ValidationError(
+                    f"Tool '{name}' requires write mode. "
+                    "Set SIMPLENOTE_WRITE_MODE=true to enable write operations.",
+                    subcategory="write_mode_disabled",
+                )
+                return [
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ]
+            _check_write_budget()
+
         # Get handler from registry
         registry = ToolHandlerRegistry()
         handler = registry.get_handler(name, sn, note_cache)
@@ -1380,8 +1522,11 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             error = ValidationError(error_msg)
             return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
 
-        # Execute the tool handler
-        return await handler.handle(arguments)
+        # Execute the tool handler and record the write if it succeeded.
+        result = await handler.handle(arguments)
+        if name in WRITE_TOOLS:
+            _record_write()
+        return result
 
     except Exception as e:
         if isinstance(e, ServerError):

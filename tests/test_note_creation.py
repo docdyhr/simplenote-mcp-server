@@ -11,6 +11,17 @@ from simplenote_mcp.server.cache import NoteCache
 from simplenote_mcp.tests.test_helpers import helper_handle_call_tool
 
 
+@pytest.fixture(autouse=True)
+def enable_write_mode():
+    """Enable write mode for all tests in this module."""
+    import simplenote_mcp.server.config as _cfg
+
+    _cfg._config = None
+    with patch.dict("os.environ", {"SIMPLENOTE_WRITE_MODE": "true"}):
+        yield
+    _cfg._config = None
+
+
 @pytest.fixture
 def mock_simplenote_client():
     """Create a mock Simplenote client for note creation tests."""

@@ -46,6 +46,7 @@ class TestToolHandlerRegistry:
             "update_note",
             "delete_note",
             "get_note",
+            "list_notes",
             "search_notes",
             "add_tags",
             "remove_tags",

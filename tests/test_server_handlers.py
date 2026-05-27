@@ -227,7 +227,7 @@ class TestHandleListTools:
 
     @pytest.mark.asyncio
     async def test_returns_tool_list_normally(self):
-        """handle_list_tools returns a non-empty list of Tool objects."""
+        """handle_list_tools returns read-only tools without write_mode."""
         import simplenote_mcp.server.server as srv
 
         result = await srv.handle_list_tools()
@@ -235,12 +235,34 @@ class TestHandleListTools:
         assert isinstance(result, list)
         assert len(result) >= 2
         names = [t.name for t in result]
+        # Read-only tools are always present
+        assert "search_notes" in names
+        assert "list_notes" in names
+        assert "get_note" in names
+        # Write tools are absent when write_mode is off (the default)
+        assert "create_note" not in names
+
+    @pytest.mark.asyncio
+    async def test_returns_write_tools_when_write_mode_enabled(self):
+        """handle_list_tools includes write tools when SIMPLENOTE_WRITE_MODE=true."""
+        import simplenote_mcp.server.config as _cfg
+        import simplenote_mcp.server.server as srv
+
+        _cfg._config = None
+        try:
+            with patch.dict("os.environ", {"SIMPLENOTE_WRITE_MODE": "true"}):
+                result = await srv.handle_list_tools()
+        finally:
+            _cfg._config = None
+
+        names = [t.name for t in result]
         assert "create_note" in names
+        assert "update_note" in names
         assert "search_notes" in names
 
     @pytest.mark.asyncio
     async def test_exception_falls_back_to_core_tools(self):
-        """When an unexpected error occurs only the core tools are returned."""
+        """When an unexpected error occurs only the fallback tool is returned."""
         import simplenote_mcp.server.server as srv
 
         # Patch the logger.info used at the start of the try-block to raise
@@ -250,7 +272,6 @@ class TestHandleListTools:
             result = await srv.handle_list_tools()
 
         names = [t.name for t in result]
-        assert "create_note" in names
         assert "search_notes" in names
 
 
