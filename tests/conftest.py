@@ -9,6 +9,20 @@ import pytest
 import pytest_asyncio
 
 
+@pytest.fixture(autouse=True)
+def reset_write_budget():
+    """Clear the per-session write-budget deque before every test.
+
+    The deque is module-level and would otherwise accumulate writes across
+    the whole test run, exhausting the budget mid-suite.
+    """
+    import simplenote_mcp.server.server as _srv
+
+    _srv._write_timestamps.clear()
+    yield
+    _srv._write_timestamps.clear()
+
+
 @pytest.fixture
 def mock_simplenote_client():
     """Create a mock Simplenote client for testing."""
