@@ -143,6 +143,22 @@ class Config:
             "yes",
         )
 
+        # Write-mode configuration — off by default for safety.
+        # Set SIMPLENOTE_WRITE_MODE=true to expose tools that create, modify,
+        # or delete notes. Read-only tools are always available.
+        self.write_mode: bool = os.environ.get(
+            "SIMPLENOTE_WRITE_MODE", "false"
+        ).lower() in ("true", "1", "t", "yes")
+
+        # Write-budget configuration — caps write operations per rolling window
+        # to prevent LLM runaway loops. Applied per server session.
+        self.write_budget_max: int = int(
+            os.environ.get("SIMPLENOTE_WRITE_BUDGET", "20")
+        )
+        self.write_budget_window_seconds: int = int(
+            os.environ.get("SIMPLENOTE_WRITE_BUDGET_WINDOW", "60")
+        )
+
     @property
     def has_credentials(self) -> bool:
         """Check if Simplenote credentials are configured."""

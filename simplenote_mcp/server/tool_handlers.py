@@ -273,6 +273,27 @@ class UpdateNoteHandler(ToolHandlerBase):
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
 
+            # Guard against catastrophic content replacement: refuse when the
+            # new content is drastically smaller than the existing note (likely
+            # an LLM error rather than a deliberate edit).
+            _SHRINK_MIN_CHARS = 200
+            _SHRINK_RATIO = 0.2
+            existing_content = existing_note.get("content", "") or ""
+            if (
+                len(existing_content) >= _SHRINK_MIN_CHARS
+                and len(content) < len(existing_content) * _SHRINK_RATIO
+            ):
+                from .errors import ValidationError as _VE
+
+                raise _VE(
+                    f"Refusing to replace a {len(existing_content)}-character note "
+                    f"with {len(content)} characters "
+                    f"({len(content) / max(len(existing_content), 1):.0%} of original). "
+                    "Call get_note first, make targeted edits, and pass the full merged "
+                    "content. Use add_text or replace_section for partial updates.",
+                    subcategory="suspicious_shrink",
+                )
+
             # Update the note content
             safe_set(existing_note, "content", content)
 
@@ -1565,6 +1586,29 @@ class RestoreVersionHandler(ToolHandlerBase):
                     resource_id=note_id,
                 )
 
+            # No-op detection: use cache only (avoids an extra API round-trip).
+            # If the cache has the current content and it matches the target
+            # version, skip the write entirely.
+            if self.note_cache is not None and self.note_cache.is_initialized:
+                cached = self.note_cache._notes.get(note_id)
+                if cached is not None and versioned_note.get("content") == cached.get(
+                    "content"
+                ):
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=json.dumps(
+                                {
+                                    "success": True,
+                                    "no_op": True,
+                                    "note_id": note_id,
+                                    "restored_version": version,
+                                    "message": "Target version is identical to current content — no write performed.",
+                                }
+                            ),
+                        )
+                    ]
+
             # Strip the version field so the API treats this as a new update
             restore_note = {k: v for k, v in versioned_note.items() if k != "version"}
 
@@ -2556,6 +2600,71 @@ class EmptyTrashHandler(ToolHandlerBase):
         return [n for n in notes if n.get("deleted")]
 
 
+class ListNotesHandler(ToolHandlerBase):
+    """Handler for list_notes tool — browse recent notes, optionally by tag."""
+
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle list_notes tool call."""
+        tag: str | None = arguments.get("tag")
+        limit = min(int(arguments.get("limit", 20)), 100)
+        include_deleted: bool = bool(arguments.get("include_deleted", False))
+
+        try:
+            if self.note_cache is not None and self.note_cache.is_initialized:
+                notes = list(self.note_cache._notes.values())
+            else:
+                all_notes, status = self.sn.get_note_list()
+                if status != 0:
+                    raise NetworkError("Failed to retrieve note list")
+                notes = all_notes if isinstance(all_notes, list) else []
+
+            if not include_deleted:
+                notes = [n for n in notes if not n.get("deleted")]
+            if tag:
+                notes = [
+                    n
+                    for n in notes
+                    if tag.lower() in [t.lower() for t in (n.get("tags") or [])]
+                ]
+
+            # Sort: pinned first, then by modification date descending.
+            notes.sort(
+                key=lambda n: (
+                    not bool(
+                        n.get("systemTags") and "pinned" in n.get("systemTags", [])
+                    ),
+                    -(float(n.get("modifydate", 0)) if n.get("modifydate") else 0),
+                )
+            )
+            notes = notes[:limit]
+
+            results = []
+            for note in notes:
+                content = note.get("content", "") or ""
+                first_line = content.split("\n")[0].strip()[:60] if content else ""
+                results.append(
+                    {
+                        "id": note.get("key", ""),
+                        "title": first_line,
+                        "tags": note.get("tags", []),
+                        "modified": note.get("modifydate", ""),
+                        "deleted": bool(note.get("deleted")),
+                    }
+                )
+
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {"notes": results, "count": len(results), "limit": limit}
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(e, "listing notes")
+
+
 class ToolHandlerRegistry:
     """Registry for tool handlers."""
 
@@ -2566,6 +2675,7 @@ class ToolHandlerRegistry:
             "update_note": UpdateNoteHandler,
             "delete_note": DeleteNoteHandler,
             "get_note": GetNoteHandler,
+            "list_notes": ListNotesHandler,
             "search_notes": SearchNotesHandler,
             "add_tags": AddTagsHandler,
             "remove_tags": RemoveTagsHandler,

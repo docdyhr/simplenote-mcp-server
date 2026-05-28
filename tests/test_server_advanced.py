@@ -36,36 +36,45 @@ class TestMCPProtocolHandlers:
 
     @pytest.mark.asyncio
     async def test_handle_list_tools_full_coverage(self):
-        """Test handle_list_tools to cover all tool definitions."""
+        """Test handle_list_tools in both read-only and write-mode."""
+        # --- read-only mode (default) ---
         result = await handle_list_tools()
-
         assert isinstance(result, list)
-        assert len(result) >= 7  # Should have at least 7 tools
+        tool_names = [t.name for t in result]
 
-        # Verify all expected tools are present
-        tool_names = [tool.name for tool in result]
-        expected_tools = [
-            "create_note",
-            "update_note",
-            "get_note",
-            "delete_note",
-            "search_notes",
-            "add_tags",
-            "remove_tags",
-            "replace_tags",
-        ]
+        read_only_tools = ["list_notes", "search_notes", "get_note", "list_tags"]
+        for expected in read_only_tools:
+            assert expected in tool_names, f"{expected} missing in read-only mode"
 
-        for expected in expected_tools:
-            assert expected in tool_names
+        write_tools = ["create_note", "update_note", "delete_note"]
+        for write_tool in write_tools:
+            assert write_tool not in tool_names, (
+                f"{write_tool} should not appear in read-only mode"
+            )
 
-        # Verify tool structure
-        for tool in result:
+        # --- write mode ---
+        import simplenote_mcp.server.config as _cfg
+
+        _cfg._config = None
+        try:
+            with patch.dict("os.environ", {"SIMPLENOTE_WRITE_MODE": "true"}):
+                result_write = await handle_list_tools()
+        finally:
+            _cfg._config = None  # Always restore so later tests get a clean config
+
+        write_tool_names = [t.name for t in result_write]
+        for expected in ["create_note", "update_note", "delete_note", "search_notes"]:
+            assert expected in write_tool_names, f"{expected} missing in write mode"
+
+        # Verify tool structure for all tools
+        for tool in result_write:
             assert hasattr(tool, "name")
             assert hasattr(tool, "description")
             assert hasattr(tool, "inputSchema")
             assert isinstance(tool.inputSchema, dict)
             assert "type" in tool.inputSchema
             assert "properties" in tool.inputSchema
+            assert tool.annotations is not None, f"{tool.name} is missing annotations"
 
     @pytest.mark.asyncio
     async def test_handle_list_prompts_full_coverage(self):
@@ -130,10 +139,16 @@ class TestMCPProtocolHandlers:
         # Mock tool registry to return our handler
         from simplenote_mcp.server.tool_handlers import ToolHandlerRegistry
 
+        mock_config = Mock()
+        mock_config.write_mode = True
+        mock_config.write_budget_max = 100
+        mock_config.write_budget_window_seconds = 60
+
         with (
             patch.object(ToolHandlerRegistry, "get_handler", return_value=mock_handler),
             patch("simplenote_mcp.server.server.get_simplenote_client"),
             patch("simplenote_mcp.server.server.note_cache"),
+            patch("simplenote_mcp.server.server.get_config", return_value=mock_config),
         ):
             result = await handle_call_tool("create_note", {"content": "Test note"})
 
