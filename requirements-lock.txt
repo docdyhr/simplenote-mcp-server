@@ -24,7 +24,7 @@ cryptography==48.0.0
 cyclonedx-python-lib==11.7.0
 defusedxml==0.7.1
 distlib==0.4.0
-docutils==0.22.4
+docutils==0.23
 dparse==0.6.4
 filelock==3.29.0
 frozenlist==1.8.0
