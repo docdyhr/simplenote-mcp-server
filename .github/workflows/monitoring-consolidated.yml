@@ -138,9 +138,10 @@ jobs:
           # Check configuration validation
           python -c "from simplenote_mcp.server.config import get_config; config = get_config(); print('✅ Configuration loads successfully')"
 
-          # Run smoke tests (disable coverage plugin — only test_config.py runs here,
-          # global --cov-fail-under=75 in pyproject.toml would otherwise cause a false failure)
-          python -m pytest tests/test_config.py -v --tb=short -p no:cov
+          # Run smoke tests with addopts cleared — pytest.ini addopts includes --cov* flags
+          # which become unrecognized when the cov plugin is disabled; clearing addopts avoids
+          # the "unrecognized arguments" error while asyncio_mode/timeout remain as standalone keys.
+          python -m pytest tests/test_config.py -v --tb=short --override-ini="addopts="
 
           echo "✅ All health checks passed"
 
