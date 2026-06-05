@@ -466,11 +466,9 @@ class LogPatternMonitor:
                             except RuntimeError:
                                 # No running event loop in this thread — run
                                 # the coroutine synchronously on a fresh loop.
-                                # (run_coroutine_threadsafe requires a *running*
-                                # loop; scheduling onto a stopped loop leaves the
-                                # coroutine unawaited and triggers a
-                                # RuntimeWarning in Python 3.13+.)
-                                loop = self._get_or_create_event_loop()
+                                # Always close the loop afterwards so its selector
+                                # FD is released immediately (avoids EMFILE under load).
+                                loop = asyncio.new_event_loop()
                                 try:
                                     loop.run_until_complete(
                                         self._process_log_line(line)
@@ -479,29 +477,14 @@ class LogPatternMonitor:
                                     logger.debug(
                                         f"Log line processing error in background thread: {exc}"
                                     )
+                                finally:
+                                    loop.close()
 
         except Exception as e:
             logger.error(
                 f"Error processing log file {log_file}: {e}",
                 extra={"log_file": str(log_file), "exception": str(e)},
             )
-
-    def _has_event_loop(self) -> bool:
-        """Check if there's an active event loop."""
-        try:
-            asyncio.get_running_loop()
-            return True
-        except RuntimeError:
-            return False
-
-    def _get_or_create_event_loop(self) -> asyncio.AbstractEventLoop:
-        """Get or create an event loop for the current thread."""
-        try:
-            return asyncio.get_running_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            return loop
 
     async def _process_log_line(self, line: str) -> None:
         """Process a single log line.
