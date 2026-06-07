@@ -23,7 +23,7 @@ coverage==7.14.1
 cryptography==48.0.0
 cyclonedx-python-lib==11.8.0
 defusedxml==0.7.1
-distlib==0.4.0
+distlib==0.4.1
 docutils==0.23
 dparse==0.6.4
 filelock==3.29.1
