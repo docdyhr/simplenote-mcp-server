@@ -1,0 +1,52 @@
+# .github/workflows/claude-status-check.yml
+#
+# Thin caller that delegates to the reusable workflow in docdyhr/.github.
+# Replaces the previous ~21 KB inline implementation.
+#
+# Schedule is owned by the cross-repo orchestrator in docdyhr/.github.
+# To upgrade the reusable workflow across all consumers, bump the @v1 ref in
+# docdyhr/.github (re-tag) — this caller automatically picks it up on next run.
+
+name: Claude Status Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/claude-status-check.yml"
+
+  workflow_dispatch:
+    inputs:
+      create_issue:
+        description: "Create a GitHub issue if health is CRITICAL"
+        type: boolean
+        default: false
+        required: false
+      max_budget_usd:
+        description: "Maximum Claude API spend in USD"
+        type: string
+        default: "0.25"
+        required: false
+      sections:
+        description: "Comma-separated sections to check (prs,ci,issues,dependabot,branches) or 'all'"
+        type: string
+        default: "all"
+        required: false
+
+concurrency:
+  group: claude-status-check
+  cancel-in-progress: false
+
+jobs:
+  call-reusable:
+    uses: docdyhr/.github/.github/workflows/claude-status-check.yml@v1
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+    secrets: inherit
+    with:
+      create_issue: ${{ github.event.inputs.create_issue == 'true' }}
+      max_budget_usd: ${{ github.event.inputs.max_budget_usd || '0.25' }}
+      sections: ${{ github.event.inputs.sections || 'all' }}
