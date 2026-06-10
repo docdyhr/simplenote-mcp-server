@@ -1,0 +1,56 @@
+# .github/workflows/claude-dependabot-merge.yml
+#
+# Thin caller that delegates to the reusable workflow in docdyhr/.github.
+# Replaces the previous ~27 KB inline implementation.
+#
+# Schedule is owned by the cross-repo orchestrator in docdyhr/.github.
+# To upgrade the reusable workflow across all consumers, bump the @v1 ref in
+# docdyhr/.github (re-tag) — this caller automatically picks it up on next run.
+
+name: Claude Dependabot Auto-Merge
+
+on:
+  push:
+    paths:
+      - ".github/workflows/claude-dependabot-merge.yml"
+
+  workflow_dispatch:
+    inputs:
+      merge_mode:
+        description: "dry-run = report only; live = actually merge passing PRs"
+        type: choice
+        options: [dry-run, live]
+        default: dry-run
+        required: true
+      scope:
+        description: "all | security | patch"
+        type: choice
+        options: [all, security, patch]
+        default: all
+        required: false
+      max_budget_usd:
+        description: "Maximum Claude API spend in USD for this run"
+        type: string
+        default: "0.30"
+        required: false
+      pr_numbers:
+        description: "Comma-separated PR numbers (blank = all open Dependabot PRs)"
+        type: string
+        default: ""
+        required: false
+
+jobs:
+  call-reusable:
+    uses: docdyhr/.github/.github/workflows/claude-dependabot-merge.yml@v1
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: read
+      checks: read
+      statuses: read
+    secrets: inherit
+    with:
+      merge_mode: ${{ github.event.inputs.merge_mode || 'dry-run' }}
+      scope: ${{ github.event.inputs.scope || 'all' }}
+      max_budget_usd: ${{ github.event.inputs.max_budget_usd || '0.30' }}
+      pr_numbers: ${{ github.event.inputs.pr_numbers || '' }}
