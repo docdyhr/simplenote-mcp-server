@@ -22,7 +22,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.16.1-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.17.0-blue.svg)](./CHANGELOG.md)
 [![Test Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -50,7 +50,7 @@ Two new irreversible-deletion tools with mandatory safety guards:
 - **`empty_trash`**: Permanently delete all trashed notes; defaults to `dry_run=true` (preview); requires `dry_run=false` AND `confirm=true`
 - **1188 tests passing**, 77% coverage, zero linting/type errors
 
-### v1.16.1
+### v1.17.0
 
 - **`search_notes` async fix**: Boolean AND queries no longer hang the server; search now runs in a thread-pool executor with a 30 s timeout
 - **Substring pre-filter**: searching "test" now correctly returns notes containing "testing", "tested", etc.
@@ -183,7 +183,7 @@ docker-compose up -d
 Available tags:
 
 - `latest` - Latest stable release
-- `v1.16.1` - Specific version
+- `v1.17.0` - Specific version
 - `main` - Latest development build
 
 ### Production Deployment

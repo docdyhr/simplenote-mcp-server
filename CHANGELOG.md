@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.0] - 2026-06-22
+
+### Added
+- MCP tool annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`) on all
+  27 tools so MCP clients can display confirmation UIs for destructive operations
+- `SIMPLENOTE_WRITE_MODE` env var (default `false`): write tools are hidden from `list_tools` and
+  blocked in `call_tool` unless explicitly enabled, preventing accidental mutations
+- Per-session write budget (`SIMPLENOTE_WRITE_BUDGET`, default 20 ops / 60 s rolling window) with a
+  human-readable error when exhausted, preventing LLM runaway write loops
+- `list_notes` tool: browse recent notes filtered by tag and limit without requiring a search query;
+  annotated `readOnlyHint=true`
+- Content-shrink guard in `update_note`: refuses to replace a note ≥ 200 chars when new content is
+  < 20 % of the original, surfacing `suspicious_shrink` so the LLM can recover gracefully
+- No-op detection in `restore_version`: uses cache to detect when the target version matches current
+  content and skips the write, returning `no_op=true` without consuming write budget
+
+### Fixed
+- Log monitor feedback loop causing up to 2.4 M-line log spam (#585)
+- Event loop not closed after use in `log_monitor` background thread
+- Makefile `test` and `test-fast` targets pinned to `.venv/bin/pytest`; flaky timing assertion
+  loosened to reduce intermittent CI failures
+
+### Dependencies
+- mypy upgraded from 1.20.2 to 2.1.0 (major version)
+- cryptography upgraded from 48.0.0 to 49.0.0
+- mcp (production), starlette, uvicorn, aiohttp, certifi, idna, ruff, pydantic-settings, typer,
+  pytest, anyio, and many more updated to latest releases
+
 ## [1.16.1] - 2026-05-11
 
 ### Fixed
@@ -522,7 +550,8 @@ This release marks a significant milestone with **98% startup performance improv
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.1...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.17.0...HEAD
+[1.17.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.1...v1.17.0
 [1.16.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.15.0...v1.16.0
 [1.8.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.0...v1.8.1
