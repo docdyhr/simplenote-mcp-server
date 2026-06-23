@@ -11,6 +11,8 @@ name: Claude Dependabot Auto-Merge
 
 on:
   push:
+    branches:
+      - main
     paths:
       - ".github/workflows/claude-dependabot-merge.yml"
 
