@@ -248,6 +248,14 @@ ALT_PID_FILE_PATH = Path(tempfile.gettempdir()) / "simplenote_mcp_server_alt.pid
 note_cache: NoteCache | None = None
 background_sync: BackgroundSync | None = None
 
+# Last authentication error message, set by background cache init when auth fails.
+_last_auth_error: str | None = None
+
+
+def get_last_auth_error() -> str | None:
+    """Return the most recent authentication error, or None if auth succeeded."""
+    return _last_auth_error
+
 
 def write_pid_file() -> None:
     """Write PID to file for process management."""
@@ -337,24 +345,56 @@ def setup_signal_handlers() -> None:
 async def _test_simplenote_connection(sn: Any) -> None:
     """Test Simplenote API connection.
 
-    This runs the synchronous Simplenote API call in a thread pool
-    to avoid blocking the async event loop.
+    Explicitly verifies the auth token before making any API request so that a
+    failed login produces a clear AuthenticationError at startup instead of a
+    cryptic TypeError 75 seconds later deep inside urllib's putheader().
     """
     logger.debug("Testing Simplenote client connection...")
+    loop = asyncio.get_running_loop()
+
+    # Step 1: authenticate and verify the token is a non-empty string.
+    # simplenote.authenticate() returns None on IOError (no connection) and
+    # raises SimplenoteLoginFailed on HTTP-level auth errors — both must surface
+    # as AuthenticationError rather than propagating as a TypeError later.
     try:
-        # Run blocking API call in thread pool to avoid blocking event loop
-        loop = asyncio.get_running_loop()
-        test_notes, status = await loop.run_in_executor(
-            None,  # Use default executor
-            sn.get_note_list,
+        token = await loop.run_in_executor(
+            None,
+            lambda: sn.authenticate(sn.username, sn.password),
         )
+    except Exception as auth_exc:
+        msg = (
+            f"Simplenote authentication failed — check SIMPLENOTE_EMAIL / "
+            f"SIMPLENOTE_PASSWORD or the Simplenote account/API status. "
+            f"({type(auth_exc).__name__}: {auth_exc})"
+        )
+        logger.error(msg)
+        raise AuthenticationError(msg) from auth_exc
+
+    if not token:
+        msg = (
+            "Simplenote authentication returned no token — check SIMPLENOTE_EMAIL / "
+            "SIMPLENOTE_PASSWORD or the Simplenote account/API status."
+        )
+        logger.error(msg)
+        raise AuthenticationError(msg)
+
+    # Cache the token so get_note_list reuses it without re-authenticating.
+    sn.token = token
+    logger.debug("Simplenote authentication successful, token acquired")
+
+    # Step 2: verify the API is reachable with the fresh token.
+    try:
+        test_notes, status = await loop.run_in_executor(None, sn.get_note_list)
         if status == 0:
             logger.debug(
-                f"Simplenote API connection successful, received {len(test_notes) if isinstance(test_notes, list) else 'data'} items"
+                f"Simplenote API connection successful, received "
+                f"{len(test_notes) if isinstance(test_notes, list) else 'data'} items"
             )
         else:
             logger.error(f"Simplenote API connection test failed with status {status}")
             raise AuthenticationError("Failed to authenticate with Simplenote API")
+    except AuthenticationError:
+        raise
     except Exception as e:
         logger.error(f"Error testing Simplenote API connection: {str(e)}")
         raise
@@ -503,11 +543,15 @@ async def _background_cache_initialization_safe(
         client: The Simplenote client
         timeout: Timeout for initialization in seconds
     """
+    global _last_auth_error
     try:
         logger.info("Background cache initialization starting...")
 
         # Test connection first (async, non-blocking)
         await _test_simplenote_connection(client)
+
+        # Clear any previous auth error on success
+        _last_auth_error = None
 
         # Now do the full initialization
         await _background_cache_initialization(cache, client, timeout)
@@ -515,6 +559,9 @@ async def _background_cache_initialization_safe(
         logger.info("Background cache initialization completed successfully")
     except asyncio.CancelledError:
         logger.info("Background cache initialization cancelled")
+    except AuthenticationError as e:
+        _last_auth_error = str(e)
+        logger.error(f"Background cache initialization failed: {str(e)}", exc_info=True)
     except Exception as e:
         logger.error(f"Background cache initialization failed: {str(e)}", exc_info=True)
         # Don't raise - we don't want to crash the server
