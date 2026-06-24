@@ -147,6 +147,14 @@ class ToolHandlerBase(ABC):
 
         # If not found in cache, get from API
         if note is None:
+            # Guard: a None token would cause a cryptic TypeError in urllib's
+            # putheader() — surface it as a clean not-found error instead.
+            if not getattr(self.sn, "token", None):
+                raise ResourceNotFoundError(
+                    f"Note {note_id} not found — Simplenote is not authenticated; "
+                    "API fallback unavailable. Check server logs for auth errors.",
+                    resource_id=note_id,
+                )
             note, status = self.sn.get_note(note_id)
             if status != 0 or not isinstance(note, dict):
                 error_msg = FAILED_GET_NOTE.format(note_id=note_id)
@@ -1506,6 +1514,13 @@ class GetNoteVersionsHandler(ToolHandlerBase):
             raise ValidationError("note_id is required")
 
         try:
+            # Guard: a None token causes a cryptic TypeError in urllib's putheader().
+            if not getattr(self.sn, "token", None):
+                raise ResourceNotFoundError(
+                    f"Note {note_id} not found — Simplenote is not authenticated; "
+                    "API fallback unavailable. Check server logs for auth errors.",
+                    resource_id=note_id,
+                )
             # Get the current note to find its version number
             current_note, status = self.sn.get_note(note_id)
             if status != 0 or not isinstance(current_note, dict):
@@ -2362,8 +2377,13 @@ class GetServerInfoHandler(ToolHandlerBase):
 
         import simplenote_mcp
 
+        from .server import get_last_auth_error
+
         config = get_config()
         registry = ToolHandlerRegistry()
+
+        authenticated = bool(getattr(self.sn, "token", None))
+        last_sync_error = get_last_auth_error()
 
         cache_initialized = bool(self.note_cache and self.note_cache.is_initialized)
         note_count: int | None = None
@@ -2372,6 +2392,9 @@ class GetServerInfoHandler(ToolHandlerBase):
                 note_count = len(self.note_cache._notes)
             except Exception:
                 note_count = None
+
+        # cache_initialized is honest: True only when auth succeeded and notes loaded.
+        cache_healthy = cache_initialized and (note_count is None or note_count > 0)
 
         return [
             types.TextContent(
@@ -2387,8 +2410,11 @@ class GetServerInfoHandler(ToolHandlerBase):
                         "debug": {
                             "python_version": sys.version,
                             "platform": platform.platform(),
+                            "authenticated": authenticated,
                             "cache_initialized": cache_initialized,
+                            "cache_healthy": cache_healthy,
                             "note_count": note_count,
+                            "last_sync_error": last_sync_error,
                             "sync_interval_seconds": config.sync_interval_seconds,
                             "log_level": config.log_level.value
                             if hasattr(config.log_level, "value")

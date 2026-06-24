@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.17.1] - 2026-06-24
+
+### Fixed
+- **macOS keychain auth** — `_test_simplenote_connection` now resolves the Simperium token via a
+  three-step priority chain: (1) `SIMPLENOTE_TOKEN` env var, (2) the token cached in the macOS
+  keychain by the Simplenote desktop app (`security find-generic-password -s chalk-bump-f49`),
+  (3) the classic `auth.simperium.com` password endpoint. Steps 1 and 2 completely bypass the
+  decommissioned `auth.simperium.com` endpoint that has been returning connection timeouts /
+  `token: None` since mid-2025. The Simperium data API (`api.simperium.com`) remains fully
+  operational; only the password-auth endpoint is gone.
+- Auth failure now surfaces as a clear `AuthenticationError` at startup instead of a cryptic
+  `TypeError: expected string or bytes-like object, got 'NoneType'` 75 seconds later deep inside
+  urllib's `putheader()`. `_test_simplenote_connection` explicitly calls `authenticate()` and
+  raises `AuthenticationError` when the token is `None` or authentication throws.
+- `get_note` and `get_note_versions` now return a clean `not_found` error when the Simplenote
+  token is `None` (auth failed), instead of leaking the same `TypeError` through the API fallback
+  path. Previously both tools crashed when called against an empty cache with bad credentials.
+- `get_server_info` debug payload now includes `authenticated` (bool), `cache_healthy` (bool), and
+  `last_sync_error` (string or null) so callers can distinguish a healthy empty account from a
+  broken-auth state that reports `cache_initialized: true` with `note_count: 0`.
+- Log pattern monitor no longer re-processes prior-session log content on startup. The monitor now
+  seeks to the current end of each log file when it starts, eliminating a cascade of false-positive
+  security alerts (`sql_injection_attempt`, `xss_attempt`, `path_traversal_attempt`,
+  `suspicious_user_agent`, `rate_limit_exceeded`) that were triggered every time the server
+  restarted because old alert messages matched the very patterns being watched.
+- Last authentication error is tracked in module state and cleared on successful auth, so
+  `get_server_info` always reflects the current auth state.
+
 ## [1.17.0] - 2026-06-22
 
 ### Added

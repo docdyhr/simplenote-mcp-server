@@ -410,7 +410,14 @@ class LogPatternMonitor:
         Args:
             log_sources: List of log file paths to monitor
         """
-        file_positions = dict.fromkeys(log_sources, 0)
+        # Start at the current end of each existing file so we only process new
+        # content written after startup.  Reading from position 0 re-processes
+        # prior-session entries (e.g. old "sql_injection_attempt" alert messages)
+        # and triggers a cascade of false-positive security alerts on every restart.
+        file_positions = {
+            source: (source.stat().st_size if source.exists() else 0)
+            for source in log_sources
+        }
 
         while not self._stop_event.is_set():
             try:
