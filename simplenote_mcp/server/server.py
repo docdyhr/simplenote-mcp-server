@@ -371,7 +371,7 @@ async def _test_simplenote_connection(sn: Any) -> None:
             "Using Simplenote token from SIMPLENOTE_TOKEN environment variable"
         )
 
-    # 1b. macOS keychain — Simplenote desktop app stores a fresh token there.
+    # 1b. macOS keychain — prompt-free MCP cache first, Simplenote Desktop as fallback.
     if not token:
         from .keychain import get_simperium_token
 
@@ -380,7 +380,7 @@ async def _test_simplenote_connection(sn: Any) -> None:
         )
         if kc_token:
             token = kc_token
-            logger.debug("Using Simplenote token from macOS keychain (Simplenote app)")
+            logger.debug("Using Simplenote token from macOS keychain")
 
     # 1c. Classic password auth via auth.simperium.com (may be decommissioned).
     if not token:
@@ -422,6 +422,9 @@ async def _test_simplenote_connection(sn: Any) -> None:
             )
         else:
             logger.error(f"Simplenote API connection test failed with status {status}")
+            from .keychain import invalidate_cached_token
+
+            invalidate_cached_token(sn.username)
             raise AuthenticationError("Failed to authenticate with Simplenote API")
     except AuthenticationError:
         raise
