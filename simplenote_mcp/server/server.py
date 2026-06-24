@@ -348,32 +348,62 @@ async def _test_simplenote_connection(sn: Any) -> None:
     Explicitly verifies the auth token before making any API request so that a
     failed login produces a clear AuthenticationError at startup instead of a
     cryptic TypeError 75 seconds later deep inside urllib's putheader().
+
+    Token acquisition order:
+    1. SIMPLENOTE_TOKEN env var — user-supplied pre-authenticated token.
+    2. macOS keychain entry stored by the Simplenote desktop app (darwin only).
+       The Simplenote app keeps this token current; we piggyback on it when
+       auth.simperium.com is unreachable (decommissioned as of 2025).
+    3. simplenote.authenticate() — classic password auth, kept as fallback.
     """
     logger.debug("Testing Simplenote client connection...")
     loop = asyncio.get_running_loop()
 
-    # Step 1: authenticate and verify the token is a non-empty string.
-    # simplenote.authenticate() returns None on IOError (no connection) and
-    # raises SimplenoteLoginFailed on HTTP-level auth errors — both must surface
-    # as AuthenticationError rather than propagating as a TypeError later.
-    try:
-        token = await loop.run_in_executor(
-            None,
-            lambda: sn.authenticate(sn.username, sn.password),
+    # --- Step 1: acquire a token from the fastest available source ---
+
+    token: str | None = None
+
+    # 1a. Explicit env-var override (highest priority).
+    env_token = os.environ.get("SIMPLENOTE_TOKEN", "").strip()
+    if env_token:
+        token = env_token
+        logger.debug(
+            "Using Simplenote token from SIMPLENOTE_TOKEN environment variable"
         )
-    except Exception as auth_exc:
-        msg = (
-            f"Simplenote authentication failed — check SIMPLENOTE_EMAIL / "
-            f"SIMPLENOTE_PASSWORD or the Simplenote account/API status. "
-            f"({type(auth_exc).__name__}: {auth_exc})"
+
+    # 1b. macOS keychain — Simplenote desktop app stores a fresh token there.
+    if not token:
+        from .keychain import get_simperium_token
+
+        kc_token = await loop.run_in_executor(
+            None, lambda: get_simperium_token(sn.username)
         )
-        logger.error(msg)
-        raise AuthenticationError(msg) from auth_exc
+        if kc_token:
+            token = kc_token
+            logger.debug("Using Simplenote token from macOS keychain (Simplenote app)")
+
+    # 1c. Classic password auth via auth.simperium.com (may be decommissioned).
+    if not token:
+        try:
+            token = await loop.run_in_executor(
+                None,
+                lambda: sn.authenticate(sn.username, sn.password),
+            )
+        except Exception as auth_exc:
+            msg = (
+                f"Simplenote authentication failed — check SIMPLENOTE_EMAIL / "
+                f"SIMPLENOTE_PASSWORD or the Simplenote account/API status. "
+                f"({type(auth_exc).__name__}: {auth_exc})"
+            )
+            logger.error(msg)
+            raise AuthenticationError(msg) from auth_exc
 
     if not token:
         msg = (
             "Simplenote authentication returned no token — check SIMPLENOTE_EMAIL / "
-            "SIMPLENOTE_PASSWORD or the Simplenote account/API status."
+            "SIMPLENOTE_PASSWORD or the Simplenote account/API status. "
+            "Tip: set SIMPLENOTE_TOKEN to a pre-authenticated token, or ensure "
+            "the Simplenote desktop app is installed and signed in."
         )
         logger.error(msg)
         raise AuthenticationError(msg)

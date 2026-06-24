@@ -12,6 +12,7 @@ Covers:
 """
 
 import json
+import os
 import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -340,3 +341,103 @@ class TestLogMonitorStartsAtFileEnd:
             )
         finally:
             log_path.unlink(missing_ok=True)
+
+
+# ---------------------------------------------------------------------------
+# keychain — get_simperium_token
+# ---------------------------------------------------------------------------
+
+
+class TestGetSimperiumToken:
+    """get_simperium_token returns None gracefully on non-macOS and on failure."""
+
+    def test_non_darwin_returns_none(self):
+        """On non-macOS platforms the keychain lookup is skipped."""
+        from simplenote_mcp.server.keychain import get_simperium_token
+
+        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
+            mock_sys.platform = "linux"
+            result = get_simperium_token("user@example.com")
+
+        assert result is None
+
+    def test_subprocess_failure_returns_none(self):
+        """A subprocess error (e.g. security not found) returns None, not an exception."""
+
+        from simplenote_mcp.server.keychain import get_simperium_token
+
+        with patch(
+            "subprocess.run", side_effect=FileNotFoundError("security not found")
+        ):
+            result = get_simperium_token("user@example.com")
+
+        assert result is None
+
+    def test_nonzero_returncode_returns_none(self):
+        """If the keychain entry is absent, subprocess returns non-zero → None."""
+
+        from simplenote_mcp.server.keychain import get_simperium_token
+
+        mock_result = MagicMock()
+        mock_result.returncode = 44  # security exit code for "item not found"
+        mock_result.stdout = ""
+
+        with patch("subprocess.run", return_value=mock_result):
+            result = get_simperium_token("user@example.com")
+
+        assert result is None
+
+    def test_valid_token_returned(self):
+        """When the keychain entry exists, the stripped token string is returned."""
+        from simplenote_mcp.server.keychain import get_simperium_token
+
+        mock_result = MagicMock()
+        mock_result.returncode = 0
+        mock_result.stdout = "abc123token\n"
+
+        with patch("subprocess.run", return_value=mock_result):
+            result = get_simperium_token("user@example.com")
+
+        assert result == "abc123token"
+
+
+# ---------------------------------------------------------------------------
+# _test_simplenote_connection — keychain and env-var token paths
+# ---------------------------------------------------------------------------
+
+
+class TestConnectionWithPresetToken:
+    """_test_simplenote_connection must skip authenticate() when a token is available."""
+
+    @pytest.mark.asyncio
+    async def test_env_var_token_skips_authenticate(self):
+        """SIMPLENOTE_TOKEN env var → authenticate() must NOT be called."""
+        from simplenote_mcp.server.server import _test_simplenote_connection
+
+        sn = _make_sn(token=None)
+        sn.get_note_list.return_value = ([], 0)
+
+        with patch.dict("os.environ", {"SIMPLENOTE_TOKEN": "env-supplied-token"}):
+            await _test_simplenote_connection(sn)
+
+        sn.authenticate.assert_not_called()
+        assert sn.token == "env-supplied-token"
+
+    @pytest.mark.asyncio
+    async def test_keychain_token_skips_authenticate(self):
+        """macOS keychain token → authenticate() must NOT be called."""
+        from simplenote_mcp.server.server import _test_simplenote_connection
+
+        sn = _make_sn(token=None)
+        sn.get_note_list.return_value = ([], 0)
+
+        with patch.dict("os.environ", {}, clear=False):
+            os.environ.pop("SIMPLENOTE_TOKEN", None)
+            with patch(
+                "simplenote_mcp.server.keychain.get_simperium_token",
+                return_value="keychain-token-xyz",
+            ):
+                await _test_simplenote_connection(sn)
+
+        sn.authenticate.assert_not_called()
+        assert sn.token == "keychain-token-xyz"

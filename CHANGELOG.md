@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.17.1] - 2026-06-24
 
 ### Fixed
+- **macOS keychain auth** — `_test_simplenote_connection` now resolves the Simperium token via a
+  three-step priority chain: (1) `SIMPLENOTE_TOKEN` env var, (2) the token cached in the macOS
+  keychain by the Simplenote desktop app (`security find-generic-password -s chalk-bump-f49`),
+  (3) the classic `auth.simperium.com` password endpoint. Steps 1 and 2 completely bypass the
+  decommissioned `auth.simperium.com` endpoint that has been returning connection timeouts /
+  `token: None` since mid-2025. The Simperium data API (`api.simperium.com`) remains fully
+  operational; only the password-auth endpoint is gone.
 - Auth failure now surfaces as a clear `AuthenticationError` at startup instead of a cryptic
   `TypeError: expected string or bytes-like object, got 'NoneType'` 75 seconds later deep inside
   urllib's `putheader()`. `_test_simplenote_connection` explicitly calls `authenticate()` and
