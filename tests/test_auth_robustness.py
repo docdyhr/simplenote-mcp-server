@@ -363,27 +363,29 @@ class TestGetSimperiumToken:
 
     def test_subprocess_failure_returns_none(self):
         """A subprocess error (e.g. security not found) returns None, not an exception."""
-
         from simplenote_mcp.server.keychain import get_simperium_token
 
-        with patch(
-            "subprocess.run", side_effect=FileNotFoundError("security not found")
-        ):
-            result = get_simperium_token("user@example.com")
+        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
+            mock_sys.platform = "darwin"
+            with patch(
+                "subprocess.run", side_effect=FileNotFoundError("security not found")
+            ):
+                result = get_simperium_token("user@example.com")
 
         assert result is None
 
     def test_nonzero_returncode_returns_none(self):
         """If the keychain entry is absent, subprocess returns non-zero → None."""
-
         from simplenote_mcp.server.keychain import get_simperium_token
 
         mock_result = MagicMock()
         mock_result.returncode = 44  # security exit code for "item not found"
         mock_result.stdout = ""
 
-        with patch("subprocess.run", return_value=mock_result):
-            result = get_simperium_token("user@example.com")
+        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
+            mock_sys.platform = "darwin"
+            with patch("subprocess.run", return_value=mock_result):
+                result = get_simperium_token("user@example.com")
 
         assert result is None
 
@@ -395,8 +397,10 @@ class TestGetSimperiumToken:
         mock_result.returncode = 0
         mock_result.stdout = "abc123token\n"
 
-        with patch("subprocess.run", return_value=mock_result):
-            result = get_simperium_token("user@example.com")
+        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
+            mock_sys.platform = "darwin"
+            with patch("subprocess.run", return_value=mock_result):
+                result = get_simperium_token("user@example.com")
 
         assert result == "abc123token"
 
