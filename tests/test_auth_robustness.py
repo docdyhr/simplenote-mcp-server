@@ -385,25 +385,26 @@ class TestGetSimperiumToken:
 
     def test_cache_miss_reads_desktop_and_caches(self):
         """On a cache miss, the Desktop entry is read and written back to our cache."""
-        from simplenote_mcp.server.keychain import get_simperium_token
+        from simplenote_mcp.server import keychain
 
         cache_miss = _make_run_result(44)  # item not found
         desktop_hit = _make_run_result(0, "desktop-token\n")
-        cache_write = _make_run_result(0)  # add-generic-password success
 
         with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
             mock_sys.platform = "darwin"
-            with patch(
-                "subprocess.run", side_effect=[cache_miss, desktop_hit, cache_write]
-            ) as mock_run:
-                result = get_simperium_token("user@example.com")
+            # _cache_token uses ctypes, not subprocess — patch it directly so
+            # subprocess.run call count stays predictable (2: miss + desktop read).
+            with (
+                patch.object(keychain, "_cache_token") as mock_cache,
+                patch(
+                    "subprocess.run", side_effect=[cache_miss, desktop_hit]
+                ) as mock_run,
+            ):
+                result = keychain.get_simperium_token("user@example.com")
 
         assert result == "desktop-token"
-        assert mock_run.call_count == 3
-        # Third call must be add-generic-password with our service name.
-        write_args = mock_run.call_args_list[2][0][0]
-        assert "add-generic-password" in write_args
-        assert "simplenote-mcp-server" in write_args
+        assert mock_run.call_count == 2  # only reads; write goes via ctypes
+        mock_cache.assert_called_once_with("user@example.com", "desktop-token")
 
     def test_both_miss_returns_none(self):
         """When both the MCP cache and Desktop entry are absent, None is returned."""
@@ -456,6 +457,63 @@ class TestInvalidateCachedToken:
         args = mock_run.call_args[0][0]
         assert "delete-generic-password" in args
         assert "simplenote-mcp-server" in args
+
+
+class TestCacheToken:
+    """_cache_token uses ctypes Security framework — token never in process args."""
+
+    def test_non_darwin_is_noop(self):
+        from simplenote_mcp.server.keychain import _cache_token
+
+        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
+            mock_sys.platform = "linux"
+            with patch("ctypes.CDLL") as mock_cdll:
+                _cache_token("user@example.com", "secret-token")
+
+        mock_cdll.assert_not_called()
+
+    def test_new_item_calls_add(self):
+        """A new item calls SecKeychainAddGenericPassword (not subprocess)."""
+        from simplenote_mcp.server.keychain import _cache_token
+
+        mock_sec = MagicMock()
+        mock_cf = MagicMock()
+        mock_sec.SecKeychainAddGenericPassword.return_value = 0
+
+        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
+            mock_sys.platform = "darwin"
+            with (
+                patch("ctypes.CDLL", side_effect=[mock_sec, mock_cf]),
+                patch("subprocess.run") as mock_run,
+            ):
+                _cache_token("user@example.com", "secret-token")
+
+        mock_sec.SecKeychainAddGenericPassword.assert_called_once()
+        mock_run.assert_not_called()  # no subprocess — token not in process args
+
+    def test_duplicate_item_calls_find_and_modify(self):
+        """An existing item calls Find+Modify instead of Add."""
+        from simplenote_mcp.server.keychain import _ERR_SEC_DUPLICATE_ITEM, _cache_token
+
+        mock_sec = MagicMock()
+        mock_cf = MagicMock()
+        mock_sec.SecKeychainAddGenericPassword.return_value = _ERR_SEC_DUPLICATE_ITEM
+        mock_sec.SecKeychainFindGenericPassword.return_value = 0
+
+        def fake_find(*args, **kwargs):
+            # Write a non-null value into the byref argument (last positional arg)
+            byref_arg = args[-1]
+            byref_arg._obj.value = 1
+            return 0
+
+        mock_sec.SecKeychainFindGenericPassword.side_effect = fake_find
+
+        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
+            mock_sys.platform = "darwin"
+            with patch("ctypes.CDLL", side_effect=[mock_sec, mock_cf]):
+                _cache_token("user@example.com", "secret-token")
+
+        mock_sec.SecKeychainItemModifyAttributesAndData.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
