@@ -1624,6 +1624,74 @@ class TestGetOrCreateNoteHandler:
         with pytest.raises(ValidationError):
             await handler.handle({})
 
+    @pytest.mark.asyncio
+    async def test_add_note_called_via_executor(self, mock_client, mock_cache_empty):
+        """add_note is invoked in a thread-pool executor, not on the event loop."""
+        import threading
+
+        from simplenote_mcp.server.tool_handlers import GetOrCreateNoteHandler
+
+        caller_thread_ids = []
+
+        def tracking_add_note(note):
+            caller_thread_ids.append(threading.current_thread().ident)
+            return (
+                {"key": "new-note", "content": note.get("content", ""), "tags": []},
+                0,
+            )
+
+        mock_client.add_note.side_effect = tracking_add_note
+
+        handler = GetOrCreateNoteHandler(mock_client, mock_cache_empty)
+        await handler.handle({"title": "Executor Test"})
+
+        assert len(caller_thread_ids) == 1
+        assert caller_thread_ids[0] != threading.main_thread().ident
+
+    @pytest.mark.asyncio
+    async def test_slow_add_note_does_not_block_concurrent_list_notes(
+        self, mock_client, mock_cache_empty
+    ):
+        """A slow add_note in get_or_create_note does not prevent list_notes from running."""
+        import asyncio
+
+        from simplenote_mcp.server.tool_handlers import (
+            GetOrCreateNoteHandler,
+            ListNotesHandler,
+        )
+
+        def slow_add_note(note):
+            import time
+
+            time.sleep(0.2)
+            return (
+                {"key": "slow-note", "content": note.get("content", ""), "tags": []},
+                0,
+            )
+
+        mock_client.add_note.side_effect = slow_add_note
+
+        list_cache = MagicMock()
+        list_cache.is_initialized = True
+        list_cache.get_notes.return_value = []
+
+        goc_handler = GetOrCreateNoteHandler(mock_client, mock_cache_empty)
+        list_handler = ListNotesHandler(mock_client, list_cache)
+
+        results = await asyncio.gather(
+            goc_handler.handle({"title": "Slow Note"}),
+            list_handler.handle({}),
+            return_exceptions=True,
+        )
+
+        goc_result, list_result = results
+        assert not isinstance(list_result, Exception), (
+            f"list_notes raised: {list_result}"
+        )
+        assert not isinstance(goc_result, Exception), (
+            f"get_or_create_note raised: {goc_result}"
+        )
+
 
 # ---------------------------------------------------------------------------
 # Phase 10: append_to_daily_note tool tests

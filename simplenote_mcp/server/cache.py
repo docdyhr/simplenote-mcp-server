@@ -425,9 +425,13 @@ class NoteCache:
         retry_delay = 1
         since = self._last_sync_cursor
 
+        loop = asyncio.get_running_loop()
         while retry_count < max_retries:
             try:
-                api_result, status = self._fetch_note_list(since=since)
+                api_result, status = await loop.run_in_executor(
+                    None,
+                    lambda: self._fetch_note_list(since=since),
+                )
 
                 if status != 0:
                     if retry_count < max_retries - 1:
