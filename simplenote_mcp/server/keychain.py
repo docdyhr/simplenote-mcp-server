@@ -94,6 +94,15 @@ def _read_desktop_token(email: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
+def cache_token(email: str, token: str) -> None:
+    """Persist token to the local file cache.
+
+    Call this after any successful authentication to ensure subsequent starts
+    are prompt-free regardless of which auth path was used.
+    """
+    _write_file_cache(email, token)
+
+
 def invalidate_cached_token(email: str) -> None:
     """Delete the local token cache so the next startup re-reads from the Desktop keychain.
 

@@ -408,6 +408,13 @@ async def _test_simplenote_connection(sn: Any) -> None:
         logger.error(msg)
         raise AuthenticationError(msg)
 
+    # Cache the token so subsequent starts are prompt-free regardless of which
+    # auth path succeeded (keychain, password, or env-var via SIMPLENOTE_TOKEN).
+    if token and not env_token:
+        from .keychain import cache_token
+
+        await loop.run_in_executor(None, lambda: cache_token(sn.username, token))
+
     # Cache the token so get_note_list reuses it without re-authenticating.
     sn.token = token
     logger.debug("Simplenote authentication successful, token acquired")
