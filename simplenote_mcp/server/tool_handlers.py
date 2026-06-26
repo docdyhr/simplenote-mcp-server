@@ -9,6 +9,7 @@ ToolHandlerBase and implements the handle() method. The ToolHandlerRegistry
 provides a centralized way to manage and dispatch tool calls.
 """
 
+import asyncio
 import contextlib
 import json
 from abc import ABC, abstractmethod
@@ -1897,7 +1898,16 @@ class GetOrCreateNoteHandler(ToolHandlerBase):
             if tags:
                 note_data["tags"] = tags
 
-            created_note, status = self.sn.add_note(note_data)
+            loop = asyncio.get_running_loop()
+            try:
+                created_note, status = await asyncio.wait_for(
+                    loop.run_in_executor(None, lambda: self.sn.add_note(note_data)),
+                    timeout=30.0,
+                )
+            except TimeoutError as exc:
+                raise NetworkError(
+                    "get_or_create_note timed out waiting for Simplenote API"
+                ) from exc
             if status != 0:
                 raise NetworkError("Failed to create note in get_or_create_note")
 

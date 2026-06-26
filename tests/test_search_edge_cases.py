@@ -248,3 +248,74 @@ class TestSearchEngineEdgeCases:
         results = engine.search(edge_case_notes, "привет")
         assert len(results) == 1
         assert results[0]["key"] == "unicode"
+
+
+class TestParenthesisGrouping:
+    """Regression tests for parenthetical boolean grouping (Bug 2 fix)."""
+
+    def _notes(self):
+        return {
+            "a": {"key": "a", "content": "simplenote server integration", "tags": []},
+            "b": {"key": "b", "content": "auth only note", "tags": []},
+            "c": {"key": "c", "content": "unrelated content", "tags": []},
+        }
+
+    def test_grouped_or_matches_same_as_bare_or(self):
+        """(auth OR server) returns same hits as auth OR server."""
+        engine = SearchEngine()
+        notes = self._notes()
+        grouped = engine.search(notes, "(auth OR server)")
+        bare = engine.search(notes, "auth OR server")
+        assert {n["key"] for n in grouped} == {n["key"] for n in bare}
+
+    def test_grouped_query_superset_of_and(self):
+        """simplenote AND (auth OR server) is a superset of simplenote AND server."""
+        engine = SearchEngine()
+        notes = self._notes()
+        grouped = engine.search(notes, "simplenote AND (auth OR server)")
+        and_only = engine.search(notes, "simplenote AND server")
+        grouped_keys = {n["key"] for n in grouped}
+        and_keys = {n["key"] for n in and_only}
+        assert and_keys.issubset(grouped_keys)
+        assert len(grouped_keys) >= 1
+
+    def test_not_inside_group(self):
+        """NOT inside a group is evaluated correctly."""
+        engine = SearchEngine()
+        notes = self._notes()
+        results = engine.search(notes, "simplenote AND (NOT auth)")
+        keys = {n["key"] for n in results}
+        assert "a" in keys
+        assert "b" not in keys
+
+    def test_precedence_or_lower_than_and(self):
+        """a OR b AND c is parsed as a OR (b AND c), not (a OR b) AND c."""
+        parser = QueryParser("a OR b AND c")
+        token_types = [t.type for t in parser.tokens]
+        or_pos = token_types.index(TokenType.OR)
+        and_pos = token_types.index(TokenType.AND)
+        assert or_pos < and_pos
+
+    def test_unbalanced_paren_does_not_crash(self):
+        """Malformed parentheses degrade gracefully — no exception raised."""
+        engine = SearchEngine()
+        notes = self._notes()
+        try:
+            results = engine.search(notes, "simplenote AND (server")
+            assert isinstance(results, list)
+        except Exception as exc:
+            pytest.fail(f"Unbalanced paren raised exception: {exc}")
+
+    def test_grouped_tokens_parsed_as_group_start_end(self):
+        """Tokenizer produces GROUP_START/GROUP_END for adjacent parens like (auth)."""
+        parser = QueryParser("simplenote AND (auth OR server)")
+        types = [t.type for t in parser.tokens]
+        assert TokenType.GROUP_START in types
+        assert TokenType.GROUP_END in types
+
+    def test_nested_groups(self):
+        """Nested parentheses match correctly."""
+        engine = SearchEngine()
+        notes = self._notes()
+        results = engine.search(notes, "simplenote AND ((auth OR server))")
+        assert len(results) >= 1

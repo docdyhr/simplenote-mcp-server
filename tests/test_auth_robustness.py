@@ -344,7 +344,7 @@ class TestLogMonitorStartsAtFileEnd:
 
 
 # ---------------------------------------------------------------------------
-# keychain — get_simperium_token
+# keychain — get_simperium_token / file cache
 # ---------------------------------------------------------------------------
 
 
@@ -356,106 +356,154 @@ def _make_run_result(returncode: int, stdout: str = "") -> MagicMock:
 
 
 class TestGetSimperiumToken:
-    """get_simperium_token: prompt-free MCP cache first, Desktop fallback."""
+    """get_simperium_token: file cache first, Desktop keychain fallback."""
 
-    def test_non_darwin_returns_none(self):
-        """On non-macOS platforms the keychain lookup is skipped."""
-        from simplenote_mcp.server.keychain import get_simperium_token
+    def test_file_cache_hit_skips_desktop(self):
+        """Token in file cache → Desktop keychain never queried."""
+        from simplenote_mcp.server import keychain
+
+        with (
+            patch.object(keychain, "_read_file_cache", return_value="cached-token"),
+            patch.object(keychain, "_read_desktop_token") as mock_desktop,
+        ):
+            result = keychain.get_simperium_token("user@example.com")
+
+        assert result == "cached-token"
+        mock_desktop.assert_not_called()
+
+    def test_cache_miss_reads_desktop_and_caches(self):
+        """File cache miss → reads Desktop entry → caches token to file."""
+        from simplenote_mcp.server import keychain
+
+        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
+            mock_sys.platform = "darwin"
+            with (
+                patch.object(keychain, "_read_file_cache", return_value=None),
+                patch.object(
+                    keychain, "_read_desktop_token", return_value="desktop-token"
+                ),
+                patch.object(keychain, "_write_file_cache") as mock_write,
+            ):
+                result = keychain.get_simperium_token("user@example.com")
+
+        assert result == "desktop-token"
+        mock_write.assert_called_once_with("user@example.com", "desktop-token")
+
+    def test_both_miss_returns_none(self):
+        """No file cache and no Desktop entry → None."""
+        from simplenote_mcp.server import keychain
+
+        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
+            mock_sys.platform = "darwin"
+            with (
+                patch.object(keychain, "_read_file_cache", return_value=None),
+                patch.object(keychain, "_read_desktop_token", return_value=None),
+            ):
+                result = keychain.get_simperium_token("user@example.com")
+
+        assert result is None
+
+    def test_non_darwin_skips_desktop_read(self):
+        """On non-macOS, Desktop keychain read is skipped entirely."""
+        from simplenote_mcp.server import keychain
 
         with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
             mock_sys.platform = "linux"
-            result = get_simperium_token("user@example.com")
-
-        assert result is None
-
-    def test_cache_hit_returns_without_desktop_lookup(self):
-        """When the MCP cache entry exists, the Desktop entry is never queried."""
-        from simplenote_mcp.server.keychain import get_simperium_token
-
-        cache_hit = _make_run_result(0, "cached-token\n")
-
-        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
-            mock_sys.platform = "darwin"
-            with patch("subprocess.run", return_value=cache_hit) as mock_run:
-                result = get_simperium_token("user@example.com")
-
-        assert result == "cached-token"
-        # Only one subprocess call (our cache lookup); Desktop entry not queried.
-        assert mock_run.call_count == 1
-
-    def test_cache_miss_reads_desktop_and_caches(self):
-        """On a cache miss, the Desktop entry is read and written back to our cache."""
-        from simplenote_mcp.server.keychain import get_simperium_token
-
-        cache_miss = _make_run_result(44)  # item not found
-        desktop_hit = _make_run_result(0, "desktop-token\n")
-        cache_write = _make_run_result(0)  # add-generic-password success
-
-        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
-            mock_sys.platform = "darwin"
-            with patch(
-                "subprocess.run", side_effect=[cache_miss, desktop_hit, cache_write]
-            ) as mock_run:
-                result = get_simperium_token("user@example.com")
-
-        assert result == "desktop-token"
-        assert mock_run.call_count == 3
-        # Third call must be add-generic-password with our service name.
-        write_args = mock_run.call_args_list[2][0][0]
-        assert "add-generic-password" in write_args
-        assert "simplenote-mcp-server" in write_args
-
-    def test_both_miss_returns_none(self):
-        """When both the MCP cache and Desktop entry are absent, None is returned."""
-        from simplenote_mcp.server.keychain import get_simperium_token
-
-        not_found = _make_run_result(44)
-
-        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
-            mock_sys.platform = "darwin"
-            with patch("subprocess.run", return_value=not_found):
-                result = get_simperium_token("user@example.com")
-
-        assert result is None
-
-    def test_subprocess_failure_returns_none(self):
-        """A subprocess error (e.g. security not found) returns None, not an exception."""
-        from simplenote_mcp.server.keychain import get_simperium_token
-
-        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
-            mock_sys.platform = "darwin"
-            with patch(
-                "subprocess.run", side_effect=FileNotFoundError("security not found")
+            with (
+                patch.object(keychain, "_read_file_cache", return_value=None),
+                patch.object(keychain, "_read_desktop_token") as mock_desktop,
             ):
-                result = get_simperium_token("user@example.com")
+                result = keychain.get_simperium_token("user@example.com")
 
         assert result is None
+        mock_desktop.assert_not_called()
 
 
 class TestInvalidateCachedToken:
-    """invalidate_cached_token removes the MCP cache entry."""
+    """invalidate_cached_token deletes the cache file."""
 
-    def test_non_darwin_is_noop(self):
-        from simplenote_mcp.server.keychain import invalidate_cached_token
+    def test_calls_delete_file_cache(self):
+        from simplenote_mcp.server import keychain
 
-        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
-            mock_sys.platform = "linux"
-            with patch("subprocess.run") as mock_run:
-                invalidate_cached_token("user@example.com")
+        with patch.object(keychain, "_delete_file_cache") as mock_del:
+            keychain.invalidate_cached_token("user@example.com")
 
-        mock_run.assert_not_called()
+        mock_del.assert_called_once_with("user@example.com")
 
-    def test_darwin_calls_delete(self):
-        from simplenote_mcp.server.keychain import invalidate_cached_token
 
-        with patch("simplenote_mcp.server.keychain.sys") as mock_sys:
-            mock_sys.platform = "darwin"
-            with patch("subprocess.run", return_value=_make_run_result(0)) as mock_run:
-                invalidate_cached_token("user@example.com")
+class TestFileCacheHelpers:
+    """File cache read / write / delete."""
 
-        args = mock_run.call_args[0][0]
-        assert "delete-generic-password" in args
-        assert "simplenote-mcp-server" in args
+    def test_read_missing_returns_none(self, tmp_path):
+        from simplenote_mcp.server import keychain
+
+        with patch.object(keychain, "_CACHE_DIR", tmp_path):
+            result = keychain._read_file_cache("user@example.com")
+
+        assert result is None
+
+    def test_write_then_read(self, tmp_path):
+        from simplenote_mcp.server import keychain
+
+        with patch.object(keychain, "_CACHE_DIR", tmp_path):
+            keychain._write_file_cache("user@example.com", "mytoken")
+            result = keychain._read_file_cache("user@example.com")
+
+        assert result == "mytoken"
+
+    def test_write_sets_mode_600(self, tmp_path):
+        from simplenote_mcp.server import keychain
+
+        with patch.object(keychain, "_CACHE_DIR", tmp_path):
+            keychain._write_file_cache("user@example.com", "mytoken")
+            path = keychain._cache_path("user@example.com")
+
+        assert oct(path.stat().st_mode)[-3:] == "600"
+
+    def test_delete_removes_file(self, tmp_path):
+        from simplenote_mcp.server import keychain
+
+        with patch.object(keychain, "_CACHE_DIR", tmp_path):
+            keychain._write_file_cache("user@example.com", "mytoken")
+            keychain._delete_file_cache("user@example.com")
+            result = keychain._read_file_cache("user@example.com")
+
+        assert result is None
+
+    def test_delete_missing_is_noop(self, tmp_path):
+        from simplenote_mcp.server import keychain
+
+        with patch.object(keychain, "_CACHE_DIR", tmp_path):
+            keychain._delete_file_cache("user@example.com")  # must not raise
+
+
+class TestReadDesktopToken:
+    """_read_desktop_token reads the Simplenote Desktop keychain entry."""
+
+    def test_success_returns_stripped_token(self):
+        from simplenote_mcp.server.keychain import _read_desktop_token
+
+        hit = _make_run_result(0, "tok123\n")
+        with patch("subprocess.run", return_value=hit):
+            result = _read_desktop_token("user@example.com")
+
+        assert result == "tok123"
+
+    def test_nonzero_exit_returns_none(self):
+        from simplenote_mcp.server.keychain import _read_desktop_token
+
+        with patch("subprocess.run", return_value=_make_run_result(44)):
+            result = _read_desktop_token("user@example.com")
+
+        assert result is None
+
+    def test_subprocess_error_returns_none(self):
+        from simplenote_mcp.server.keychain import _read_desktop_token
+
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            result = _read_desktop_token("user@example.com")
+
+        assert result is None
 
 
 # ---------------------------------------------------------------------------

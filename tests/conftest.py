@@ -3,10 +3,25 @@
 import asyncio
 import contextlib
 import os
-from unittest.mock import MagicMock
+from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pytest
 import pytest_asyncio
+
+
+@pytest.fixture(autouse=True)
+def isolate_token_file_cache(tmp_path):
+    """Redirect the keychain file cache to a temp dir for every test.
+
+    Prevents token files written by one test from leaking into the file-cache
+    read path of another test when the random execution order puts them in the
+    wrong sequence.
+    """
+    import simplenote_mcp.server.keychain as _kc
+
+    with patch.object(_kc, "_CACHE_DIR", tmp_path):
+        yield
 
 
 @pytest.fixture(autouse=True)

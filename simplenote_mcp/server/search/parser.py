@@ -119,6 +119,10 @@ class QueryParser:
 
         query = re.sub(r"tag:(\S+)", replace_tag, query, flags=re.IGNORECASE)
 
+        # Ensure parentheses are separate tokens (handles "(term" and "term)" forms)
+        query = query.replace("(", " ( ").replace(")", " ) ")
+        query = re.sub(r"\s+", " ", query.strip())
+
         # Split the query by spaces but keep operators and parentheses together
         tokens = []
         parts = query.split(" ")

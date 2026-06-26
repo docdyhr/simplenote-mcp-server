@@ -1,30 +1,82 @@
-"""macOS keychain access for Simperium auth tokens.
+"""Simperium token resolution for the Simplenote MCP server.
 
-The Simplenote macOS app stores its Simperium token in the keychain under
-service 'chalk-bump-f49' (the Simperium app ID for Simplenote).  When the
-auth.simperium.com password-auth endpoint is unreachable we can read this
-cached token directly and skip the broken authenticate() call entirely.
+Token acquisition order (see get_simperium_token):
+1. Local file cache — ~/.config/simplenote-mcp/<email>.token (mode 0600).
+   No keychain interaction, no dialogs, works on every platform.
+2. Simplenote Desktop's macOS keychain entry (service 'chalk-bump-f49').
+   May trigger a one-time approval dialog; result is written to the file
+   cache so subsequent starts are completely prompt-free.
 
-To avoid the per-start keychain approval dialog (macOS enforces ACLs when a
-different application reads an item it did not create), we maintain our own
-keychain entry under service 'simplenote-mcp-server'.  The security CLI can
-read back items it created without prompting, so subsequent starts are
-prompt-free.  The Desktop entry is only consulted when our own cache is empty
-(first run or after invalidation), resulting in at most one approval dialog.
+Previous versions stored the cache in a keychain entry ('simplenote-mcp-server').
+Those entries are now unused; they can be removed via Keychain Access if desired.
 """
 
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 _SIMPERIUM_APP_ID = "chalk-bump-f49"
-_MCP_SERVICE = "simplenote-mcp-server"
+_CACHE_DIR = Path.home() / ".config" / "simplenote-mcp"
 
 
-def _get_token_from_service(service: str, email: str) -> str | None:
-    """Read a generic-password entry from the macOS keychain."""
+# ---------------------------------------------------------------------------
+# File cache helpers
+# ---------------------------------------------------------------------------
+
+
+def _cache_path(email: str) -> Path:
+    safe = email.replace("@", "_at_").replace("/", "_")
+    return _CACHE_DIR / f"{safe}.token"
+
+
+def _read_file_cache(email: str) -> str | None:
+    try:
+        token = _cache_path(email).read_text().strip()
+        return token if token else None
+    except OSError:
+        return None
+
+
+def _write_file_cache(email: str, token: str) -> None:
+    try:
+        _CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        path = _cache_path(email)
+        path.write_text(token)
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+
+
+def _delete_file_cache(email: str) -> None:
+    try:
+        _cache_path(email).unlink(missing_ok=True)
+    except OSError:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Simplenote Desktop keychain read (macOS, one-time prompt)
+# ---------------------------------------------------------------------------
+
+
+def _read_desktop_token(email: str) -> str | None:
+    """Read token from Simplenote Desktop's keychain entry via the security CLI.
+
+    This may trigger a one-time approval dialog the first time it runs.
+    After the token is cached locally the keychain is never consulted again.
+    """
     try:
         result = subprocess.run(
-            ["security", "find-generic-password", "-s", service, "-a", email, "-w"],
+            [
+                "security",
+                "find-generic-password",
+                "-s",
+                _SIMPERIUM_APP_ID,
+                "-a",
+                email,
+                "-w",
+            ],
             capture_output=True,
             text=True,
             timeout=5,
@@ -37,85 +89,53 @@ def _get_token_from_service(service: str, email: str) -> str | None:
     return None
 
 
-def _cache_token(email: str, token: str) -> None:
-    """Persist token in the MCP server's own keychain entry.
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
-    Uses -U so the call is idempotent (creates or updates).
+
+def cache_token(email: str, token: str) -> None:
+    """Persist token to the local file cache.
+
+    Call this after any successful authentication to ensure subsequent starts
+    are prompt-free regardless of which auth path was used.
     """
-    try:
-        subprocess.run(
-            [
-                "security",
-                "add-generic-password",
-                "-s",
-                _MCP_SERVICE,
-                "-a",
-                email,
-                "-w",
-                token,
-                "-U",
-            ],
-            capture_output=True,
-            timeout=5,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
+    _write_file_cache(email, token)
 
 
 def invalidate_cached_token(email: str) -> None:
-    """Delete the MCP server's cached token entry.
+    """Delete the local token cache so the next startup re-reads from the Desktop keychain.
 
-    Call this when the cached token is rejected by the API so the next
-    startup re-reads a fresh token from the Simplenote Desktop entry.
-    No-op on non-macOS or when no entry exists.
+    Call this when the cached token is rejected by the Simperium API.
+    No-op if no cache file exists.
     """
-    if sys.platform != "darwin":
-        return
-    try:
-        subprocess.run(
-            [
-                "security",
-                "delete-generic-password",
-                "-s",
-                _MCP_SERVICE,
-                "-a",
-                email,
-            ],
-            capture_output=True,
-            timeout=5,
-        )
-    except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
-        pass
+    _delete_file_cache(email)
 
 
 def get_simperium_token(email: str) -> str | None:
-    """Return the Simplenote Simperium token from the macOS keychain, or None.
+    """Return the Simplenote Simperium token, or None if unavailable.
 
-    Lookup order (darwin only):
-    1. MCP server's own keychain entry — created by the security CLI, readable
-       without ACL prompts on every restart.
-    2. Simplenote Desktop's entry (service 'chalk-bump-f49') — may trigger a
-       one-time approval dialog; the result is immediately written to step 1 so
-       subsequent starts are prompt-free.
+    Lookup order:
+    1. Local file cache (~/.config/simplenote-mcp/<email>.token, mode 0600).
+       No keychain access, no dialogs, platform-agnostic.
+    2. Simplenote Desktop's macOS keychain entry — may trigger a one-time
+       approval dialog.  On success the token is written to the file cache
+       so all subsequent starts are prompt-free.
 
     Args:
-        email: The Simplenote account email used as the keychain account name.
+        email: Simplenote account email, used as the cache key.
 
     Returns:
         The raw token string, or None if unavailable.
     """
-    if sys.platform != "darwin":
-        return None
-
-    # Our own entry — security CLI can read it without an ACL prompt.
-    cached = _get_token_from_service(_MCP_SERVICE, email)
+    cached = _read_file_cache(email)
     if cached:
         return cached
 
-    # Simplenote Desktop's entry — may prompt once; cache immediately after.
-    desktop_token = _get_token_from_service(_SIMPERIUM_APP_ID, email)
-    if desktop_token:
-        _cache_token(email, desktop_token)
-        return desktop_token
+    if sys.platform == "darwin":
+        desktop_token = _read_desktop_token(email)
+        if desktop_token:
+            _write_file_cache(email, desktop_token)
+            return desktop_token
 
     return None
