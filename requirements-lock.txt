@@ -17,7 +17,7 @@ cffi==2.0.0
 cfgv==3.5.0
 charset-normalizer==3.4.7
 check-wheel-contents==0.6.3
-click==8.4.1
+click==8.4.2
 colorama==0.4.6
 coverage==7.14.2
 cryptography==49.0.0
