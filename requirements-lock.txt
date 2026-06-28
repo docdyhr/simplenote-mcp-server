@@ -72,7 +72,7 @@ msgpack==1.2.1
 multidict==6.7.1
 mypy==2.1.0
 mypy_extensions==1.1.0
-nh3==0.3.5
+nh3==0.3.6
 nltk==3.9.4
 nodeenv==1.10.0
 packageurl-python==0.17.6
