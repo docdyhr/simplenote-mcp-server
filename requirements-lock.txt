@@ -121,7 +121,7 @@ rich==15.0.0
 rpds-py==0.30.0
 ruamel.yaml==0.19.1
 ruamel.yaml.clib==0.2.15
-ruff==0.15.18
+ruff==0.15.20
 
 setuptools==82.0.1
 shellingham==1.5.4
