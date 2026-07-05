@@ -96,7 +96,7 @@ pydantic-settings==2.14.2
 pydantic_core==2.47.0
 Pygments==2.20.0
 PyJWT==2.13.0
-pymdown-extensions==11.0
+pymdown-extensions==11.0.1
 pyparsing==3.3.2
 pyproject_hooks==1.2.0
 pytest==9.1.1
