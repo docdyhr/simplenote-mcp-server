@@ -169,6 +169,45 @@ class TestNoteCache:
         assert sorted(cache.all_tags) == sorted(["test", "archived", "new"])
         assert cache._last_sync_cursor == "cursor2"
 
+    @pytest.mark.asyncio
+    async def test_sync_rebuilds_tag_word_title_indexes(
+        self, mock_simplenote_client, mock_note_data
+    ):
+        """Regression test: notes arriving via sync() (e.g. edited in the native
+        Simplenote app, not through a create/update tool call) must be fully
+        indexed. _process_sync_notes() previously only updated cache._notes and
+        the flat tag-name set, never _tag_index/_word_index/_title_index — such
+        notes were retrievable via get_note but invisible to list_tags,
+        tag-filtered search_notes, rename_tag, and find_untagged_notes.
+        """
+        sync_data = [
+            {"key": "note4", "content": "Widget report", "tags": ["fresh"]},
+            {"key": "note1", "content": "Gadget summary", "tags": ["test", "renamed"]},
+        ]
+        mock_simplenote_client.get_note_list.side_effect = [
+            (mock_note_data, 0),  # Initial note list
+            (sync_data, 0),  # Sync update
+        ]
+        mock_simplenote_client.current = "cursor1"
+
+        cache = NoteCache(mock_simplenote_client)
+        await cache.initialize()
+        mock_simplenote_client.current = "cursor2"
+
+        await cache.sync()
+
+        # New note (note4) must be fully indexed, not just present in _notes.
+        assert "note4" in cache._tag_index.get("fresh", set())
+        assert "note4" in cache._word_index.get("widget", set())
+        assert "note4" in cache._title_index.get("Widget", [])
+
+        # Updated note (note1): new tag/word indexed, old tag ("important",
+        # present on note1 in mock_note_data but absent from sync_data) removed.
+        assert "note1" in cache._tag_index.get("renamed", set())
+        assert "note1" not in cache._tag_index.get("important", set())
+        assert "note1" in cache._word_index.get("gadget", set())
+        assert "note1" in cache._title_index.get("Gadget", [])
+
     def test_get_note_cache_hit(self, mock_simplenote_client, mock_note_data):
         """Test get_note when note is in cache."""
         # Create cache with notes

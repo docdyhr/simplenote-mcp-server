@@ -742,6 +742,83 @@ class TestTagSanitization:
         assert "tags_now" in data
         mock_client.update_note.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_add_tags_sanitizes_tags_with_spaces_end_to_end(
+        self, mock_client, mock_cache
+    ):
+        """add_tags().handle() must hyphenate spaces, not just the unused _parse_tags() call.
+
+        Regression test: AddTagsHandler previously called self._parse_tags(tags_input)
+        and discarded the result, then rebuilt the tag list via a separate,
+        unsanitized code path.
+        """
+        mock_cache.get_note.return_value = {
+            "key": "note1",
+            "content": "old",
+            "tags": [],
+        }
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "old", "tags": ["my-tag"]},
+            0,
+        )
+        handler = AddTagsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1", "tags": "my tag"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        call_args = mock_client.update_note.call_args[0][0]
+        assert call_args["tags"] == ["my-tag"]
+        assert data["tags_added"] == ["my-tag"]
+
+    @pytest.mark.asyncio
+    async def test_remove_tags_matches_tag_that_was_hyphenated_on_creation(
+        self, mock_client, mock_cache
+    ):
+        """remove_tags() must sanitize its input the same way create_note does.
+
+        Regression test for the compounding bug: create_note(tags="my tag") stores
+        "my-tag" (hyphenated), but remove_tags(tags="my tag") built an unsanitized
+        "my tag" that never matched the stored "my-tag" — a silent no-op.
+        """
+        mock_cache.get_note.return_value = {
+            "key": "note1",
+            "content": "old",
+            "tags": ["my-tag"],
+        }
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "old", "tags": []},
+            0,
+        )
+        handler = RemoveTagsHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "note1", "tags": "my tag"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["tags_removed"] == ["my-tag"]
+        assert data["tags_now"] == []
+        mock_client.update_note.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_update_note_sanitizes_tags_with_spaces_end_to_end(
+        self, mock_client, mock_cache
+    ):
+        """update_note().handle() must hyphenate spaces in tags like create_note does."""
+        mock_cache.get_note.return_value = {
+            "key": "note1",
+            "content": "old",
+            "tags": [],
+        }
+        mock_client.update_note.return_value = (
+            {"key": "note1", "content": "new content", "tags": ["my-tag"]},
+            0,
+        )
+        handler = UpdateNoteHandler(mock_client, mock_cache)
+        result = await handler.handle(
+            {"note_id": "note1", "content": "new content", "tags": "my tag"}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        call_args = mock_client.update_note.call_args[0][0]
+        assert call_args["tags"] == ["my-tag"]
+
 
 @pytest.mark.unit
 class TestResourceNotFoundErrors:

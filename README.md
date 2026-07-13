@@ -22,7 +22,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.17.0-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.17.1-blue.svg)](./CHANGELOG.md)
 [![Test Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -40,15 +40,17 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b215d030-b511-457d-8a6d-3e1e6ea3b541)
 ---
 
-## What's New (Unreleased)
+## What's New
 
-**26 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
+**27 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
 
-Two new irreversible-deletion tools with mandatory safety guards:
+Irreversible-deletion tools with mandatory safety guards:
 
 - **`permanent_delete_note`**: Permanently destroy a single note; requires `confirm=true`; dry-run preview by default
 - **`empty_trash`**: Permanently delete all trashed notes; defaults to `dry_run=true` (preview); requires `dry_run=false` AND `confirm=true`
-- **1188 tests passing**, 77% coverage, zero linting/type errors
+- **1227 tests passing**, 77%+ coverage, zero linting/type errors
+
+**In progress**: correctness hardening (tag-sanitization consistency, search result limits, background-sync indexing) and an opt-in, client-side note-encryption feature ("Vault") to close Simplenote's lack of encryption-at-rest for sensitive notes. See [ROADMAP.md](ROADMAP.md).
 
 ### v1.17.0
 
@@ -76,7 +78,7 @@ See the [CHANGELOG](./CHANGELOG.md) for complete details.
 - 🧩 **MCP Compatible**: Works with Claude Desktop and other MCP clients
 - 🐳 **Docker Ready**: Full containerization with multi-stage builds and security hardening
 - 📊 **Monitoring**: Optional HTTP endpoints for health, readiness, and metrics
-- 🧪 **Robust Testing**: Comprehensive test suite with 1135+ tests and continuous integration
+- 🧪 **Robust Testing**: Comprehensive test suite with 1227+ tests and continuous integration
 - 🔒 **Security Hardened**: Regular security scanning with Bandit, pip-audit, and dependency checks
 
 ---

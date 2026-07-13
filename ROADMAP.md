@@ -1,14 +1,14 @@
 # Simplenote MCP — Roadmap
 
-> Make Simplenote the best note-taking companion for Claude Desktop: achieve full Bear parity, then surpass it with Simplenote-native capabilities no other note MCP can offer.
+> Make Simplenote the best note-taking companion for Claude Desktop: achieve full Bear parity, then surpass it with Simplenote-native capabilities no other note MCP can offer — and become a first-class layer of Claude's working memory, hardened for private data.
 
-**Current version**: v1.15.0 — 24 tools
+**Current version**: v1.17.1 — 27 tools
 **Working checklist**: see [TODO.md](TODO.md)
 **Supersedes**: `docs/ROADMAP.md` (deprecated)
 
 ---
 
-## Current State — v1.13.0
+## Current State — v1.17.1
 
 ### All Shipped Tools
 
@@ -18,7 +18,10 @@
 | `update_note` | Replace full note content (destructive — overwrites) |
 | `delete_note` | Soft-delete: move note to Trash |
 | `restore_note` | Un-trash a note — reverses `delete_note` |
+| `permanent_delete_note` | Irreversibly destroy a single note; requires `confirm=true` |
+| `empty_trash` | Irreversibly delete all trashed notes; `dry_run=true` by default |
 | `get_note` | Retrieve a note by ID with full content and metadata |
+| `list_notes` | Browse recent notes filtered by tag and limit, no query required |
 | `add_text` | Append or prepend text without overwriting the full note |
 | `search_notes` | Full-text search with fuzzy, boolean, date, tag, pinned filters, pagination |
 | `add_tags` | Add tags to an existing note |
@@ -35,7 +38,11 @@
 | `bulk_tag` | Apply tags to multiple notes in a single call |
 | `export_notes` | Export notes to Markdown or JSON |
 | `find_and_merge_duplicates` | Detect and merge duplicate notes |
+| `publish_note` | Publish a note to a public URL — unique to Simplenote MCP |
+| `unpublish_note` | Remove a note from public access |
 | `get_server_info` | Server version, author, registered tools, and runtime debug info |
+
+8 read tools are always listed; the 19 write tools above are only exposed when `SIMPLENOTE_WRITE_MODE=true` (and gated per-call by a rolling write budget) — see [SECURITY.md](SECURITY.md).
 
 ### Recommended Claude Workflows
 
@@ -90,18 +97,56 @@ Python 3.13 fix: `log_monitor._process_log_file` unawaited coroutine eliminated.
 
 `publish_note`, `unpublish_note` — via `systemTags: ["published"]`; `publish_note` returns `public_url`.
 
+### Phase 6 — Irreversible Deletion ✅ (v1.16.0)
+
+`permanent_delete_note` (single note, `confirm=true` required), `empty_trash` (all trashed notes, `dry_run=true` default, requires `dry_run=false` AND `confirm=true`). Both closed issue #504.
+
+### Phase 7 — Browse & Robustness ✅ (v1.16.1–v1.17.1)
+
+`list_notes` (browse by tag/limit without a query). `search_notes` async executor fix (Boolean AND queries no longer hang the server). Substring pre-filter consistency fix. macOS keychain auth: three-step Simperium token resolution (env var → desktop app's keychain entry → password fallback) after `auth.simperium.com` was decommissioned server-side.
+
 ---
 
-## v2.0 Horizon
+## Next — Companion Hardening (v1.18+)
 
-These require significant investigation or introduce breaking/irreversible changes.
+The Bear-parity and Simplenote-differentiator phases above are complete. The next phases, prompted by a review benchmarking this project against Bear MCP and against the goal of being a genuine **Claude Desktop working-memory companion** (not just a note CRUD server), are:
+
+### Phase 8 — Correctness Fixes (in progress)
+
+Three concrete gaps surfaced by a full research pass (three independent codebase audits) that undercut the companion trust model — Claude and the user both read/write the same notes, so silent inconsistencies are worse here than in a single-user CRUD tool:
+
+| # | Problem | Fix |
+|---|---|---|
+| 1 | `add_tags`/`remove_tags`/`update_note` don't hyphenate spaces in tags (dead code discards the correct `_parse_tags()` call) | Route all tag-accepting handlers through `ToolHandlerBase._parse_tags()`; extend `SecurityValidator` tag normalization to all 8 tag-accepting tools; unify `tags` schema to `array<string>` |
+| 2 | `search_notes` has no enforced default `limit` — returns unbounded results despite documenting "default: 20" | Enforce `min(limit or 20, 100)`, matching `list_notes` |
+| 3 | Notes edited outside Claude (via background sync) never get re-indexed for tags/words/titles — invisible to `list_tags`/tag-filtered search despite being fully retrievable by `get_note` | Make `_process_sync_notes()` call the same index maintenance as the create/update path; fix the `_initialized=True`-before-loaded race that silently no-ops the real cache initializer |
+
+### Phase 9 — Vault: Opt-In Client-Side Encryption
+
+Simplenote has **no encryption at rest** — Automattic's own docs confirm staff can technically read note content and explicitly recommend against storing sensitive data there. As Simplenote MCP becomes a working-memory layer, Claude will write increasingly operational detail into it. Vault closes that gap:
+
+- Per-note opt-in encryption (`encrypt=true` on `create_note`/`update_note`, plus `encrypt_note`/`decrypt_note` for existing notes) — most notes stay plaintext and fully searchable; only explicitly marked notes are protected.
+- AEAD encryption (`cryptography` library, `AESGCM`/`ChaCha20Poly1305`) with a versioned envelope format (`%%SNVAULT:v1%%` + base64 nonce/ciphertext/tag) and a `vault-encrypted` tag marker.
+- Master key via the `keyring` library (OS keychain — macOS/Linux/Windows), fetched once per process lifetime and cached in memory only, to avoid the repeated-approval-dialog problem that made this project previously abandon Keychain storage for the Simperium token. Container/headless deployments use a `SIMPLENOTE_VAULT_KEY_FILE` escape hatch.
+- `vault_status()` tool; transparent decrypt-on-read for `get_note`/`search_notes`/`list_notes` when the key is available.
+- v1 explicitly does **not** build a decrypted shadow search index — vault-note bodies are excluded from full-text search (title/tags remain searchable); this is a documented tradeoff, not a gap.
+- No multi-device key sync in v1 (single-machine key only, manual export/import as a later idea).
+
+Full design lives in `docs/security/encryption-design.md` (added alongside implementation).
+
+### Phase 10 — Companion Architecture Layer
+
+- Fix MCP Resources (`simplenote://note/{id}`) so tags/pagination metadata actually reach clients — today they're computed then attached via non-schema fields and silently dropped.
+- Add native MCP Prompts beyond the current 2 static ones (e.g. a `session-handoff` prompt for the Session Continuity workflow below).
+- Spike (not committed): a curated resource Claude Desktop could auto-surface at conversation start, e.g. `simplenote://recent`.
+
+### v2.0 Horizon
 
 | Item | Notes |
 |---|---|
-| **`empty_trash`** | Permanently delete all trashed notes. `confirm=True` safeguard required. Tracked in issue #504. |
-| **`permanent_delete_note`** | Permanently delete a single note by ID. `sn.delete_note()` exists; irreversibility concerns place this at v2.0. Tracked in issue #504. |
 | **Multi-account support** | Needs config and auth refactor. |
 | **Real-time sync** | Replaces polling model. Requires Simperium websocket integration. |
+| **Multi-device Vault key sync** | Deferred from Phase 9 — needs an out-of-band key transfer story. |
 
 ---
 

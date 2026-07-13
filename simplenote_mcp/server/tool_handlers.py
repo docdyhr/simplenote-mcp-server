@@ -306,15 +306,10 @@ class UpdateNoteHandler(ToolHandlerBase):
             # Update the note content
             safe_set(existing_note, "content", content)
 
-            # Update tags if provided (comma-separated)
+            # Update tags if provided (comma-separated or list); spaces → hyphens,
+            # consistent with create_note and every other tag-accepting tool.
             if tags_input:
-                if isinstance(tags_input, list):
-                    tags = [tag.strip() for tag in tags_input]
-                elif isinstance(tags_input, str):
-                    tags = [tag.strip() for tag in safe_split(tags_input, ",")]
-                else:
-                    tags = []
-
+                tags = self._parse_tags(tags_input)
                 safe_set(existing_note, "tags", tags)
 
             updated_note, status = self.sn.update_note(existing_note)
@@ -462,7 +457,13 @@ class SearchNotesHandler(ToolHandlerBase):
             raise empty_field_error("query")
 
         # Extract and process parameters
+        # _process_limit returns None for missing/invalid/non-positive input;
+        # enforce the documented default (20) and hard cap (100) here so an
+        # omitted limit never returns the entire unbounded result set.
         limit = self._process_limit(arguments.get("limit"))
+        if limit is None:
+            limit = 20
+        limit = min(limit, 100)
         tag_filters = self._process_tag_filters(arguments.get("tags", ""))
         date_range = self._process_date_range(
             arguments.get("from_date"), arguments.get("to_date")
@@ -517,17 +518,15 @@ class SearchNotesHandler(ToolHandlerBase):
         return limit
 
     def _process_tag_filters(self, tags_input: Any) -> list[str] | None:
-        """Process tag filters from input (comma-separated)."""
+        """Process tag filters from input (comma-separated or list).
+
+        Spaces are hyphenated the same way create_note/add_tags/etc. sanitize
+        tags on write, so a filter like "my tag" matches a stored "my-tag".
+        """
         if not tags_input:
             return None
 
-        tag_filters = None
-        if isinstance(tags_input, list):
-            tag_filters = [tag.strip() for tag in tags_input if tag.strip()]
-        elif isinstance(tags_input, str):
-            tag_filters = [
-                tag.strip() for tag in safe_split(tags_input, ",") if tag.strip()
-            ]
+        tag_filters = [tag for tag in self._parse_tags(tags_input) if tag]
 
         logger.debug(f"Tag filters: {tag_filters}")
         return tag_filters
@@ -850,15 +849,11 @@ class AddTagsHandler(TagOperationHandler):
         if not tags_input:
             raise empty_field_error("tags")
 
-        self._parse_tags(tags_input)
-
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
 
-            # Parse the tags to add (comma-separated)
-            tags_to_add = [
-                tag.strip() for tag in safe_split(tags_input, ",") if tag.strip()
-            ]
+            # Parse the tags to add (comma-separated or list); spaces → hyphens
+            tags_to_add = [tag for tag in self._parse_tags(tags_input) if tag]
 
             # Get current tags or initialize empty list
             current_tags = safe_get(existing_note, "tags", [])
@@ -949,15 +944,12 @@ class RemoveTagsHandler(TagOperationHandler):
         if not tags_input:
             raise empty_field_error("tags")
 
-        self._parse_tags(tags_input)
-
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
 
-            # Parse the tags to remove (comma-separated)
-            tags_to_remove = [
-                tag.strip() for tag in safe_split(tags_input, ",") if tag.strip()
-            ]
+            # Parse the tags to remove (comma-separated or list); spaces → hyphens,
+            # so this matches the hyphenated form other handlers already stored.
+            tags_to_remove = [tag for tag in self._parse_tags(tags_input) if tag]
 
             # Get current tags or initialize empty list
             current_tags = safe_get(existing_note, "tags", [])
@@ -1951,8 +1943,8 @@ class RenameTagHandler(ToolHandlerBase):
         if not new_tag:
             raise ValidationError("new_tag is required")
 
-        # Sanitize: spaces to hyphens
-        new_tag = new_tag.strip().replace(" ", "-")
+        # Sanitize: spaces to hyphens (shared with every other tag-accepting tool)
+        new_tag = self._parse_tags([new_tag])[0]
         old_tag = old_tag.strip()
 
         try:

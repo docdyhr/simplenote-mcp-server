@@ -118,6 +118,34 @@ class TestWorkingFunctions:
         assert "note2" in cache._tag_index["work"]
         assert "note1" in cache._tag_index["urgent"]
 
+    @pytest.mark.asyncio
+    async def test_populate_cache_direct_builds_title_and_word_index(self):
+        """Regression test: the initial background load only built the tag
+        index, never the title/word index, because _initialized=True is set
+        before _populate_cache_direct runs — which defeats initialize()'s own
+        re-entrancy guard, so the retry-hardened full initializer (the only
+        code path that called _build_all_indexes()) silently no-ops. Notes
+        were retrievable via get_note but invisible to title/word search
+        until individually touched by a create/update tool call.
+        """
+        mock_sn = Mock()
+        mock_sn.get_note_list.return_value = (
+            [{"key": "note1", "content": "Tagged note", "tags": ["work"]}],
+            0,
+        )
+        mock_sn.current = "cursor123"
+
+        cache = NoteCache(Mock())
+        cache._initialized = True  # simulate _create_minimal_cache eager-set
+
+        await _populate_cache_direct(cache, mock_sn)
+
+        assert "Tagged" in cache._title_index
+        assert "note1" in cache._title_index["Tagged"]
+        assert "tagged" in cache._word_index
+        assert "note1" in cache._word_index["tagged"]
+        assert "note1" in cache._access_order
+
     def test_get_simplenote_client_success(self):
         """Test successful client creation."""
         with (

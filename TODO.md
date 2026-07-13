@@ -202,6 +202,59 @@ Fix these before any feature work begins. All are confirmed real-world pain poin
 
 ---
 
+## v1.18 — Companion Hardening (Phase 8: Correctness Fixes)
+
+Three concrete, evidence-backed bugs found during a full research pass benchmarking this project against the "Claude working-memory companion" vision. All are `/test-first`.
+
+- [ ] `[P0-BUG]` **Fix tag-space sanitization dead code in `add_tags`/`remove_tags`**
+  `AddTagsHandler`/`RemoveTagsHandler` call `self._parse_tags(tags_input)` and discard the result, then rebuild the tag list a second, unsanitized way. `UpdateNoteHandler` and `RenameTagHandler` each carry their own third/fourth ad hoc implementation.
+  - Files: `simplenote_mcp/server/tool_handlers.py` — `AddTagsHandler.handle()` (:853, :858-861), `RemoveTagsHandler.handle()` (:952, :957-960), `UpdateNoteHandler.handle()` (:310-318), `RenameTagHandler.handle()` (:1955)
+  - Also: `simplenote_mcp/server/security.py` — extend `SecurityValidator.validate_arguments()` tag normalization (:441-490) from 3 to all 8 tag-accepting tools
+  - Also: unify declared `tags` JSON-schema type to `array<string>` across all tools in `server.py::handle_list_tools()` (currently a mix of `string` and `array`)
+  - Criterion: `add_tags(tags="my tag")` and `create_note(tags="my tag")` store the identical `"my-tag"`; a tag added with a space can be removed by the same un-hyphenated string without silently no-opping
+  - Workflow: `/test-first`
+
+- [ ] `[P1-BUG]` **Enforce documented default `limit` in `search_notes`**
+  Schema says "default: 20" but omitting `limit` returns every matching note.
+  - File: `simplenote_mcp/server/tool_handlers.py` — `SearchNotesHandler._process_limit()` (:508-517)
+  - File: `simplenote_mcp/server/cache.py` (:995-997)
+  - Update: `tests/test_search_integration.py::test_search_with_limit` — currently uses the unlimited case as its "all results" baseline; needs an explicit high limit instead
+  - Criterion: omitting `limit` returns at most 20 results (max 100 when explicitly requested), matching `list_notes`' existing `min(limit, 100)` pattern
+  - Workflow: `/test-first`
+
+- [ ] `[P1-BUG]` **Fix background-sync cache re-indexing race**
+  Notes arriving via `BackgroundSync` (edited outside Claude) update `_notes` but never rebuild `_tag_index`/`_word_index`/`_title_index` — invisible to `list_tags`/tag-filtered search despite being fully retrievable via `get_note`. Compounding cause: `_initialized=True` is set before notes load (non-blocking startup), which defeats `NoteCache.initialize()`'s own re-entrancy guard.
+  - Files: `simplenote_mcp/server/cache.py` — `_process_sync_notes()` (:475-510), `NoteCache.initialize()` guard (:351-352)
+  - Files: `simplenote_mcp/server/server.py` — `_create_minimal_cache()` (:443-453); `simplenote_mcp/server/cache_utils.py` (:27-84)
+  - Criterion: a note updated purely via `sync()` (not through a tool handler) is fully present in `_tag_index`/`_word_index`/`_title_index` afterward; new tests exercise `sync()`/`_process_sync_notes()` directly (existing tag-index tests only cover the tool-handler create/update path)
+  - Workflow: `/test-first`
+
+## v1.19 — Vault: Opt-In Client-Side Encryption (Phase 9)
+
+Simplenote has no encryption at rest (confirmed via Automattic's own docs — see [SECURITY.md](SECURITY.md)). Full design in `docs/security/encryption-design.md` and [ROADMAP.md](ROADMAP.md#phase-9--vault-opt-in-client-side-encryption). Separate branch/PR from the Phase 8 fixes above.
+
+- [ ] `[P0]` **New `simplenote_mcp/server/vault.py` module**: key provisioning via `keyring` (OS keychain, fetched once per process lifetime and cached in memory — not per-operation, to avoid the repeated-dialog problem `keychain.py` already hit once), AEAD encrypt/decrypt helpers via `cryptography` (`AESGCM`/`ChaCha20Poly1305`), envelope format (de)serialization (`%%SNVAULT:v1%%` + base64 nonce/ciphertext/tag)
+- [ ] `[P0]` **`SIMPLENOTE_VAULT_KEY_FILE`** escape hatch for Docker/headless deployments with no OS keychain
+- [ ] `[P0]` **Promote `cryptography` and `keyring` from transitive to direct runtime dependencies** in `pyproject.toml` (both already resolve in `requirements-lock.txt` via dev/publish tooling, so no new package name is introduced)
+- [ ] `[P1]` **`encrypt_note(note_id)` / `decrypt_note(note_id)` tools** — convert an existing note in place; add both to `WRITE_TOOLS`
+- [ ] `[P1]` **`vault_status()` tool** (read-only) — key availability, count of `vault-encrypted` notes, active key provider
+- [ ] `[P1]` **`encrypt: bool = false` param on `create_note`/`update_note`**
+- [ ] `[P1]` **Transparent decrypt-on-read** in `get_note`/`search_notes`/`list_notes`; `{"encrypted": true, "decryptable": false}` shape when no key is available
+- [ ] `[P1]` **`DECRYPTION_FAILED` error subcategory** in `error_taxonomy.py` (reuse existing `ServerError` infrastructure — do not build a parallel error scheme)
+- [ ] `[P2]` **Reconcile the two divergent Bandit configs** (`.bandit` vs `pyproject.toml [tool.bandit]` disagree on skipping B105/hardcoded-password-string) before key-handling code lands
+- [ ] `[P2]` **`tests/test_vault.py`**: round-trip, tamper detection (flipped byte → raises, never garbage), missing-key behavior, malformed-envelope parsing, key-provider fallback chain
+- [ ] `[P2]` **`LIVE_TESTING.md`** entries for the new vault tools (keychain-prompt UX needs a real Claude Desktop session, not just unit tests)
+
+## v1.20 — Companion Architecture Layer (Phase 10)
+
+Lower priority, sequenced last on purpose.
+
+- [ ] `[P2]` **Fix MCP Resources metadata loss** — `handle_list_resources`/`handle_read_resource` (`server.py:614-814`) compute tags/pagination then attach them via non-schema `types.Resource` attributes that are silently dropped before reaching any real client. Fold into the real `description` field instead.
+- [ ] `[P3]` **Add a `session-handoff` MCP Prompt** scaffolding the Session Continuity workflow format (see ROADMAP.md workflow table)
+- [ ] `[P3]` **Spike**: a curated `simplenote://recent`-style resource for conversation-start auto-context — depends on Claude Desktop's client-side resource-attachment behavior, verify feasibility before committing
+
+---
+
 ## Completed
 
 <!-- Move completed items here with ✅ prefix and completion date -->

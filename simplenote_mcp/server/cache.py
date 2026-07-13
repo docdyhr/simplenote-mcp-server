@@ -498,9 +498,15 @@ class NoteCache:
                     change_count += 1
                     changed_ids.add(note_id)
             else:
-                # Note was created or updated
-                self._notes[note_id] = note
-                self._record_access(note_id)
+                # Note was created or updated outside Claude (e.g. edited in the
+                # native Simplenote app). Route through the same tag/title/word
+                # index maintenance the tool-handler create/update path uses,
+                # so these notes stay fully searchable and tag-filterable
+                # instead of only being present in self._notes.
+                if note_id in self._notes:
+                    self.update_cache_after_update(note)
+                else:
+                    self.update_cache_after_create(note)
                 change_count += 1
                 changed_ids.add(note_id)
 
