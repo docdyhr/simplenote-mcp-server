@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Tag-space sanitization inconsistency**: `add_tags` and `remove_tags` called the shared
+  `_parse_tags()` sanitizer and discarded its result, then rebuilt the tag list via a separate,
+  unsanitized path — `add_tags(tags="my tag")` stored `"my tag"` verbatim while
+  `create_note(tags="my tag")` stored `"my-tag"`. A tag added with a space could then never be
+  removed via `remove_tags` using the same string, since it no longer matched the hyphenated
+  stored form. `update_note` and `rename_tag` had their own separate, also-unsanitized or
+  duplicate implementations. All tag-accepting tools — including `search_notes`'s `tags` filter —
+  now route through the same `ToolHandlerBase._parse_tags()` sanitizer.
+- **`search_notes` returned unbounded results**: the tool schema documents a default `limit` of
+  20, but omitting `limit` returned every matching note with no cap. Now enforces the documented
+  default (20) and a hard cap of 100, matching `list_notes`'s existing behavior.
+- **Notes edited outside Claude were invisible to tag/word search**: notes arriving via
+  `BackgroundSync` (e.g. edited in the native Simplenote app) updated the note cache but never
+  rebuilt `_tag_index`/`_word_index`/`_title_index` — such notes were retrievable via `get_note`
+  but invisible to `list_tags`, tag-filtered `search_notes`, `rename_tag`, and
+  `find_untagged_notes`. `_process_sync_notes()` now routes through the same index maintenance
+  the create/update tool-handler path uses.
+- **Initial cache load skipped title/word indexing**: the non-blocking startup path sets
+  `cache._initialized = True` before notes are loaded (by design, to avoid blocking server
+  start), which defeats `NoteCache.initialize()`'s own re-entrancy guard — so the
+  retry-hardened full initializer (the only code path that built the title/word index) silently
+  no-opped, and only the tag index was ever built for notes from the initial background load.
+  `_populate_cache_direct()` now builds the full tag/title/word index via the same
+  `_build_all_indexes()` used by `initialize()`.
+
+### Changed
+- Declared JSON schema for `tags` unified to `array<string>` across all tag-accepting tools
+  (`create_note`, `update_note`, `add_tags`, `remove_tags`, `replace_tags`, `search_notes`);
+  comma-separated strings are still accepted for backward compatibility.
+- `SecurityValidator.validate_arguments()`'s tag count/length/character validation now applies
+  to all 8 tag-accepting tools (`create_note`, `update_note`, `add_tags`, `remove_tags`,
+  `replace_tags`, `get_or_create_note`, `bulk_tag`), not just 3.
+
+### Docs
+- `SECURITY.md` corrected: removed false "encryption at rest" and "memory protection" claims
+  (Simplenote itself has no encryption at rest — see the new Data Protection section), refreshed
+  the stale version-support table and aspirational quarterly-pentest/annual-audit language to
+  reflect this being a solo-maintained open-source project.
+- `ROADMAP.md`/`TODO.md` refreshed to the current tool count (27) and version (1.17.1), with the
+  next roadmap phases (correctness hardening, opt-in client-side note encryption, companion
+  architecture layer) added.
+
 ## [1.17.1] - 2026-06-24
 
 ### Fixed

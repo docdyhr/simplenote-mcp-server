@@ -443,6 +443,15 @@ class SecurityValidator:
                 self.validate_note_content(arguments["content"], f"{tool_name} content")
                 validated_args["content"] = arguments["content"]
 
+        if tool_name in [
+            "create_note",
+            "update_note",
+            "add_tags",
+            "remove_tags",
+            "replace_tags",
+            "get_or_create_note",
+            "bulk_tag",
+        ]:
             if "tags" in arguments:
                 validated_args["tags"] = self.validate_tags(
                     arguments["tags"], f"{tool_name} tags"

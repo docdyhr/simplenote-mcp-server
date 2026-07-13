@@ -32,14 +32,12 @@ Please include the following information in your report:
 
 ## 🛡️ Supported Versions
 
-We provide security updates for the following versions:
+Only the latest released version is actively maintained. This is a solo-maintained open-source project — security fixes land on `main` and are released promptly, but there is no formal backport program for older minor versions.
 
-| Version | Supported          | End of Support |
-| ------- | ------------------ | -------------- |
-| 1.9.x   | ✅ Yes             | TBD            |
-| 1.8.x   | ✅ Yes             | 2025-04-01     |
-| 1.7.x   | ⚠️ Critical only   | 2025-02-01     |
-| < 1.7   | ❌ No              | 2025-01-01     |
+| Version | Supported          |
+| ------- | ------------------ |
+| 1.17.x  | ✅ Yes             |
+| < 1.17  | ❌ No — please upgrade |
 
 ## 📊 Security Monitoring
 
@@ -74,10 +72,11 @@ For detailed information about our automated security monitoring and maintenance
 - **Credential Protection**: Secure handling of Simplenote credentials
 
 ### Data Protection
-- **Sensitive Data Redaction**: Automatic sanitization of logs and outputs
-- **Secure Transmission**: HTTPS/TLS for all external communications
-- **Memory Protection**: Secure handling of sensitive data in memory
-- **Log Security**: Comprehensive security event logging without exposing secrets
+- **Sensitive Data Redaction**: `password`/`token`/`secret`/`key` fields are redacted before logging or inclusion in tool-call error output (`security.py`, `middleware.py`)
+- **Secure Transmission**: HTTPS/TLS for all external communications (handled by the underlying `requests`/`urllib3`/`simplenote` client stack)
+- **Log Security**: Security events are logged with credential values redacted; log files themselves currently have no special filesystem permissions (tracked for hardening)
+- **No encryption at rest today**: note content is stored and transmitted as Simplenote itself handles it. **Simplenote does not encrypt notes at rest on its own servers** — this is a limitation of the underlying service, not this project, and Automattic's own documentation recommends against storing highly sensitive information in Simplenote. An opt-in, client-side note-encryption feature ("Vault") is planned — see [ROADMAP.md](ROADMAP.md#phase-9--vault-opt-in-client-side-encryption) — so sensitive notes can be encrypted locally before they ever reach Simplenote's API. Until that ships, do not store secrets, credentials, or highly sensitive personal data in unencrypted Simplenote notes.
+- **Local credential cache**: the Simperium auth token is cached locally at `~/.config/simplenote-mcp/<email>.token`, protected by `chmod 0600` (owner-only). This is a plaintext file, not OS-keychain-backed or encrypted — treat the same as any other locally-cached session token.
 
 ### Supply Chain Security
 - **Dependency Pinning**: Exact version pinning with SHA256 checksums
@@ -90,7 +89,7 @@ For detailed information about our automated security monitoring and maintenance
 ### Security Layers
 1. **Network Layer**: TLS encryption, secure protocols
 2. **Application Layer**: Input validation, rate limiting, authentication
-3. **Data Layer**: Encryption at rest, secure data handling
+3. **Data Layer**: Secure data handling in transit; encryption at rest is not yet implemented (Simplenote itself stores notes unencrypted — see Data Protection above; opt-in client-side encryption is planned, [ROADMAP.md](ROADMAP.md))
 4. **Monitoring Layer**: Security event logging, anomaly detection
 
 ### Security Controls
@@ -108,10 +107,9 @@ For detailed information about our automated security monitoring and maintenance
 - **Container Scanning**: Docker image vulnerability scanning
 
 ### Manual Security Testing
-- **Penetration Testing**: Quarterly security assessments
-- **Code Review**: Security-focused code review process
-- **Threat Modeling**: Regular threat model updates
-- **Security Audits**: Annual third-party security audits
+- **Code Review**: Security-focused review on every PR touching credential handling, validation, or (once shipped) the Vault encryption module
+- **Threat Modeling**: Revisited when the trust boundary changes materially (e.g. the Vault feature, planned in [ROADMAP.md](ROADMAP.md))
+- This is a solo-maintained open-source project — there is no scheduled third-party audit or penetration-testing program. Responsible disclosures are welcome (see Reporting above) and are the primary source of external security review.
 
 ## 📊 Security Monitoring
 
@@ -222,15 +220,12 @@ docker run --user mcp:mcp \
 ## 📅 Security Review Schedule
 
 ### Regular Reviews
-- **Daily**: Automated security scanning and monitoring
-- **Weekly**: Security log review and incident analysis
-- **Monthly**: Security metrics review and trending analysis
-- **Quarterly**: Penetration testing and vulnerability assessment
-- **Annually**: Comprehensive security audit and policy review
+- **Every push/PR**: Bandit static analysis + pip-audit CVE scan (`unified-ci.yml`)
+- **Weekly**: Scheduled Bandit/dependency security scan (`security.yml`, Monday 03:00 UTC) + Dependabot dependency updates
+- **Ad hoc**: Security-impact review for releases that touch credential handling, validation, or the Vault encryption module
 
 ### Version-Based Reviews
-- **Major Releases**: Complete security review and threat model update
-- **Minor Releases**: Security impact assessment and testing
+- **Minor/Major Releases**: Security-relevant changes called out in [CHANGELOG.md](CHANGELOG.md)
 - **Patch Releases**: Security-focused testing for critical fixes
 
 ## 🏅 Security Acknowledgments
@@ -244,24 +239,16 @@ We acknowledge and thank the following individuals and organizations for their c
 
 ## 📖 Changelog
 
-### 2024-07-27 - Version 1.6.0
-- ✅ Implemented comprehensive input validation system
-- ✅ Added rate limiting and request validation middleware  
-- ✅ Enhanced dependency management with pinned versions and checksums
-- ✅ Automated security scanning in CI/CD pipeline
-- ✅ Security monitoring and alerting system
+See [CHANGELOG.md](CHANGELOG.md) for the full, version-by-version history — it is kept current on every release and is the authoritative record. Security-relevant highlights:
 
-### 2024-07-19 - Security Hardening
-- ✅ Fixed clear-text logging of sensitive information (CWE-312/359/532)
-- ✅ Fixed incomplete URL substring sanitization (CWE-020)
-- ✅ Fixed missing GitHub Actions workflow permissions (CWE-275)
-- ✅ Implemented principle of least privilege
-- ✅ Enhanced input validation and error handling
+- **v1.17.1**: macOS keychain auth hardening (three-step Simperium token resolution), clean `AuthenticationError` instead of leaking raw `TypeError`, log-monitor false-positive-alert fix
+- **v1.16.0**: Memory leak in `SecurityValidator.failed_validation_attempts` patched (unbounded growth under sustained load); CodeQL findings resolved
+- **v1.12.1**: Memory leak in security event tracking capped; test isolation hardening for auth/security singletons
+- **Planned (Phase 9, see [ROADMAP.md](ROADMAP.md))**: opt-in client-side note encryption ("Vault") to close the encryption-at-rest gap described above
 
 ---
 
-**Last Updated**: 2024-07-27  
-**Next Review**: 2024-10-27  
-**Version**: 1.6.0
+**Last Updated**: 2026-07-13
+**Version**: 1.17.1
 
 For questions about this security policy, please contact: docdyhr@me.com

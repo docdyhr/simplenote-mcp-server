@@ -474,9 +474,17 @@ async def _populate_cache_direct(cache: NoteCache, sn: Any) -> None:
                     note_id = note.get("key")
                     if note_id:
                         cache._notes[note_id] = note
-                        if "tags" in note and note["tags"]:
-                            cache._tags.update(note["tags"])
-                            cache._build_tag_index(note_id, note["tags"])
+                # Build tag, title, and word indexes for every note — matching
+                # NoteCache.initialize()'s indexing. cache._initialized is
+                # already True by the time this runs (set in
+                # _create_minimal_cache for non-blocking startup), which
+                # means initialize()'s own re-entrancy guard makes it a no-op
+                # later, so this direct-load path is the only place the
+                # initial note set gets indexed. Without this, only the tag
+                # index was built — title/word search were blind to every
+                # note until it was individually touched by a create/update
+                # tool call.
+                cache._build_all_indexes()
             finally:
                 cache._lock.release()
             logger.info(f"Direct API load successful, loaded {len(all_notes)} notes")
@@ -914,8 +922,9 @@ async def handle_list_tools() -> list[types.Tool]:
                             "description": "Number of results to skip for pagination (default: 0)",
                         },
                         "tags": {
-                            "type": "string",
-                            "description": "Tags to filter by (comma-separated list of tags that must all be present). Use 'untagged' to find notes without tags.",
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Tags to filter by — all must be present (array of strings; a comma-separated string is also accepted). Use 'untagged' to find notes without tags.",
                         },
                         "from_date": {
                             "type": "string",
@@ -1085,8 +1094,9 @@ async def handle_list_tools() -> list[types.Tool]:
                             "description": "The content of the note",
                         },
                         "tags": {
-                            "type": "string",
-                            "description": "Tags for the note (comma-separated)",
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Tags for the note (array of strings; a comma-separated string is also accepted)",
                         },
                     },
                     "required": ["content"],
@@ -1113,8 +1123,9 @@ async def handle_list_tools() -> list[types.Tool]:
                             "description": "The new content of the note",
                         },
                         "tags": {
-                            "type": "string",
-                            "description": "Tags for the note (comma-separated)",
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Tags for the note (array of strings; a comma-separated string is also accepted)",
                         },
                     },
                     "required": ["note_id", "content"],
@@ -1153,8 +1164,9 @@ async def handle_list_tools() -> list[types.Tool]:
                             "description": "The ID of the note to modify",
                         },
                         "tags": {
-                            "type": "string",
-                            "description": "Tags to add (comma-separated)",
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Tags to add (array of strings; a comma-separated string is also accepted)",
                         },
                     },
                     "required": ["note_id", "tags"],
@@ -1175,8 +1187,9 @@ async def handle_list_tools() -> list[types.Tool]:
                             "description": "The ID of the note to modify",
                         },
                         "tags": {
-                            "type": "string",
-                            "description": "Tags to remove (comma-separated)",
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Tags to remove (array of strings; a comma-separated string is also accepted)",
                         },
                     },
                     "required": ["note_id", "tags"],
@@ -1197,8 +1210,9 @@ async def handle_list_tools() -> list[types.Tool]:
                             "description": "The ID of the note to modify",
                         },
                         "tags": {
-                            "type": "string",
-                            "description": "New tags (comma-separated)",
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "New tags — replaces the full tag list (array of strings; a comma-separated string is also accepted)",
                         },
                     },
                     "required": ["note_id", "tags"],

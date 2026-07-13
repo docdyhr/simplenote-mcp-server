@@ -228,9 +228,12 @@ async def test_search_with_limit(mock_simplenote_client):
         # Check result structure
         assert "results" in result_limited_data, "Results key missing in response"
 
-        # First, get the total possible results to compare with
+        # First, get the total possible results to compare with. search_notes
+        # defaults to limit=20 and caps at 100 (an omitted limit is no longer
+        # unbounded), so request the max explicitly rather than relying on the
+        # fixture staying under the default.
         result_unlimited = await helper_handle_call_tool(
-            "search_notes", {"query": ".", "tags": "work"}
+            "search_notes", {"query": ".", "tags": "work", "limit": "100"}
         )
         result_unlimited_data = json.loads(result_unlimited[0].text)
 
@@ -287,6 +290,41 @@ async def test_search_with_limit(mock_simplenote_client):
             ], (
                 f"Got unexpected note {note.get('id')}, expected one of the project notes"
             )
+
+
+@pytest.mark.asyncio
+async def test_search_notes_omitted_limit_defaults_to_20():
+    """search_notes must cap at the documented default of 20 when limit is omitted.
+
+    Regression test: SearchNotesHandler._process_limit() previously left limit=None
+    when omitted, and the cache-level search then returned every matching note —
+    contradicting the tool schema's documented "default: 20".
+    """
+    mock_client = MagicMock()
+    mock_client.get_note_list.return_value = ([], 0)
+    cache = NoteCache(mock_client)
+
+    # 25 matching notes — more than the default of 20, fewer than the 100 cap.
+    for i in range(25):
+        note_id = f"note{i}"
+        cache._notes[note_id] = {
+            "key": note_id,
+            "content": "widget report",
+            "tags": [],
+            "modifydate": "2025-04-01T12:00:00",
+        }
+    cache._initialized = True
+
+    with patch("simplenote_mcp.server.server.note_cache", cache):
+        omitted = await helper_handle_call_tool("search_notes", {"query": "widget"})
+        omitted_data = json.loads(omitted[0].text)
+        assert len(omitted_data["results"]) == 20
+
+        explicit_high = await helper_handle_call_tool(
+            "search_notes", {"query": "widget", "limit": "100"}
+        )
+        explicit_high_data = json.loads(explicit_high[0].text)
+        assert len(explicit_high_data["results"]) == 25
 
 
 @pytest.mark.asyncio
