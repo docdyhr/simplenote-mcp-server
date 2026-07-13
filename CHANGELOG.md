@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **`session-handoff` MCP Prompt**: scaffolds the Session Continuity workflow — takes `project`
+  (required) plus optional `status`/`next_steps`/`blockers`, and returns instructions to call
+  `get_or_create_note` + `add_text` with the canonical `Status:`/`Next:`/`Blockers:` format used
+  for cross-session handoff notes. 3 prompts total (was 2).
 - **Vault — opt-in client-side note encryption**: Simplenote has no encryption at rest
   (Automattic's own docs confirm staff can technically read note content and recommend against
   storing sensitive data there). `create_note`/`update_note` now accept `encrypt: true`, and new
@@ -36,6 +40,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 27 registered tools → 30 (9 read + 21 write).
 
 ### Fixed
+- **MCP Resources silently dropped tags/dates/pagination metadata**: `handle_list_resources` and
+  `handle_read_resource` computed this metadata and attached it via bare dynamic attributes
+  (`resource.tags = ...`) that aren't part of the `Resource`/`TextResourceContents` schema — a
+  spec-compliant client has no obligation to preserve unrecognized top-level fields. Now attached
+  via the MCP spec's dedicated `_meta` extension field, the correct mechanism for this. The first
+  resource in a `list_resources` page also now carries `pagination` in its `_meta`, fulfilling a
+  contract the docstring already documented but the code never delivered. Tag/date info
+  additionally folds into the human-readable `description` string for clients that only render
+  that field.
 - **Tag-space sanitization inconsistency**: `add_tags` and `remove_tags` called the shared
   `_parse_tags()` sanitizer and discarded its result, then rebuilt the tag list via a separate,
   unsanitized path — `add_tags(tags="my tag")` stored `"my tag"` verbatim while
@@ -89,6 +102,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ROADMAP.md`/`TODO.md` refreshed to the current tool count (30) and version, with Phase 8
   (correctness hardening) and Phase 9 (Vault) marked shipped and Phase 10 (companion architecture
   layer) as the remaining item.
+- `ROADMAP.md`/`TODO.md`: documented the outcome of the `simplenote://recent` auto-context
+  resource spike — investigated and decided against building it. MCP Resources in Claude Desktop
+  are user-attached, not auto-loaded into a conversation at session start, so a curated resource
+  wouldn't deliver the "automatic" value the idea was chasing. The existing tool-based path
+  (`search_notes`/`get_or_create_note`, now paired with the `session-handoff` prompt) already
+  solves proactive context-pulling, since tools — unlike resources — are always available for the
+  model to call on its own initiative.
 - New `docs/security/encryption-design.md`: full Vault threat model, envelope format, key
   management design, and documented limitations.
 - `LIVE_TESTING.md` extended with a Vault section (`vault_status`, `encrypt_note`, `decrypt_note`,

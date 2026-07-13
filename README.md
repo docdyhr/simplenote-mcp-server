@@ -46,6 +46,11 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 **Vault — opt-in client-side note encryption**: Simplenote has no encryption at rest. `create_note`/`update_note` now accept `encrypt: true`, and `encrypt_note`/`decrypt_note` convert existing notes — bodies become AES-256-GCM ciphertext before they ever reach Simplenote's API. See [docs/security/encryption-design.md](docs/security/encryption-design.md).
 
+MCP Resources and Prompts hardened for the working-memory companion use case:
+
+- **Fixed**: `list_resources`/`read_resource` were silently dropping tag/date/pagination metadata via non-schema fields — now attached through the MCP spec's `_meta` extension field, the correct mechanism.
+- **`session-handoff` MCP Prompt**: scaffolds the Session Continuity workflow (`get_or_create_note` + `add_text` with a `Status:`/`Next:`/`Blockers:` format) for cross-session context handoff.
+
 Irreversible-deletion tools with mandatory safety guards:
 
 - **`permanent_delete_note`**: Permanently destroy a single note; requires `confirm=true`; dry-run preview by default

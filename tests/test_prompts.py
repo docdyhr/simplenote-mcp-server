@@ -17,7 +17,7 @@ class TestPromptCapabilities:
         prompts = await handle_list_prompts()
 
         # Verify prompt count
-        assert len(prompts) == 2
+        assert len(prompts) == 3
 
         # Verify first prompt (create_note_prompt)
         create_prompt = prompts[0]
@@ -36,6 +36,15 @@ class TestPromptCapabilities:
         assert len(search_prompt.arguments) == 1
         assert search_prompt.arguments[0].name == "query"
         assert search_prompt.arguments[0].required is True
+
+        # Verify third prompt (session_handoff_prompt)
+        handoff_prompt = prompts[2]
+        assert handoff_prompt.name == "session_handoff_prompt"
+        assert len(handoff_prompt.arguments) == 4
+        arg_names = [a.name for a in handoff_prompt.arguments]
+        assert arg_names == ["project", "status", "next_steps", "blockers"]
+        assert handoff_prompt.arguments[0].required is True
+        assert all(not a.required for a in handoff_prompt.arguments[1:])
 
     async def test_get_prompt_create_note(self):
         """Test getting the create_note_prompt."""
@@ -91,6 +100,53 @@ class TestPromptCapabilities:
                 mock_result.call_args[1]["description"]
                 == "Search for notes in Simplenote"
             )
+
+    async def test_get_prompt_session_handoff(self):
+        """Test getting the session_handoff_prompt."""
+        with (
+            patch("mcp.types.PromptMessage") as mock_prompt_message,
+            patch("mcp.types.TextContent") as mock_text_content,
+            patch("mcp.types.GetPromptResult") as mock_result,
+        ):
+            mock_text_content.return_value = MagicMock()
+            mock_prompt_message.return_value = MagicMock()
+            mock_result.return_value = MagicMock()
+
+            await handle_get_prompt(
+                "session_handoff_prompt",
+                {
+                    "project": "drop2md",
+                    "status": "Secrets configured",
+                    "next_steps": "Test the release workflow",
+                    "blockers": "none",
+                },
+            )
+
+            mock_result.assert_called_once()
+            assert mock_prompt_message.call_count == 2
+            assert (
+                mock_result.call_args[1]["description"]
+                == "Write a session handoff note for cross-session continuity"
+            )
+
+    async def test_get_prompt_session_handoff_content(self):
+        """session_handoff_prompt must reference get_or_create_note/add_text
+        and the project name, and fill sensible placeholders for optional
+        arguments that weren't provided."""
+        result = await handle_get_prompt(
+            "session_handoff_prompt", {"project": "drop2md"}
+        )
+
+        assert result.description == (
+            "Write a session handoff note for cross-session continuity"
+        )
+        combined_text = " ".join(
+            msg.content.text for msg in result.messages if hasattr(msg.content, "text")
+        )
+        assert "get_or_create_note" in combined_text
+        assert "add_text" in combined_text
+        assert "drop2md" in combined_text
+        assert "Blockers: none" in combined_text
 
     async def test_get_prompt_missing_arguments(self):
         """Test getting a prompt with missing arguments."""

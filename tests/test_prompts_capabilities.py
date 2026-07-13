@@ -15,7 +15,7 @@ class TestPromptCapabilities:
         prompts = await handle_list_prompts()
 
         # Verify prompt count
-        assert len(prompts) == 2
+        assert len(prompts) == 3
 
         # Verify first prompt (create_note_prompt)
         create_prompt = prompts[0]

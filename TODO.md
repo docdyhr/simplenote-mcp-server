@@ -246,13 +246,11 @@ Simplenote has no encryption at rest (confirmed via Automattic's own docs — se
 - [x] `[P2]` **Safety guards** (beyond original scope, added during implementation): `add_text`/`replace_section` refuse on Vault-encrypted notes; `find_and_merge_duplicates` excludes them
 - [ ] `[P2]` **`LIVE_TESTING.md`** entries for the new vault tools (keychain-prompt UX needs a real Claude Desktop session, not just unit tests) — see LIVE_TESTING.md
 
-## v1.20 — Companion Architecture Layer (Phase 10)
+## v1.20 — Companion Architecture Layer (Phase 10) ✅
 
-Lower priority, sequenced last on purpose.
-
-- [ ] `[P2]` **Fix MCP Resources metadata loss** — `handle_list_resources`/`handle_read_resource` (`server.py:614-814`) compute tags/pagination then attach them via non-schema `types.Resource` attributes that are silently dropped before reaching any real client. Fold into the real `description` field instead.
-- [ ] `[P3]` **Add a `session-handoff` MCP Prompt** scaffolding the Session Continuity workflow format (see ROADMAP.md workflow table)
-- [ ] `[P3]` **Spike**: a curated `simplenote://recent`-style resource for conversation-start auto-context — depends on Claude Desktop's client-side resource-attachment behavior, verify feasibility before committing
+- [x] `[P2]` **Fix MCP Resources metadata loss** — tags/dates/pagination now attached via the MCP spec's `_meta` field (correct extension mechanism) instead of non-schema dynamic attributes; also folded into `description` for clients that only render that.
+- [x] `[P3]` **Add a `session-handoff` MCP Prompt** scaffolding the Session Continuity workflow format (see ROADMAP.md workflow table)
+- [x] `[P3]` **Spike**: a curated `simplenote://recent`-style resource for conversation-start auto-context — **investigated, decided not to build**: MCP Resources in Claude Desktop are user-attached, not auto-loaded at session start; the tool-based path (`search_notes`/`get_or_create_note` + the new `session-handoff` prompt) already solves proactive context-pulling since tools, unlike resources, are always available for the model to call on its own initiative. See ROADMAP.md Phase 10 for full reasoning.
 
 ---
 

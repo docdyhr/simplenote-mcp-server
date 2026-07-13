@@ -46,6 +46,59 @@ class TestWorkingFunctions:
         assert len(result) >= 2  # May include pagination metadata
 
     @pytest.mark.asyncio
+    async def test_handle_list_resources_attaches_tags_dates_via_meta(self):
+        """Regression test: tags/dates/pagination were previously attached via
+        bare dynamic attributes (resource.tags = ...) that aren't part of the
+        MCP Resource schema — a spec-compliant client has no obligation to
+        preserve them. They must go through the schema's `_meta` extension
+        field instead.
+        """
+        mock_note_cache = Mock()
+        mock_notes = [
+            {
+                "key": "note1",
+                "content": "Title One\nBody text",
+                "tags": ["work", "urgent"],
+                "modifydate": "2023-01-01",
+                "createdate": "2022-12-01",
+            },
+            {
+                "key": "note2",
+                "content": "Title Two\nMore body",
+                "tags": [],
+                "modifydate": "2023-01-02",
+                "createdate": "2022-12-02",
+            },
+        ]
+        mock_note_cache.get_all_notes.return_value = mock_notes
+        mock_note_cache.get_pagination_info.return_value = {
+            "total": 2,
+            "page": 1,
+            "total_pages": 1,
+            "has_more": False,
+        }
+
+        with patch("simplenote_mcp.server.server.note_cache", mock_note_cache):
+            result = await handle_list_resources()
+
+        assert len(result) == 2
+        first, second = result
+
+        assert first.meta["tags"] == ["work", "urgent"]
+        assert first.meta["modifydate"] == "2023-01-01"
+        assert first.meta["createdate"] == "2022-12-01"
+        assert "urgent" in first.description
+
+        # Pagination info is documented to live on the first resource only.
+        assert first.meta["pagination"]["total"] == 2
+        assert "pagination" not in second.meta
+
+        # No leftover non-schema dynamic attributes from the old approach.
+        assert not hasattr(first, "key")
+        assert not hasattr(first, "content")
+        assert not hasattr(first, "tags")
+
+    @pytest.mark.asyncio
     async def test_handle_list_resources_no_cache(self):
         """Test handle_list_resources when cache is None."""
         with patch("simplenote_mcp.server.server.note_cache", None):
