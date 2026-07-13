@@ -30,5 +30,8 @@
   "license": "MIT",
   "dependencies": {
     "tsx": "^4.20.3"
+  },
+  "overrides": {
+    "undici": "^6.27.0"
   }
 }
