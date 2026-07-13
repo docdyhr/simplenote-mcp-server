@@ -56,9 +56,9 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Set up Python
-        uses: ece7cb06caefa5fff74198d8649806c4678c61a1 # actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload security reports
         if: always()
-        uses: 043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: security-reports-${{ github.run_id }}
           path: |
@@ -113,9 +113,9 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Set up Python
-        uses: ece7cb06caefa5fff74198d8649806c4678c61a1 # actions/setup-python@v6
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -164,7 +164,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
       - name: Validate README badges
         run: |
           echo "Validating badges in README.md..."
