@@ -444,6 +444,10 @@ jobs:
       - name: Create check run
         if: always()
         uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
+        # Convention: pass workflow/job values in via env: and read them from process.env
+        # in the script below. Do NOT interpolate ${{ }} directly into the script: body —
+        # an untrusted value containing a quote can break out of the JS string literal
+        # (script injection). See https://github.com/docdyhr/simplenote-mcp-server/pull/703
         env:
           PASS_RATE: ${{ needs.run-evaluations.outputs.pass-rate || '0' }}
           QUALITY_GATE_PASSED: ${{ needs.run-evaluations.outputs.quality-gate-passed }}
