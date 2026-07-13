@@ -9,9 +9,11 @@ skips:
 
 # B105 (hardcoded_password_string) is intentionally NOT skipped — kept active
 # so key-handling code (e.g. simplenote_mcp/server/vault.py) is guarded
-# against accidentally hardcoded secrets. Use a targeted `# noqa: S105` on a
-# specific line if it's a genuine false positive (e.g. an enum value string
-# that merely contains the word "token"), not a blanket skip here.
+# against accidentally hardcoded secrets. Use a targeted `# nosec B105` (the
+# Bandit-native suppression syntax — `# noqa` is a ruff/flake8 convention
+# Bandit does not understand) on a specific line if it's a genuine false
+# positive (e.g. an enum value string that merely contains the word
+# "token"), not a blanket skip here.
 
 # Only report medium and high severity issues
 # confidence:
