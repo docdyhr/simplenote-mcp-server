@@ -218,3 +218,123 @@ class TestKeyProvisioning:
             pytest.raises(vault.VaultKeyUnavailableError),
         ):
             vault.get_or_create_vault_key()
+
+
+@pytest.mark.unit
+class TestKeyFailClosed:
+    """A key file/keychain entry that exists but is corrupt must never be
+    silently regenerated — that would permanently orphan any notes already
+    encrypted with the original key. Missing (never provisioned) must still
+    generate a fresh key as before."""
+
+    def test_missing_key_file_still_generates(self, tmp_path):
+        """Regression guard: only genuinely-absent files are safe to replace."""
+        key_file = tmp_path / "does_not_exist.key"
+        with patch.dict(os.environ, {"SIMPLENOTE_VAULT_KEY_FILE": str(key_file)}):
+            resolved = vault.get_or_create_vault_key()
+        assert len(resolved) == 32
+        assert key_file.exists()
+
+    def test_malformed_base64_key_file_raises_and_is_not_overwritten(self, tmp_path):
+        key_file = tmp_path / "vault.key"
+        key_file.write_text("not-valid-base64!!!")
+        original_content = key_file.read_text()
+
+        with (
+            patch.dict(os.environ, {"SIMPLENOTE_VAULT_KEY_FILE": str(key_file)}),
+            pytest.raises(vault.VaultKeyCorruptedError),
+        ):
+            vault.get_or_create_vault_key()
+
+        assert key_file.read_text() == original_content
+
+    def test_wrong_length_key_file_raises_and_is_not_overwritten(self, tmp_path):
+        key_file = tmp_path / "vault.key"
+        short_key = base64.b64encode(os.urandom(16)).decode("ascii")  # 16, not 32
+        key_file.write_text(short_key)
+
+        with (
+            patch.dict(os.environ, {"SIMPLENOTE_VAULT_KEY_FILE": str(key_file)}),
+            pytest.raises(vault.VaultKeyCorruptedError),
+        ):
+            vault.get_or_create_vault_key()
+
+        assert key_file.read_text() == short_key
+
+    def test_empty_key_file_raises_and_is_not_overwritten(self, tmp_path):
+        key_file = tmp_path / "vault.key"
+        key_file.write_text("")
+
+        with (
+            patch.dict(os.environ, {"SIMPLENOTE_VAULT_KEY_FILE": str(key_file)}),
+            pytest.raises(vault.VaultKeyCorruptedError),
+        ):
+            vault.get_or_create_vault_key()
+
+        assert key_file.read_text() == ""
+
+    def test_unreadable_key_file_raises(self, tmp_path):
+        key_file = tmp_path / "vault.key"
+        key_file.write_text(base64.b64encode(os.urandom(32)).decode("ascii"))
+        key_file.chmod(0o000)
+
+        try:
+            with (
+                patch.dict(os.environ, {"SIMPLENOTE_VAULT_KEY_FILE": str(key_file)}),
+                pytest.raises(vault.VaultKeyCorruptedError),
+            ):
+                vault.get_or_create_vault_key()
+        finally:
+            key_file.chmod(0o600)  # restore so tmp_path cleanup can remove it
+
+    def test_has_vault_key_raises_for_corrupted_file_rather_than_false(self, tmp_path):
+        """A corrupt key must be distinguishable from 'not configured yet' —
+        collapsing both to False would hide a real problem from callers
+        like vault_status."""
+        key_file = tmp_path / "vault.key"
+        key_file.write_text("not-valid-base64!!!")
+
+        with (
+            patch.dict(os.environ, {"SIMPLENOTE_VAULT_KEY_FILE": str(key_file)}),
+            pytest.raises(vault.VaultKeyCorruptedError),
+        ):
+            vault.has_vault_key()
+
+    def test_malformed_base64_in_keyring_raises_and_is_not_overwritten(self):
+        stored = {("simplenote-mcp-vault", "vault-master-key"): "not-valid-base64!!!"}
+
+        def fake_set_password(service, username, password):
+            stored[(service, username)] = password
+
+        def fake_get_password(service, username):
+            return stored.get((service, username))
+
+        with (
+            patch("keyring.get_password", side_effect=fake_get_password),
+            patch("keyring.set_password", side_effect=fake_set_password),
+            pytest.raises(vault.VaultKeyCorruptedError),
+        ):
+            vault.get_or_create_vault_key()
+
+        assert stored[("simplenote-mcp-vault", "vault-master-key")] == (
+            "not-valid-base64!!!"
+        )
+
+    def test_wrong_length_key_in_keyring_raises_and_is_not_overwritten(self):
+        short_key_b64 = base64.b64encode(os.urandom(16)).decode("ascii")
+        stored = {("simplenote-mcp-vault", "vault-master-key"): short_key_b64}
+
+        def fake_set_password(service, username, password):
+            stored[(service, username)] = password
+
+        def fake_get_password(service, username):
+            return stored.get((service, username))
+
+        with (
+            patch("keyring.get_password", side_effect=fake_get_password),
+            patch("keyring.set_password", side_effect=fake_set_password),
+            pytest.raises(vault.VaultKeyCorruptedError),
+        ):
+            vault.get_or_create_vault_key()
+
+        assert stored[("simplenote-mcp-vault", "vault-master-key")] == short_key_b64

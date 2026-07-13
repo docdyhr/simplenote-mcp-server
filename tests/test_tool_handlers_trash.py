@@ -3,6 +3,7 @@
 import json
 from unittest.mock import MagicMock
 
+import mcp.types as types
 import pytest
 
 from simplenote_mcp.server.tool_handlers import (
@@ -106,7 +107,9 @@ class TestPermanentDeleteNoteHandler:
     async def test_missing_note_id_returns_error(self, handler):
         """Missing note_id returns an error response."""
         result = await handler.handle({"confirm": True})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
 
@@ -117,7 +120,9 @@ class TestPermanentDeleteNoteHandler:
         mock_client.get_note.return_value = ({}, -1)
 
         result = await handler.handle({"note_id": "missing", "confirm": True})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
 
@@ -131,7 +136,9 @@ class TestPermanentDeleteNoteHandler:
         mock_client.delete_note.return_value = ("error", -1)
 
         result = await handler.handle({"note_id": "abc", "confirm": True})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
 
@@ -145,7 +152,9 @@ class TestPermanentDeleteNoteHandler:
         mock_client.delete_note.side_effect = RuntimeError("network error")
 
         result = await handler.handle({"note_id": "abc", "confirm": True})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
 
@@ -332,7 +341,9 @@ class TestEmptyTrashHandler:
         mock_client.get_note_list.return_value = ([], -1)
 
         result = await handler.handle({"dry_run": True})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
 

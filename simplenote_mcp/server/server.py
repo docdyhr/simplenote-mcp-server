@@ -1663,7 +1663,9 @@ async def handle_list_tools() -> list[types.Tool]:
 @with_security_monitoring()
 @with_rate_limiting(max_requests=100, window_seconds=300)  # 100 requests per 5 minutes
 @with_request_validation()
-async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+async def handle_call_tool(
+    name: str, arguments: dict
+) -> list[types.TextContent] | types.CallToolResult:
     """Handle the call_tool capability using the new tool handler system.
 
     Args:
@@ -1714,9 +1716,12 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     "Set SIMPLENOTE_WRITE_MODE=true to enable write operations.",
                     subcategory="write_mode_disabled",
                 )
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
+                return types.CallToolResult(
+                    content=[
+                        types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                    ],
+                    isError=True,
+                )
             _check_write_budget()
 
         # Get handler from registry
@@ -1727,22 +1732,36 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             error_msg = UNKNOWN_TOOL_ERROR.format(name=name)
             logger.error(error_msg)
             error = ValidationError(error_msg)
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+            return types.CallToolResult(
+                content=[
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ],
+                isError=True,
+            )
 
-        # Execute the tool handler and record the write if it succeeded.
+        # Execute the tool handler and record the write only if it succeeded —
+        # a handler-level failure (isError=True) must not consume write budget.
         result = await handler.handle(arguments)
         if name in WRITE_TOOLS:
-            _record_write()
+            is_error = isinstance(result, types.CallToolResult) and result.isError
+            if not is_error:
+                _record_write()
         return result
 
     except Exception as e:
         if isinstance(e, ServerError):
             error_dict = e.to_dict()
-            return [types.TextContent(type="text", text=json.dumps(error_dict))]
+            return types.CallToolResult(
+                content=[types.TextContent(type="text", text=json.dumps(error_dict))],
+                isError=True,
+            )
 
         logger.error(f"Error in tool call: {str(e)}", exc_info=True)
         error = handle_exception(e, f"calling tool {name}")
-        return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+        return types.CallToolResult(
+            content=[types.TextContent(type="text", text=json.dumps(error.to_dict()))],
+            isError=True,
+        )
 
 
 # ===== PROMPT CAPABILITIES =====

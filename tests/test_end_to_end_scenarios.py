@@ -5,6 +5,7 @@ import json
 from typing import Any
 from unittest.mock import MagicMock, patch
 
+import mcp.types as types
 import pytest
 
 from simplenote_mcp.server.errors import ResourceNotFoundError
@@ -385,8 +386,9 @@ class TestEndToEndScenarios:
         )
 
         # Check that we got an error response
-        assert len(result) == 1
-        response = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        response = json.loads(result.content[0].text)
         assert response["error"] is not None  # Should contain error information
 
         # Scenario 2: Recovery after network failure
@@ -431,11 +433,15 @@ class TestEndToEndScenarios:
                 "create_note", {"content": content, "tags": tags}
             )
 
-            response = json.loads(result[0].text)
-            if response["success"]:
-                success_count += 1
-            else:
+            if isinstance(result, types.CallToolResult):
+                assert result.isError is True
                 failure_count += 1
+            else:
+                response = json.loads(result[0].text)
+                if response["success"]:
+                    success_count += 1
+                else:
+                    failure_count += 1
 
         # Should have partial success
         assert success_count >= 1

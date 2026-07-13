@@ -319,9 +319,9 @@ class TestHandleCallTool:
         ):
             result = await srv.handle_call_tool("nonexistent_tool", {})
 
-        assert isinstance(result, list)
-        assert len(result) == 1
-        payload = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        payload = json.loads(result.content[0].text)
         assert (
             "error" in payload or "message" in payload or "Unknown tool" in str(payload)
         )
@@ -359,9 +359,9 @@ class TestHandleCallTool:
         ):
             result = await srv.handle_call_tool("search_notes", {"query": "test"})
 
-        assert isinstance(result, list)
-        assert len(result) == 1
-        payload = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        payload = json.loads(result.content[0].text)
         # ServerError.to_dict() always has an "error" key
         assert "error" in payload
 
