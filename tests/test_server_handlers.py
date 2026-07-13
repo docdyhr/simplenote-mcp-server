@@ -520,7 +520,11 @@ class TestHandleReadResource:
         import simplenote_mcp.server.server as srv
 
         note_id = "abc123"
-        fake_note = {"key": note_id, "content": "cached content", "tags": []}
+        fake_note = {
+            "key": note_id,
+            "content": "cached content",
+            "tags": ["work"],
+        }
 
         mock_cache = MagicMock()
         mock_cache.is_initialized = True
@@ -531,11 +535,21 @@ class TestHandleReadResource:
             return_value=mock_cache,
         ):
             uri = AnyUrl(f"simplenote://note/{note_id}")
-            result = await srv.handle_read_resource(uri)
+            result = list(await srv.handle_read_resource(uri))
 
-        assert isinstance(result, types.ReadResourceResult)
-        assert len(result.contents) == 1
-        assert result.contents[0].text == "cached content"
+        # handle_read_resource must return Iterable[ReadResourceContents] —
+        # the @server.read_resource() decorator wraps this into
+        # ReadResourceResult itself. Returning a pre-built ReadResourceResult
+        # here would be silently misinterpreted as that Iterable (pydantic
+        # BaseModel defines __iter__), yielding (field_name, value) tuples
+        # instead of resource contents and crashing the real wire protocol.
+        assert len(result) == 1
+        assert result[0].content == "cached content"
+        assert result[0].meta == {
+            "tags": ["work"],
+            "modifydate": "",
+            "createdate": "",
+        }
 
     @pytest.mark.asyncio
     async def test_note_not_in_cache_fetched_from_api(self):
@@ -566,10 +580,9 @@ class TestHandleReadResource:
             ),
         ):
             uri = AnyUrl(f"simplenote://note/{note_id}")
-            result = await srv.handle_read_resource(uri)
+            result = list(await srv.handle_read_resource(uri))
 
-        assert isinstance(result, types.ReadResourceResult)
-        assert result.contents[0].text == "api content"
+        assert result[0].content == "api content"
 
     @pytest.mark.asyncio
     async def test_api_failure_raises_resource_not_found(self):

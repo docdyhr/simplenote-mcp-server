@@ -2,7 +2,7 @@
 
 > Make Simplenote the best note-taking companion for Claude Desktop: achieve full Bear parity, then surpass it with Simplenote-native capabilities no other note MCP can offer — and become a first-class layer of Claude's working memory, hardened for private data.
 
-**Current version**: v1.17.1 (unreleased Vault additions below) — 30 tools
+**Current version**: v1.17.1 released; Phases 8-10 below (correctness fixes, Vault, companion architecture) merged to `main` and awaiting the next version cut — 30 tools
 **Working checklist**: see [TODO.md](TODO.md)
 **Supersedes**: `docs/ROADMAP.md` (deprecated)
 

@@ -6,8 +6,6 @@ from typing import Any, cast
 from unittest.mock import MagicMock, patch
 
 import pytest
-from mcp import types as mcp_types
-from mcp.types import ReadResourceResult
 from pydantic import AnyUrl
 
 from simplenote_mcp.server.cache import NoteCache
@@ -152,20 +150,21 @@ class TestPerformance:
             # Add large note to cache
             setup_performance_cache._notes["large_note"] = large_note
 
-            # Measure read performance from cache
+            # Measure read performance from cache.
+            # handle_read_resource returns Iterable[ReadResourceContents] —
+            # the @server.read_resource() decorator wraps this into
+            # ReadResourceResult itself.
             start_time = time.time()
-            result = cast(
-                ReadResourceResult,
-                await handle_read_resource(AnyUrl("simplenote://note/large_note")),
+            result = list(
+                await handle_read_resource(AnyUrl("simplenote://note/large_note"))
             )
             cache_read_time = time.time() - start_time
             print(f"Reading large note from cache took {cache_read_time:.4f} seconds")
             assert cache_read_time < cache_read_threshold, (
                 "Reading from cache should be reasonably fast"
             )
-            first = result.contents[0]
-            assert isinstance(first, mcp_types.TextResourceContents)
-            assert len(first.text) > 10000
+            first = result[0]
+            assert len(first.content) > 10000
 
             # Simulate API read by removing from cache and setting up mock client
             del setup_performance_cache._notes["large_note"]

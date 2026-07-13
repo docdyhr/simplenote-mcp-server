@@ -40,6 +40,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 27 registered tools → 30 (9 read + 21 write).
 
 ### Fixed
+- **`read_resource` crashed over the real MCP wire protocol**: `handle_read_resource` returned a
+  pre-built `types.ReadResourceResult`, but the SDK's `@server.read_resource()` decorator expects
+  the handler to return `str | bytes | Iterable[ReadResourceContents]` and wraps that into a
+  `ReadResourceResult` itself. Because pydantic `BaseModel` defines `__iter__` (yielding
+  `(field_name, value)` tuples for `.dict()`-style conversion), the decorator's `isinstance(...,
+  Iterable)` check matched the returned `ReadResourceResult` too, then iterated it expecting
+  resource-content objects and got `(field_name, value)` tuples instead — raising
+  `'tuple' object has no attribute 'content'` on every real `read_resource` call. Every unit test
+  for this handler called it directly, bypassing the decorator, so none of them exercised the
+  actual dispatch path — only a live end-to-end run against a real MCP client caught it. Now
+  returns `list[ReadResourceContents]` as the SDK expects; five tests across
+  `tests/test_server_handlers.py`, `tests/test_server_advanced.py`,
+  `tests/test_end_to_end_scenarios.py`, `tests/test_api_interaction.py`, and
+  `tests/test_performance.py` updated to assert the corrected contract instead of the
+  never-actually-working one.
 - **MCP Resources silently dropped tags/dates/pagination metadata**: `handle_list_resources` and
   `handle_read_resource` computed this metadata and attached it via bare dynamic attributes
   (`resource.tags = ...`) that aren't part of the `Resource`/`TextResourceContents` schema — a
@@ -113,6 +128,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   management design, and documented limitations.
 - `LIVE_TESTING.md` extended with a Vault section (`vault_status`, `encrypt_note`, `decrypt_note`,
   verifying encrypted bodies never leak into search results or snippets).
+- `LIVE_TESTING.md`: added a new "MCP Resources & Prompts — Companion Architecture" section, and
+  recorded automated pass results (2026-07-13, 35/35 checks) for both it and the Vault section via
+  the new `simplenote_mcp/scripts/live_test_redesign.py` harness, which drives the real server
+  subprocess over the actual MCP stdio protocol rather than mocking the Simplenote client.
+  `README.md`'s test count corrected (1284 → 1289) and `ROADMAP.md`/`SECURITY.md` wording updated
+  now that Phases 8-10 are merged rather than pending.
 
 ## [1.17.1] - 2026-06-24
 

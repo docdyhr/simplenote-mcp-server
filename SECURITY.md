@@ -112,7 +112,7 @@ For detailed information about our automated security monitoring and maintenance
 
 ### Manual Security Testing
 - **Code Review**: Security-focused review on every PR touching credential handling, validation, or (once shipped) the Vault encryption module
-- **Threat Modeling**: Revisited when the trust boundary changes materially (e.g. the Vault feature, planned in [ROADMAP.md](ROADMAP.md))
+- **Threat Modeling**: Revisited when the trust boundary changes materially (e.g. the Vault feature — see [ROADMAP.md](ROADMAP.md) and `docs/security/encryption-design.md`)
 - This is a solo-maintained open-source project — there is no scheduled third-party audit or penetration-testing program. Responsible disclosures are welcome (see Reporting above) and are the primary source of external security review.
 
 ## 📊 Security Monitoring

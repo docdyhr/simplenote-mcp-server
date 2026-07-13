@@ -163,11 +163,11 @@ class TestEndToEndScenarios:
         # Mock get_note for individual note retrieval
         mock_client.get_note.return_value = (created_notes[0], 0)
 
-        note_resource = await handle_read_resource(
-            f"simplenote://note/{created_notes[0]['key']}"
+        note_resource = list(
+            await handle_read_resource(f"simplenote://note/{created_notes[0]['key']}")
         )
-        assert note_resource is not None
-        assert created_notes[0]["content"] in note_resource.contents[0].text
+        assert note_resource
+        assert created_notes[0]["content"] in note_resource[0].content
 
         # Step 6: Update a note (add tags)
         updated_note = created_notes[0].copy()
@@ -503,9 +503,11 @@ class TestEndToEndScenarios:
             note = large_dataset[idx]
             mock_client.get_note.return_value = (note, 0)
 
-            resource = await handle_read_resource(f"simplenote://note/{note['key']}")
-            assert resource is not None
-            assert note["content"] in resource.contents[0].text
+            resource = list(
+                await handle_read_resource(f"simplenote://note/{note['key']}")
+            )
+            assert resource
+            assert note["content"] in resource[0].content
 
         # Test 4: Batch operations on large dataset
         # Update multiple notes
