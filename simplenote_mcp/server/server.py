@@ -2407,6 +2407,12 @@ def run_main() -> None:
         # Configure logging from environment variables
         config = get_config()
 
+        # Fail fast on invalid configuration — before logging setup, PID
+        # file creation, or any background thread starts. Config.validate()
+        # raises ValueError, which the outer except below already handles
+        # correctly (log critical, clean up the PID file, exit 1).
+        config.validate()
+
         # Add debug information for environment variables to a safe debug file
         from .logging import debug_to_file
 
