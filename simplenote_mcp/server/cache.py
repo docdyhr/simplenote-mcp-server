@@ -20,6 +20,7 @@ from .monitoring.metrics import (
     update_cache_size,
 )
 from .search.engine import SearchEngine
+from .vault import VAULT_TAG
 
 # Global cache instance
 _cache_instance: Optional["NoteCache"] = None
@@ -229,7 +230,8 @@ class NoteCache:
                 self._build_title_index(note_id, content)
 
             # Build word index
-            for word in self._tokenize_for_index(content):
+            indexable = self._content_for_word_index(note, content)
+            for word in self._tokenize_for_index(indexable):
                 self._word_index.setdefault(word, set()).add(note_id)
 
             # Initialize LRU tracking
@@ -309,7 +311,8 @@ class NoteCache:
                         del self._title_index[first_word]
 
             # Remove from word index
-            for word in self._tokenize_for_index(content):
+            indexable = self._content_for_word_index(note, content)
+            for word in self._tokenize_for_index(indexable):
                 if word in self._word_index:
                     self._word_index[word].discard(note_id)
                     if not self._word_index[word]:
@@ -956,8 +959,20 @@ class NoteCache:
         # Take a shallow snapshot of the notes dict first: once we await the
         # executor the event loop is free to run background sync, which could
         # mutate self._notes and cause "dict changed size during iteration".
+        # Vault-encrypted note bodies are ciphertext, never searchable — the
+        # snapshot substitutes title-only content for the engine to match
+        # against, so encrypted bodies can never spuriously match a query and
+        # search results/snippets never surface raw ciphertext. Only notes
+        # tagged VAULT_TAG get a copied dict; everything else is unchanged.
         search_engine = SearchEngine(fuzzy=fuzzy) if fuzzy else self._search_engine
-        notes_snapshot = dict(notes_to_search)
+        notes_snapshot = {
+            note_id: (
+                {**note, "content": note.get("content", "").split("\n", 1)[0]}
+                if VAULT_TAG in (note.get("tags") or [])
+                else note
+            )
+            for note_id, note in notes_to_search.items()
+        }
         loop = asyncio.get_running_loop()
         try:
             all_results = await asyncio.wait_for(
@@ -1054,6 +1069,19 @@ class NoteCache:
             return ""
         words = first_line.split()
         return words[0] if words else ""
+
+    def _content_for_word_index(self, note: dict[str, Any] | None, content: str) -> str:
+        """Return the substring of content that should be word-indexed.
+
+        Vault-encrypted note bodies (simplenote_mcp/server/vault.py) are
+        ciphertext, not searchable text — indexing them would pollute the
+        word index with base64 noise and risk spurious substring matches.
+        Only the plaintext title line (line 1, which Vault always leaves
+        unencrypted) is indexed for such notes.
+        """
+        if note is not None and VAULT_TAG in (note.get("tags") or []):
+            return content.split("\n", 1)[0]
+        return content
 
     def _tokenize_for_index(self, content: str) -> set[str]:
         """Tokenize note content into index words.
@@ -1172,7 +1200,8 @@ class NoteCache:
             self._add_to_title_index(note_id, content)
 
         # Update word index
-        for word in self._tokenize_for_index(content):
+        indexable = self._content_for_word_index(note, content)
+        for word in self._tokenize_for_index(indexable):
             self._word_index.setdefault(word, set()).add(note_id)
 
         # Evict LRU notes if cache exceeds max size
@@ -1214,14 +1243,15 @@ class NoteCache:
         note_id = note["key"]
 
         # Remove old tags from indexes if note was already in cache
+        old_note = self._notes.get(note_id)
         old_content = ""
-        if note_id in self._notes:
-            old_tags = self._notes[note_id].get("tags", [])
+        if old_note is not None:
+            old_tags = old_note.get("tags", [])
             new_tags = note.get("tags", [])
             self._update_tags_on_update(note_id, old_tags, new_tags)
 
             # Update title index - remove old entries
-            old_content = self._notes[note_id].get("content", "")
+            old_content = old_note.get("content", "")
             if old_content:
                 self._remove_from_title_index(note_id, old_content)
 
@@ -1235,8 +1265,12 @@ class NoteCache:
             self._add_to_title_index(note_id, content)
 
         # Incrementally update word index
-        old_words = self._tokenize_for_index(old_content)
-        new_words = self._tokenize_for_index(content)
+        old_words = self._tokenize_for_index(
+            self._content_for_word_index(old_note, old_content)
+        )
+        new_words = self._tokenize_for_index(
+            self._content_for_word_index(note, content)
+        )
         for word in old_words - new_words:
             if word in self._word_index:
                 self._word_index[word].discard(note_id)

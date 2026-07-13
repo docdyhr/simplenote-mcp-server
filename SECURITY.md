@@ -75,8 +75,12 @@ For detailed information about our automated security monitoring and maintenance
 - **Sensitive Data Redaction**: `password`/`token`/`secret`/`key` fields are redacted before logging or inclusion in tool-call error output (`security.py`, `middleware.py`)
 - **Secure Transmission**: HTTPS/TLS for all external communications (handled by the underlying `requests`/`urllib3`/`simplenote` client stack)
 - **Log Security**: Security events are logged with credential values redacted; log files themselves currently have no special filesystem permissions (tracked for hardening)
-- **No encryption at rest today**: note content is stored and transmitted as Simplenote itself handles it. **Simplenote does not encrypt notes at rest on its own servers** — this is a limitation of the underlying service, not this project, and Automattic's own documentation recommends against storing highly sensitive information in Simplenote. An opt-in, client-side note-encryption feature ("Vault") is planned — see [ROADMAP.md](ROADMAP.md#phase-9--vault-opt-in-client-side-encryption) — so sensitive notes can be encrypted locally before they ever reach Simplenote's API. Until that ships, do not store secrets, credentials, or highly sensitive personal data in unencrypted Simplenote notes.
-- **Local credential cache**: the Simperium auth token is cached locally at `~/.config/simplenote-mcp/<email>.token`, protected by `chmod 0600` (owner-only). This is a plaintext file, not OS-keychain-backed or encrypted — treat the same as any other locally-cached session token.
+- **No encryption at rest from Simplenote itself**: **Simplenote does not encrypt notes at rest on its own servers** — this is a limitation of the underlying service, not this project, and Automattic's own documentation recommends against storing highly sensitive information in Simplenote. Notes are NOT encrypted by default; only notes you explicitly opt into Vault (below) are protected.
+- **Vault — opt-in client-side note encryption (shipped)**: `create_note`/`update_note` accept `encrypt=true`, and `encrypt_note`/`decrypt_note` convert existing notes. Encrypted notes are AES-256-GCM ciphertext (via the `cryptography` library) from the moment they leave this server — Simplenote's API, Automattic's infrastructure, and anyone opening the note in the native Simplenote app only ever see the encrypted envelope, never plaintext. Full design, threat model, and explicit limitations: `docs/security/encryption-design.md`.
+  - **What Vault protects**: note body content, both in transit to Simplenote and at rest on Simplenote's servers.
+  - **What Vault does NOT protect**: the note's title (first line — kept readable so `get_or_create_note`/browsing still work), tags, creation/modification timestamps, or the fact that a note exists at all. It also does not protect against a compromised local machine — the server process itself, and anyone with access to it, can read decrypted content and hold the encryption key.
+  - **Key storage**: the Vault master key lives in the OS keychain (via the `keyring` library) or, for headless/container deployments, a file referenced by `SIMPLENOTE_VAULT_KEY_FILE` (`chmod 0600`). It is fetched once per process and cached in memory only — never written to disk in plaintext, never synced to Simplenote. There is no multi-device key sync in the current version: encrypted notes are only decryptable on a machine holding the matching key.
+- **Local credential cache**: the Simperium auth token is cached locally at `~/.config/simplenote-mcp/<email>.token`, protected by `chmod 0600` (owner-only). This is a plaintext file, not OS-keychain-backed or encrypted — treat the same as any other locally-cached session token. (This is a different, lower-stakes secret than the Vault master key above — it's a rotatable session token, not the key that data confidentiality depends on.)
 
 ### Supply Chain Security
 - **Dependency Pinning**: Exact version pinning with SHA256 checksums
@@ -89,7 +93,7 @@ For detailed information about our automated security monitoring and maintenance
 ### Security Layers
 1. **Network Layer**: TLS encryption, secure protocols
 2. **Application Layer**: Input validation, rate limiting, authentication
-3. **Data Layer**: Secure data handling in transit; encryption at rest is not yet implemented (Simplenote itself stores notes unencrypted — see Data Protection above; opt-in client-side encryption is planned, [ROADMAP.md](ROADMAP.md))
+3. **Data Layer**: Secure data handling in transit; Simplenote itself stores notes unencrypted at rest — opt-in client-side encryption (Vault) closes this gap for notes you explicitly mark, see Data Protection above and `docs/security/encryption-design.md`
 4. **Monitoring Layer**: Security event logging, anomaly detection
 
 ### Security Controls
@@ -241,10 +245,10 @@ We acknowledge and thank the following individuals and organizations for their c
 
 See [CHANGELOG.md](CHANGELOG.md) for the full, version-by-version history — it is kept current on every release and is the authoritative record. Security-relevant highlights:
 
+- **Unreleased**: Vault — opt-in client-side note encryption (AES-256-GCM), closing the encryption-at-rest gap described above. New tools `encrypt_note`, `decrypt_note`, `vault_status`; `encrypt=true` on `create_note`/`update_note`. `cryptography` and `keyring` promoted to direct dependencies.
 - **v1.17.1**: macOS keychain auth hardening (three-step Simperium token resolution), clean `AuthenticationError` instead of leaking raw `TypeError`, log-monitor false-positive-alert fix
 - **v1.16.0**: Memory leak in `SecurityValidator.failed_validation_attempts` patched (unbounded growth under sustained load); CodeQL findings resolved
 - **v1.12.1**: Memory leak in security event tracking capped; test isolation hardening for auth/security singletons
-- **Planned (Phase 9, see [ROADMAP.md](ROADMAP.md))**: opt-in client-side note encryption ("Vault") to close the encryption-at-rest gap described above
 
 ---
 

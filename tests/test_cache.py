@@ -283,6 +283,59 @@ class TestNoteCache:
         assert len(results) == 2
 
     @pytest.mark.asyncio
+    async def test_search_excludes_vault_encrypted_body_from_matching(
+        self, mock_simplenote_client
+    ):
+        """Vault-encrypted note bodies are ciphertext — they must never
+        spuriously match a query, and search must still find the note by its
+        (always-plaintext) title line.
+        """
+        from simplenote_mcp.server.vault import VAULT_TAG, encrypt_content
+
+        key = b"0" * 32
+        encrypted = encrypt_content("Findable Title\nvery secret body text", key)
+
+        cache = NoteCache(mock_simplenote_client)
+        cache._notes["vault1"] = {
+            "key": "vault1",
+            "content": encrypted,
+            "tags": [VAULT_TAG],
+        }
+        cache._initialized = True
+
+        # A search term that would only match the (encrypted, unsearchable) body
+        results = await cache.search_notes("secret")
+        assert all(r["key"] != "vault1" for r in results)
+
+        # But the plaintext title line still matches
+        results = await cache.search_notes("Findable")
+        assert any(r["key"] == "vault1" for r in results)
+        matched = next(r for r in results if r["key"] == "vault1")
+        assert "secret" not in matched.get("content", "")
+
+    def test_word_index_only_covers_title_for_vault_encrypted_notes(
+        self, mock_simplenote_client
+    ):
+        from simplenote_mcp.server.vault import VAULT_TAG, encrypt_content
+
+        key = b"0" * 32
+        encrypted = encrypt_content("Findable Title\nconfidential payload words", key)
+
+        cache = NoteCache(mock_simplenote_client)
+        cache._notes["vault1"] = {
+            "key": "vault1",
+            "content": encrypted,
+            "tags": [VAULT_TAG],
+        }
+        cache._initialized = True
+        cache._build_all_indexes()
+
+        assert "findable" in cache._word_index
+        assert "vault1" in cache._word_index["findable"]
+        assert "confidential" not in cache._word_index
+        assert "payload" not in cache._word_index
+
+    @pytest.mark.asyncio
     async def test_get_all_notes(self, mock_simplenote_client, mock_note_data):
         """Test getting all notes with filtering and limits."""
         # Set up client mock for initialization

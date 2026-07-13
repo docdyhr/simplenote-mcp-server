@@ -14,4 +14,4 @@ jobs:
       scan_paths: "simplenote_mcp/"
       install_project: true
       bandit_exclude: ".venv,simplenote_mcp/tests,simplenote_mcp/scripts,test_*.py"
-      bandit_skip: "B101,B105,B110,B310,B311,B404,B603,B607"
+      bandit_skip: "B101,B110,B310,B311,B404,B603,B607"

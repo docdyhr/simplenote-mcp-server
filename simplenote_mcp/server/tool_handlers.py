@@ -32,10 +32,13 @@ from .error_helpers import (
     required_field_error,
 )
 from .errors import (
+    ConfigurationError,
     InternalError,
     NetworkError,
     ResourceNotFoundError,
+    SecurityError,
     ServerError,
+    ValidationError,
 )
 from .logging import logger
 from .security import validate_tool_security
@@ -46,6 +49,17 @@ from .utils.common import (
     safe_get,
     safe_set,
     safe_split,
+)
+from .vault import (
+    VAULT_TAG,
+    VaultDecryptionError,
+    VaultKeyUnavailableError,
+    decrypt_content,
+    encrypt_content,
+    get_or_create_vault_key,
+    has_vault_key,
+    is_encrypted,
+    key_provider_name,
 )
 
 # Utility functions imported from common module
@@ -181,6 +195,65 @@ class ToolHandlerBase(ABC):
         else:
             return []
 
+    def _resolve_vault_key(self) -> bytes:
+        """Return the Vault master key, translating provisioning failures
+        into a structured, actionable ConfigurationError.
+
+        Raises:
+            ConfigurationError: no key is available (see VaultKeyUnavailableError).
+        """
+        try:
+            return get_or_create_vault_key()
+        except VaultKeyUnavailableError as e:
+            raise ConfigurationError(
+                str(e), subcategory="vault_key_unavailable", recoverable=True
+            ) from e
+
+    def _decrypt_for_read(self, content: str) -> tuple[str | None, bool, bool]:
+        """Attempt to decrypt content for a read-only response.
+
+        Never provisions a new Vault key as a side effect of a read — only
+        decrypts when a key is already available, so calling get_note on an
+        encrypted note from a fresh machine never silently generates and
+        persists an unrelated local key.
+
+        Returns:
+            (content, encrypted, decryptable). `content` is the original
+            content unchanged when not encrypted; the decrypted plaintext
+            when encrypted and a working key is available; None when
+            encrypted but not decryptable (no key, or the wrong key).
+        """
+        if not is_encrypted(content):
+            return content, False, True
+        if not has_vault_key():
+            return None, True, False
+        try:
+            return decrypt_content(content, self._resolve_vault_key()), True, True
+        except VaultDecryptionError:
+            return None, True, False
+
+    def _guard_against_blind_mutation(
+        self, note: dict[str, Any], note_id: str, tool_name: str
+    ) -> None:
+        """Refuse to let a content-mutating tool corrupt a Vault-encrypted note.
+
+        add_text/replace_section (and update_note without encrypt=true) read
+        existing content, transform it, and write the result back. Applied
+        blindly to Vault ciphertext this would corrupt the envelope beyond
+        recovery, or silently persist plaintext over what was encrypted.
+
+        Raises:
+            ValidationError: the note is Vault-encrypted.
+        """
+        if VAULT_TAG in (note.get("tags") or []):
+            raise ValidationError(
+                f"Note {note_id} is Vault-encrypted; {tool_name} would corrupt "
+                "or silently discard the encryption. Call decrypt_note first, "
+                "make your edit, then encrypt_note again.",
+                subcategory="vault_encrypted_note",
+                resource_id=note_id,
+            )
+
     def _update_cache_after_operation(
         self, note: dict[str, Any], operation: str
     ) -> None:
@@ -213,12 +286,19 @@ class CreateNoteHandler(ToolHandlerBase):
         """Handle create_note tool call."""
         content = arguments.get("content", "")
         tags_input = arguments.get("tags", "")
+        encrypt = bool(arguments.get("encrypt", False))
 
         # Handle tags which can be either a string or a list (comma-separated)
         # Spaces in tags are converted to hyphens via _parse_tags
         tags = self._parse_tags(tags_input) if tags_input else []
 
         try:
+            if encrypt:
+                vault_key = self._resolve_vault_key()
+                content = encrypt_content(content, vault_key)
+                if VAULT_TAG not in tags:
+                    tags = [*tags, VAULT_TAG]
+
             note = {"content": content}
             if tags:
                 note["tags"] = tags
@@ -249,6 +329,7 @@ class CreateNoteHandler(ToolHandlerBase):
                                 ),  # For backward compatibility
                                 "first_line": extract_title_from_content(content, ""),
                                 "tags": tags,
+                                "encrypted": encrypt,
                             }
                         ),
                     )
@@ -272,6 +353,7 @@ class UpdateNoteHandler(ToolHandlerBase):
         note_id = arguments.get("note_id", "")
         content = arguments.get("content", "")
         tags_input = arguments.get("tags", "")
+        encrypt = bool(arguments.get("encrypt", False))
 
         if not note_id:
             raise empty_field_error("note_id")
@@ -281,6 +363,17 @@ class UpdateNoteHandler(ToolHandlerBase):
 
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
+            existing_tags = existing_note.get("tags", []) or []
+
+            if VAULT_TAG in existing_tags and not encrypt:
+                raise ValidationError(
+                    f"Note {note_id} is Vault-encrypted; update_note would overwrite "
+                    "the encrypted content with plaintext. Pass encrypt=true to "
+                    "replace and re-encrypt in one step, or call decrypt_note first "
+                    "if you intentionally want to remove encryption.",
+                    subcategory="vault_encrypted_note",
+                    resource_id=note_id,
+                )
 
             # Guard against catastrophic content replacement: refuse when the
             # new content is drastically smaller than the existing note (likely
@@ -303,12 +396,25 @@ class UpdateNoteHandler(ToolHandlerBase):
                     subcategory="suspicious_shrink",
                 )
 
-            # Update the note content
-            safe_set(existing_note, "content", content)
+            # Update the note content, encrypting first if requested
+            if encrypt:
+                vault_key = self._resolve_vault_key()
+                safe_set(existing_note, "content", encrypt_content(content, vault_key))
+            else:
+                safe_set(existing_note, "content", content)
 
-            # Update tags if provided (comma-separated or list); spaces → hyphens,
-            # consistent with create_note and every other tag-accepting tool.
-            if tags_input:
+            # Update tags: explicit tags_input replaces the tag list (comma-
+            # separated or list; spaces → hyphens, consistent with every other
+            # tag-accepting tool). encrypt=true always ensures VAULT_TAG ends up
+            # in the final tags, merging with tags_input or preserving existing.
+            if encrypt:
+                final_tags = (
+                    self._parse_tags(tags_input) if tags_input else list(existing_tags)
+                )
+                if VAULT_TAG not in final_tags:
+                    final_tags.append(VAULT_TAG)
+                safe_set(existing_note, "tags", final_tags)
+            elif tags_input:
                 tags = self._parse_tags(tags_input)
                 safe_set(existing_note, "tags", tags)
 
@@ -339,6 +445,8 @@ class UpdateNoteHandler(ToolHandlerBase):
                                 "message": "Note updated successfully",
                                 "note_id": updated_note.get("key"),
                                 "tags": updated_note.get("tags", []),
+                                "encrypted": VAULT_TAG
+                                in (updated_note.get("tags") or []),
                             }
                         ),
                     )
@@ -417,25 +525,31 @@ class GetNoteHandler(ToolHandlerBase):
                 logger.error(error_msg)
                 raise InternalError(error_msg)
 
-            # Prepare response
-            content = safe_get(note, "content", "")
-            first_line = extract_title_from_content(content, "")
+            # Prepare response. The title (first line) stays plaintext even
+            # for Vault-encrypted notes, so it's always extracted from the
+            # raw content regardless of whether decryption succeeds.
+            raw_content = safe_get(note, "content", "")
+            first_line = extract_title_from_content(raw_content, "")
+            content, encrypted, decryptable = self._decrypt_for_read(raw_content)
+
+            response: dict[str, Any] = {
+                "success": True,
+                "note_id": note.get("key"),
+                "content": content,
+                "title": first_line,
+                "tags": note.get("tags", []),
+                "createdate": note.get("createdate", ""),
+                "modifydate": note.get("modifydate", ""),
+                "uri": f"simplenote://note/{note.get('key')}",
+                "encrypted": encrypted,
+            }
+            if encrypted:
+                response["decryptable"] = decryptable
 
             return [
                 types.TextContent(
                     type="text",
-                    text=json.dumps(
-                        {
-                            "success": True,
-                            "note_id": note.get("key"),
-                            "content": note.get("content", ""),
-                            "title": first_line,
-                            "tags": note.get("tags", []),
-                            "createdate": note.get("createdate", ""),
-                            "modifydate": note.get("modifydate", ""),
-                            "uri": f"simplenote://note/{note.get('key')}",
-                        }
-                    ),
+                    text=json.dumps(response),
                 )
             ]
 
@@ -697,6 +811,7 @@ class SearchNotesHandler(ToolHandlerBase):
                     "snippet": snippet,
                     "tags": note.get("tags", []),
                     "uri": f"simplenote://note/{note.get('key')}",
+                    "encrypted": VAULT_TAG in (note.get("tags") or []),
                 }
             )
 
@@ -759,8 +874,21 @@ class SearchNotesHandler(ToolHandlerBase):
             logger.error(FAILED_RETRIEVE_NOTES)
             raise NetworkError(FAILED_RETRIEVE_NOTES)
 
-        # Convert list to dictionary for search engine
-        notes_dict = {note.get("key"): note for note in all_notes if note.get("key")}
+        # Convert list to dictionary for search engine. Vault-encrypted note
+        # bodies are ciphertext, never searchable — substitute title-only
+        # content for such notes before handing them to the engine, mirroring
+        # NoteCache.search_notes()'s snapshot substitution (this API fallback
+        # path bypasses the cache entirely, so it needs its own copy of the
+        # same guard).
+        notes_dict = {
+            note.get("key"): (
+                {**note, "content": (note.get("content") or "").split("\n", 1)[0]}
+                if VAULT_TAG in (note.get("tags") or [])
+                else note
+            )
+            for note in all_notes
+            if note.get("key")
+        }
 
         logger.debug(f"API search: Got {len(notes_dict)} notes from API")
 
@@ -802,6 +930,7 @@ class SearchNotesHandler(ToolHandlerBase):
                     "snippet": snippet,
                     "tags": note.get("tags", []),
                     "uri": f"simplenote://note/{note.get('key')}",
+                    "encrypted": VAULT_TAG in (note.get("tags") or []),
                 }
             )
 
@@ -1141,8 +1270,15 @@ class FindAndMergeDuplicatesHandler(ToolHandlerBase):
 
             finder = DuplicateFinder(threshold=threshold)
 
-            # Get all notes from cache or API
-            all_notes = self._get_all_notes(tag_filter)
+            # Get all notes from cache or API. Vault-encrypted notes are
+            # excluded — comparing ciphertext would never find a real
+            # duplicate, and a false-positive "duplicate" match would risk
+            # merging encrypted content into a plaintext note or vice versa.
+            all_notes = [
+                n
+                for n in self._get_all_notes(tag_filter)
+                if VAULT_TAG not in (n.get("tags") or [])
+            ]
 
             if not all_notes:
                 return [
@@ -1451,6 +1587,7 @@ class AddTextHandler(ToolHandlerBase):
 
         try:
             existing_note = self._get_note_from_cache_or_api(note_id)
+            self._guard_against_blind_mutation(existing_note, note_id, "add_text")
             existing_content = existing_note.get("content", "")
 
             if position == "end":
@@ -1674,6 +1811,7 @@ class ReplaceSectionHandler(ToolHandlerBase):
 
         try:
             note = self._get_note_from_cache_or_api(note_id)
+            self._guard_against_blind_mutation(note, note_id, "replace_section")
             content = note.get("content", "")
 
             # Split content into lines and find the target section
@@ -2369,6 +2507,172 @@ class UnpublishNoteHandler(ToolHandlerBase):
             )
 
 
+class EncryptNoteHandler(ToolHandlerBase):
+    """Handler for encrypt_note tool — Vault-encrypt an existing note's body."""
+
+    @validate_tool_security("encrypt_note")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle encrypt_note tool call."""
+        note_id = arguments.get("note_id", "")
+
+        if not note_id:
+            return self._format_error_response(
+                ValueError("note_id is required"),
+                "encrypting note",
+            )
+
+        try:
+            note_data = self._get_note_from_cache_or_api(note_id)
+            tags: list[str] = list(note_data.get("tags") or [])
+
+            if VAULT_TAG in tags:
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "note_id": note_id,
+                                "encrypted": True,
+                                "message": "Note is already Vault-encrypted; no changes made.",
+                            }
+                        ),
+                    )
+                ]
+
+            vault_key = self._resolve_vault_key()
+            content = note_data.get("content", "") or ""
+            note_data["content"] = encrypt_content(content, vault_key)
+            tags.append(VAULT_TAG)
+            note_data["tags"] = tags
+
+            updated_note, status = self.sn.update_note(note_data)
+            if status != 0:
+                raise NetworkError(f"Failed to encrypt note {note_id}")
+
+            self._update_cache_after_operation(updated_note, "update")
+
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "note_id": note_id,
+                            "encrypted": True,
+                            "tags": updated_note.get("tags", []),
+                            "message": "Note encrypted successfully.",
+                        }
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(
+                e, f"encrypting note {note_id}", {"note_id": note_id}
+            )
+
+
+class DecryptNoteHandler(ToolHandlerBase):
+    """Handler for decrypt_note tool — reverse encrypt_note."""
+
+    @validate_tool_security("decrypt_note")
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle decrypt_note tool call."""
+        note_id = arguments.get("note_id", "")
+
+        if not note_id:
+            return self._format_error_response(
+                ValueError("note_id is required"),
+                "decrypting note",
+            )
+
+        try:
+            note_data = self._get_note_from_cache_or_api(note_id)
+            tags: list[str] = list(note_data.get("tags") or [])
+
+            if VAULT_TAG not in tags:
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "success": True,
+                                "note_id": note_id,
+                                "encrypted": False,
+                                "message": "Note was not Vault-encrypted; no changes made.",
+                            }
+                        ),
+                    )
+                ]
+
+            vault_key = self._resolve_vault_key()
+            content = note_data.get("content", "") or ""
+            try:
+                note_data["content"] = decrypt_content(content, vault_key)
+            except VaultDecryptionError as e:
+                raise SecurityError(
+                    str(e),
+                    subcategory="decryption_failed",
+                    resource_id=note_id,
+                ) from e
+
+            tags = [t for t in tags if t != VAULT_TAG]
+            note_data["tags"] = tags
+
+            updated_note, status = self.sn.update_note(note_data)
+            if status != 0:
+                raise NetworkError(f"Failed to decrypt note {note_id}")
+
+            self._update_cache_after_operation(updated_note, "update")
+
+            return [
+                types.TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "success": True,
+                            "note_id": note_id,
+                            "encrypted": False,
+                            "tags": updated_note.get("tags", []),
+                            "message": "Note decrypted successfully.",
+                        }
+                    ),
+                )
+            ]
+
+        except Exception as e:
+            return self._format_error_response(
+                e, f"decrypting note {note_id}", {"note_id": note_id}
+            )
+
+
+class VaultStatusHandler(ToolHandlerBase):
+    """Handler for vault_status tool — read-only Vault key/encrypted-note status."""
+
+    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+        """Handle vault_status tool call."""
+        del arguments  # no parameters
+
+        encrypted_count = 0
+        if self.note_cache is not None and self.note_cache.is_initialized:
+            encrypted_count = len(self.note_cache._tag_index.get(VAULT_TAG, set()))
+
+        return [
+            types.TextContent(
+                type="text",
+                text=json.dumps(
+                    {
+                        "success": True,
+                        "key_available": has_vault_key(),
+                        "key_provider": key_provider_name(),
+                        "encrypted_note_count": encrypted_count,
+                    }
+                ),
+            )
+        ]
+
+
 class GetServerInfoHandler(ToolHandlerBase):
     """Handler for get_server_info tool — returns version, author, and debug info."""
 
@@ -2669,6 +2973,9 @@ class ListNotesHandler(ToolHandlerBase):
             results = []
             for note in notes:
                 content = note.get("content", "") or ""
+                # The title (first line) stays plaintext even for
+                # Vault-encrypted notes, so this is always safe to show
+                # without decrypting — list_notes never includes full content.
                 first_line = content.split("\n")[0].strip()[:60] if content else ""
                 results.append(
                     {
@@ -2677,6 +2984,7 @@ class ListNotesHandler(ToolHandlerBase):
                         "tags": note.get("tags", []),
                         "modified": note.get("modifydate", ""),
                         "deleted": bool(note.get("deleted")),
+                        "encrypted": VAULT_TAG in (note.get("tags") or []),
                     }
                 )
 
@@ -2726,6 +3034,9 @@ class ToolHandlerRegistry:
             "get_server_info": GetServerInfoHandler,
             "permanent_delete_note": PermanentDeleteNoteHandler,
             "empty_trash": EmptyTrashHandler,
+            "encrypt_note": EncryptNoteHandler,
+            "decrypt_note": DecryptNoteHandler,
+            "vault_status": VaultStatusHandler,
         }
 
     def get_handler(
