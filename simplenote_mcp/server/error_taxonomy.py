@@ -69,6 +69,11 @@ class ErrorSubcategory(Enum):
     TEMPORARY = "temporary"
     PERMANENT = "permanent"
 
+    # Vault (opt-in client-side note encryption) subcategories
+    DECRYPTION_FAILED = "decryption_failed"
+    VAULT_KEY_UNAVAILABLE = "vault_key_unavailable"
+    VAULT_ENCRYPTED_NOTE = "vault_encrypted_note"
+
 
 class ContextualMessageGenerator:
     """Generates context-aware, user-friendly error messages."""
@@ -101,6 +106,11 @@ class ContextualMessageGenerator:
             "message": "Required environment variable is not set.",
             "action": "Please set the required environment variables.",
             "details": "Check the documentation for required configuration.",
+        },
+        (ErrorCategory.CONFIGURATION, ErrorSubcategory.VAULT_KEY_UNAVAILABLE): {
+            "message": "No Vault encryption key is available.",
+            "action": "Set SIMPLENOTE_VAULT_KEY_FILE to a writable path, or ensure an OS keychain/secret-service backend is available.",
+            "details": "The Vault key is generated automatically on first use once a storage location is available.",
         },
         # Network messages
         (ErrorCategory.NETWORK, ErrorSubcategory.CONNECTION_FAILED): {
@@ -139,6 +149,11 @@ class ContextualMessageGenerator:
             "action": "Please check that you're providing the right type of data.",
             "details": "For example, numbers should be numeric, not text.",
         },
+        (ErrorCategory.VALIDATION, ErrorSubcategory.VAULT_ENCRYPTED_NOTE): {
+            "message": "This note is Vault-encrypted and can't be edited directly.",
+            "action": "Call decrypt_note first, make your edit, then encrypt_note again — or pass encrypt=true to update_note to replace and re-encrypt in one step.",
+            "details": "Appending or replacing content directly on encrypted note bodies would corrupt the encryption envelope.",
+        },
         # Resource messages
         (ErrorCategory.NOT_FOUND, ErrorSubcategory.NOTE_NOT_FOUND): {
             "message": "The requested note could not be found.",
@@ -170,6 +185,11 @@ class ContextualMessageGenerator:
             "message": "Invalid input detected.",
             "action": "Please check your input and try again.",
             "details": "Input that appears to be malicious is automatically blocked.",
+        },
+        (ErrorCategory.SECURITY, ErrorSubcategory.DECRYPTION_FAILED): {
+            "message": "Decryption failed.",
+            "action": "This usually means the wrong Vault key is active, or the note's encrypted content has been corrupted or tampered with.",
+            "details": "Vault-encrypted notes can only be decrypted on a machine holding the matching key — see vault_status to check the active key provider.",
         },
         # Internal messages
         (ErrorCategory.INTERNAL, ErrorSubcategory.SERVER_OVERLOAD): {
@@ -540,4 +560,8 @@ ENHANCED_SUBCATEGORY_CODES = {
     ErrorSubcategory.UNKNOWN: "UNK",
     ErrorSubcategory.TEMPORARY: "TEMP",
     ErrorSubcategory.PERMANENT: "PERM",
+    # Vault codes
+    ErrorSubcategory.DECRYPTION_FAILED: "DECR",
+    ErrorSubcategory.VAULT_KEY_UNAVAILABLE: "VKEY",
+    ErrorSubcategory.VAULT_ENCRYPTED_NOTE: "VENC",
 }

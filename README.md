@@ -42,15 +42,17 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 ## What's New
 
-**27 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
+**30 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools + Vault Encryption**
+
+**Vault — opt-in client-side note encryption**: Simplenote has no encryption at rest. `create_note`/`update_note` now accept `encrypt: true`, and `encrypt_note`/`decrypt_note` convert existing notes — bodies become AES-256-GCM ciphertext before they ever reach Simplenote's API. See [docs/security/encryption-design.md](docs/security/encryption-design.md).
 
 Irreversible-deletion tools with mandatory safety guards:
 
 - **`permanent_delete_note`**: Permanently destroy a single note; requires `confirm=true`; dry-run preview by default
 - **`empty_trash`**: Permanently delete all trashed notes; defaults to `dry_run=true` (preview); requires `dry_run=false` AND `confirm=true`
-- **1227 tests passing**, 77%+ coverage, zero linting/type errors
+- **1284 tests passing**, 77%+ coverage, zero linting/type errors
 
-**In progress**: correctness hardening (tag-sanitization consistency, search result limits, background-sync indexing) and an opt-in, client-side note-encryption feature ("Vault") to close Simplenote's lack of encryption-at-rest for sensitive notes. See [ROADMAP.md](ROADMAP.md).
+See the [CHANGELOG](./CHANGELOG.md) and [ROADMAP.md](ROADMAP.md) for complete details.
 
 ### v1.17.0
 
@@ -65,8 +67,6 @@ Irreversible-deletion tools with mandatory safety guards:
 
 See the [CHANGELOG](./CHANGELOG.md) for complete details.
 
-See the [CHANGELOG](./CHANGELOG.md) for complete details.
-
 ---
 
 ## 🔧 Features
@@ -75,10 +75,11 @@ See the [CHANGELOG](./CHANGELOG.md) for complete details.
 - 🔍 **Advanced Search**: Boolean operators, phrase matching, tag and date filters
 - ⚡ **High Performance**: In-memory caching with background synchronization
 - 🔐 **Secure Authentication**: Token-based authentication via environment variables
+- 🔑 **Vault Encryption**: Opt-in client-side AES-256-GCM encryption for sensitive notes — Simplenote itself has no encryption at rest
 - 🧩 **MCP Compatible**: Works with Claude Desktop and other MCP clients
 - 🐳 **Docker Ready**: Full containerization with multi-stage builds and security hardening
 - 📊 **Monitoring**: Optional HTTP endpoints for health, readiness, and metrics
-- 🧪 **Robust Testing**: Comprehensive test suite with 1227+ tests and continuous integration
+- 🧪 **Robust Testing**: Comprehensive test suite with 1284 tests and continuous integration
 - 🔒 **Security Hardened**: Regular security scanning with Bandit, pip-audit, and dependency checks
 
 ---

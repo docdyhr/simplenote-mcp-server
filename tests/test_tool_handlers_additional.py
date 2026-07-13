@@ -381,10 +381,13 @@ class TestToolHandlerRegistryComplete:
             "unpublish_note",
             "permanent_delete_note",
             "empty_trash",
+            "encrypt_note",
+            "decrypt_note",
+            "vault_status",
         ]
 
         assert set(tools) == set(expected_tools)
-        assert len(tools) == 27
+        assert len(tools) == 30
 
     def test_get_handler_types(self):
         """Test getting handlers of different types."""
