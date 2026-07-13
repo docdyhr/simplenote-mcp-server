@@ -87,6 +87,8 @@ For detailed information about our automated security monitoring and maintenance
 - **Vulnerability Scanning**: Automated scanning using OSV and Safety databases
 - **SBOM Generation**: Software Bill of Materials for transparency
 - **License Compliance**: Automated license compliance checking
+- **GitHub Actions**: third-party actions pinned to commit SHAs (not mutable tags), validated with `actionlint`
+- **npm `overrides` in `package.json`**: `undici` is pinned to `^6.27.0` via `overrides`, forcing a version newer than the `^5.25.4` declared by `@actions/http-client@2.2.3` (nested under `@actions/core` → `mcp-evals`, a devDependency used only for local/CI evaluation tooling — never shipped in the Docker image or PyPI package). The override closes 9 undici advisories (HTTP request/response smuggling, decompression-bomb DoS, WebSocket issues) that the pinned `@actions/http-client` version predates; `@actions/http-client`'s own latest release (4.0.1) already depends on `undici ^6.23.0`, so this pulls forward what upstream already moved to. Before removing this override, confirm a newer `@actions/http-client`/`@actions/core`/`mcp-evals` release has picked up a safe `undici` version on its own (`npm ls undici`).
 
 ## 📋 Security Architecture
 

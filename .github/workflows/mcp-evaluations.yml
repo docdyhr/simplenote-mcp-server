@@ -254,6 +254,10 @@ jobs:
         if: steps.eval-changes.outputs.eval_files_changed == 'true' && github.event_name == 'pull_request'
         uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
         continue-on-error: true
+        # Convention: pass workflow/job values in via env: and read them from process.env
+        # in the script below. Do NOT interpolate ${{ }} directly into the script: body —
+        # an untrusted value containing a quote can break out of the JS string literal
+        # (script injection). See https://github.com/docdyhr/simplenote-mcp-server/pull/703
         env:
           HAS_OPENAI_KEY: ${{ needs.evaluate-mcp-server.outputs.has-openai-key || 'false' }}
         with:

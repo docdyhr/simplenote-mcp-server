@@ -130,6 +130,21 @@ For test coverage:
 pytest --cov=simplenote_mcp tests/
 ```
 
+### GitHub Actions Workflows
+
+When adding or editing an `actions/github-script` step in `.github/workflows/`, never interpolate `${{ }}` directly into the `script:` body. A value containing a quote character can break out of the JS string literal before the script is even parsed — a script-injection vector (see [PR #703](https://github.com/docdyhr/simplenote-mcp-server/pull/703)). Instead, pass values through `env:` and read them via `process.env` in the script:
+
+```yaml
+- uses: actions/github-script@<sha> # vX
+  env:
+    SOME_VALUE: ${{ steps.previous.outputs.some_value }}
+  with:
+    script: |
+      const someValue = process.env.SOME_VALUE;
+```
+
+Validate workflow edits with `actionlint` (schema-aware), not just a YAML syntax checker — a malformed `uses:` value can be valid YAML while still being rejected by GitHub's Actions schema.
+
 ## Pull Request Process
 
 1. Create a new branch for your feature or bugfix
