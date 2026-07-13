@@ -26,7 +26,7 @@ jobs:
     steps:
       - name: Check if PR is ready for merge
         id: check
-        uses: 373c709c69115d41ff229c7e5df9f8788daa9553 # actions/github-script@v9
+        uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -111,7 +111,7 @@ jobs:
 
       - name: Enable auto-merge
         if: steps.check.outputs.result == 'true'
-        uses: 373c709c69115d41ff229c7e5df9f8788daa9553 # actions/github-script@v9
+        uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -165,7 +165,7 @@ jobs:
     steps:
       - name: Dependabot metadata
         id: metadata
-        uses: 25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # dependabot/fetch-metadata@v3
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3
         with:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
