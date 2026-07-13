@@ -115,6 +115,31 @@ class TestKeyProvisioning:
         assert key_file.exists()
         assert oct(key_file.stat().st_mode)[-3:] == "600"
 
+    def test_key_file_created_with_no_permissive_window(self, tmp_path):
+        """Regression test: the key file must never exist with default (often
+        world-readable) permissions, even momentarily. A write-then-chmod
+        pattern has a race window between creation and restriction; the file
+        must be created with 0600 atomically via os.open's mode argument.
+        """
+        key_file = tmp_path / "vault.key"
+        original_open = os.open
+        observed_modes = []
+
+        def spying_open(path, flags, mode=0o777):
+            observed_modes.append(mode)
+            return original_open(path, flags, mode)
+
+        with (
+            patch.dict(os.environ, {"SIMPLENOTE_VAULT_KEY_FILE": str(key_file)}),
+            patch("os.open", side_effect=spying_open),
+        ):
+            vault.get_or_create_vault_key()
+
+        assert observed_modes, "os.open was not called to create the key file"
+        assert all(mode == 0o600 for mode in observed_modes), (
+            f"key file was opened with a non-restrictive mode: {observed_modes}"
+        )
+
     def test_key_file_reuses_existing_key_across_process_restarts(self, tmp_path):
         key_file = tmp_path / "vault.key"
         with patch.dict(os.environ, {"SIMPLENOTE_VAULT_KEY_FILE": str(key_file)}):

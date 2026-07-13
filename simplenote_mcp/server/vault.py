@@ -71,8 +71,12 @@ def _read_key_file(path: str) -> bytes | None:
 def _write_key_file(path: str, key: bytes) -> None:
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(base64.b64encode(key).decode("ascii"))
-    os.chmod(p, 0o600)
+    # Create with 0600 atomically via os.open — writing then chmod'ing
+    # afterward leaves a window where the key file has default (often
+    # world-readable) permissions before being restricted.
+    fd = os.open(str(p), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write(base64.b64encode(key).decode("ascii"))
 
 
 def _read_keyring_key() -> bytes | None:
