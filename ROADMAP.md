@@ -144,6 +144,23 @@ Full design: [`docs/security/encryption-design.md`](docs/security/encryption-des
 - **Added `session-handoff` MCP Prompt**: scaffolds the Session Continuity workflow — takes `project` (required) plus optional `status`/`next_steps`/`blockers`, and returns instructions to call `get_or_create_note` + `add_text` with the canonical `Status:`/`Next:`/`Blockers:` format. 3 prompts total now (was 2).
 - **Spike: `simplenote://recent`-style auto-context resource — investigated, not building it.** MCP Resources in Claude Desktop are user-attached (picker/attachment UI), not automatically loaded into a conversation at session start — there's no mechanism in the MCP spec or Claude Desktop's client behavior for a server to push a resource into context proactively. A resource the user has to manually attach every session doesn't deliver the "automatic" value the original idea was chasing. The tool-based path (`search_notes`/`get_or_create_note`, now paired with the `session-handoff` prompt) already lets Claude *pull* project-state context autonomously at the start of a conversation, since tools — unlike resources — are always available for the model to call on its own initiative. That's the actual solution to this problem; a curated resource would be redundant with it.
 
+### Phase 11 — Security & Code Quality Audit Remediation ✅ (v1.21, unreleased)
+
+A full repository review (security, runtime correctness, deployment, dependencies, CI, test coverage) surfaced 12 findings, all resolved except the explicitly-deferred one:
+
+- **P0 — Secure HTTP transport**: `MCP_TRANSPORT=http` refuses to start on a non-loopback host without `MCP_HTTP_AUTH_TOKEN` (bearer token, constant-time check); `MCP_HTTP_ALLOWED_HOSTS`/`MCP_HTTP_ALLOWED_ORIGINS` enable DNS-rebinding protection.
+- **P0 — Stop logging note plaintext**: tool call arguments (note content, search queries) no longer dumped at INFO; sanitized form only at DEBUG.
+- **P1 — Real MCP errors**: tool failures return `CallToolResult(isError=True)` instead of looking like success at the protocol level; failed writes no longer consume the write budget.
+- **P1 — Fixed date-filtered search**: both ISO and natural-language (`yesterday`, `3_days_ago`, etc.) date filters now work end-to-end; the natural-language parser itself didn't handle its own advertised underscored format.
+- **P1 — Vault key fail-closed**: a corrupted key file/keychain entry is never silently overwritten with a fresh one; `vault_status` reports corruption instead of crashing.
+- **P1 — Per-client rate limiting/write budget**: real per-client identity (source IP for HTTP, fixed for stdio) replaces a dead decorator and a global `"default"` bucket.
+- **P1 — Repaired Docker/Helm runtime config**: the documented container path now actually serves requests; health/liveness/readiness probes hit real endpoints instead of just checking the package imports — which surfaced and fixed a separate bug where `/health` failed on merely "degraded" status, not just genuine failures.
+- **P1 — Restored the excluded test suite**: `simplenote_mcp/tests/` (112 tests) back in CI as an isolated pytest process; fixed the shared-mock bug behind most of its failures.
+- **P2 — Supply chain hardening**: all third-party GitHub Actions pinned to commit SHAs; reusable-workflow `secrets: inherit` narrowed to what's actually consumed; production Docker image installs runtime-only dependencies instead of the full dev/test/security toolchain.
+- **P2 — Config validation wired up**: `Config.validate()` now runs at startup instead of being dead code.
+- **P2 — Packaging metadata consolidated**: `setup.py`'s version/dependency drift fixed and now covered by the consistency checker.
+- **P3 — Deferred**: `tool_handlers.py`'s size (3,065 lines) and the 111 broad `except Exception` handlers need focused refactoring behind behavioral tests, not a broad rewrite — tracked as future work, not attempted in this pass.
+
 ### v2.0 Horizon
 
 | Item | Notes |

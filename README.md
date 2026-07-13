@@ -55,7 +55,7 @@ Irreversible-deletion tools with mandatory safety guards:
 
 - **`permanent_delete_note`**: Permanently destroy a single note; requires `confirm=true`; dry-run preview by default
 - **`empty_trash`**: Permanently delete all trashed notes; defaults to `dry_run=true` (preview); requires `dry_run=false` AND `confirm=true`
-- **1289 tests passing**, 77%+ coverage, zero linting/type errors
+- **1334 tests passing**, 79%+ coverage, zero linting/type errors
 
 See the [CHANGELOG](./CHANGELOG.md) and [ROADMAP.md](ROADMAP.md) for complete details.
 
@@ -84,7 +84,7 @@ See the [CHANGELOG](./CHANGELOG.md) for complete details.
 - 🧩 **MCP Compatible**: Works with Claude Desktop and other MCP clients
 - 🐳 **Docker Ready**: Full containerization with multi-stage builds and security hardening
 - 📊 **Monitoring**: Optional HTTP endpoints for health, readiness, and metrics
-- 🧪 **Robust Testing**: Comprehensive test suite with 1289 tests and continuous integration
+- 🧪 **Robust Testing**: Comprehensive test suite with 1334 tests and continuous integration
 - 🔒 **Security Hardened**: Regular security scanning with Bandit, pip-audit, and dependency checks
 
 ---
