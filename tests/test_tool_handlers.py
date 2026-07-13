@@ -69,6 +69,9 @@ class TestToolHandlerRegistry:
             "unpublish_note",
             "permanent_delete_note",
             "empty_trash",
+            "encrypt_note",
+            "decrypt_note",
+            "vault_status",
         }
 
         assert set(registry.list_tools()) == expected_tools
@@ -503,6 +506,192 @@ class TestTagParsing:
 
         call_args = mock_cache.search_notes.call_args
         assert call_args[1].get("sort_by") == "relevance"
+
+
+@pytest.mark.unit
+class TestVaultEncryptionOnCreateAndUpdate:
+    """create_note/update_note encrypt=true integration with vault.py."""
+
+    @pytest.fixture(autouse=True)
+    def _vault_key(self):
+        import os
+
+        from simplenote_mcp.server import vault
+
+        vault.reset_for_testing()
+        old_env = os.environ.pop("SIMPLENOTE_VAULT_KEY_FILE", None)
+        yield
+        vault.reset_for_testing()
+        if old_env is not None:
+            os.environ["SIMPLENOTE_VAULT_KEY_FILE"] = old_env
+
+    @pytest.fixture
+    def key_file(self, tmp_path, monkeypatch):
+        path = tmp_path / "vault.key"
+        monkeypatch.setenv("SIMPLENOTE_VAULT_KEY_FILE", str(path))
+        return path
+
+    @pytest.mark.asyncio
+    async def test_create_note_encrypt_true_stores_ciphertext(self, key_file):
+        from simplenote_mcp.server.vault import VAULT_TAG, is_encrypted
+
+        client, cache = _make_client_and_cache()
+        client.add_note.return_value = (
+            {"key": "note-1", "content": "placeholder", "tags": [VAULT_TAG]},
+            0,
+        )
+        handler = CreateNoteHandler(client, cache)
+
+        result = await handler.handle(
+            {"content": "My Secret\nvery sensitive body text", "encrypt": True}
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["encrypted"] is True
+        assert VAULT_TAG in data["tags"]
+
+        sent_note = client.add_note.call_args[0][0]
+        assert is_encrypted(sent_note["content"])
+        assert sent_note["content"].startswith("My Secret\n")
+        assert "sensitive" not in sent_note["content"]
+        assert VAULT_TAG in sent_note["tags"]
+
+    @pytest.mark.asyncio
+    async def test_create_note_without_encrypt_stores_plaintext(self, key_file):
+        client, cache = _make_client_and_cache()
+        client.add_note.return_value = (
+            {"key": "note-1", "content": "Just a note", "tags": []},
+            0,
+        )
+        handler = CreateNoteHandler(client, cache)
+
+        result = await handler.handle({"content": "Just a note"})
+        data = json.loads(result[0].text)
+        assert data["encrypted"] is False
+
+        sent_note = client.add_note.call_args[0][0]
+        assert sent_note["content"] == "Just a note"
+        assert "tags" not in sent_note or sent_note["tags"] == []
+
+    @pytest.mark.asyncio
+    async def test_update_note_encrypt_true_stores_ciphertext(self, key_file):
+        from simplenote_mcp.server.vault import VAULT_TAG, is_encrypted
+
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = {
+            "key": "note-1",
+            "content": "Old Title\nold plaintext body",
+            "tags": [],
+        }
+        client.update_note.return_value = (
+            {"key": "note-1", "content": "placeholder", "tags": [VAULT_TAG]},
+            0,
+        )
+        handler = UpdateNoteHandler(client, cache)
+
+        result = await handler.handle(
+            {
+                "note_id": "note-1",
+                "content": "New Title\nnew sensitive content",
+                "encrypt": True,
+            }
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["encrypted"] is True
+
+        sent_note = client.update_note.call_args[0][0]
+        assert is_encrypted(sent_note["content"])
+        assert sent_note["content"].startswith("New Title\n")
+        assert VAULT_TAG in sent_note["tags"]
+
+    @pytest.mark.asyncio
+    async def test_update_note_refuses_to_overwrite_encrypted_note_without_encrypt_flag(
+        self, key_file
+    ):
+        from simplenote_mcp.server.vault import VAULT_TAG
+
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = {
+            "key": "note-1",
+            "content": "Title\n%%SNVAULT:v1%%\nsome-base64-blob",
+            "tags": [VAULT_TAG],
+        }
+        handler = UpdateNoteHandler(client, cache)
+
+        result = await handler.handle(
+            {"note_id": "note-1", "content": "plaintext replacement"}
+        )
+        data = json.loads(result[0].text)
+
+        assert data["success"] is False
+        assert data["error"]["subcategory"] == "vault_encrypted_note"
+        client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_update_note_encrypt_true_reencrypts_already_encrypted_note(
+        self, key_file
+    ):
+        from simplenote_mcp.server.vault import VAULT_TAG, is_encrypted
+
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = {
+            "key": "note-1",
+            "content": "Title\n%%SNVAULT:v1%%\nsome-base64-blob",
+            "tags": [VAULT_TAG],
+        }
+        client.update_note.return_value = (
+            {"key": "note-1", "content": "placeholder", "tags": [VAULT_TAG]},
+            0,
+        )
+        handler = UpdateNoteHandler(client, cache)
+
+        result = await handler.handle(
+            {
+                "note_id": "note-1",
+                "content": "Title\nbrand new secret",
+                "encrypt": True,
+            }
+        )
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+
+        sent_note = client.update_note.call_args[0][0]
+        assert is_encrypted(sent_note["content"])
+        assert sent_note["tags"].count(VAULT_TAG) == 1  # not duplicated
+
+    @pytest.mark.asyncio
+    async def test_create_note_vault_key_unavailable_returns_clear_error(self):
+        """When neither SIMPLENOTE_VAULT_KEY_FILE nor a keyring backend is
+        available, encrypt=true must fail with a clear, structured error —
+        never silently fall back to storing plaintext."""
+        import os
+        from unittest.mock import patch
+
+        import keyring.errors
+
+        os.environ.pop("SIMPLENOTE_VAULT_KEY_FILE", None)
+        client, cache = _make_client_and_cache()
+        handler = CreateNoteHandler(client, cache)
+
+        with (
+            patch(
+                "keyring.get_password",
+                side_effect=keyring.errors.NoKeyringError("no backend"),
+            ),
+            patch(
+                "keyring.set_password",
+                side_effect=keyring.errors.NoKeyringError("no backend"),
+            ),
+        ):
+            result = await handler.handle(
+                {"content": "Title\nsensitive", "encrypt": True}
+            )
+        data = json.loads(result[0].text)
+
+        assert data["success"] is False
+        assert data["error"]["subcategory"] == "vault_key_unavailable"
+        client.add_note.assert_not_called()
 
 
 @pytest.mark.unit
@@ -2676,3 +2865,538 @@ class TestUnpublishNoteHandler:
         """unpublish_note is registered in the tool registry."""
         registry = ToolHandlerRegistry()
         assert "unpublish_note" in registry.list_tools()
+
+
+@pytest.mark.unit
+class TestEncryptNoteHandler:
+    """Tests for the encrypt_note tool."""
+
+    @pytest.fixture(autouse=True)
+    def _vault_key(self, tmp_path, monkeypatch):
+        from simplenote_mcp.server import vault
+
+        vault.reset_for_testing()
+        monkeypatch.setenv("SIMPLENOTE_VAULT_KEY_FILE", str(tmp_path / "vault.key"))
+        yield
+        vault.reset_for_testing()
+
+    @pytest.fixture
+    def mock_client(self):
+        client = MagicMock()
+        client.get_note.return_value = (
+            {"key": "note123", "content": "Title\nplain body", "tags": ["work"]},
+            0,
+        )
+        client.update_note.side_effect = lambda note: (note, 0)
+        return client
+
+    @pytest.fixture
+    def mock_cache(self):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.get_note.return_value = {
+            "key": "note123",
+            "content": "Title\nplain body",
+            "tags": ["work"],
+        }
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import EncryptNoteHandler
+
+        return EncryptNoteHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_encrypt_note_success(self, handler, mock_client):
+        from simplenote_mcp.server.vault import VAULT_TAG, is_encrypted
+
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["encrypted"] is True
+        assert VAULT_TAG in data["tags"]
+
+        sent_note = mock_client.update_note.call_args[0][0]
+        assert is_encrypted(sent_note["content"])
+        assert sent_note["content"].startswith("Title\n")
+        assert "work" in sent_note["tags"]  # existing tags preserved
+
+    @pytest.mark.asyncio
+    async def test_encrypt_note_already_encrypted_is_noop(
+        self, mock_client, mock_cache
+    ):
+        from simplenote_mcp.server.tool_handlers import EncryptNoteHandler
+        from simplenote_mcp.server.vault import VAULT_TAG
+
+        already = {
+            "key": "note123",
+            "content": "Title\n%%SNVAULT:v1%%\nblob",
+            "tags": [VAULT_TAG],
+        }
+        mock_cache.get_note.return_value = already
+        handler = EncryptNoteHandler(mock_client, mock_cache)
+
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["encrypted"] is True
+        mock_client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_encrypt_note_missing_note_id(self, handler):
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_encrypt_note_not_found(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import EncryptNoteHandler
+
+        mock_cache.is_initialized = False
+        mock_client.get_note.return_value = (None, -1)
+        mock_client.token = "fake-token"
+        handler = EncryptNoteHandler(mock_client, mock_cache)
+        result = await handler.handle({"note_id": "bad"})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_encrypt_note_in_registry(self):
+        registry = ToolHandlerRegistry()
+        assert "encrypt_note" in registry.list_tools()
+
+
+@pytest.mark.unit
+class TestDecryptNoteHandler:
+    """Tests for the decrypt_note tool."""
+
+    @pytest.fixture(autouse=True)
+    def _vault_key(self, tmp_path, monkeypatch):
+        from simplenote_mcp.server import vault
+
+        vault.reset_for_testing()
+        monkeypatch.setenv("SIMPLENOTE_VAULT_KEY_FILE", str(tmp_path / "vault.key"))
+        yield
+        vault.reset_for_testing()
+
+    @pytest.fixture
+    def encrypted_content(self):
+        from simplenote_mcp.server.vault import encrypt_content, get_or_create_vault_key
+
+        key = get_or_create_vault_key()
+        return encrypt_content("Title\nsecret body", key)
+
+    @pytest.fixture
+    def mock_client(self, encrypted_content):
+        from simplenote_mcp.server.vault import VAULT_TAG
+
+        client = MagicMock()
+        client.get_note.return_value = (
+            {"key": "note123", "content": encrypted_content, "tags": [VAULT_TAG]},
+            0,
+        )
+        client.update_note.side_effect = lambda note: (note, 0)
+        return client
+
+    @pytest.fixture
+    def mock_cache(self, encrypted_content):
+        from simplenote_mcp.server.vault import VAULT_TAG
+
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.get_note.return_value = {
+            "key": "note123",
+            "content": encrypted_content,
+            "tags": [VAULT_TAG],
+        }
+        return cache
+
+    @pytest.fixture
+    def handler(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import DecryptNoteHandler
+
+        return DecryptNoteHandler(mock_client, mock_cache)
+
+    @pytest.mark.asyncio
+    async def test_decrypt_note_success(self, handler, mock_client):
+        from simplenote_mcp.server.vault import VAULT_TAG
+
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["encrypted"] is False
+        assert VAULT_TAG not in data["tags"]
+
+        sent_note = mock_client.update_note.call_args[0][0]
+        assert sent_note["content"] == "Title\nsecret body"
+        assert VAULT_TAG not in sent_note["tags"]
+
+    @pytest.mark.asyncio
+    async def test_decrypt_note_not_encrypted_is_noop(self, mock_client, mock_cache):
+        from simplenote_mcp.server.tool_handlers import DecryptNoteHandler
+
+        plain = {"key": "note123", "content": "Just plain text", "tags": []}
+        mock_cache.get_note.return_value = plain
+        handler = DecryptNoteHandler(mock_client, mock_cache)
+
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["encrypted"] is False
+        mock_client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_decrypt_note_wrong_key_returns_structured_error(
+        self, mock_client, mock_cache
+    ):
+        """A wrong/rotated key must surface a clear decryption_failed error,
+        never silently return or store garbage."""
+        from simplenote_mcp.server.tool_handlers import DecryptNoteHandler
+        from simplenote_mcp.server.vault import VAULT_TAG, encrypt_content
+
+        wrong_key = b"1" * 32
+        bad_note = {
+            "key": "note123",
+            "content": encrypt_content("Title\nsecret", wrong_key),
+            "tags": [VAULT_TAG],
+        }
+        mock_cache.get_note.return_value = bad_note
+        handler = DecryptNoteHandler(mock_client, mock_cache)
+
+        result = await handler.handle({"note_id": "note123"})
+        data = json.loads(result[0].text)
+
+        assert data["success"] is False
+        assert data["error"]["subcategory"] == "decryption_failed"
+        mock_client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_decrypt_note_missing_note_id(self, handler):
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is False
+
+    @pytest.mark.asyncio
+    async def test_decrypt_note_in_registry(self):
+        registry = ToolHandlerRegistry()
+        assert "decrypt_note" in registry.list_tools()
+
+
+@pytest.mark.unit
+class TestVaultStatusHandler:
+    """Tests for the vault_status tool."""
+
+    @pytest.fixture(autouse=True)
+    def _vault_key(self):
+        from simplenote_mcp.server import vault
+
+        vault.reset_for_testing()
+        import os
+
+        self._old_env = os.environ.pop("SIMPLENOTE_VAULT_KEY_FILE", None)
+        yield
+        vault.reset_for_testing()
+        if self._old_env is not None:
+            os.environ["SIMPLENOTE_VAULT_KEY_FILE"] = self._old_env
+
+    @pytest.fixture
+    def handler(self):
+        from simplenote_mcp.server.tool_handlers import VaultStatusHandler
+
+        client = MagicMock()
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache._tag_index = {"vault-encrypted": {"note1", "note2"}}
+        return VaultStatusHandler(client, cache)
+
+    @pytest.mark.asyncio
+    async def test_vault_status_reports_key_unavailable_by_default(self, handler):
+        from unittest.mock import patch
+
+        with patch("keyring.get_password", return_value=None):
+            result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["key_available"] is False
+        assert data["key_provider"] == "keyring"
+
+    @pytest.mark.asyncio
+    async def test_vault_status_reports_encrypted_note_count(self, handler):
+        from unittest.mock import patch
+
+        with patch("keyring.get_password", return_value=None):
+            result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["encrypted_note_count"] == 2
+
+    @pytest.mark.asyncio
+    async def test_vault_status_reports_file_provider_when_env_set(
+        self, handler, tmp_path, monkeypatch
+    ):
+        from simplenote_mcp.server.vault import get_or_create_vault_key
+
+        monkeypatch.setenv("SIMPLENOTE_VAULT_KEY_FILE", str(tmp_path / "vault.key"))
+        get_or_create_vault_key()  # provision a key first — has_vault_key() never generates
+
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["key_provider"] == "file"
+        assert data["key_available"] is True
+
+    @pytest.mark.asyncio
+    async def test_vault_status_key_unavailable_when_file_not_yet_created(
+        self, handler, tmp_path, monkeypatch
+    ):
+        monkeypatch.setenv("SIMPLENOTE_VAULT_KEY_FILE", str(tmp_path / "vault.key"))
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+        assert data["key_provider"] == "file"
+        assert data["key_available"] is False
+
+    @pytest.mark.asyncio
+    async def test_vault_status_in_registry(self):
+        registry = ToolHandlerRegistry()
+        assert "vault_status" in registry.list_tools()
+
+
+@pytest.mark.unit
+class TestVaultDecryptOnRead:
+    """get_note/search_notes/list_notes transparently decrypt Vault notes,
+    and never leak ciphertext when no key is available."""
+
+    @pytest.fixture(autouse=True)
+    def _vault_key(self, tmp_path, monkeypatch):
+        from simplenote_mcp.server import vault
+
+        vault.reset_for_testing()
+        monkeypatch.setenv("SIMPLENOTE_VAULT_KEY_FILE", str(tmp_path / "vault.key"))
+        yield
+        vault.reset_for_testing()
+
+    @pytest.fixture
+    def encrypted_note(self):
+        from simplenote_mcp.server.vault import (
+            VAULT_TAG,
+            encrypt_content,
+            get_or_create_vault_key,
+        )
+
+        key = get_or_create_vault_key()
+        content = encrypt_content("Findable Title\nvery secret body", key)
+        return {"key": "note1", "content": content, "tags": [VAULT_TAG]}
+
+    # -- get_note -----------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_get_note_decrypts_when_key_available(self, encrypted_note):
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = encrypted_note
+        handler = GetNoteHandler(client, cache)
+
+        result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+
+        assert data["success"] is True
+        assert data["encrypted"] is True
+        assert data["decryptable"] is True
+        assert data["content"] == "Findable Title\nvery secret body"
+        assert data["title"] == "Findable Title"
+
+    @pytest.mark.asyncio
+    async def test_get_note_no_key_returns_null_content_not_ciphertext(
+        self, encrypted_note
+    ):
+        from simplenote_mcp.server import vault
+
+        vault.reset_for_testing()
+        import os
+
+        os.environ.pop("SIMPLENOTE_VAULT_KEY_FILE", None)
+
+        from unittest.mock import patch
+
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = encrypted_note
+        handler = GetNoteHandler(client, cache)
+
+        with patch("keyring.get_password", return_value=None):
+            result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+
+        assert data["success"] is True
+        assert data["encrypted"] is True
+        assert data["decryptable"] is False
+        assert data["content"] is None
+        assert "secret" not in json.dumps(data)
+        # Title still readable even without the key
+        assert data["title"] == "Findable Title"
+
+    @pytest.mark.asyncio
+    async def test_get_note_wrong_key_returns_null_content(self, encrypted_note):
+        from simplenote_mcp.server import vault
+
+        # Re-provision a *different* key under the same env var path so
+        # has_vault_key() is true but decryption still fails.
+        vault.reset_for_testing()
+        vault._cached_key = b"9" * 32
+
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = encrypted_note
+        handler = GetNoteHandler(client, cache)
+
+        result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+
+        assert data["encrypted"] is True
+        assert data["decryptable"] is False
+        assert data["content"] is None
+
+    @pytest.mark.asyncio
+    async def test_get_note_plain_note_unaffected(self):
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = {
+            "key": "note1",
+            "content": "Just a plain note",
+            "tags": [],
+        }
+        handler = GetNoteHandler(client, cache)
+
+        result = await handler.handle({"note_id": "note1"})
+        data = json.loads(result[0].text)
+
+        assert data["encrypted"] is False
+        assert "decryptable" not in data
+        assert data["content"] == "Just a plain note"
+
+    # -- search_notes (cache path) -------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_search_notes_cache_path_marks_encrypted_results(
+        self, encrypted_note
+    ):
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache.search_notes = AsyncMock(return_value=[encrypted_note])
+        cache.get_pagination_info.return_value = {}
+        client = MagicMock()
+        handler = SearchNotesHandler(client, cache)
+
+        result = await handler.handle({"query": "Findable"})
+        data = json.loads(result[0].text)
+
+        assert data["results"][0]["encrypted"] is True
+        assert "secret" not in json.dumps(data)
+
+    # -- list_notes -----------------------------------------------------
+
+    @pytest.mark.asyncio
+    async def test_list_notes_marks_encrypted_results(self, encrypted_note):
+        from simplenote_mcp.server.tool_handlers import ListNotesHandler
+
+        cache = MagicMock()
+        cache.is_initialized = True
+        cache._notes = {"note1": encrypted_note}
+        client = MagicMock()
+        handler = ListNotesHandler(client, cache)
+
+        result = await handler.handle({})
+        data = json.loads(result[0].text)
+
+        assert data["notes"][0]["encrypted"] is True
+        assert data["notes"][0]["title"] == "Findable Title"
+        assert "secret" not in json.dumps(data)
+
+
+@pytest.mark.unit
+class TestVaultSafetyGuards:
+    """Content-mutating tools must refuse to touch Vault-encrypted notes
+    rather than corrupt the encryption envelope or silently discard it."""
+
+    @pytest.fixture
+    def encrypted_note(self):
+        from simplenote_mcp.server.vault import VAULT_TAG
+
+        return {
+            "key": "note1",
+            "content": "Title\n%%SNVAULT:v1%%\nsome-base64-blob",
+            "tags": [VAULT_TAG],
+        }
+
+    @pytest.mark.asyncio
+    async def test_add_text_refuses_on_encrypted_note(self, encrypted_note):
+        from simplenote_mcp.server.tool_handlers import AddTextHandler
+
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = encrypted_note
+        handler = AddTextHandler(client, cache)
+
+        result = await handler.handle({"note_id": "note1", "text": "more stuff"})
+        data = json.loads(result[0].text)
+
+        assert data["success"] is False
+        assert data["error"]["subcategory"] == "vault_encrypted_note"
+        client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_replace_section_refuses_on_encrypted_note(self, encrypted_note):
+        from simplenote_mcp.server.tool_handlers import ReplaceSectionHandler
+
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = encrypted_note
+        handler = ReplaceSectionHandler(client, cache)
+
+        result = await handler.handle(
+            {"note_id": "note1", "header": "Notes", "new_content": "new stuff"}
+        )
+        data = json.loads(result[0].text)
+
+        assert data["success"] is False
+        assert data["error"]["subcategory"] == "vault_encrypted_note"
+        client.update_note.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_add_text_unaffected_on_plain_note(self):
+        from simplenote_mcp.server.tool_handlers import AddTextHandler
+
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = {
+            "key": "note1",
+            "content": "Plain note",
+            "tags": [],
+        }
+        client.update_note.return_value = (
+            {"key": "note1", "content": "Plain note\nmore stuff", "tags": []},
+            0,
+        )
+        handler = AddTextHandler(client, cache)
+
+        result = await handler.handle({"note_id": "note1", "text": "more stuff"})
+        data = json.loads(result[0].text)
+
+        assert data["success"] is True
+        client.update_note.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_find_and_merge_duplicates_excludes_encrypted_notes(
+        self, encrypted_note
+    ):
+        from simplenote_mcp.server.tool_handlers import FindAndMergeDuplicatesHandler
+
+        client = MagicMock()
+        cache = MagicMock()
+        cache.is_initialized = True
+        # Two near-identical plaintext notes (a real duplicate pair) plus one
+        # Vault-encrypted note whose ciphertext should never be compared.
+        cache.get_all_notes.return_value = [
+            {"key": "note2", "content": "Shopping list: milk, eggs", "tags": []},
+            {"key": "note3", "content": "Shopping list: milk, eggs!", "tags": []},
+            encrypted_note,
+        ]
+        handler = FindAndMergeDuplicatesHandler(client, cache)
+
+        result = await handler.handle({"dry_run": True})
+        data = json.loads(result[0].text)
+
+        assert data["success"] is True
+        assert "note1" not in result[0].text

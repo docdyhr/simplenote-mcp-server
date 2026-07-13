@@ -12,6 +12,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (required) plus optional `status`/`next_steps`/`blockers`, and returns instructions to call
   `get_or_create_note` + `add_text` with the canonical `Status:`/`Next:`/`Blockers:` format used
   for cross-session handoff notes. 3 prompts total (was 2).
+- **Vault — opt-in client-side note encryption**: Simplenote has no encryption at rest
+  (Automattic's own docs confirm staff can technically read note content and recommend against
+  storing sensitive data there). `create_note`/`update_note` now accept `encrypt: true`, and new
+  `encrypt_note`/`decrypt_note` tools convert existing notes. Encrypted note bodies are AES-256-GCM
+  ciphertext (`cryptography` library) from the moment they leave this server — only the note's
+  title (first line) stays readable, so `get_or_create_note` and browsing keep working. Full
+  design: `docs/security/encryption-design.md`.
+  - New `simplenote_mcp/server/vault.py` module: key resolution via the `keyring` library (OS
+    keychain), fetched once per process and cached in memory only — never written to disk in
+    plaintext, never re-prompted per operation. `SIMPLENOTE_VAULT_KEY_FILE` env var for
+    Docker/headless deployments with no OS keychain.
+  - New `vault_status` tool: key availability, active key provider, count of encrypted notes.
+  - Transparent decrypt-on-read in `get_note`/`search_notes`/`list_notes` when a key is available;
+    `{"encrypted": true, "decryptable": false}` — never raw ciphertext — when it isn't. Read paths
+    never provision a new key as a side effect.
+  - Vault-note bodies are excluded from the word/title index and from the search engine's
+    candidate set (both the cache path and the API-fallback path) — a documented v1 limitation,
+    not a bug: encrypted content isn't full-text searchable, but the title still is.
+  - Safety guards: `add_text`, `replace_section`, and `update_note` (without `encrypt=true`)
+    refuse on Vault-encrypted notes with a structured `vault_encrypted_note` error rather than
+    corrupt the encryption envelope or silently overwrite encrypted content with plaintext.
+    `find_and_merge_duplicates` excludes encrypted notes from duplicate comparison.
+  - New `DECRYPTION_FAILED`, `VAULT_KEY_UNAVAILABLE`, and `VAULT_ENCRYPTED_NOTE` error
+    subcategories in `error_taxonomy.py`, reusing the existing `ServerError` structured-error
+    infrastructure.
+  - 27 registered tools → 30 (9 read + 21 write).
 
 ### Fixed
 - **MCP Resources silently dropped tags/dates/pagination metadata**: `handle_list_resources` and
@@ -56,14 +82,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to all 8 tag-accepting tools (`create_note`, `update_note`, `add_tags`, `remove_tags`,
   `replace_tags`, `get_or_create_note`, `bulk_tag`), not just 3.
 
+### Dependencies
+- `cryptography` and `keyring` promoted from transitive (dev/publish tooling only) to direct
+  runtime dependencies — both are actually imported by `vault.py` now. No new/unfamiliar package
+  introduced; both already resolved in `requirements-lock.txt`.
+
+### Security
+- Reconciled the two divergent Bandit configs: `.bandit` and `.github/workflows/security.yml`'s
+  `bandit_skip` no longer skip B105 (hardcoded-password-string) — `pyproject.toml [tool.bandit]`
+  never did. Kept active so key-handling code (`vault.py`) is guarded against accidentally
+  hardcoded secrets.
+
 ### Docs
 - `SECURITY.md` corrected: removed false "encryption at rest" and "memory protection" claims
   (Simplenote itself has no encryption at rest — see the new Data Protection section), refreshed
   the stale version-support table and aspirational quarterly-pentest/annual-audit language to
-  reflect this being a solo-maintained open-source project.
-- `ROADMAP.md`/`TODO.md` refreshed to the current tool count (27) and version (1.17.1), with the
-  next roadmap phases (correctness hardening, opt-in client-side note encryption, companion
-  architecture layer) added.
+  reflect this being a solo-maintained open-source project. Updated again once Vault shipped to
+  describe it accurately (what it protects, what it doesn't).
+- `ROADMAP.md`/`TODO.md` refreshed to the current tool count (30) and version, with Phase 8
+  (correctness hardening) and Phase 9 (Vault) marked shipped and Phase 10 (companion architecture
+  layer) as the remaining item.
 - `ROADMAP.md`/`TODO.md`: documented the outcome of the `simplenote://recent` auto-context
   resource spike — investigated and decided against building it. MCP Resources in Claude Desktop
   are user-attached, not auto-loaded into a conversation at session start, so a curated resource
@@ -71,6 +109,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`search_notes`/`get_or_create_note`, now paired with the `session-handoff` prompt) already
   solves proactive context-pulling, since tools — unlike resources — are always available for the
   model to call on its own initiative.
+- New `docs/security/encryption-design.md`: full Vault threat model, envelope format, key
+  management design, and documented limitations.
+- `LIVE_TESTING.md` extended with a Vault section (`vault_status`, `encrypt_note`, `decrypt_note`,
+  verifying encrypted bodies never leak into search results or snippets).
 
 ## [1.17.1] - 2026-06-24
 

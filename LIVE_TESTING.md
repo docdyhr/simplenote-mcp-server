@@ -240,12 +240,49 @@ Run them in order — later tests depend on notes created earlier.
 
 ---
 
-## 19. Cleanup
+## 19. Vault — Client-Side Encryption
+
+> Call vault_status. Tell me whether a key is available and which provider it's using.
+
+**Expect**: `key_available` (bool), `key_provider` (`"keyring"` or `"file"`), `encrypted_note_count`. First call may trigger a one-time macOS Keychain approval dialog — approve it.
+
+> Create a note with content "Vault Test\nThis is sensitive test data — SSN 000-00-0000" and encrypt=true.
+
+**Expect**: `success: true`, `encrypted: true`, `tags` includes `vault-encrypted`. Note this note's ID.
+
+> Get that note back.
+
+**Expect**: `encrypted: true`, `decryptable: true`, `content` shows the full original text including "SSN 000-00-0000" — decrypted transparently. `title` shows "Vault Test".
+
+> Search my notes for "sensitive test data".
+
+**Expect**: The Vault note does NOT appear (body isn't searchable — this is a documented limitation, not a bug).
+
+> Search my notes for "Vault Test".
+
+**Expect**: The Vault note DOES appear (title stays searchable), and its snippet shows only the title, never the encrypted body or raw ciphertext.
+
+> Try to append text to the Vault Test note with add_text.
+
+**Expect**: A clear error explaining the note is Vault-encrypted and to use decrypt_note first — NOT a corrupted note, NOT silently-added plaintext.
+
+> Decrypt the Vault Test note.
+
+**Expect**: `success: true`, `encrypted: false`. Getting the note now shows plain content with no `%%SNVAULT:v1%%` marker.
+
+> Encrypt the Vault Test note again, then check vault_status.
+
+**Expect**: `encrypted_note_count` increased by 1 versus the first vault_status call.
+
+---
+
+## 20. Cleanup
 
 > Delete the following test notes (move to Trash):
 > - Live Test Note
 > - Live Test Log
 > - Live Test — Idempotent
+> - Vault Test
 > - Today's daily note (YYYY-MM-DD)
 
 **Expect**: All moved to Trash. Verify with a search for "live test" — should return empty or only trashed notes.
@@ -275,4 +312,5 @@ Run them in order — later tests depend on notes created earlier.
 | 16 | `export_notes` | |
 | 17 | `find_and_merge_duplicates` (dry run) | |
 | 18 | `delete_note` + `restore_note` | |
-| 19 | Cleanup | |
+| 19 | `vault_status`, `encrypt_note`, `decrypt_note`, encrypted search/add_text behavior | |
+| 20 | Cleanup | |

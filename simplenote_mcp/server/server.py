@@ -119,6 +119,8 @@ WRITE_TOOLS: frozenset[str] = frozenset(
         "permanent_delete_note",
         "empty_trash",
         "find_and_merge_duplicates",
+        "encrypt_note",
+        "decrypt_note",
     }
 )
 
@@ -1095,6 +1097,22 @@ async def handle_list_tools() -> list[types.Tool]:
                 },
                 annotations=_READ,
             ),
+            types.Tool(
+                name="vault_status",
+                description=(
+                    "Check the Vault encryption key status: whether a key is available "
+                    "this session, which provider it came from (keyring or "
+                    "SIMPLENOTE_VAULT_KEY_FILE), and how many notes are currently "
+                    "Vault-encrypted. Call this before encrypt_note/decrypt_note or "
+                    "create_note/update_note with encrypt=true if you're unsure whether "
+                    "a key is provisioned. No parameters required."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {},
+                },
+                annotations=_READ,
+            ),
         ]
 
         write_tools = [
@@ -1115,6 +1133,10 @@ async def handle_list_tools() -> list[types.Tool]:
                             "type": "array",
                             "items": {"type": "string"},
                             "description": "Tags for the note (array of strings; a comma-separated string is also accepted)",
+                        },
+                        "encrypt": {
+                            "type": "boolean",
+                            "description": "Encrypt the note body locally before it reaches Simplenote (default: false). Simplenote has no encryption at rest — use this for sensitive content. The title (first line) stays readable; only the OS holding the Vault key can decrypt the rest. See vault_status.",
                         },
                     },
                     "required": ["content"],
@@ -1144,6 +1166,10 @@ async def handle_list_tools() -> list[types.Tool]:
                             "type": "array",
                             "items": {"type": "string"},
                             "description": "Tags for the note (array of strings; a comma-separated string is also accepted)",
+                        },
+                        "encrypt": {
+                            "type": "boolean",
+                            "description": "Encrypt the new content locally before it reaches Simplenote (default: false). Required to be true when replacing a note that's already Vault-encrypted — otherwise update_note refuses rather than silently overwriting encrypted content with plaintext.",
                         },
                     },
                     "required": ["note_id", "content"],
@@ -1537,6 +1563,49 @@ async def handle_list_tools() -> list[types.Tool]:
                             ),
                         },
                     },
+                },
+                annotations=_WRITE_IDEM,
+            ),
+            types.Tool(
+                name="encrypt_note",
+                description=(
+                    "Encrypt an existing note's body locally (AES-256-GCM) so Simplenote's "
+                    "servers only ever store ciphertext — use for notes containing sensitive "
+                    "data, since Simplenote itself has no encryption at rest. The title "
+                    "(first line) stays readable; only the OS holding the Vault key can "
+                    "decrypt the rest. Idempotent — a no-op if the note is already encrypted. "
+                    "Use decrypt_note to reverse, or create_note/update_note with encrypt=true "
+                    "to write pre-encrypted content in one call."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to encrypt",
+                        },
+                    },
+                    "required": ["note_id"],
+                },
+                annotations=_ADD_IDEM,
+            ),
+            types.Tool(
+                name="decrypt_note",
+                description=(
+                    "Reverse encrypt_note: decrypt a Vault-encrypted note's body and store "
+                    "it back in Simplenote as plaintext. Idempotent — a no-op if the note "
+                    "isn't currently encrypted. Requires the same Vault key the note was "
+                    "encrypted with (see vault_status)."
+                ),
+                inputSchema={
+                    "type": "object",
+                    "properties": {
+                        "note_id": {
+                            "type": "string",
+                            "description": "The ID of the note to decrypt",
+                        },
+                    },
+                    "required": ["note_id"],
                 },
                 annotations=_WRITE_IDEM,
             ),
