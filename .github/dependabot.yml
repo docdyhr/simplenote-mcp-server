@@ -61,6 +61,29 @@ updates:
       - "dependencies"
       - "github-actions"
 
+  # npm (MCP evaluation tooling — devDependencies only, not shipped)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+      time: "09:00"
+    open-pull-requests-limit: 5
+    assignees:
+      - "docdyhr"
+
+    commit-message:
+      prefix: "deps"
+      prefix-development: "deps-dev"
+      include: "scope"
+    labels:
+      - "dependencies"
+      - "npm"
+    groups:
+      npm-dependencies:
+        patterns:
+          - "*"
+
   # Docker
   - package-ecosystem: "docker"
     directory: "/"
