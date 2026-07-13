@@ -373,6 +373,44 @@ class TestHandleCallTool:
         with pytest.raises(ValidationError):
             await srv.handle_call_tool("create_note", "not-a-dict")  # type: ignore[arg-type]
 
+    @pytest.mark.asyncio
+    async def test_tool_call_does_not_log_plaintext_at_info(self, caplog):
+        """Note content must never appear in INFO-or-above logs.
+
+        Regression test: handle_call_tool used to dump the full, unsanitized
+        arguments dict (including note content) via logger.info() on every
+        call. A sanitized/truncated form at DEBUG is fine and expected.
+        """
+        import logging
+
+        import simplenote_mcp.server.server as srv
+
+        marker = "UNIQUE-PLAINTEXT-MARKER-89f3c2"
+
+        mock_sn = MagicMock()
+        mock_cache = MagicMock()
+        mock_cache.is_initialized = True
+
+        with (
+            patch(
+                "simplenote_mcp.server.server.get_simplenote_client",
+                return_value=mock_sn,
+            ),
+            patch(
+                "simplenote_mcp.server.cache_utils.get_cache_or_create_minimal",
+                return_value=mock_cache,
+            ),
+            caplog.at_level(logging.DEBUG, logger="simplenote_mcp"),
+        ):
+            # Write mode is disabled by default, so this is rejected before
+            # touching the network — the logging call under test runs before
+            # that gate either way, so it still exercises the fixed code path.
+            await srv.handle_call_tool("create_note", {"content": marker})
+
+        for record in caplog.records:
+            if record.levelno >= logging.INFO:
+                assert marker not in record.getMessage()
+
 
 # ---------------------------------------------------------------------------
 # handle_list_prompts

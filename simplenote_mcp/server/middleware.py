@@ -257,6 +257,24 @@ class RateLimiter:
             logger.warning(f"Failed to trigger rate limit alert: {e}")
 
 
+def sanitize_arguments_for_logging(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Redact/truncate tool arguments so they're safe to log.
+
+    Redacts fields whose name suggests a secret (password/token/secret/key)
+    and truncates long string values (note content, search queries) rather
+    than logging them in full.
+    """
+    sanitized = {}
+    for key, value in arguments.items():
+        if key.lower() in ["password", "token", "secret", "key"]:
+            sanitized[key] = "[REDACTED]"
+        elif isinstance(value, str) and len(value) > 100:
+            sanitized[key] = value[:100] + "... [TRUNCATED]"
+        else:
+            sanitized[key] = value
+    return sanitized
+
+
 class RequestValidator:
     """Comprehensive request validation middleware."""
 
@@ -426,15 +444,7 @@ class RequestValidator:
 
     def _sanitize_arguments(self, arguments: dict[str, Any]) -> dict[str, Any]:
         """Sanitize arguments for logging (remove sensitive data)."""
-        sanitized = {}
-        for key, value in arguments.items():
-            if key.lower() in ["password", "token", "secret", "key"]:
-                sanitized[key] = "[REDACTED]"
-            elif isinstance(value, str) and len(value) > 100:
-                sanitized[key] = value[:100] + "... [TRUNCATED]"
-            else:
-                sanitized[key] = value
-        return sanitized
+        return sanitize_arguments_for_logging(arguments)
 
 
 class AuthenticationMiddleware:

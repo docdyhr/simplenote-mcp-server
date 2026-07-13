@@ -710,3 +710,48 @@ class TestConfigValidateRateLimiting:
             config = Config()
             with pytest.raises(ValueError, match="HTTP_METRICS_PATH must start with"):
                 config.validate()
+
+
+class TestMcpHttpAuthConfig:
+    """Tests for MCP_HTTP_AUTH_TOKEN/ALLOWED_HOSTS/ALLOWED_ORIGINS parsing."""
+
+    BASE_ENV = {
+        "SIMPLENOTE_EMAIL": "test@example.com",
+        "SIMPLENOTE_PASSWORD": "test_password",  # noqa: S105
+    }
+
+    def test_defaults_are_empty(self):
+        with patch.dict(os.environ, self.BASE_ENV, clear=True):
+            config = Config()
+            assert config.mcp_http_auth_token is None
+            assert config.mcp_http_allowed_hosts == []
+            assert config.mcp_http_allowed_origins == []
+
+    def test_empty_token_env_var_treated_as_unset(self):
+        with patch.dict(
+            os.environ, {**self.BASE_ENV, "MCP_HTTP_AUTH_TOKEN": ""}, clear=True
+        ):
+            config = Config()
+            assert config.mcp_http_auth_token is None
+
+    def test_token_and_allowlists_parsed(self):
+        with patch.dict(
+            os.environ,
+            {
+                **self.BASE_ENV,
+                "MCP_HTTP_AUTH_TOKEN": "s3cret-token",  # noqa: S105
+                "MCP_HTTP_ALLOWED_HOSTS": "example.com, api.example.com:8443 ,",
+                "MCP_HTTP_ALLOWED_ORIGINS": "https://example.com,https://app.example.com",
+            },
+            clear=True,
+        ):
+            config = Config()
+            assert config.mcp_http_auth_token == "s3cret-token"  # noqa: S105
+            assert config.mcp_http_allowed_hosts == [
+                "example.com",
+                "api.example.com:8443",
+            ]
+            assert config.mcp_http_allowed_origins == [
+                "https://example.com",
+                "https://app.example.com",
+            ]

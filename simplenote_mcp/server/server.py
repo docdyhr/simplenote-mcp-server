@@ -3,6 +3,7 @@
 # Import standard libraries
 import asyncio
 import atexit
+import hmac
 import json
 import os
 import signal
@@ -23,6 +24,9 @@ from mcp.server.lowlevel.helper_types import (  # type: ignore  # noqa: E402
     ReadResourceContents,
 )
 from mcp.server.models import InitializationOptions  # type: ignore  # noqa: E402
+from mcp.server.transport_security import (  # type: ignore  # noqa: E402
+    TransportSecuritySettings,
+)
 
 # External imports
 from pydantic import AnyUrl  # type: ignore  # noqa: E402
@@ -39,6 +43,7 @@ from .error_helpers import (
 )
 from .errors import (  # noqa: E402
     AuthenticationError,
+    ConfigurationError,
     ResourceNotFoundError,
     ServerError,
     ValidationError,
@@ -46,6 +51,7 @@ from .errors import (  # noqa: E402
 )
 from .logging import logger  # noqa: E402
 from .middleware import (
+    sanitize_arguments_for_logging,
     with_rate_limiting,
     with_request_validation,
     with_security_monitoring,
@@ -1675,7 +1681,11 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
     from .cache_utils import get_cache_or_create_minimal
     from .tool_handlers import ToolHandlerRegistry
 
-    logger.info(f"Tool call: {name} with arguments: {json.dumps(arguments)}")
+    logger.info(f"Tool call: {name} (args_count={len(arguments)})")
+    logger.debug(
+        f"Tool call {name} arguments: "
+        f"{json.dumps(sanitize_arguments_for_logging(arguments))}"
+    )
 
     # Record tool call for performance monitoring
     record_tool_call(name)
@@ -2105,6 +2115,53 @@ async def run() -> None:
         await _stop_background_sync()
 
 
+def _is_loopback_host(host: str) -> bool:
+    """Return True if host is a loopback address (127.0.0.1, localhost, ::1)."""
+    return host in ("127.0.0.1", "localhost", "::1")
+
+
+def _bearer_token_valid(scope: Any, expected_token: str) -> bool:
+    """Check the ASGI scope's Authorization header against expected_token.
+
+    Uses constant-time comparison to avoid leaking token length/prefix via
+    timing. `scope["headers"]` is a list of (name, value) byte-string pairs
+    per the ASGI spec.
+    """
+    headers = dict(scope.get("headers") or [])
+    raw = headers.get(b"authorization", b"").decode("latin-1")
+    if not raw.startswith("Bearer "):
+        return False
+    return hmac.compare_digest(raw[len("Bearer ") :], expected_token)
+
+
+def _build_http_security_settings(config: Any, host: str) -> TransportSecuritySettings:
+    """Build TransportSecuritySettings for the MCP HTTP transport.
+
+    Omitting security_settings entirely leaves DNS-rebinding protection off
+    (the SDK's own default). We always pass an explicit value: a safe
+    zero-config allowlist for loopback binds, the configured allowlist for
+    anything else, or — only if the operator hasn't configured one — a
+    logged, explicit opt-out rather than a silent one.
+    """
+    if config.mcp_http_allowed_hosts:
+        return TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=config.mcp_http_allowed_hosts,
+            allowed_origins=config.mcp_http_allowed_origins,
+        )
+    if _is_loopback_host(host):
+        return TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=["127.0.0.1:*", "localhost:*"],
+            allowed_origins=config.mcp_http_allowed_origins,
+        )
+    logger.warning(
+        "DNS rebinding protection disabled — set MCP_HTTP_ALLOWED_HOSTS to "
+        "enable it for non-loopback binds."
+    )
+    return TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
+
 async def run_http(host: str, port: int, path: str) -> None:
     """Run the server using streamable HTTP transport."""
     import time as time_module
@@ -2112,14 +2169,26 @@ async def run_http(host: str, port: int, path: str) -> None:
     import uvicorn
     from starlette.responses import PlainTextResponse
 
+    config = get_config()
+
+    if not _is_loopback_host(host) and not config.mcp_http_auth_token:
+        raise ConfigurationError(
+            f"Refusing to start MCP_TRANSPORT=http on non-loopback host "
+            f"{host!r} without MCP_HTTP_AUTH_TOKEN set. Set a bearer token, "
+            "or bind MCP_HTTP_HOST to 127.0.0.1/localhost for same-host-only "
+            "access.",
+            subcategory="http_auth_required",
+        )
+
     startup_start = time_module.time()
     normalized_path = path if path.startswith("/") else f"/{path}"
     logger.info(
         f"Starting MCP server HTTP transport on http://{host}:{port}{normalized_path}"
     )
 
+    security_settings = _build_http_security_settings(config, host)
     transport = mcp.server.streamable_http.StreamableHTTPServerTransport(
-        mcp_session_id=None
+        mcp_session_id=None, security_settings=security_settings
     )
 
     try:
@@ -2153,6 +2222,17 @@ async def run_http(host: str, port: int, path: str) -> None:
                 request_path = cast(str, scope.get("path", ""))
                 if request_path != normalized_path:
                     response = PlainTextResponse("Not Found", status_code=404)
+                    await response(scope, receive, send)
+                    return
+
+                if config.mcp_http_auth_token and not _bearer_token_valid(
+                    scope, config.mcp_http_auth_token
+                ):
+                    response = PlainTextResponse(
+                        "Unauthorized",
+                        status_code=401,
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
                     await response(scope, receive, send)
                     return
 
