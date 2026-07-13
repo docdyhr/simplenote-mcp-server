@@ -15,24 +15,45 @@ services:
       - SIMPLENOTE_PASSWORD=${SIMPLENOTE_PASSWORD}
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
+      # MCP protocol over HTTP — MCP_HTTP_HOST=0.0.0.0 is the
+      # container-internal bind; Docker's own network/port publishing is
+      # the real access boundary. A bearer token is required: server.py's
+      # run_http() refuses to start a non-loopback bind without one.
+      - MCP_TRANSPORT=http
+      - MCP_HTTP_HOST=0.0.0.0
+      - MCP_HTTP_AUTH_TOKEN=${MCP_HTTP_AUTH_TOKEN:?set MCP_HTTP_AUTH_TOKEN in .env — required for non-loopback MCP_TRANSPORT=http}
+      # Separate health/metrics endpoint, loopback-only — used by the
+      # healthcheck below via docker exec, never published externally.
+      - ENABLE_HTTP_ENDPOINT=true
+      - HTTP_HOST=127.0.0.1
+      - HTTP_PORT=8080
 
     # Resource limits as per PRD requirements
     deploy:
       resources:
         limits:
-          cpus: '1.0'
+          cpus: "1.0"
           memory: 512M
         reservations:
-          cpus: '0.5'
+          cpus: "0.5"
           memory: 256M
 
-    # Health check
+    # Health check — a real probe against the monitoring server, not just
+    # an import check (which proves nothing about whether the process is
+    # actually serving requests). No curl in this image, so a Python
+    # one-liner against the loopback-only monitoring endpoint above.
     healthcheck:
-      test: ["CMD", "python", "-c", "import simplenote_mcp.server; print('ok')"]
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).status == 200 else 1)",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
+      start_period: 15s
 
     # Volumes for persistent logs (optional)
     volumes:
@@ -43,7 +64,7 @@ services:
       - "8000:8000"
 
     # Security options
-    user: "1000:1000"  # Use host user ID to avoid permission issues
+    user: "1000:1000" # Use host user ID to avoid permission issues
     security_opt:
       - no-new-privileges:true
     read_only: true

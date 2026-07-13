@@ -255,6 +255,96 @@ class TestHTTPEndpointsHandler:
         assert isinstance(HTTPEndpointsHandler.metrics_collector, MetricsCollector)
 
 
+class TestHealthEndpointStatusCode:
+    """/health must only fail (503) on a genuine 'unhealthy' check.
+
+    Regression test: it used to fail on 'degraded' too — e.g. a low cache
+    hit rate, which is completely normal right after startup or during a
+    quiet period, not a sign the process is actually broken. Wired to a
+    Docker HEALTHCHECK or a Kubernetes livenessProbe (both added as part of
+    the 2026-07-13 audit remediation), that caused spurious restarts.
+    Uses a real running HTTPEndpointsServer + real HTTP requests rather
+    than mocking BaseHTTPRequestHandler internals, to exercise the exact
+    code path a real probe hits.
+    """
+
+    def setup_method(self):
+        HTTPEndpointsHandler.health_status = HealthStatus()
+        HTTPEndpointsHandler.readiness_checker = ReadinessChecker()
+        HTTPEndpointsHandler.metrics_collector = MetricsCollector()
+
+    def _start_server(self, mock_config):
+        mock_config.return_value = MagicMock(
+            enable_http_endpoint=True,
+            http_host="127.0.0.1",
+            http_port=0,  # OS-assigned free port
+            http_health_path="/health",
+            http_ready_path="/ready",
+            http_metrics_path="/metrics",
+            cache_health_checks=False,  # isolate from real cache state
+        )
+        server = HTTPEndpointsServer()
+        server.start()
+        time.sleep(0.1)  # let the background thread bind the socket
+        port = server.server.server_port
+        return server, port
+
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    @patch("simplenote_mcp.server.http_endpoints.get_memory_metrics")
+    def test_degraded_check_returns_200(self, mock_memory, mock_config):
+        import urllib.request
+
+        mock_memory.return_value = {"memory_usage": 0}
+        server, port = self._start_server(mock_config)
+        # Simulate a degraded (not unhealthy) subsystem, e.g. a low cache
+        # hit rate — must not fail the probe.
+        HTTPEndpointsHandler.health_status.add_check(
+            "cache", "degraded", "Low cache hit rate: 0.0%"
+        )
+        try:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/health", timeout=5
+            ) as response:
+                assert response.status == 200
+        finally:
+            server.stop()
+
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    @patch("simplenote_mcp.server.http_endpoints.get_memory_metrics")
+    def test_unhealthy_check_returns_503(self, mock_memory, mock_config):
+        import urllib.error
+        import urllib.request
+
+        mock_memory.return_value = {"memory_usage": 0}
+        server, port = self._start_server(mock_config)
+        HTTPEndpointsHandler.health_status.add_check(
+            "dependency", "unhealthy", "A required subsystem failed"
+        )
+        try:
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5)
+                raise AssertionError("expected HTTPError for a 503 response")
+            except urllib.error.HTTPError as e:
+                assert e.code == 503
+        finally:
+            server.stop()
+
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    @patch("simplenote_mcp.server.http_endpoints.get_memory_metrics")
+    def test_all_healthy_returns_200(self, mock_memory, mock_config):
+        import urllib.request
+
+        mock_memory.return_value = {"memory_usage": 0}
+        server, port = self._start_server(mock_config)
+        try:
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/health", timeout=5
+            ) as response:
+                assert response.status == 200
+        finally:
+            server.stop()
+
+
 class TestHTTPEndpointsServer:
     """Tests for HTTPEndpointsServer class."""
 

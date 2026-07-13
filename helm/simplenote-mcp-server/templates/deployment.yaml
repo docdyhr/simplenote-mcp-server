@@ -40,6 +40,9 @@ spec:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
+            - name: monitoring
+              containerPort: {{ .Values.monitoring.port }}
+              protocol: TCP
           env:
             - name: SIMPLENOTE_EMAIL
               valueFrom:
@@ -51,6 +54,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "simplenote-mcp-server.secretName" . }}
                   key: SIMPLENOTE_PASSWORD
+            - name: MCP_HTTP_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "simplenote-mcp-server.secretName" . }}
+                  key: MCP_HTTP_AUTH_TOKEN
           envFrom:
             {{- if .Values.configMap.create }}
             - configMapRef:

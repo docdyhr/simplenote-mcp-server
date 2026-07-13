@@ -35,6 +35,65 @@ test_docker_run() {
     fi
 }
 
+test_docker_http_serves_requests() {
+    echo -e "\n${YELLOW}Testing that the container actually serves MCP requests over HTTP...${NC}"
+    # test_docker_run() above only proves the binary starts (--help exits
+    # 0) — it never proves the process accepts a connection and speaks the
+    # protocol. This starts the real container with MCP_TRANSPORT=http and
+    # drives an actual HTTP request against it, both without and with the
+    # required bearer token.
+
+    local port=18790
+    local token="docker-ci-smoke-test-token"
+    local container_id
+
+    container_id=$(docker run -d \
+        -e SIMPLENOTE_OFFLINE_MODE=true \
+        -e MCP_TRANSPORT=http \
+        -e MCP_HTTP_HOST=0.0.0.0 \
+        -e MCP_HTTP_AUTH_TOKEN="$token" \
+        -e LOG_TO_FILE=false \
+        -p "${port}:8000" \
+        simplenote-mcp-server:test)
+
+    # Give the server a moment to bind the port.
+    local waited=0
+    while [ "$waited" -lt 20 ]; do
+        if curl -s -o /dev/null "http://127.0.0.1:${port}/mcp" 2>/dev/null; then
+            break
+        fi
+        sleep 1
+        waited=$((waited + 1))
+    done
+
+    local unauth_status
+    unauth_status=$(curl -s -o /dev/null -w "%{http_code}" \
+        -X POST "http://127.0.0.1:${port}/mcp" \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/json, text/event-stream" \
+        -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke-test","version":"1.0"}}}')
+
+    local auth_status
+    auth_status=$(curl -s -o /dev/null -w "%{http_code}" \
+        -X POST "http://127.0.0.1:${port}/mcp" \
+        -H "Authorization: Bearer ${token}" \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/json, text/event-stream" \
+        -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"smoke-test","version":"1.0"}}}')
+
+    docker logs "$container_id" 2>&1 | tail -30
+    docker stop "$container_id" > /dev/null 2>&1 || true
+    docker rm "$container_id" > /dev/null 2>&1 || true
+
+    if [ "$unauth_status" = "401" ] && [ "$auth_status" = "200" ]; then
+        echo -e "${GREEN}✓ Container serves MCP over HTTP (401 unauthenticated, 200 authenticated)${NC}"
+        return 0
+    else
+        echo -e "${RED}✗ Container did not serve requests as expected (unauth=${unauth_status}, auth=${auth_status})${NC}"
+        return 1
+    fi
+}
+
 test_docker_compose() {
     echo -e "\n${YELLOW}Testing Docker Compose...${NC}"
 
@@ -129,7 +188,7 @@ TESTS_PASSED=0
 TESTS_FAILED=0
 
 # Run each test and track results
-for test in test_docker_build test_docker_run test_docker_compose test_multi_platform_build test_workflow_syntax test_dockerfile_best_practices; do
+for test in test_docker_build test_docker_run test_docker_http_serves_requests test_docker_compose test_multi_platform_build test_workflow_syntax test_dockerfile_best_practices; do
     if $test; then
         ((TESTS_PASSED++))
     else

@@ -75,9 +75,12 @@ ENV HOME=/home/mcp
 # Expose port for HTTP transport (default MCP port)
 EXPOSE 8000
 
-# Add health check that actually tests the module import
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import simplenote_mcp.server; print('Health check passed')" || exit 1
+# Real health check against the monitoring server (requires
+# ENABLE_HTTP_ENDPOINT=true, HTTP_PORT=8080 — see README) — an import-only
+# check proves the package is installed, not that the process is serving
+# anything. No curl in this image, so a Python one-liner.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD python -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).status == 200 else 1)"
 
 # Add metadata labels
 LABEL org.opencontainers.image.created="${BUILDTIME}"
