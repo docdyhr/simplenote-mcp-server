@@ -3,6 +3,7 @@
 # Import standard libraries
 import asyncio
 import atexit
+import hmac
 import json
 import os
 import signal
@@ -10,7 +11,7 @@ import sys
 import tempfile
 import threading
 import time
-from collections import deque
+from collections import defaultdict, deque
 from collections.abc import Iterable
 from typing import Any, cast
 
@@ -23,6 +24,9 @@ from mcp.server.lowlevel.helper_types import (  # type: ignore  # noqa: E402
     ReadResourceContents,
 )
 from mcp.server.models import InitializationOptions  # type: ignore  # noqa: E402
+from mcp.server.transport_security import (  # type: ignore  # noqa: E402
+    TransportSecuritySettings,
+)
 
 # External imports
 from pydantic import AnyUrl  # type: ignore  # noqa: E402
@@ -33,12 +37,12 @@ from .cache import BackgroundSync, NoteCache  # noqa: E402
 # Use our compatibility module for cross-version support
 from .compat import Path  # noqa: E402
 from .config import LogLevel, get_config  # noqa: E402
-from .decorators import rate_limit
 from .error_helpers import (
     format_error,
 )
 from .errors import (  # noqa: E402
     AuthenticationError,
+    ConfigurationError,
     ResourceNotFoundError,
     ServerError,
     ValidationError,
@@ -46,6 +50,7 @@ from .errors import (  # noqa: E402
 )
 from .logging import logger  # noqa: E402
 from .middleware import (
+    sanitize_arguments_for_logging,
     with_rate_limiting,
     with_request_validation,
     with_security_monitoring,
@@ -128,14 +133,17 @@ WRITE_TOOLS: frozenset[str] = frozenset(
     }
 )
 
-# Per-session rolling write-budget tracker (not reset across reconnects —
+# Per-client rolling write-budget tracker (not reset across reconnects —
 # intentional: keeps the guard effective during a single server process).
-_write_timestamps: deque[float] = deque()
+# Keyed by client identifier (see _resolve_client_id) so one HTTP client
+# can't exhaust the budget for every other concurrent client; stdio has
+# exactly one implicit client per process, so it gets one shared bucket.
+_write_timestamps: dict[str, deque[float]] = defaultdict(deque)
 _write_budget_lock = threading.Lock()
 
 
-def _check_write_budget() -> None:
-    """Raise ValidationError if the session write budget is exhausted.
+def _check_write_budget(client_id: str) -> None:
+    """Raise ValidationError if client_id's write budget is exhausted.
 
     Uses a rolling window defined by config write_budget_max /
     write_budget_window_seconds.  Called immediately before each write tool
@@ -145,9 +153,10 @@ def _check_write_budget() -> None:
     now = time.monotonic()
     window_start = now - config.write_budget_window_seconds
     with _write_budget_lock:
-        while _write_timestamps and _write_timestamps[0] < window_start:
-            _write_timestamps.popleft()
-        if len(_write_timestamps) >= config.write_budget_max:
+        timestamps = _write_timestamps[client_id]
+        while timestamps and timestamps[0] < window_start:
+            timestamps.popleft()
+        if len(timestamps) >= config.write_budget_max:
             raise ValidationError(
                 f"Write budget exhausted: {config.write_budget_max} writes in "
                 f"{config.write_budget_window_seconds}s. "
@@ -156,10 +165,10 @@ def _check_write_budget() -> None:
             )
 
 
-def _record_write() -> None:
-    """Record a successful write operation against the session budget."""
+def _record_write(client_id: str) -> None:
+    """Record a successful write operation against client_id's budget."""
     with _write_budget_lock:
-        _write_timestamps.append(time.monotonic())
+        _write_timestamps[client_id].append(time.monotonic())
 
 
 # Create a server instance
@@ -174,6 +183,68 @@ except Exception as e:
 
 # Initialize Simplenote client
 simplenote_client = None
+
+
+def _build_offline_mock_client() -> Any:
+    """Build a stateful mock Simplenote client for SIMPLENOTE_OFFLINE_MODE.
+
+    A plain MagicMock with static return_values can't satisfy realistic
+    round-trip tests (create a note, then retrieve/update it and expect
+    the same content back) — add_note/get_note/update_note need to share
+    an in-memory store, like a real API would. Scoped to one closure per
+    call, so each fresh client (e.g. after clear_client_cache()) starts
+    with an empty store rather than leaking notes across tests.
+    """
+    from unittest.mock import MagicMock
+
+    mock_client = MagicMock()
+    notes_store: dict[str, dict[str, Any]] = {}
+    next_id = [1]
+
+    def mock_add_note(note: dict[str, Any], *_args: Any, **_kwargs: Any) -> Any:
+        key = f"mock-note-{next_id[0]}"
+        next_id[0] += 1
+        now = time.time()
+        stored = {
+            "key": key,
+            "content": note.get("content", ""),
+            "tags": list(note.get("tags", [])),
+            "systemTags": list(note.get("systemTags", [])),
+            "deleted": False,
+            "createdate": now,
+            "modifydate": now,
+        }
+        notes_store[key] = stored
+        return dict(stored), 0
+
+    def mock_get_note(note_id: str, *_args: Any, **_kwargs: Any) -> Any:
+        stored = notes_store.get(note_id)
+        if stored is None:
+            return None, -1
+        return dict(stored), 0
+
+    def mock_update_note(note: dict[str, Any], *_args: Any, **_kwargs: Any) -> Any:
+        key = note.get("key")
+        stored = notes_store.get(key) if key else None
+        if stored is None:
+            return None, -1
+        stored["content"] = note.get("content", stored["content"])
+        stored["tags"] = list(note.get("tags", stored["tags"]))
+        stored["modifydate"] = time.time()
+        return dict(stored), 0
+
+    def mock_trash_note(note_id: str, *_args: Any, **_kwargs: Any) -> int:
+        stored = notes_store.get(note_id)
+        if stored is not None:
+            stored["deleted"] = True
+        return 0
+
+    mock_client.get_note_list.return_value = ([], 0)
+    mock_client.get_note.side_effect = mock_get_note
+    mock_client.add_note.side_effect = mock_add_note
+    mock_client.update_note.side_effect = mock_update_note
+    mock_client.trash_note.side_effect = mock_trash_note
+    return mock_client
 
 
 def get_simplenote_client() -> Simplenote:
@@ -197,17 +268,7 @@ def get_simplenote_client() -> Simplenote:
             # Check if running in offline mode
             if config.offline_mode:
                 logger.info("Running in offline mode - using mock Simplenote client")
-                from unittest.mock import MagicMock
-
-                # Create a mock client for offline mode
-                mock_client = MagicMock()
-                mock_client.get_note_list.return_value = ([], 0)
-                mock_client.get_note.return_value = ({}, 0)
-                mock_client.add_note.return_value = ({}, 0)
-                mock_client.update_note.return_value = ({}, 0)
-                mock_client.trash_note.return_value = 0
-
-                simplenote_client = mock_client
+                simplenote_client = _build_offline_mock_client()
                 logger.info("Mock Simplenote client created for offline mode")
                 return simplenote_client
 
@@ -1652,12 +1713,51 @@ async def handle_list_tools() -> list[types.Tool]:
         ]
 
 
-@rate_limit(60, 60)
+def _resolve_client_id(*_args: Any, **_kwargs: Any) -> str:
+    """Per-client identifier for rate limiting and the write budget.
+
+    stdio: one fixed identifier — a single local process IS one client for
+    that transport, which is correct behavior, not a gap, since there's
+    never more than one caller sharing a process. HTTP: the peer's source
+    IP, so concurrent callers sharing one MCP_HTTP_AUTH_TOKEN are still
+    isolated from each other rather than sharing a single global bucket.
+
+    Built on confirmed SDK internals: server.request_context.request
+    reliably carries the raw Starlette Request (with a real peer address)
+    for every HTTP-transport call, and is reliably None for stdio — see
+    run_http()/the streamable_http transport for how that's populated.
+
+    Signature matches with_rate_limiting's identifier_func(*args, **kwargs)
+    calling convention (invoked with handle_call_tool's own (name,
+    arguments)) — both are unused here.
+    """
+    try:
+        ctx = server.request_context
+    except LookupError:
+        return "stdio-local"
+    request = ctx.request
+    if request is None:
+        return "stdio-local"
+    client = getattr(request, "client", None)
+    return f"http:{client.host}" if client else "http:unknown"
+
+
 @server.call_tool()
 @with_security_monitoring()
-@with_rate_limiting(max_requests=100, window_seconds=300)  # 100 requests per 5 minutes
+@with_rate_limiting(
+    max_requests=100,
+    window_seconds=300,
+    identifier_func=_resolve_client_id,
+)  # sustained: 100 requests per 5 minutes, per client
+@with_rate_limiting(
+    max_requests=60,
+    window_seconds=60,
+    identifier_func=_resolve_client_id,
+)  # burst: 60 requests per minute, per client
 @with_request_validation()
-async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent]:
+async def handle_call_tool(
+    name: str, arguments: dict
+) -> list[types.TextContent] | types.CallToolResult:
     """Handle the call_tool capability using the new tool handler system.
 
     Args:
@@ -1675,10 +1775,16 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
     from .cache_utils import get_cache_or_create_minimal
     from .tool_handlers import ToolHandlerRegistry
 
-    logger.info(f"Tool call: {name} with arguments: {json.dumps(arguments)}")
+    logger.info(f"Tool call: {name} (args_count={len(arguments)})")
+    logger.debug(
+        f"Tool call {name} arguments: "
+        f"{json.dumps(sanitize_arguments_for_logging(arguments))}"
+    )
 
     # Record tool call for performance monitoring
     record_tool_call(name)
+
+    client_id = _resolve_client_id()
 
     try:
         # Record API call
@@ -1704,10 +1810,13 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
                     "Set SIMPLENOTE_WRITE_MODE=true to enable write operations.",
                     subcategory="write_mode_disabled",
                 )
-                return [
-                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
-                ]
-            _check_write_budget()
+                return types.CallToolResult(
+                    content=[
+                        types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                    ],
+                    isError=True,
+                )
+            _check_write_budget(client_id)
 
         # Get handler from registry
         registry = ToolHandlerRegistry()
@@ -1717,22 +1826,36 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             error_msg = UNKNOWN_TOOL_ERROR.format(name=name)
             logger.error(error_msg)
             error = ValidationError(error_msg)
-            return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+            return types.CallToolResult(
+                content=[
+                    types.TextContent(type="text", text=json.dumps(error.to_dict()))
+                ],
+                isError=True,
+            )
 
-        # Execute the tool handler and record the write if it succeeded.
+        # Execute the tool handler and record the write only if it succeeded —
+        # a handler-level failure (isError=True) must not consume write budget.
         result = await handler.handle(arguments)
         if name in WRITE_TOOLS:
-            _record_write()
+            is_error = isinstance(result, types.CallToolResult) and result.isError
+            if not is_error:
+                _record_write(client_id)
         return result
 
     except Exception as e:
         if isinstance(e, ServerError):
             error_dict = e.to_dict()
-            return [types.TextContent(type="text", text=json.dumps(error_dict))]
+            return types.CallToolResult(
+                content=[types.TextContent(type="text", text=json.dumps(error_dict))],
+                isError=True,
+            )
 
         logger.error(f"Error in tool call: {str(e)}", exc_info=True)
         error = handle_exception(e, f"calling tool {name}")
-        return [types.TextContent(type="text", text=json.dumps(error.to_dict()))]
+        return types.CallToolResult(
+            content=[types.TextContent(type="text", text=json.dumps(error.to_dict()))],
+            isError=True,
+        )
 
 
 # ===== PROMPT CAPABILITIES =====
@@ -2105,6 +2228,53 @@ async def run() -> None:
         await _stop_background_sync()
 
 
+def _is_loopback_host(host: str) -> bool:
+    """Return True if host is a loopback address (127.0.0.1, localhost, ::1)."""
+    return host in ("127.0.0.1", "localhost", "::1")
+
+
+def _bearer_token_valid(scope: Any, expected_token: str) -> bool:
+    """Check the ASGI scope's Authorization header against expected_token.
+
+    Uses constant-time comparison to avoid leaking token length/prefix via
+    timing. `scope["headers"]` is a list of (name, value) byte-string pairs
+    per the ASGI spec.
+    """
+    headers = dict(scope.get("headers") or [])
+    raw = headers.get(b"authorization", b"").decode("latin-1")
+    if not raw.startswith("Bearer "):
+        return False
+    return hmac.compare_digest(raw[len("Bearer ") :], expected_token)
+
+
+def _build_http_security_settings(config: Any, host: str) -> TransportSecuritySettings:
+    """Build TransportSecuritySettings for the MCP HTTP transport.
+
+    Omitting security_settings entirely leaves DNS-rebinding protection off
+    (the SDK's own default). We always pass an explicit value: a safe
+    zero-config allowlist for loopback binds, the configured allowlist for
+    anything else, or — only if the operator hasn't configured one — a
+    logged, explicit opt-out rather than a silent one.
+    """
+    if config.mcp_http_allowed_hosts:
+        return TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=config.mcp_http_allowed_hosts,
+            allowed_origins=config.mcp_http_allowed_origins,
+        )
+    if _is_loopback_host(host):
+        return TransportSecuritySettings(
+            enable_dns_rebinding_protection=True,
+            allowed_hosts=["127.0.0.1:*", "localhost:*"],
+            allowed_origins=config.mcp_http_allowed_origins,
+        )
+    logger.warning(
+        "DNS rebinding protection disabled — set MCP_HTTP_ALLOWED_HOSTS to "
+        "enable it for non-loopback binds."
+    )
+    return TransportSecuritySettings(enable_dns_rebinding_protection=False)
+
+
 async def run_http(host: str, port: int, path: str) -> None:
     """Run the server using streamable HTTP transport."""
     import time as time_module
@@ -2112,14 +2282,26 @@ async def run_http(host: str, port: int, path: str) -> None:
     import uvicorn
     from starlette.responses import PlainTextResponse
 
+    config = get_config()
+
+    if not _is_loopback_host(host) and not config.mcp_http_auth_token:
+        raise ConfigurationError(
+            f"Refusing to start MCP_TRANSPORT=http on non-loopback host "
+            f"{host!r} without MCP_HTTP_AUTH_TOKEN set. Set a bearer token, "
+            "or bind MCP_HTTP_HOST to 127.0.0.1/localhost for same-host-only "
+            "access.",
+            subcategory="http_auth_required",
+        )
+
     startup_start = time_module.time()
     normalized_path = path if path.startswith("/") else f"/{path}"
     logger.info(
         f"Starting MCP server HTTP transport on http://{host}:{port}{normalized_path}"
     )
 
+    security_settings = _build_http_security_settings(config, host)
     transport = mcp.server.streamable_http.StreamableHTTPServerTransport(
-        mcp_session_id=None
+        mcp_session_id=None, security_settings=security_settings
     )
 
     try:
@@ -2153,6 +2335,17 @@ async def run_http(host: str, port: int, path: str) -> None:
                 request_path = cast(str, scope.get("path", ""))
                 if request_path != normalized_path:
                     response = PlainTextResponse("Not Found", status_code=404)
+                    await response(scope, receive, send)
+                    return
+
+                if config.mcp_http_auth_token and not _bearer_token_valid(
+                    scope, config.mcp_http_auth_token
+                ):
+                    response = PlainTextResponse(
+                        "Unauthorized",
+                        status_code=401,
+                        headers={"WWW-Authenticate": "Bearer"},
+                    )
                     await response(scope, receive, send)
                     return
 
@@ -2213,6 +2406,12 @@ def run_main() -> None:
 
         # Configure logging from environment variables
         config = get_config()
+
+        # Fail fast on invalid configuration — before logging setup, PID
+        # file creation, or any background thread starts. Config.validate()
+        # raises ValueError, which the outer except below already handles
+        # correctly (log critical, clean up the PID file, exit 1).
+        config.validate()
 
         # Add debug information for environment variables to a safe debug file
         from .logging import debug_to_file

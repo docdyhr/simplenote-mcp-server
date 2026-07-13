@@ -10,6 +10,7 @@ import statistics
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import mcp.types as types
 import pytest
 
 
@@ -224,6 +225,13 @@ class TestStressTesting:
         mock_client = MagicMock()
         mock_cache = MagicMock()
         mock_cache._notes = {}
+        # Cache is empty/uninitialized so lookups fall through to the API mock
+        # below. An unconfigured MagicMock().is_initialized is truthy and
+        # MagicMock().get_note(...) returns a non-dict MagicMock rather than
+        # None/raising, so without this the handler would take the cache
+        # branch and treat every lookup as a hard failure (non-dict "note"),
+        # never reaching the API mock at all.
+        mock_cache.is_initialized = False
 
         mock_client.get_note = MagicMock(
             side_effect=lambda nid: ({"key": nid, "content": "Test"}, 0)
@@ -376,11 +384,15 @@ class TestStressTesting:
                     }
                 )
                 total_processed += 1
-                result_data = json.loads(result[0].text)
-                if result_data.get("success") or "key" in result_data:
-                    success_count += 1
-                else:
+                if isinstance(result, types.CallToolResult):
+                    assert result.isError is True
                     error_count += 1
+                else:
+                    result_data = json.loads(result[0].text)
+                    if result_data.get("success") or "key" in result_data:
+                        success_count += 1
+                    else:
+                        error_count += 1
             except Exception:
                 error_count += 1
                 total_processed += 1

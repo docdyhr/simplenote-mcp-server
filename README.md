@@ -55,7 +55,7 @@ Irreversible-deletion tools with mandatory safety guards:
 
 - **`permanent_delete_note`**: Permanently destroy a single note; requires `confirm=true`; dry-run preview by default
 - **`empty_trash`**: Permanently delete all trashed notes; defaults to `dry_run=true` (preview); requires `dry_run=false` AND `confirm=true`
-- **1289 tests passing**, 77%+ coverage, zero linting/type errors
+- **1334 tests passing**, 79%+ coverage, zero linting/type errors
 
 See the [CHANGELOG](./CHANGELOG.md) and [ROADMAP.md](ROADMAP.md) for complete details.
 
@@ -84,7 +84,7 @@ See the [CHANGELOG](./CHANGELOG.md) for complete details.
 - 🧩 **MCP Compatible**: Works with Claude Desktop and other MCP clients
 - 🐳 **Docker Ready**: Full containerization with multi-stage builds and security hardening
 - 📊 **Monitoring**: Optional HTTP endpoints for health, readiness, and metrics
-- 🧪 **Robust Testing**: Comprehensive test suite with 1289 tests and continuous integration
+- 🧪 **Robust Testing**: Comprehensive test suite with 1334 tests and continuous integration
 - 🔒 **Security Hardened**: Regular security scanning with Bandit, pip-audit, and dependency checks
 
 ---
@@ -106,14 +106,24 @@ docker run -d \
   --name simplenote-mcp \
   -e SIMPLENOTE_EMAIL=your.email@example.com \
   -e SIMPLENOTE_PASSWORD=your-password \
+  -e MCP_TRANSPORT=http \
+  -e MCP_HTTP_HOST=0.0.0.0 \
+  -e MCP_HTTP_AUTH_TOKEN=your-random-secret-token \
   -p 8000:8000 \
   docdyhr/simplenote-mcp-server:latest
 ```
 
-**Docker Health Checks:** The container includes built-in health monitoring endpoints:
-- Health: `http://localhost:8000/health`
-- Readiness: `http://localhost:8000/ready`  
-- Metrics: `http://localhost:8000/metrics` (Prometheus format)
+`MCP_HTTP_AUTH_TOKEN` is required whenever `MCP_HTTP_HOST` is anything other
+than `127.0.0.1`/`localhost` — the server refuses to start otherwise (see the
+Security section below). Without `MCP_TRANSPORT=http`, the server runs over
+stdio by default and nothing listens on the published port at all.
+
+**Docker Health Checks:** health monitoring is a *separate* HTTP endpoint
+from the MCP protocol port above — it's off by default and must be enabled
+explicitly with `-e ENABLE_HTTP_ENDPOINT=true -p 8080:8080`:
+- Health: `http://localhost:8080/health`
+- Readiness: `http://localhost:8080/ready`
+- Metrics: `http://localhost:8080/metrics` (Prometheus format)
 
 Or use Docker Compose:
 
@@ -177,14 +187,17 @@ The easiest way to use the server is with our pre-built Docker images:
 # Pull the latest image
 docker pull docdyhr/simplenote-mcp-server:latest
 
-# Run with Docker
+# Run with Docker (see Quick Start above for the required MCP_HTTP_* env vars)
 docker run -d \
   -e SIMPLENOTE_EMAIL=your.email@example.com \
   -e SIMPLENOTE_PASSWORD=your-password \
+  -e MCP_TRANSPORT=http \
+  -e MCP_HTTP_HOST=0.0.0.0 \
+  -e MCP_HTTP_AUTH_TOKEN=your-random-secret-token \
   -p 8000:8000 \
   docdyhr/simplenote-mcp-server:latest
 
-# Or use Docker Compose
+# Or use Docker Compose (set MCP_HTTP_AUTH_TOKEN in your environment/.env first)
 docker-compose up -d
 ```
 
@@ -205,6 +218,9 @@ docker build -t simplenote-mcp-server .
 docker run -d \
   -e SIMPLENOTE_EMAIL=your.email@example.com \
   -e SIMPLENOTE_PASSWORD=your-password \
+  -e MCP_TRANSPORT=http \
+  -e MCP_HTTP_HOST=0.0.0.0 \
+  -e MCP_HTTP_AUTH_TOKEN=your-random-secret-token \
   -p 8000:8000 \
   simplenote-mcp-server
 ```
@@ -294,6 +310,13 @@ resources:
 | `CACHE_MAX_SIZE`        | No       | 10000   | Max notes held in memory — set ≥ your total note count   |
 | `LOG_LEVEL`             | No       | INFO    | Logging level (DEBUG, INFO, WARNING, ERROR)              |
 | `SIMPLENOTE_OFFLINE_MODE` | No     | false   | Skip API calls; used for testing without credentials     |
+| `MCP_TRANSPORT`         | No       | stdio   | `stdio` or `http` — the MCP protocol transport            |
+| `MCP_HTTP_HOST`         | No       | 127.0.0.1 | Bind host when `MCP_TRANSPORT=http`                     |
+| `MCP_HTTP_AUTH_TOKEN`   | Conditional | -    | Bearer token; **required** if `MCP_HTTP_HOST` is non-loopback |
+| `MCP_HTTP_ALLOWED_HOSTS` | No      | -       | Comma-separated allowlist for DNS-rebinding protection    |
+| `MCP_HTTP_ALLOWED_ORIGINS` | No   | -       | Comma-separated Origin allowlist (used with the above)    |
+| `ENABLE_HTTP_ENDPOINT`  | No       | false   | Enable the separate `/health`, `/ready`, `/metrics` server |
+| `HTTP_PORT`             | No       | 8080    | Port for the monitoring endpoint above                    |
 
 ### Claude Desktop Integration
 
@@ -528,6 +551,16 @@ mypy simplenote_mcp
 - **Security-hardened containers** with non-root users
 - **Read-only filesystem** in production containers
 - **Resource limits** to prevent abuse
+- **MCP HTTP transport is fail-closed by default**: `MCP_TRANSPORT=http`
+  refuses to start on any non-loopback `MCP_HTTP_HOST` unless
+  `MCP_HTTP_AUTH_TOKEN` is set (a shared bearer secret, checked via
+  constant-time comparison). Loopback binds (`127.0.0.1`/`localhost`) work
+  without a token, matching stdio's local-process trust level. Set
+  `MCP_HTTP_ALLOWED_HOSTS`/`MCP_HTTP_ALLOWED_ORIGINS` (comma-separated) to
+  enable DNS-rebinding protection for non-loopback binds. This is intended
+  for private networks (behind a VPN/Tailscale/SSH tunnel) — a static
+  shared token has none of OAuth's revocation/audit/expiry properties, so
+  avoid exposing it directly to the public internet even with a token set.
 
 ---
 

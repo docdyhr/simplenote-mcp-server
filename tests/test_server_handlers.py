@@ -319,9 +319,9 @@ class TestHandleCallTool:
         ):
             result = await srv.handle_call_tool("nonexistent_tool", {})
 
-        assert isinstance(result, list)
-        assert len(result) == 1
-        payload = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        payload = json.loads(result.content[0].text)
         assert (
             "error" in payload or "message" in payload or "Unknown tool" in str(payload)
         )
@@ -359,9 +359,9 @@ class TestHandleCallTool:
         ):
             result = await srv.handle_call_tool("search_notes", {"query": "test"})
 
-        assert isinstance(result, list)
-        assert len(result) == 1
-        payload = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        payload = json.loads(result.content[0].text)
         # ServerError.to_dict() always has an "error" key
         assert "error" in payload
 
@@ -372,6 +372,44 @@ class TestHandleCallTool:
 
         with pytest.raises(ValidationError):
             await srv.handle_call_tool("create_note", "not-a-dict")  # type: ignore[arg-type]
+
+    @pytest.mark.asyncio
+    async def test_tool_call_does_not_log_plaintext_at_info(self, caplog):
+        """Note content must never appear in INFO-or-above logs.
+
+        Regression test: handle_call_tool used to dump the full, unsanitized
+        arguments dict (including note content) via logger.info() on every
+        call. A sanitized/truncated form at DEBUG is fine and expected.
+        """
+        import logging
+
+        import simplenote_mcp.server.server as srv
+
+        marker = "UNIQUE-PLAINTEXT-MARKER-89f3c2"
+
+        mock_sn = MagicMock()
+        mock_cache = MagicMock()
+        mock_cache.is_initialized = True
+
+        with (
+            patch(
+                "simplenote_mcp.server.server.get_simplenote_client",
+                return_value=mock_sn,
+            ),
+            patch(
+                "simplenote_mcp.server.cache_utils.get_cache_or_create_minimal",
+                return_value=mock_cache,
+            ),
+            caplog.at_level(logging.DEBUG, logger="simplenote_mcp"),
+        ):
+            # Write mode is disabled by default, so this is rejected before
+            # touching the network — the logging call under test runs before
+            # that gate either way, so it still exercises the fixed code path.
+            await srv.handle_call_tool("create_note", {"content": marker})
+
+        for record in caplog.records:
+            if record.levelno >= logging.INFO:
+                assert marker not in record.getMessage()
 
 
 # ---------------------------------------------------------------------------
@@ -726,3 +764,79 @@ class TestErrorCodeHelpers:
         from simplenote_mcp.server.error_codes import get_error_description
 
         assert get_error_description("NONEXISTENT_CODE_XYZ") is None
+
+
+# ---------------------------------------------------------------------------
+# run_main — Config.validate() must run first and fail closed
+# ---------------------------------------------------------------------------
+
+
+class TestRunMainConfigValidation:
+    """run_main() must validate config and fail fast — before PID file
+    creation, signal handler setup, or any attempt to start the server.
+    Regression test: Config.validate() existed but was never called on any
+    production startup path, so invalid config (e.g. missing credentials
+    outside offline mode) only surfaced later, less clearly, deep inside
+    client/cache initialization.
+    """
+
+    def setup_method(self):
+        _reset_note_cache()
+
+    def teardown_method(self):
+        _reset_note_cache()
+
+    def test_invalid_config_exits_before_any_side_effects(self):
+        import simplenote_mcp.server.server as srv
+
+        mock_config = MagicMock()
+        mock_config.log_level = srv.LogLevel.INFO
+        mock_config.validate.side_effect = ValueError(
+            "SIMPLENOTE_EMAIL and SIMPLENOTE_PASSWORD environment variables must be set"
+        )
+
+        with (
+            patch("simplenote_mcp.server.server.get_config", return_value=mock_config),
+            patch("simplenote_mcp.server.server.write_pid_file") as mock_write_pid,
+            patch("simplenote_mcp.server.server.setup_signal_handlers") as mock_signals,
+            patch("simplenote_mcp.server.server.cleanup_pid_file") as mock_cleanup,
+            patch("simplenote_mcp.server.server.asyncio.run") as mock_asyncio_run,
+            pytest.raises(SystemExit) as exc_info,
+        ):
+            srv.run_main()
+
+        assert exc_info.value.code == 1
+        mock_config.validate.assert_called_once()
+        mock_write_pid.assert_not_called()
+        mock_signals.assert_not_called()
+        mock_asyncio_run.assert_not_called()
+        mock_cleanup.assert_called_once()
+
+    def test_valid_config_proceeds_past_validation(self):
+        import simplenote_mcp.server.server as srv
+
+        mock_config = MagicMock()
+        mock_config.log_level = srv.LogLevel.INFO
+        mock_config.mcp_transport = "stdio"
+        mock_config.simplenote_email = None
+        mock_config.simplenote_password = None
+        mock_config.validate.return_value = None
+
+        with (
+            patch("simplenote_mcp.server.server.get_config", return_value=mock_config),
+            patch("simplenote_mcp.server.server.write_pid_file") as mock_write_pid,
+            patch("simplenote_mcp.server.server.setup_signal_handlers") as mock_signals,
+            # Mock run() itself too, not just asyncio.run — otherwise the
+            # real `run()` coroutine object still gets constructed (just
+            # never awaited, since asyncio.run is mocked), which logs a
+            # harmless but noisy "coroutine was never awaited" warning.
+            patch("simplenote_mcp.server.server.run", new=AsyncMock()),
+            patch("simplenote_mcp.server.server.asyncio.run") as mock_asyncio_run,
+            patch("simplenote_mcp.server.server.cleanup_pid_file"),
+        ):
+            srv.run_main()
+
+        mock_config.validate.assert_called_once()
+        mock_write_pid.assert_called_once()
+        mock_signals.assert_called_once()
+        mock_asyncio_run.assert_called_once()

@@ -50,6 +50,13 @@ class VaultKeyUnavailableError(Exception):
     """Raised when no vault key can be resolved or generated."""
 
 
+class VaultKeyCorruptedError(Exception):
+    """Raised when a vault key file/entry exists but is unreadable,
+    malformed, or the wrong length. Never overwritten automatically —
+    losing this key makes existing encrypted notes permanently unreadable,
+    so a human must resolve it deliberately."""
+
+
 class VaultDecryptionError(Exception):
     """Raised when decryption fails — wrong/missing key, malformed envelope,
     or tampered ciphertext."""
@@ -61,11 +68,42 @@ class VaultDecryptionError(Exception):
 
 
 def _read_key_file(path: str) -> bytes | None:
+    """Read and decode the vault key file.
+
+    Returns None only when the file genuinely doesn't exist yet — safe for
+    the caller to generate and persist a fresh key. Any other failure (I/O
+    error, malformed base64, wrong decoded length) raises
+    VaultKeyCorruptedError instead of returning None, so an existing key is
+    never silently overwritten just because it's temporarily unreadable or
+    corrupt.
+    """
+    p = Path(path)
     try:
-        raw = Path(path).read_text().strip()
-        return base64.b64decode(raw, validate=True) if raw else None
-    except (OSError, binascii.Error, ValueError):
+        raw = p.read_text().strip()
+    except FileNotFoundError:
         return None
+    except OSError as e:
+        raise VaultKeyCorruptedError(
+            f"Vault key file {path} exists but could not be read: {e}"
+        ) from e
+
+    if not raw:
+        raise VaultKeyCorruptedError(f"Vault key file {path} exists but is empty.")
+
+    try:
+        key = base64.b64decode(raw, validate=True)
+    except (binascii.Error, ValueError) as e:
+        raise VaultKeyCorruptedError(
+            f"Vault key file {path} does not contain valid base64: {e}"
+        ) from e
+
+    if len(key) != _KEY_LENGTH_BYTES:
+        raise VaultKeyCorruptedError(
+            f"Vault key file {path} contains a {len(key)}-byte key; "
+            f"expected {_KEY_LENGTH_BYTES} bytes (AES-256)."
+        )
+
+    return key
 
 
 def _write_key_file(path: str, key: bytes) -> None:
@@ -80,6 +118,15 @@ def _write_key_file(path: str, key: bytes) -> None:
 
 
 def _read_keyring_key() -> bytes | None:
+    """Read and decode the vault key from the OS keychain.
+
+    Returns None when no entry exists yet, or when the keychain backend
+    itself errors (no backend configured, access denied, etc.) — those
+    look identical to "not provisioned yet" from this library's API, so
+    they're treated as safe-to-generate, matching prior behavior. An entry
+    that *does* exist but is malformed or the wrong length raises
+    VaultKeyCorruptedError instead, so it's never silently replaced.
+    """
     import keyring
     import keyring.errors
 
@@ -90,9 +137,19 @@ def _read_keyring_key() -> bytes | None:
     if not raw:
         return None
     try:
-        return base64.b64decode(raw, validate=True)
-    except (binascii.Error, ValueError):
-        return None
+        key = base64.b64decode(raw, validate=True)
+    except (binascii.Error, ValueError) as e:
+        raise VaultKeyCorruptedError(
+            f"Vault key stored in the OS keychain is not valid base64: {e}"
+        ) from e
+
+    if len(key) != _KEY_LENGTH_BYTES:
+        raise VaultKeyCorruptedError(
+            f"Vault key stored in the OS keychain is {len(key)} bytes; "
+            f"expected {_KEY_LENGTH_BYTES} bytes (AES-256)."
+        )
+
+    return key
 
 
 def _write_keyring_key(key: bytes) -> bool:
@@ -120,6 +177,10 @@ def get_or_create_vault_key() -> bytes:
     Raises:
         VaultKeyUnavailableError: no SIMPLENOTE_VAULT_KEY_FILE is set and the
             OS keychain has no backend available to store a new key.
+        VaultKeyCorruptedError: a key file/keychain entry exists but is
+            unreadable, malformed, or the wrong length. Never generates a
+            replacement in this case — that would silently orphan any
+            notes already encrypted with the original key.
     """
     global _cached_key
     if _cached_key is not None:
@@ -149,7 +210,12 @@ def get_or_create_vault_key() -> bytes:
 
 
 def has_vault_key() -> bool:
-    """Return True if a vault key is available, without generating a new one."""
+    """Return True if a vault key is available, without generating a new one.
+
+    Raises:
+        VaultKeyCorruptedError: a key file/keychain entry exists but is
+            unreadable, malformed, or the wrong length.
+    """
     if _cached_key is not None:
         return True
     key_file = os.environ.get("SIMPLENOTE_VAULT_KEY_FILE")

@@ -15,11 +15,11 @@ jobs:
     permissions:
       id-token: write  # required for OIDC Trusted Publishing
     steps:
-      - uses: actions/checkout@v7
+      - uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
         with:
           ref: ${{ github.event.inputs.tag }}
 
-      - uses: actions/setup-python@v6
+      - uses: ece7cb06caefa5fff74198d8649806c4678c61a1 # actions/setup-python@v6
         with:
           python-version: "3.13"
 
@@ -29,6 +29,6 @@ jobs:
           python -m build
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: cef221092ed1bacb1cc03d23a2d87d1d172e277b # pypa/gh-action-pypi-publish@release/v1
         with:
           skip-existing: false

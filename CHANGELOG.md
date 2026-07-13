@@ -88,6 +88,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   no-opped, and only the tag index was ever built for notes from the initial background load.
   `_populate_cache_direct()` now builds the full tag/title/word index via the same
   `_build_all_indexes()` used by `initialize()`.
+- **MCP tool errors were indistinguishable from success at the protocol level**: `handle_call_tool`
+  and the shared handler error-formatting path (`ToolHandlerBase._format_error_response`) returned
+  plain `TextContent`, which the MCP SDK's `call_tool()` decorator normalizes to `isError=False`
+  regardless of the actual outcome — a client had to parse the JSON body to notice a tool call had
+  failed. Both now return `CallToolResult(isError=True)`, which the SDK honors natively. Failed
+  writes no longer consume the write budget.
+- **Date-filtered search crashed on every ISO date and rejected every natural-language one**:
+  security validation converted `from_date`/`to_date` to a `datetime` object before the search
+  handler's own parser (which expects a string) ran on it, and only ISO-format strings survived
+  validation to begin with. Also fixed `parse_natural_date` itself: it didn't actually handle the
+  underscored aliases (`3_days_ago`, `last_monday`) the tool schema advertises as examples — only
+  spaced variants (`3 days ago`) worked.
+- **Docker/Helm deployments never actually served anything**: `MCP_TRANSPORT` defaults to `stdio`,
+  but `docker-compose.yml`, `docker-compose.dev.yml`, and the Helm chart's `configMap` all exposed
+  port 8000 without ever setting it to `http` — the documented container path was unreachable.
+  HEALTHCHECK/liveness/readiness probes only checked that the package imports, not that the
+  process was serving requests; replaced with real checks against `/health`/`/ready`. That
+  surfaced a real, separate bug in the health endpoint itself while testing the fix in a live
+  container: `/health` returned 503 for a merely "degraded" status (e.g. a low cache hit rate,
+  completely normal right after startup or during a quiet period), not just a genuinely
+  "unhealthy" one — wired to a Kubernetes `livenessProbe` (as this same change does), that would
+  have caused restart loops on any lightly used server. Only genuine `unhealthy` checks fail the
+  probe now.
+- Restored `simplenote_mcp/tests/` (112 tests) to CI — deliberately as a separate pytest process
+  from `tests/`, not merged into `testpaths`: both trees mutate the same process-global singletons
+  (metrics collector, security validator), and each only resets them for its own tests, so
+  collecting both into one `pytest` invocation let one tree corrupt the other's state (confirmed
+  empirically). Fixed the bug behind most of the individual test failures in one place: the
+  offline-mode mock Simplenote client returned static, contentless notes instead of storing and
+  echoing back what was actually written, so nothing that round-tripped a note through create →
+  retrieve/update could pass.
+- `Config.validate()` existed and was comprehensive but was never called on any startup path —
+  invalid configuration (a bad `MCP_TRANSPORT` value, missing credentials outside offline mode,
+  etc.) now fails fast at startup with a clear message instead of surfacing later, less clearly,
+  during client/cache initialization.
 
 ### Changed
 - Declared JSON schema for `tags` unified to `array<string>` across all tag-accepting tools
@@ -96,6 +131,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SecurityValidator.validate_arguments()`'s tag count/length/character validation now applies
   to all 8 tag-accepting tools (`create_note`, `update_note`, `add_tags`, `remove_tags`,
   `replace_tags`, `get_or_create_note`, `bulk_tag`), not just 3.
+- **Docker/Helm deployments now require `MCP_HTTP_AUTH_TOKEN`** to actually serve MCP requests
+  (see Security below) — `docker-compose.yml`/`.dev.yml` and the Helm chart set
+  `MCP_TRANSPORT=http`/`ENABLE_HTTP_ENDPOINT=true` and expect this to be provided; deployments
+  relying on the old (non-functional) defaults need `MCP_HTTP_AUTH_TOKEN` set before upgrading.
+- Production Docker image now installs only runtime dependencies
+  (`requirements-runtime-lock.txt`, 54 packages, resolved from a clean `pip install .` with no
+  extras) instead of the `.[all]` extra, which pulled bandit/mypy/ruff/pytest/pre-commit/twine and
+  more into what ships. Verified via `pip list` in the built image.
+- `setup.py`'s version and dependencies synced to match `pyproject.toml` (was reporting `1.12.0`
+  with a 3-package list against the real `1.17.1`/10-package one); now checked by
+  `check_version_consistency.py` alongside the other four version sources.
 
 ### Dependencies
 - `cryptography` and `keyring` promoted from transitive (dev/publish tooling only) to direct
@@ -107,6 +153,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `bandit_skip` no longer skip B105 (hardcoded-password-string) — `pyproject.toml [tool.bandit]`
   never did. Kept active so key-handling code (`vault.py`) is guarded against accidentally
   hardcoded secrets.
+- **MCP HTTP transport had no authentication or DNS-rebinding protection**: `MCP_TRANSPORT=http`
+  now refuses to start on any non-loopback `MCP_HTTP_HOST` unless `MCP_HTTP_AUTH_TOKEN` (a bearer
+  token, checked via constant-time comparison) is set. Loopback binds remain token-free, matching
+  stdio's local-process trust level. New `MCP_HTTP_ALLOWED_HOSTS`/`MCP_HTTP_ALLOWED_ORIGINS` enable
+  DNS-rebinding protection for non-loopback binds. See README's Security section.
+- **Tool call arguments — including full note content and search queries — were logged in full at
+  INFO level** on every call, before Vault encryption ever touched them. INFO now logs only the
+  tool name and argument count; a sanitized/truncated form (matching the redaction already used
+  elsewhere for security-event logging) is available at DEBUG.
+- **A corrupted Vault key could be silently overwritten with a brand-new one**: the key-file/
+  keychain read helpers couldn't distinguish "not yet provisioned" from "exists but is unreadable,
+  malformed, or the wrong length," so `get_or_create_vault_key()` would generate and persist a
+  replacement key over a merely-corrupt existing one — permanently orphaning any notes already
+  encrypted with the original. Now raises a distinct `VaultKeyCorruptedError` and never
+  auto-replaces an existing key; `vault_status` reports the corruption in its response instead of
+  crashing (it's the tool a user would run specifically to diagnose this).
+- **Rate limiting and the write budget were effectively global, not per-client**: an outer
+  `@rate_limit(60, 60)` decorator on `handle_call_tool` was structurally dead code — it wrapped a
+  function reference the MCP SDK's actual request-dispatch path never calls through — and the live
+  rate limiter always resolved every caller to the same `"default"` identifier, as did the write
+  budget. Both now key off a real per-client identity: source IP for HTTP-transport callers, a
+  fixed identifier for stdio (correct there, not a gap — one process is genuinely one client).
+- Pinned all 25 third-party GitHub Actions (~76 call sites across 13 workflow files) from mutable
+  version tags to immutable commit SHAs. `secrets: inherit` on the two Claude-powered
+  reusable-workflow callers (Dependabot auto-merge, status check) narrowed to the specific two
+  secrets they actually consume, confirmed against the reusable workflows' own declared interface,
+  instead of implicitly handing them every secret this repo has configured.
 
 ### Docs
 - `SECURITY.md` corrected: removed false "encryption at rest" and "memory protection" claims

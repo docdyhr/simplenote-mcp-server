@@ -60,19 +60,18 @@ For detailed information about our automated security monitoring and maintenance
 - **Command Injection Prevention**: Input filtering blocks command injection attempts
 
 ### Rate Limiting & DoS Protection
-- **Request Rate Limiting**: 100 requests per 5-minute window per client
-- **Progressive Penalties**: Automatic blocking for repeated violations
-- **Burst Protection**: Token bucket algorithm prevents traffic spikes
+- **Request Rate Limiting**: 60 requests/minute (burst) and 100 requests per 5-minute window (sustained), enforced per client — source IP for HTTP-transport callers, a fixed identifier for stdio (one local process is genuinely one client there). Both limits share one identity resolution mechanism (`server.py::_resolve_client_id`) so they can't be bypassed independently.
+- **Progressive Penalties**: Automatic blocking for repeated violations (1min → 5min → 15min → 1hour, scaling with violation count)
+- **Sliding-Window Enforcement**: rolling time-window counters per client identity
+- **Write Budget**: mutating tool calls (create/update/delete) are additionally capped per client per rolling window (`SIMPLENOTE_WRITE_BUDGET`, default 20/60s), independent of the general request rate limit, to bound the blast radius of a runaway automated loop
 - **Resource Limits**: Memory and processing time limits prevent resource exhaustion
 
 ### Authentication & Authorization
-- **Session Management**: Secure session tokens with configurable timeouts
-- **Failed Authentication Tracking**: Progressive blocking for failed login attempts
-- **Client Validation**: Client ID verification for session security
-- **Credential Protection**: Secure handling of Simplenote credentials
+- **MCP HTTP transport**: `MCP_TRANSPORT=http` refuses to start on a non-loopback `MCP_HTTP_HOST` unless `MCP_HTTP_AUTH_TOKEN` (a bearer token, checked via constant-time comparison) is configured. Loopback binds remain token-free, matching stdio's local-process trust model. `MCP_HTTP_ALLOWED_HOSTS`/`MCP_HTTP_ALLOWED_ORIGINS` enable DNS-rebinding protection for non-loopback binds. Intended for private-network use (behind a VPN/Tailscale/SSH tunnel) — a static shared token has none of OAuth's revocation/audit/expiry properties, so avoid exposing it directly to the public internet even with a token configured.
+- **Credential Protection**: Secure handling of Simplenote credentials (see Data Protection below for the local token cache)
 
 ### Data Protection
-- **Sensitive Data Redaction**: `password`/`token`/`secret`/`key` fields are redacted before logging or inclusion in tool-call error output (`security.py`, `middleware.py`)
+- **Sensitive Data Redaction**: `password`/`token`/`secret`/`key` fields are redacted before logging or inclusion in tool-call error output (`security.py`, `middleware.py`). Tool call arguments (note content, search queries) are never logged in full at INFO — only the tool name and argument count; a redacted/truncated form is available at DEBUG for troubleshooting.
 - **Secure Transmission**: HTTPS/TLS for all external communications (handled by the underlying `requests`/`urllib3`/`simplenote` client stack)
 - **Log Security**: Security events are logged with credential values redacted; log files themselves currently have no special filesystem permissions (tracked for hardening)
 - **No encryption at rest from Simplenote itself**: **Simplenote does not encrypt notes at rest on its own servers** — this is a limitation of the underlying service, not this project, and Automattic's own documentation recommends against storing highly sensitive information in Simplenote. Notes are NOT encrypted by default; only notes you explicitly opt into Vault (below) are protected.
@@ -80,6 +79,7 @@ For detailed information about our automated security monitoring and maintenance
   - **What Vault protects**: note body content, both in transit to Simplenote and at rest on Simplenote's servers.
   - **What Vault does NOT protect**: the note's title (first line — kept readable so `get_or_create_note`/browsing still work), tags, creation/modification timestamps, or the fact that a note exists at all. It also does not protect against a compromised local machine — the server process itself, and anyone with access to it, can read decrypted content and hold the encryption key.
   - **Key storage**: the Vault master key lives in the OS keychain (via the `keyring` library) or, for headless/container deployments, a file referenced by `SIMPLENOTE_VAULT_KEY_FILE` (`chmod 0600`). It is fetched once per process and cached in memory only — never written to disk in plaintext, never synced to Simplenote. There is no multi-device key sync in the current version: encrypted notes are only decryptable on a machine holding the matching key.
+  - **Fail-closed key handling**: a key file/keychain entry that exists but is unreadable, malformed, or the wrong length is never silently replaced with a freshly generated key — doing so would permanently orphan any notes already encrypted with the original. `vault_status` reports the corruption explicitly so it can be resolved deliberately.
 - **Local credential cache**: the Simperium auth token is cached locally at `~/.config/simplenote-mcp/<email>.token`, protected by `chmod 0600` (owner-only). This is a plaintext file, not OS-keychain-backed or encrypted — treat the same as any other locally-cached session token. (This is a different, lower-stakes secret than the Vault master key above — it's a rotatable session token, not the key that data confidentiality depends on.)
 
 ### Supply Chain Security
@@ -156,21 +156,27 @@ For detailed information about our automated security monitoring and maintenance
 
 ### Environment Variables
 ```bash
-# Security Configuration
+# Credentials
 SIMPLENOTE_EMAIL=your-email@example.com
 SIMPLENOTE_PASSWORD=your-secure-password
 SIMPLENOTE_OFFLINE_MODE=false
 
-# Session Configuration
-SESSION_TIMEOUT=3600  # 1 hour
-MAX_FAILED_ATTEMPTS=5
-RATE_LIMIT_WINDOW=300  # 5 minutes
-RATE_LIMIT_MAX_REQUESTS=100
+# MCP HTTP transport (only relevant if MCP_TRANSPORT=http)
+MCP_TRANSPORT=stdio  # or "http"
+MCP_HTTP_HOST=127.0.0.1
+MCP_HTTP_AUTH_TOKEN=  # required if MCP_HTTP_HOST is non-loopback
+MCP_HTTP_ALLOWED_HOSTS=  # comma-separated, enables DNS-rebinding protection
+MCP_HTTP_ALLOWED_ORIGINS=  # comma-separated
 
-# Logging Configuration
+# Rate limiting / write budget
+RATE_LIMIT_REQUESTS=100
+RATE_LIMIT_WINDOW_SECONDS=900
+RATE_LIMIT_BURST=20
+SIMPLENOTE_WRITE_BUDGET=20
+SIMPLENOTE_WRITE_BUDGET_WINDOW=60
+
+# Logging
 LOG_LEVEL=INFO
-SECURITY_LOG_LEVEL=WARNING
-AUDIT_LOG_ENABLED=true
 ```
 
 ### Docker Security

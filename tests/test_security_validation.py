@@ -212,18 +212,50 @@ class TestSecurityValidator:
             self.validator.validate_pagination_params(10, "invalid")
 
     def test_validate_date_range_valid(self):
-        """Test validation of valid date ranges."""
-        # Valid ISO format dates
+        """Test validation of valid date ranges.
+
+        validate_date_range returns the *original* value unchanged (not a
+        parsed datetime) — the search handler's own date parser is the
+        single place that converts strings to datetimes. This method only
+        checks that each value is parseable and the range makes sense.
+        """
+        # Valid ISO format dates — original strings come back unchanged
         from_date, to_date = self.validator.validate_date_range(
             "2023-01-01T00:00:00", "2023-12-31T23:59:59"
         )
-        assert isinstance(from_date, datetime)
-        assert isinstance(to_date, datetime)
+        assert from_date == "2023-01-01T00:00:00"
+        assert to_date == "2023-12-31T23:59:59"
 
         # None values
         from_date, to_date = self.validator.validate_date_range(None, None)
         assert from_date is None
         assert to_date is None
+
+        # datetime objects pass through unchanged too
+        dt_from = datetime(2023, 1, 1)
+        dt_to = datetime(2023, 12, 31)
+        from_date, to_date = self.validator.validate_date_range(dt_from, dt_to)
+        assert from_date is dt_from
+        assert to_date is dt_to
+
+    def test_validate_date_range_natural_language(self):
+        """Every natural-language alias advertised in the search_notes tool
+        schema must survive validation unchanged, both underscored (as
+        advertised) and spaced.
+        """
+        for alias in (
+            "today",
+            "yesterday",
+            "last_week",
+            "last_month",
+            "last_year",
+            "3_days_ago",
+            "2_weeks_ago",
+            "last_monday",
+        ):
+            from_date, to_date = self.validator.validate_date_range(alias, None)
+            assert from_date == alias, f"{alias!r} should pass through unchanged"
+            assert to_date is None
 
     def test_validate_date_range_invalid(self):
         """Test validation fails for invalid date ranges."""

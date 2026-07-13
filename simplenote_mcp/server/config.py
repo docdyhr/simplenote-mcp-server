@@ -98,6 +98,24 @@ class Config:
         self.mcp_http_port: int = int(os.environ.get("MCP_HTTP_PORT", "8000"))
         self.mcp_http_path: str = os.environ.get("MCP_HTTP_PATH", "/mcp")
 
+        # MCP HTTP transport security. A bearer token is required to bind
+        # MCP_TRANSPORT=http to any non-loopback host (see run_http()) — the
+        # server refuses to start otherwise. Loopback binds work token-free,
+        # matching stdio's local-process trust level.
+        self.mcp_http_auth_token: str | None = (
+            os.environ.get("MCP_HTTP_AUTH_TOKEN") or None
+        )
+        self.mcp_http_allowed_hosts: list[str] = [
+            h.strip()
+            for h in os.environ.get("MCP_HTTP_ALLOWED_HOSTS", "").split(",")
+            if h.strip()
+        ]
+        self.mcp_http_allowed_origins: list[str] = [
+            o.strip()
+            for o in os.environ.get("MCP_HTTP_ALLOWED_ORIGINS", "").split(",")
+            if o.strip()
+        ]
+
         # Logging configuration - check multiple possible environment variable names
         log_level_env = (
             os.environ.get("LOG_LEVEL")

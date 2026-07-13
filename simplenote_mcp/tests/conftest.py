@@ -255,3 +255,30 @@ def event_loop():
     asyncio.set_event_loop(loop)
     yield loop
     loop.close()
+
+
+@pytest.fixture(autouse=True)
+def _reset_process_global_singletons():
+    """Reset process-global singletons that tests in this directory read
+    and mutate via module-level convenience functions (metrics collector,
+    security validator's attempt-tracking dicts).
+
+    Without this, results depend on pytest's collection/execution order —
+    counters accumulate across every test that happens to run first in the
+    same process, rather than each test starting from a clean baseline.
+    pytest-randomly (enabled project-wide) makes that order non-deterministic
+    run to run.
+
+    MetricsCollector implements the singleton pattern via __new__/_instance,
+    so constructing "a new one" just returns the same object with the same
+    accumulated state — __init__ even short-circuits on self._initialized.
+    The only way to actually reset it is to replace its .metrics attribute
+    directly on the existing instance.
+    """
+    import simplenote_mcp.server.monitoring.metrics as metrics_module
+    import simplenote_mcp.server.security as security_module
+
+    metrics_module._metrics_collector.metrics = metrics_module.PerformanceMetrics()
+    security_module.security_validator.failed_validation_attempts.clear()
+    security_module.security_validator.rate_limit_attempts.clear()
+    yield

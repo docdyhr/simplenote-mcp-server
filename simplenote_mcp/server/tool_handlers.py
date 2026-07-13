@@ -53,6 +53,7 @@ from .utils.common import (
 from .vault import (
     VAULT_TAG,
     VaultDecryptionError,
+    VaultKeyCorruptedError,
     VaultKeyUnavailableError,
     decrypt_content,
     encrypt_content,
@@ -103,19 +104,22 @@ class ToolHandlerBase(ABC):
         self.note_cache = note_cache
 
     @abstractmethod
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle the tool call with the given arguments.
 
         Args:
             arguments: Tool arguments
 
         Returns:
-            List of text content responses
+            A list of text content on success, or a CallToolResult with
+            isError=True (via _format_error_response) on failure.
         """
 
     def _format_error_response(
         self, error: Exception, operation: str, context: dict[str, Any] | None = None
-    ) -> list[types.TextContent]:
+    ) -> types.CallToolResult:
         """Format an error into a consistent JSON response.
 
         Args:
@@ -124,7 +128,9 @@ class ToolHandlerBase(ABC):
             context: Optional context information (note_id, query, etc.)
 
         Returns:
-            List containing formatted error response
+            A CallToolResult with isError=True so the MCP protocol layer
+            (and callers) can distinguish this from a successful response
+            without parsing the JSON payload.
         """
         if isinstance(error, ServerError):
             error_dict = error.to_dict()
@@ -139,7 +145,10 @@ class ToolHandlerBase(ABC):
         if context:
             error_dict["error"]["context"] = context
 
-        return [types.TextContent(type="text", text=json.dumps(error_dict))]
+        return types.CallToolResult(
+            content=[types.TextContent(type="text", text=json.dumps(error_dict))],
+            isError=True,
+        )
 
     def _get_note_from_cache_or_api(self, note_id: str) -> dict[str, Any]:
         """Get a note from cache first, then API if not found.
@@ -200,13 +209,21 @@ class ToolHandlerBase(ABC):
         into a structured, actionable ConfigurationError.
 
         Raises:
-            ConfigurationError: no key is available (see VaultKeyUnavailableError).
+            ConfigurationError: no key is available (see VaultKeyUnavailableError),
+                or an existing key is corrupted/wrong-length (see
+                VaultKeyCorruptedError) — surfaced clearly rather than
+                silently generating a replacement that would orphan any
+                already-encrypted notes.
         """
         try:
             return get_or_create_vault_key()
         except VaultKeyUnavailableError as e:
             raise ConfigurationError(
                 str(e), subcategory="vault_key_unavailable", recoverable=True
+            ) from e
+        except VaultKeyCorruptedError as e:
+            raise ConfigurationError(
+                str(e), subcategory="vault_key_corrupted", recoverable=False
             ) from e
 
     def _decrypt_for_read(self, content: str) -> tuple[str | None, bool, bool]:
@@ -222,10 +239,22 @@ class ToolHandlerBase(ABC):
             content unchanged when not encrypted; the decrypted plaintext
             when encrypted and a working key is available; None when
             encrypted but not decryptable (no key, or the wrong key).
+
+        Raises:
+            ConfigurationError: the key file/keychain entry exists but is
+                corrupted — surfaced rather than silently reported as
+                "not decryptable", since that would look identical to
+                "no key configured yet" and hide a real problem.
         """
         if not is_encrypted(content):
             return content, False, True
-        if not has_vault_key():
+        try:
+            key_available = has_vault_key()
+        except VaultKeyCorruptedError as e:
+            raise ConfigurationError(
+                str(e), subcategory="vault_key_corrupted", recoverable=False
+            ) from e
+        if not key_available:
             return None, True, False
         try:
             return decrypt_content(content, self._resolve_vault_key()), True, True
@@ -282,7 +311,9 @@ class CreateNoteHandler(ToolHandlerBase):
 
     @validate_tool_security("create_note")
     @with_input_validation(validate_content_required)
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle create_note tool call."""
         content = arguments.get("content", "")
         tags_input = arguments.get("tags", "")
@@ -348,7 +379,9 @@ class UpdateNoteHandler(ToolHandlerBase):
 
     @validate_tool_security("update_note")
     @with_input_validation(validate_note_id_required, validate_content_required)
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle update_note tool call."""
         note_id = arguments.get("note_id", "")
         content = arguments.get("content", "")
@@ -467,7 +500,9 @@ class DeleteNoteHandler(ToolHandlerBase):
 
     @validate_tool_security("delete_note")
     @with_input_validation(validate_note_id_required)
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle delete_note tool call."""
         note_id = arguments.get("note_id", "")
 
@@ -509,7 +544,9 @@ class GetNoteHandler(ToolHandlerBase):
 
     @validate_tool_security("get_note")
     @with_input_validation(validate_note_id_required)
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle get_note tool call."""
         note_id = arguments.get("note_id", "")
 
@@ -564,7 +601,9 @@ class SearchNotesHandler(ToolHandlerBase):
 
     @validate_tool_security("search_notes")
     @with_input_validation(validate_query_required)
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle search_notes tool call."""
         query = arguments.get("query", "")
         if not query:
@@ -726,7 +765,7 @@ class SearchNotesHandler(ToolHandlerBase):
                 sort_direction,
             )
 
-    def _handle_search_error(self, e: Exception, query: str) -> list[types.TextContent]:
+    def _handle_search_error(self, e: Exception, query: str) -> types.CallToolResult:
         """Handle search errors and return appropriate response."""
         return self._format_error_response(
             e, f"searching notes for '{query}'", {"query": query}
@@ -967,7 +1006,9 @@ class AddTagsHandler(TagOperationHandler):
 
     @validate_tool_security("add_tags")
     @with_input_validation(validate_note_id_required, validate_tags_required)
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle add_tags tool call."""
         note_id = arguments.get("note_id", "")
         tags_input = arguments.get("tags", "")
@@ -1062,7 +1103,9 @@ class RemoveTagsHandler(TagOperationHandler):
 
     @validate_tool_security("remove_tags")
     @with_input_validation(validate_note_id_required, validate_tags_required)
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle remove_tags tool call."""
         note_id = arguments.get("note_id", "")
         tags_input = arguments.get("tags", "")
@@ -1178,7 +1221,9 @@ class ReplaceTagsHandler(TagOperationHandler):
 
     @validate_tool_security("replace_tags")
     @with_input_validation(validate_note_id_required, validate_tags_required)
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle replace_tags tool call."""
         note_id = arguments.get("note_id", "")
         tags_input = arguments.get("tags", "")
@@ -1249,7 +1294,9 @@ class FindAndMergeDuplicatesHandler(ToolHandlerBase):
     """Handler for find_and_merge_duplicates tool."""
 
     @validate_tool_security("find_and_merge_duplicates")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle find_and_merge_duplicates tool call.
 
         Finds duplicate notes and optionally merges them.
@@ -1486,7 +1533,9 @@ class ExportNotesHandler(ToolHandlerBase):
     """Handler for export_notes tool."""
 
     @validate_tool_security("export_notes")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle export_notes tool call.
 
         Exports one or more notes to Markdown or JSON format.
@@ -1568,7 +1617,9 @@ class AddTextHandler(ToolHandlerBase):
     """Handler for add_text tool — non-destructive append/prepend to a note."""
 
     @validate_tool_security("add_text")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle add_text tool call."""
         from .errors import ValidationError
 
@@ -1635,7 +1686,9 @@ class GetNoteVersionsHandler(ToolHandlerBase):
     PREVIEW_MAX_LENGTH = 200
 
     @validate_tool_security("get_note_versions")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle get_note_versions tool call."""
         from .errors import ValidationError
 
@@ -1704,7 +1757,9 @@ class RestoreVersionHandler(ToolHandlerBase):
     """Handler for restore_version tool — roll back a note to an earlier version."""
 
     @validate_tool_security("restore_version")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle restore_version tool call."""
         from .errors import ValidationError
 
@@ -1796,7 +1851,9 @@ class ReplaceSectionHandler(ToolHandlerBase):
     """Handler for replace_section tool — surgical Markdown section replacement."""
 
     @validate_tool_security("replace_section")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle replace_section tool call."""
         from .errors import ValidationError
 
@@ -1888,7 +1945,9 @@ class AppendToDailyNoteHandler(ToolHandlerBase):
     """Handler for append_to_daily_note tool — timestamped journaling."""
 
     @validate_tool_security("append_to_daily_note")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle append_to_daily_note tool call."""
         from .errors import ValidationError
 
@@ -1979,7 +2038,9 @@ class GetOrCreateNoteHandler(ToolHandlerBase):
     """Handler for get_or_create_note tool — atomic find-or-create."""
 
     @validate_tool_security("get_or_create_note")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle get_or_create_note tool call."""
         from .errors import ValidationError
 
@@ -2068,7 +2129,9 @@ class RenameTagHandler(ToolHandlerBase):
     """Handler for rename_tag tool — atomically rename a tag across all notes."""
 
     @validate_tool_security("rename_tag")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle rename_tag tool call."""
         from .errors import ValidationError
 
@@ -2162,7 +2225,9 @@ class ListTagsHandler(ToolHandlerBase):
     """Handler for list_tags tool — list all tags with note counts."""
 
     @validate_tool_security("list_tags")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle list_tags tool call."""
         sort_by = arguments.get("sort_by", "alpha")
 
@@ -2206,7 +2271,9 @@ class FindUntaggedNotesHandler(ToolHandlerBase):
     """Handler for find_untagged_notes tool — list notes with no tags."""
 
     @validate_tool_security("find_untagged_notes")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle find_untagged_notes tool call."""
         if self.note_cache is None or not self.note_cache.is_initialized:
             return self._format_error_response(
@@ -2266,7 +2333,9 @@ class BulkTagHandler(ToolHandlerBase):
     VALID_ACTIONS = {"add", "remove", "set"}
 
     @validate_tool_security("bulk_tag")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle bulk_tag tool call."""
         note_ids = arguments.get("note_ids")
         action = arguments.get("action")
@@ -2338,7 +2407,9 @@ class RestoreNoteHandler(ToolHandlerBase):
     """Handler for restore_note tool — un-trash a deleted note."""
 
     @validate_tool_security("restore_note")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle restore_note tool call."""
         note_id = arguments.get("note_id", "")
 
@@ -2401,7 +2472,9 @@ class PublishNoteHandler(ToolHandlerBase):
     """Handler for publish_note tool — publish a note to a public URL."""
 
     @validate_tool_security("publish_note")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle publish_note tool call."""
         note_id = arguments.get("note_id", "")
 
@@ -2451,7 +2524,9 @@ class UnpublishNoteHandler(ToolHandlerBase):
     """Handler for unpublish_note tool — remove a note from public access."""
 
     @validate_tool_security("unpublish_note")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle unpublish_note tool call."""
         note_id = arguments.get("note_id", "")
 
@@ -2511,7 +2586,9 @@ class EncryptNoteHandler(ToolHandlerBase):
     """Handler for encrypt_note tool — Vault-encrypt an existing note's body."""
 
     @validate_tool_security("encrypt_note")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle encrypt_note tool call."""
         note_id = arguments.get("note_id", "")
 
@@ -2577,7 +2654,9 @@ class DecryptNoteHandler(ToolHandlerBase):
     """Handler for decrypt_note tool — reverse encrypt_note."""
 
     @validate_tool_security("decrypt_note")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle decrypt_note tool call."""
         note_id = arguments.get("note_id", "")
 
@@ -2650,7 +2729,9 @@ class DecryptNoteHandler(ToolHandlerBase):
 class VaultStatusHandler(ToolHandlerBase):
     """Handler for vault_status tool — read-only Vault key/encrypted-note status."""
 
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle vault_status tool call."""
         del arguments  # no parameters
 
@@ -2658,17 +2739,28 @@ class VaultStatusHandler(ToolHandlerBase):
         if self.note_cache is not None and self.note_cache.is_initialized:
             encrypted_count = len(self.note_cache._tag_index.get(VAULT_TAG, set()))
 
+        key_available = False
+        key_error: str | None = None
+        try:
+            key_available = has_vault_key()
+        except VaultKeyCorruptedError as e:
+            # A status check must not itself crash on a corrupted key — that
+            # would defeat the point of being able to diagnose it.
+            key_error = str(e)
+
+        status: dict[str, Any] = {
+            "success": True,
+            "key_available": key_available,
+            "key_provider": key_provider_name(),
+            "encrypted_note_count": encrypted_count,
+        }
+        if key_error is not None:
+            status["key_error"] = key_error
+
         return [
             types.TextContent(
                 type="text",
-                text=json.dumps(
-                    {
-                        "success": True,
-                        "key_available": has_vault_key(),
-                        "key_provider": key_provider_name(),
-                        "encrypted_note_count": encrypted_count,
-                    }
-                ),
+                text=json.dumps(status),
             )
         ]
 
@@ -2676,7 +2768,9 @@ class VaultStatusHandler(ToolHandlerBase):
 class GetServerInfoHandler(ToolHandlerBase):
     """Handler for get_server_info tool — returns version, author, and debug info."""
 
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle get_server_info tool call."""
         import platform
         import sys
@@ -2738,7 +2832,9 @@ class PermanentDeleteNoteHandler(ToolHandlerBase):
     """Handler for permanent_delete_note tool — irreversibly destroy a note."""
 
     @validate_tool_security("permanent_delete_note")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle permanent_delete_note tool call.
 
         Args:
@@ -2811,7 +2907,9 @@ class EmptyTrashHandler(ToolHandlerBase):
     """Handler for empty_trash tool — permanently delete all trashed notes."""
 
     @validate_tool_security("empty_trash")
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle empty_trash tool call.
 
         Args:
@@ -2935,7 +3033,9 @@ class EmptyTrashHandler(ToolHandlerBase):
 class ListNotesHandler(ToolHandlerBase):
     """Handler for list_notes tool — browse recent notes, optionally by tag."""
 
-    async def handle(self, arguments: dict[str, Any]) -> list[types.TextContent]:
+    async def handle(
+        self, arguments: dict[str, Any]
+    ) -> list[types.TextContent] | types.CallToolResult:
         """Handle list_notes tool call."""
         tag: str | None = arguments.get("tag")
         limit = min(int(arguments.get("limit", 20)), 100)

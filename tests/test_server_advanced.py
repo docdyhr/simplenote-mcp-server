@@ -540,7 +540,7 @@ class TestResourceManagement:
             # handle_call_tool catches exceptions and returns error response
             result = await handle_call_tool("create_note", {"content": "test"})
 
-            assert isinstance(result, list)
-            assert len(result) == 1
-            error_data = json.loads(result[0].text)
+            assert isinstance(result, types.CallToolResult)
+            assert result.isError is True
+            error_data = json.loads(result.content[0].text)
             assert "error" in error_data or "message" in error_data

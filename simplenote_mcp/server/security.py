@@ -262,60 +262,67 @@ class SecurityValidator:
 
     def validate_date_range(
         self, from_date: Any = None, to_date: Any = None
-    ) -> tuple[datetime | None, datetime | None]:
+    ) -> tuple[str | datetime | None, str | datetime | None]:
         """Validate date range parameters.
 
+        Accepts ISO-format strings, natural-language date expressions (see
+        search.date_parser.parse_natural_date — "yesterday", "last_week",
+        "3_days_ago", etc.), or datetime objects. Returns the *original*
+        value unchanged rather than a parsed datetime: this method only
+        checks that each value is parseable and that the range is sane —
+        the search handler's own date parser (tool_handlers._parse_date)
+        is the single place that actually converts strings to datetimes,
+        so it must keep receiving the type it was given.
+
         Args:
-            from_date: Start date (ISO format string or datetime)
-            to_date: End date (ISO format string or datetime)
+            from_date: Start date (ISO string, natural-language string, or
+                datetime)
+            to_date: End date (ISO string, natural-language string, or
+                datetime)
 
         Returns:
-            Tuple of (validated_from_date, validated_to_date)
+            Tuple of (from_date, to_date), unchanged from the input.
 
         Raises:
-            ValidationError: If dates are invalid
+            ValidationError: If either value is an unparseable string/type,
+                or the range itself is invalid (from after to, or > 10 years).
         """
-        validated_from = None
-        validated_to = None
 
-        if from_date is not None:
-            if isinstance(from_date, str):
-                try:
-                    validated_from = datetime.fromisoformat(
-                        from_date.replace("Z", "+00:00")
-                    )
-                except ValueError as e:
+        def _check(
+            value: Any, field_name: str
+        ) -> tuple[str | datetime | None, datetime | None]:
+            if value is None:
+                return None, None
+            if isinstance(value, datetime):
+                return value, value
+            if not isinstance(value, str):
+                raise ValidationError(f"{field_name} must be a string or datetime")
+            try:
+                return value, datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError:
+                from .search.date_parser import parse_natural_date
+
+                parsed = parse_natural_date(value)
+                if parsed is None:
                     raise ValidationError(
-                        f"Invalid from_date format: {from_date}"
-                    ) from e
-            elif isinstance(from_date, datetime):
-                validated_from = from_date
-            else:
-                raise ValidationError("from_date must be a string or datetime")
+                        f"Invalid {field_name} format: {value}"
+                    ) from None
+                return value, parsed
 
-        if to_date is not None:
-            if isinstance(to_date, str):
-                try:
-                    validated_to = datetime.fromisoformat(
-                        to_date.replace("Z", "+00:00")
-                    )
-                except ValueError as e:
-                    raise ValidationError(f"Invalid to_date format: {to_date}") from e
-            elif isinstance(to_date, datetime):
-                validated_to = to_date
-            else:
-                raise ValidationError("to_date must be a string or datetime")
+        from_original, from_parsed = _check(from_date, "from_date")
+        to_original, to_parsed = _check(to_date, "to_date")
 
-        # Validate date range logic
-        if validated_from and validated_to:
-            if validated_from > validated_to:
+        # Validate date range logic using the parsed values for comparison
+        # only — the return still carries the original, unparsed value.
+        if from_parsed and to_parsed:
+            if from_parsed > to_parsed:
                 raise ValidationError("from_date must be before to_date")
 
             # Prevent extremely large date ranges (potential DoS)
-            if (validated_to - validated_from).days > 3650:  # 10 years
+            if (to_parsed - from_parsed).days > 3650:  # 10 years
                 raise ValidationError("Date range too large (max 10 years)")
 
-        return validated_from, validated_to
+        return from_original, to_original
 
     def validate_uri(self, uri: str, allowed_schemes: list[str] = None) -> None:
         """Validate URI for security issues.

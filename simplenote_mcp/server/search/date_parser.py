@@ -80,8 +80,11 @@ def parse_natural_date(text: str) -> datetime | None:
         result = datetime.now() - delta
         return result.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Re-normalize with spaces for pattern matching
-    spaced = text.strip().lower()
+    # Re-normalize with spaces for pattern matching. The tool schema
+    # advertises underscored examples (e.g. "3_days_ago", "last_monday"),
+    # matching the keyword style above — accept those alongside naturally
+    # spaced input for the regex patterns below, which require whitespace.
+    spaced = text.strip().lower().replace("_", " ")
 
     # Check "N unit(s) ago" pattern
     ago_match = _AGO_PATTERN.match(spaced)

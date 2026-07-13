@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      target: builder  # Use builder stage for development
+      target: builder # Use builder stage for development
     image: simplenote-mcp-server:dev
     container_name: simplenote-mcp-server-dev
 
@@ -13,13 +13,35 @@ services:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
       - PYTHONPATH=/app
+      # See docker-compose.yml for why these are needed — MCP_TRANSPORT
+      # defaults to stdio, so without them nothing listens on 8000 here
+      # either.
+      - MCP_TRANSPORT=http
+      - MCP_HTTP_HOST=0.0.0.0
+      - MCP_HTTP_AUTH_TOKEN=${MCP_HTTP_AUTH_TOKEN:?set MCP_HTTP_AUTH_TOKEN in .env — required for non-loopback MCP_TRANSPORT=http}
+      - ENABLE_HTTP_ENDPOINT=true
+      - HTTP_HOST=127.0.0.1
+      - HTTP_PORT=8080
 
     volumes:
-      - .:/app:ro  # Mount source code for development
+      - .:/app:ro # Mount source code for development
       - ./logs:/app/simplenote_mcp/logs
 
     ports:
       - "8000:8000"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).status == 200 else 1)",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
 
     # Override entrypoint for development
     command: ["python", "-m", "simplenote_mcp.server"]

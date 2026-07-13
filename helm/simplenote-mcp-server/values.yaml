@@ -31,7 +31,7 @@ securityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop:
-    - ALL
+      - ALL
   readOnlyRootFilesystem: true
   runAsNonRoot: true
   runAsUser: 1000
@@ -40,6 +40,12 @@ service:
   type: ClusterIP
   port: 8000
   targetPort: 8000
+
+# Separate health/metrics endpoint (ENABLE_HTTP_ENDPOINT below) — not the
+# MCP protocol port above. Used by liveness/readiness probes; not exposed
+# via the Service, only within the pod.
+monitoring:
+  port: 8080
 
 ingress:
   enabled: false
@@ -60,23 +66,22 @@ resources:
     cpu: 500m
     memory: 256Mi
 
+# Real probes against the monitoring server (ENABLE_HTTP_ENDPOINT=true in
+# configMap.data below) — an import-only exec check proves the package is
+# installed, not that the process is actually serving requests.
 livenessProbe:
-  exec:
-    command:
-      - python
-      - -c
-      - "import simplenote_mcp.server; print('ok')"
+  httpGet:
+    path: /health
+    port: monitoring
   initialDelaySeconds: 30
   periodSeconds: 30
   timeoutSeconds: 10
   failureThreshold: 3
 
 readinessProbe:
-  exec:
-    command:
-      - python
-      - -c
-      - "import simplenote_mcp.server; print('ok')"
+  httpGet:
+    path: /ready
+    port: monitoring
   initialDelaySeconds: 5
   periodSeconds: 10
   timeoutSeconds: 5
@@ -114,6 +119,14 @@ simplenote:
   syncIntervalSeconds: 120
   logLevel: "INFO"
 
+# MCP HTTP transport configuration
+mcpHttp:
+  # Bearer token required for MCP_TRANSPORT=http on a non-loopback bind —
+  # server.py's run_http() refuses to start otherwise. Provide via
+  # --set mcpHttp.authToken=... or a values override; never commit a real
+  # token. Stored in the same Secret as the Simplenote credentials below.
+  authToken: ""
+
 # External secrets configuration (optional)
 externalSecrets:
   enabled: false
@@ -130,6 +143,9 @@ externalSecrets:
     - secretKey: SIMPLENOTE_PASSWORD
       remoteRef:
         key: simplenote-password
+    - secretKey: MCP_HTTP_AUTH_TOKEN
+      remoteRef:
+        key: mcp-http-auth-token
 
 # ConfigMap for environment variables
 configMap:
@@ -139,3 +155,8 @@ configMap:
     LOG_LEVEL: "INFO"
     PYTHONUNBUFFERED: "1"
     PYTHONDONTWRITEBYTECODE: "1"
+    MCP_TRANSPORT: "http"
+    MCP_HTTP_HOST: "0.0.0.0"
+    ENABLE_HTTP_ENDPOINT: "true"
+    HTTP_HOST: "127.0.0.1"
+    HTTP_PORT: "8080"

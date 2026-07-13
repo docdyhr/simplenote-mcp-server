@@ -171,8 +171,9 @@ class TestCreateNoteHandler:
         result = await handler.handle(arguments)
 
         # Should return error response
-        assert isinstance(result, list)
-        response_data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        response_data = json.loads(result.content[0].text)
         assert response_data["success"] is False
 
     @pytest.mark.asyncio
@@ -622,7 +623,9 @@ class TestVaultEncryptionOnCreateAndUpdate:
         result = await handler.handle(
             {"note_id": "note-1", "content": "plaintext replacement"}
         )
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
         assert data["error"]["subcategory"] == "vault_encrypted_note"
@@ -687,7 +690,9 @@ class TestVaultEncryptionOnCreateAndUpdate:
             result = await handler.handle(
                 {"content": "Title\nsensitive", "encrypt": True}
             )
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
         assert data["error"]["subcategory"] == "vault_key_unavailable"
@@ -1034,7 +1039,9 @@ class TestResourceNotFoundErrors:
         """GetNoteHandler error response must include the note_id."""
         handler = GetNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "missing-note"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
         # resource_id should appear in error dict
         error = data["error"]
@@ -1047,7 +1054,9 @@ class TestResourceNotFoundErrors:
         """DeleteNoteHandler error response must include the note_id."""
         handler = DeleteNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "missing-note"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
         error = data["error"]
         # note_id should appear in context or resource_id
@@ -1201,7 +1210,9 @@ class TestAddTextHandler:
         """update_note returning (None, -1) yields error response."""
         mock_client.update_note.return_value = (None, -1)
         result = await handler.handle({"note_id": "note1", "text": "New text"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
 
@@ -1303,7 +1314,9 @@ class TestListTagsHandler:
         mock_cache.is_initialized = False
         handler = ListTagsHandler(mock_client, mock_cache)
         result = await handler.handle({})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
 
@@ -1519,7 +1532,9 @@ class TestRestoreVersionHandler:
         """If get_note(id, N) fails, return error response."""
         mock_client.get_note.return_value = ({}, -1)
         result = await handler.handle({"note_id": "note1", "version": 99})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
 
@@ -2176,7 +2191,9 @@ class TestReplaceSectionHandler:
                 "new_content": "new content",
             }
         )
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2330,7 +2347,9 @@ class TestFindUntaggedNotesHandler:
         mock_cache.is_initialized = False
         handler = FindUntaggedNotesHandler(mock_client, mock_cache)
         result = await handler.handle({})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
 
@@ -2421,14 +2440,18 @@ class TestBulkTagHandler:
     async def test_missing_note_ids_returns_error(self, handler):
         """Missing note_ids returns an error."""
         result = await handler.handle({"action": "add", "tags": ["x"]})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
     async def test_missing_action_returns_error(self, handler):
         """Missing action returns an error."""
         result = await handler.handle({"note_ids": ["n1"], "tags": ["x"]})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2437,7 +2460,9 @@ class TestBulkTagHandler:
         result = await handler.handle(
             {"note_ids": ["n1"], "action": "explode", "tags": ["x"]}
         )
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2518,7 +2543,9 @@ class TestRestoreNoteHandler:
     async def test_restore_missing_note_id(self, handler):
         """Missing note_id returns error."""
         result = await handler.handle({})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2526,7 +2553,9 @@ class TestRestoreNoteHandler:
         """API failure on get_note returns error."""
         mock_client.get_note.return_value = ({}, -1)
         result = await handler.handle({"note_id": "bad"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
 
@@ -2721,7 +2750,9 @@ class TestPublishNoteHandler:
     async def test_publish_note_missing_note_id(self, handler):
         """publish_note returns error when note_id is missing."""
         result = await handler.handle({})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2733,7 +2764,9 @@ class TestPublishNoteHandler:
         mock_client.get_note.return_value = (None, -1)
         handler = PublishNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "bad"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2744,7 +2777,9 @@ class TestPublishNoteHandler:
         mock_client.update_note.return_value = (None, -1)
         handler = PublishNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "note123"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2845,7 +2880,9 @@ class TestUnpublishNoteHandler:
     async def test_unpublish_note_missing_note_id(self, handler):
         """unpublish_note returns error when note_id is missing."""
         result = await handler.handle({})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2857,7 +2894,9 @@ class TestUnpublishNoteHandler:
         mock_client.get_note.return_value = (None, -1)
         handler = UnpublishNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "bad"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2946,7 +2985,9 @@ class TestEncryptNoteHandler:
     @pytest.mark.asyncio
     async def test_encrypt_note_missing_note_id(self, handler):
         result = await handler.handle({})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -2958,7 +2999,9 @@ class TestEncryptNoteHandler:
         mock_client.token = "fake-token"
         handler = EncryptNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "bad"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -3065,7 +3108,9 @@ class TestDecryptNoteHandler:
         handler = DecryptNoteHandler(mock_client, mock_cache)
 
         result = await handler.handle({"note_id": "note123"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
         assert data["error"]["subcategory"] == "decryption_failed"
@@ -3074,7 +3119,9 @@ class TestDecryptNoteHandler:
     @pytest.mark.asyncio
     async def test_decrypt_note_missing_note_id(self, handler):
         result = await handler.handle({})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
         assert data["success"] is False
 
     @pytest.mark.asyncio
@@ -3159,6 +3206,26 @@ class TestVaultStatusHandler:
         registry = ToolHandlerRegistry()
         assert "vault_status" in registry.list_tools()
 
+    @pytest.mark.asyncio
+    async def test_vault_status_reports_corrupted_key_without_crashing(
+        self, handler, tmp_path, monkeypatch
+    ):
+        """A corrupted key file must be reported diagnostically, not raised
+        as an unhandled exception — vault_status is the tool a user would
+        run specifically to diagnose this."""
+        key_file = tmp_path / "vault.key"
+        key_file.write_text("not-valid-base64!!!")
+        monkeypatch.setenv("SIMPLENOTE_VAULT_KEY_FILE", str(key_file))
+
+        result = await handler.handle({})
+
+        assert isinstance(result, list)
+        data = json.loads(result[0].text)
+        assert data["success"] is True
+        assert data["key_available"] is False
+        assert "key_error" in data
+        assert "vault.key" in data["key_error"]
+
 
 @pytest.mark.unit
 class TestVaultDecryptOnRead:
@@ -3231,6 +3298,28 @@ class TestVaultDecryptOnRead:
         assert "secret" not in json.dumps(data)
         # Title still readable even without the key
         assert data["title"] == "Findable Title"
+
+    @pytest.mark.asyncio
+    async def test_get_note_corrupted_key_surfaces_clear_error_not_silent_null(
+        self, encrypted_note, tmp_path
+    ):
+        """A corrupted key must not look identical to 'no key configured' —
+        that would hide a real, actionable problem from the user."""
+        from simplenote_mcp.server import vault
+
+        vault.reset_for_testing()
+        (tmp_path / "vault.key").write_text("not-valid-base64!!!")
+
+        client, cache = _make_client_and_cache()
+        cache.get_note.return_value = encrypted_note
+        handler = GetNoteHandler(client, cache)
+
+        result = await handler.handle({"note_id": "note1"})
+
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
+        assert data["error"]["subcategory"] == "vault_key_corrupted"
 
     @pytest.mark.asyncio
     async def test_get_note_wrong_key_returns_null_content(self, encrypted_note):
@@ -3332,7 +3421,9 @@ class TestVaultSafetyGuards:
         handler = AddTextHandler(client, cache)
 
         result = await handler.handle({"note_id": "note1", "text": "more stuff"})
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
         assert data["error"]["subcategory"] == "vault_encrypted_note"
@@ -3349,7 +3440,9 @@ class TestVaultSafetyGuards:
         result = await handler.handle(
             {"note_id": "note1", "header": "Notes", "new_content": "new stuff"}
         )
-        data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        data = json.loads(result.content[0].text)
 
         assert data["success"] is False
         assert data["error"]["subcategory"] == "vault_encrypted_note"

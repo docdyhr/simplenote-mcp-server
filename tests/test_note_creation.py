@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+import mcp.types as types
 import pytest
 
 from simplenote_mcp.server.cache import NoteCache
@@ -263,7 +264,9 @@ async def test_create_note_error_handling(mock_simplenote_client):
             "create_note", {"content": "This should fail"}
         )
 
-        result_data = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        result_data = json.loads(result.content[0].text)
 
         assert "error" in result_data
         assert result_data["error"]["type"] == "network"

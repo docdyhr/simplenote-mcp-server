@@ -271,7 +271,14 @@ class HTTPEndpointsHandler(BaseHTTPRequestHandler):
 
         health_data = self.health_status.to_dict()
 
-        status_code = 200 if health_data["status"] == "healthy" else 503
+        # Only a genuine "unhealthy" check (e.g. an exception while probing
+        # a subsystem) fails the HTTP status — "degraded" (e.g. a low cache
+        # hit rate, which is completely normal right after startup or
+        # during a quiet period) still means the process is up and able to
+        # serve, so it must not fail liveness/readiness probes wired to
+        # this endpoint. The degraded detail is still visible in the JSON
+        # body for anyone actually monitoring it.
+        status_code = 503 if health_data["status"] == "unhealthy" else 200
         if status_code != 200:
             logger.warning(f"Server unhealthy: {health_data}")
 

@@ -32,12 +32,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: ece7cb06caefa5fff74198d8649806c4678c61a1 # actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: "pip"
@@ -95,7 +95,7 @@ jobs:
         run: mkdocs build
 
       - name: Upload documentation artifacts
-        uses: actions/upload-pages-artifact@v5
+        uses: fc324d3547104276b827a68afc52ff2a11cc49c9 # actions/upload-pages-artifact@v5
         with:
           path: ./site
 
@@ -121,7 +121,7 @@ jobs:
 
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v5
+        uses: cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # actions/deploy-pages@v5
         continue-on-error: true
 
       - name: Handle deployment failure
@@ -145,10 +145,9 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
-
+        uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
       - name: Download documentation artifacts
-        uses: actions/download-artifact@v8
+        uses: 3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # actions/download-artifact@v8
         with:
           name: github-pages
           path: ./site
@@ -159,7 +158,7 @@ jobs:
           tar -xf artifact.tar
 
       - name: Check links
-        uses: lycheeverse/lychee-action@v2
+        uses: e7477775783ea5526144ba13e8db5eec57747ce8 # lycheeverse/lychee-action@v2
         with:
           args: --verbose --no-progress --config .lycheerc.toml './site/**/*.html' --exclude-mail
           fail: false  # Don't fail workflow on link issues, just report them
@@ -171,7 +170,7 @@ jobs:
 
       - name: Upload link check report
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: 043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # actions/upload-artifact@v7
         with:
           name: link-check-report
           path: lychee-report.md

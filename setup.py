@@ -1,16 +1,33 @@
-"""Setup configuration for the Simplenote MCP Server package."""
+"""Setup configuration for the Simplenote MCP Server package.
+
+Legacy fallback only — pyproject.toml's [project] table (PEP 621) is the
+authoritative source of truth for name/version/dependencies and is what
+`pip install .`/the Dockerfile build actually resolve against; modern
+setuptools ignores this file's arguments once pyproject.toml has a full
+[project] table. Kept in sync manually (see
+scripts/quality/check_version_consistency.py, which checks this file's
+version against VERSION/pyproject.toml/__init__.py/Chart.yaml) for any
+older tooling that still expects a setup.py to exist.
+"""
 
 from setuptools import find_packages, setup
 
 setup(
     name="simplenote-mcp-server",
-    version="1.12.0",
-    description="Simplenote MCP Server for Claude Desktop",
+    version="1.17.1",
+    description="A simple MCP Server that connects to Simplenote",
     packages=find_packages(),
     install_requires=[
         "mcp[cli]>=1.10.0",
         "simplenote>=2.1.4",
-        "requests>=2.32.4",
+        "requests>=2.33.0",
+        "starlette>=0.49.1",
+        "uvicorn>=0.44.0",
+        "urllib3>=2.6.3",
+        "aiohttp>=3.9.0",
+        "python-dateutil>=2.8.0",
+        "cryptography>=44.0.0",
+        "keyring>=24.0.0",
     ],
     entry_points={
         "console_scripts": [

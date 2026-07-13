@@ -7,6 +7,7 @@ consistent. It checks:
 - pyproject.toml
 - simplenote_mcp/__init__.py
 - helm/simplenote-mcp-server/Chart.yaml
+- setup.py (legacy fallback; pyproject.toml is the actual build source of truth)
 
 Usage:
     python scripts/quality/check_version_consistency.py
@@ -103,6 +104,27 @@ def read_helm_version(root: Path) -> str | None:
                 return match.group(1)
     except Exception as e:
         print(f"Error reading Chart.yaml: {e}", file=sys.stderr)
+    return None
+
+
+def read_setup_py_version(root: Path) -> str | None:
+    """Read version from setup.py.
+
+    Args:
+        root: Project root directory
+
+    Returns:
+        Version string or None if not found
+    """
+    setup_py_file = root / "setup.py"
+    try:
+        if setup_py_file.exists():
+            content = setup_py_file.read_text()
+            match = re.search(r'version\s*=\s*"([^"]+)"', content)
+            if match:
+                return match.group(1)
+    except Exception as e:
+        print(f"Error reading setup.py: {e}", file=sys.stderr)
     return None
 
 
@@ -208,6 +230,28 @@ def update_helm_version(root: Path, version: str) -> bool:
         return False
 
 
+def update_setup_py_version(root: Path, version: str) -> bool:
+    """Update version in setup.py.
+
+    Args:
+        root: Project root directory
+        version: Version string to write
+
+    Returns:
+        True if successful, False otherwise
+    """
+    setup_py_file = root / "setup.py"
+    try:
+        content = setup_py_file.read_text()
+        updated = re.sub(r'version\s*=\s*"[^"]+"', f'version="{version}"', content)
+        setup_py_file.write_text(updated)
+        print(f"✅ Updated setup.py to {version}")
+        return True
+    except Exception as e:
+        print(f"❌ Error updating setup.py: {e}", file=sys.stderr)
+        return False
+
+
 def check_versions(root: Path) -> dict[str, str | None]:
     """Check all version sources and return their values.
 
@@ -222,6 +266,7 @@ def check_versions(root: Path) -> dict[str, str | None]:
         "pyproject.toml": read_pyproject_version(root),
         "__init__.py": read_init_version(root),
         "Chart.yaml": read_helm_version(root),
+        "setup.py": read_setup_py_version(root),
     }
     return versions
 
@@ -299,6 +344,8 @@ def main() -> int:
             success &= update_init_version(root, target_version)
         if versions.get("Chart.yaml") != target_version:
             success &= update_helm_version(root, target_version)
+        if versions.get("setup.py") != target_version:
+            success &= update_setup_py_version(root, target_version)
 
         if success:
             print("\n✅ All versions have been synchronized!")

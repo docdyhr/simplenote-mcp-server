@@ -225,8 +225,8 @@ class TestErrorCategorization:
             error = handle_exception(e)
 
         assert isinstance(error, ValidationError), "Should be a ValidationError"
-        assert error.subcategory == "required", (
-            "Subcategory should be 'required' based on error message"
+        assert error.subcategory == "required_field", (
+            "Subcategory should be 'required_field' based on error message"
         )
 
         # Test network error detection
@@ -236,7 +236,9 @@ class TestErrorCategorization:
             error = handle_exception(e)
 
         assert isinstance(error, NetworkError), "Should be a NetworkError"
-        assert error.subcategory == "connection", "Subcategory should be 'connection'"
+        assert error.subcategory == "connection_failed", (
+            "Subcategory should be 'connection_failed'"
+        )
 
     def test_error_codes(self):
         """Test error code generation and parsing."""

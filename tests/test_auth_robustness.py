@@ -17,6 +17,7 @@ import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import mcp.types as types
 import pytest
 
 from simplenote_mcp.server.errors import AuthenticationError, ResourceNotFoundError
@@ -220,8 +221,9 @@ class TestGetNoteVersionsHandler:
 
         result = await handler.handle({"note_id": "some-id"})
 
-        assert result
-        payload = json.loads(result[0].text)
+        assert isinstance(result, types.CallToolResult)
+        assert result.isError is True
+        payload = json.loads(result.content[0].text)
         assert payload.get("success") is False
         # Must NOT have called sn.get_note (which would TypeError)
         sn.get_note.assert_not_called()

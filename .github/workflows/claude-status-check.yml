@@ -45,7 +45,11 @@ jobs:
       contents: read
       issues: write
       pull-requests: read
-    secrets: inherit
+    # Explicit mapping instead of `secrets: inherit` — see
+    # claude-dependabot-merge.yml for why.
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     with:
       create_issue: ${{ github.event.inputs.create_issue == 'true' }}
       max_budget_usd: ${{ github.event.inputs.max_budget_usd || '0.25' }}

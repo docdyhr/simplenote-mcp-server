@@ -1,9 +1,16 @@
 #!/usr/bin/env python
 """
-Tests for pagination features and cache performance.
+Manual diagnostic script for pagination features and cache performance.
 
-This test suite verifies the pagination functionality and measures
-the performance improvements from the optimized cache implementation.
+Requires a real Simplenote account (SIMPLENOTE_EMAIL/SIMPLENOTE_PASSWORD) —
+run directly (`python pagination_and_cache_diagnostic.py`) or via
+run_tests.py's PERFORMANCE category. Not a pytest test module: its
+functions take a `cache: NoteCache` parameter with no matching fixture, so
+it was previously being collected by bare `pytest` under its old
+`test_pagination_and_cache.py` name and either erroring (fixture not
+found) or vacuously "passing" (an unawaited coroutine raises nothing) —
+neither of which ever exercised the code. Renamed to opt out of pytest's
+`test_*.py` collection entirely.
 """
 
 import asyncio

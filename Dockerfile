@@ -21,15 +21,22 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 COPY pyproject.toml ./
 COPY setup.py ./
 COPY VERSION ./
+COPY requirements-runtime-lock.txt ./
 
-# Install build dependencies first (setuptools>=78.1.1 for jaraco.context CVE fix)
-RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2" build
+# Install build dependencies first (setuptools>=78.1.1 for jaraco.context CVE fix).
+# The standalone `build` package isn't needed: `pip install .` on a PEP
+# 517 project builds via its own isolated build environment.
+RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2"
 
 # Copy source code
 COPY simplenote_mcp/ simplenote_mcp/
 
-# Build and install the package properly
-RUN pip install --no-cache-dir .[all]
+# Install pinned runtime dependencies, then the package itself without
+# re-resolving deps. Deliberately NOT `.[all]` — that extra pulls in
+# ruff/mypy/bandit/pytest/pre-commit/twine/build and more, none of which
+# belong in a production image (see requirements-runtime-lock.txt).
+RUN pip install --no-cache-dir -r requirements-runtime-lock.txt \
+    && pip install --no-cache-dir --no-deps .
 
 # Production stage
 ARG PYTHON_VERSION
@@ -75,9 +82,12 @@ ENV HOME=/home/mcp
 # Expose port for HTTP transport (default MCP port)
 EXPOSE 8000
 
-# Add health check that actually tests the module import
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import simplenote_mcp.server; print('Health check passed')" || exit 1
+# Real health check against the monitoring server (requires
+# ENABLE_HTTP_ENDPOINT=true, HTTP_PORT=8080 — see README) — an import-only
+# check proves the package is installed, not that the process is serving
+# anything. No curl in this image, so a Python one-liner.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
+    CMD python -c "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).status == 200 else 1)"
 
 # Add metadata labels
 LABEL org.opencontainers.image.created="${BUILDTIME}"
