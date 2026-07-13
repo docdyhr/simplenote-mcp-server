@@ -11,7 +11,7 @@ import sys
 import tempfile
 import threading
 import time
-from collections import deque
+from collections import defaultdict, deque
 from collections.abc import Iterable
 from typing import Any, cast
 
@@ -37,7 +37,6 @@ from .cache import BackgroundSync, NoteCache  # noqa: E402
 # Use our compatibility module for cross-version support
 from .compat import Path  # noqa: E402
 from .config import LogLevel, get_config  # noqa: E402
-from .decorators import rate_limit
 from .error_helpers import (
     format_error,
 )
@@ -134,14 +133,17 @@ WRITE_TOOLS: frozenset[str] = frozenset(
     }
 )
 
-# Per-session rolling write-budget tracker (not reset across reconnects —
+# Per-client rolling write-budget tracker (not reset across reconnects —
 # intentional: keeps the guard effective during a single server process).
-_write_timestamps: deque[float] = deque()
+# Keyed by client identifier (see _resolve_client_id) so one HTTP client
+# can't exhaust the budget for every other concurrent client; stdio has
+# exactly one implicit client per process, so it gets one shared bucket.
+_write_timestamps: dict[str, deque[float]] = defaultdict(deque)
 _write_budget_lock = threading.Lock()
 
 
-def _check_write_budget() -> None:
-    """Raise ValidationError if the session write budget is exhausted.
+def _check_write_budget(client_id: str) -> None:
+    """Raise ValidationError if client_id's write budget is exhausted.
 
     Uses a rolling window defined by config write_budget_max /
     write_budget_window_seconds.  Called immediately before each write tool
@@ -151,9 +153,10 @@ def _check_write_budget() -> None:
     now = time.monotonic()
     window_start = now - config.write_budget_window_seconds
     with _write_budget_lock:
-        while _write_timestamps and _write_timestamps[0] < window_start:
-            _write_timestamps.popleft()
-        if len(_write_timestamps) >= config.write_budget_max:
+        timestamps = _write_timestamps[client_id]
+        while timestamps and timestamps[0] < window_start:
+            timestamps.popleft()
+        if len(timestamps) >= config.write_budget_max:
             raise ValidationError(
                 f"Write budget exhausted: {config.write_budget_max} writes in "
                 f"{config.write_budget_window_seconds}s. "
@@ -162,10 +165,10 @@ def _check_write_budget() -> None:
             )
 
 
-def _record_write() -> None:
-    """Record a successful write operation against the session budget."""
+def _record_write(client_id: str) -> None:
+    """Record a successful write operation against client_id's budget."""
     with _write_budget_lock:
-        _write_timestamps.append(time.monotonic())
+        _write_timestamps[client_id].append(time.monotonic())
 
 
 # Create a server instance
@@ -1658,10 +1661,47 @@ async def handle_list_tools() -> list[types.Tool]:
         ]
 
 
-@rate_limit(60, 60)
+def _resolve_client_id(*_args: Any, **_kwargs: Any) -> str:
+    """Per-client identifier for rate limiting and the write budget.
+
+    stdio: one fixed identifier — a single local process IS one client for
+    that transport, which is correct behavior, not a gap, since there's
+    never more than one caller sharing a process. HTTP: the peer's source
+    IP, so concurrent callers sharing one MCP_HTTP_AUTH_TOKEN are still
+    isolated from each other rather than sharing a single global bucket.
+
+    Built on confirmed SDK internals: server.request_context.request
+    reliably carries the raw Starlette Request (with a real peer address)
+    for every HTTP-transport call, and is reliably None for stdio — see
+    run_http()/the streamable_http transport for how that's populated.
+
+    Signature matches with_rate_limiting's identifier_func(*args, **kwargs)
+    calling convention (invoked with handle_call_tool's own (name,
+    arguments)) — both are unused here.
+    """
+    try:
+        ctx = server.request_context
+    except LookupError:
+        return "stdio-local"
+    request = ctx.request
+    if request is None:
+        return "stdio-local"
+    client = getattr(request, "client", None)
+    return f"http:{client.host}" if client else "http:unknown"
+
+
 @server.call_tool()
 @with_security_monitoring()
-@with_rate_limiting(max_requests=100, window_seconds=300)  # 100 requests per 5 minutes
+@with_rate_limiting(
+    max_requests=100,
+    window_seconds=300,
+    identifier_func=_resolve_client_id,
+)  # sustained: 100 requests per 5 minutes, per client
+@with_rate_limiting(
+    max_requests=60,
+    window_seconds=60,
+    identifier_func=_resolve_client_id,
+)  # burst: 60 requests per minute, per client
 @with_request_validation()
 async def handle_call_tool(
     name: str, arguments: dict
@@ -1691,6 +1731,8 @@ async def handle_call_tool(
 
     # Record tool call for performance monitoring
     record_tool_call(name)
+
+    client_id = _resolve_client_id()
 
     try:
         # Record API call
@@ -1722,7 +1764,7 @@ async def handle_call_tool(
                     ],
                     isError=True,
                 )
-            _check_write_budget()
+            _check_write_budget(client_id)
 
         # Get handler from registry
         registry = ToolHandlerRegistry()
@@ -1745,7 +1787,7 @@ async def handle_call_tool(
         if name in WRITE_TOOLS:
             is_error = isinstance(result, types.CallToolResult) and result.isError
             if not is_error:
-                _record_write()
+                _record_write(client_id)
         return result
 
     except Exception as e:
