@@ -235,6 +235,13 @@ class TestMCPProtocolHandlers:
         assert len(result.contents[0].text) > 0
         assert "Test note content with metadata" in result.contents[0].text
 
+        # Tags/dates must be attached via the schema's `_meta` field, not
+        # bare dynamic attributes (regression test for the metadata-loss fix).
+        meta = result.contents[0].meta
+        assert meta["tags"] == ["important", "work"]
+        assert meta["createdate"] == "2023-01-01T10:00:00Z"
+        assert meta["modifydate"] == "2023-01-02T15:30:00Z"
+
     @pytest.mark.asyncio
     async def test_handle_list_resources_integration(self):
         """Test complete resource listing integration with proper structure validation."""

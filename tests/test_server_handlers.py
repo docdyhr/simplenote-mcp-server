@@ -383,16 +383,29 @@ class TestHandleListPrompts:
     """Tests for handle_list_prompts."""
 
     @pytest.mark.asyncio
-    async def test_returns_two_prompts(self):
-        """handle_list_prompts returns exactly two prompts."""
+    async def test_returns_three_prompts(self):
+        """handle_list_prompts returns exactly three prompts."""
         import simplenote_mcp.server.server as srv
 
         result = await srv.handle_list_prompts()
 
-        assert len(result) == 2
+        assert len(result) == 3
         names = [p.name for p in result]
         assert "create_note_prompt" in names
         assert "search_notes_prompt" in names
+        assert "session_handoff_prompt" in names
+
+    @pytest.mark.asyncio
+    async def test_session_handoff_prompt_has_required_project_arg(self):
+        """session_handoff_prompt declares a required 'project' argument."""
+        import simplenote_mcp.server.server as srv
+
+        result = await srv.handle_list_prompts()
+        handoff_prompt = next(p for p in result if p.name == "session_handoff_prompt")
+
+        required_args = [a for a in handoff_prompt.arguments if a.required]
+        names = [a.name for a in required_args]
+        assert names == ["project"]
 
     @pytest.mark.asyncio
     async def test_create_note_prompt_has_required_content_arg(self):
@@ -424,7 +437,7 @@ class TestHandleListPrompts:
 
 
 class TestHandleGetPrompt:
-    """Tests for all three branches of handle_get_prompt."""
+    """Tests for all four branches of handle_get_prompt."""
 
     @pytest.mark.asyncio
     async def test_create_note_prompt_returns_two_messages(self):

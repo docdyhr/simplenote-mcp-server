@@ -134,11 +134,11 @@ Simplenote has **no encryption at rest** — Automattic's own docs confirm staff
 
 Full design lives in `docs/security/encryption-design.md` (added alongside implementation).
 
-### Phase 10 — Companion Architecture Layer
+### Phase 10 — Companion Architecture Layer ✅ (v1.20, unreleased)
 
-- Fix MCP Resources (`simplenote://note/{id}`) so tags/pagination metadata actually reach clients — today they're computed then attached via non-schema fields and silently dropped.
-- Add native MCP Prompts beyond the current 2 static ones (e.g. a `session-handoff` prompt for the Session Continuity workflow below).
-- Spike (not committed): a curated resource Claude Desktop could auto-surface at conversation start, e.g. `simplenote://recent`.
+- **Fixed MCP Resources metadata loss**: `handle_list_resources`/`handle_read_resource` previously attached tags/dates/pagination via bare dynamic attributes (`resource.tags = ...`) — not part of the `Resource`/`TextResourceContents` schema, so a spec-compliant client has no obligation to preserve them even though this project's own Pydantic models happened to (`extra = "allow"`). Now attached via the MCP spec's dedicated `_meta` extension field, the correct mechanism for exactly this case. The first resource in a `list_resources` page also carries `pagination` in its `_meta`, fulfilling a contract the docstring already promised but the code never delivered. Tag/date info additionally folds into the human-readable `description` string for clients that only render that.
+- **Added `session-handoff` MCP Prompt**: scaffolds the Session Continuity workflow — takes `project` (required) plus optional `status`/`next_steps`/`blockers`, and returns instructions to call `get_or_create_note` + `add_text` with the canonical `Status:`/`Next:`/`Blockers:` format. 3 prompts total now (was 2).
+- **Spike: `simplenote://recent`-style auto-context resource — investigated, not building it.** MCP Resources in Claude Desktop are user-attached (picker/attachment UI), not automatically loaded into a conversation at session start — there's no mechanism in the MCP spec or Claude Desktop's client behavior for a server to push a resource into context proactively. A resource the user has to manually attach every session doesn't deliver the "automatic" value the original idea was chasing. The tool-based path (`search_notes`/`get_or_create_note`, now paired with the `session-handoff` prompt) already lets Claude *pull* project-state context autonomously at the start of a conversation, since tools — unlike resources — are always available for the model to call on its own initiative. That's the actual solution to this problem; a curated resource would be redundant with it.
 
 ### v2.0 Horizon
 

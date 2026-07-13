@@ -7,7 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`session-handoff` MCP Prompt**: scaffolds the Session Continuity workflow — takes `project`
+  (required) plus optional `status`/`next_steps`/`blockers`, and returns instructions to call
+  `get_or_create_note` + `add_text` with the canonical `Status:`/`Next:`/`Blockers:` format used
+  for cross-session handoff notes. 3 prompts total (was 2).
+
 ### Fixed
+- **MCP Resources silently dropped tags/dates/pagination metadata**: `handle_list_resources` and
+  `handle_read_resource` computed this metadata and attached it via bare dynamic attributes
+  (`resource.tags = ...`) that aren't part of the `Resource`/`TextResourceContents` schema — a
+  spec-compliant client has no obligation to preserve unrecognized top-level fields. Now attached
+  via the MCP spec's dedicated `_meta` extension field, the correct mechanism for this. The first
+  resource in a `list_resources` page also now carries `pagination` in its `_meta`, fulfilling a
+  contract the docstring already documented but the code never delivered. Tag/date info
+  additionally folds into the human-readable `description` string for clients that only render
+  that field.
 - **Tag-space sanitization inconsistency**: `add_tags` and `remove_tags` called the shared
   `_parse_tags()` sanitizer and discarded its result, then rebuilt the tag list via a separate,
   unsanitized path — `add_tags(tags="my tag")` stored `"my tag"` verbatim while
@@ -49,6 +64,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ROADMAP.md`/`TODO.md` refreshed to the current tool count (27) and version (1.17.1), with the
   next roadmap phases (correctness hardening, opt-in client-side note encryption, companion
   architecture layer) added.
+- `ROADMAP.md`/`TODO.md`: documented the outcome of the `simplenote://recent` auto-context
+  resource spike — investigated and decided against building it. MCP Resources in Claude Desktop
+  are user-attached, not auto-loaded into a conversation at session start, so a curated resource
+  wouldn't deliver the "automatic" value the idea was chasing. The existing tool-based path
+  (`search_notes`/`get_or_create_note`, now paired with the `session-handoff` prompt) already
+  solves proactive context-pulling, since tools — unlike resources — are always available for the
+  model to call on its own initiative.
 
 ## [1.17.1] - 2026-06-24
 

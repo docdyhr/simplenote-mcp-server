@@ -706,23 +706,37 @@ async def handle_list_resources(
         )
 
         resources = []
-        for note in notes:
+        for index, note in enumerate(notes):
             note.setdefault("tags", [])
             tags = note["tags"]
             content = note.get("content", "")
+            modifydate = note.get("modifydate", "unknown date")
+            description = f"Note from {modifydate}"
+            if tags:
+                description += f" — tags: {', '.join(tags)}"
+
+            # Tags/dates and (on the first resource) pagination info are
+            # attached via the MCP spec's `_meta` extension field — the only
+            # part of the Resource schema clients are guaranteed to preserve.
+            # Bare dynamic attributes (the previous approach) aren't part of
+            # the schema, so a spec-compliant client has no obligation to
+            # keep them even though this server's own Pydantic models are
+            # permissive enough to hold them locally.
+            meta: dict[str, Any] = {
+                "tags": tags,
+                "modifydate": note.get("modifydate", ""),
+                "createdate": note.get("createdate", ""),
+            }
+            if index == 0:
+                meta["pagination"] = pagination_info
+
             resource = types.Resource(
                 uri=cast(Any, f"simplenote://note/{note['key']}"),
                 name=extract_title_from_content(content, note.get("key", "")),
-                description=f"Note from {note.get('modifydate', 'unknown date')}",
+                description=description,
+                _meta=meta,
             )
-            # Store additional metadata as dynamic attributes (ignore type checking)
-            resource.key = note.get("key")  # type: ignore
-            resource.content = content  # type: ignore
-            resource.tags = tags  # type: ignore
             resources.append(resource)
-
-        # Note: Pagination info is available in pagination_info variable
-        # but cannot be attached to Resource objects directly
 
         return resources
 
@@ -799,18 +813,22 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
 
         # Extract note data - only process the note once
         note_content = safe_get(note, "content", "")
-        safe_get(note, "tags", [])
-        safe_get(note, "modifydate", "")
-        safe_get(note, "createdate", "")
+        note_tags = safe_get(note, "tags", [])
+        note_modifydate = safe_get(note, "modifydate", "")
+        note_createdate = safe_get(note, "createdate", "")
 
-        # Create the resource contents object
+        # Tags/dates are attached via the MCP spec's `_meta` extension field —
+        # see the matching comment in handle_list_resources for why this
+        # replaces the previous non-schema dynamic-attribute approach.
         text_contents = types.TextResourceContents(
             text=note_content,
             uri=cast(Any, note_uri),
+            _meta={
+                "tags": note_tags,
+                "modifydate": note_modifydate,
+                "createdate": note_createdate,
+            },
         )
-
-        # Note: Metadata like tags, dates available in local variables
-        # but cannot be attached to TextResourceContents objects directly
 
         return types.ReadResourceResult(contents=[text_contents])
 
@@ -1678,6 +1696,37 @@ async def handle_list_prompts() -> list[types.Prompt]:
                 )
             ],
         ),
+        types.Prompt(
+            name="session_handoff_prompt",
+            description=(
+                "Scaffold a session handoff note so the next Claude session can pick "
+                "up where this one left off. Uses get_or_create_note + add_text to "
+                "append a structured, timestamped entry to a per-project note — "
+                "Simplenote MCP's Session Continuity workflow."
+            ),
+            arguments=[
+                types.PromptArgument(
+                    name="project",
+                    description="Project or topic name — becomes part of the note title",
+                    required=True,
+                ),
+                types.PromptArgument(
+                    name="status",
+                    description="What was done / current state this session",
+                    required=False,
+                ),
+                types.PromptArgument(
+                    name="next_steps",
+                    description="What to do at the start of the next session",
+                    required=False,
+                ),
+                types.PromptArgument(
+                    name="blockers",
+                    description="Anything blocking progress (default: none)",
+                    required=False,
+                ),
+            ],
+        ),
     ]
 
 
@@ -1745,6 +1794,49 @@ async def handle_get_prompt(
                     content=types.TextContent(
                         type="text",
                         text=f"Please search for notes matching the query: {query}",
+                    ),
+                ),
+            ],
+        )
+
+    elif name == "session_handoff_prompt":
+        project = arguments.get("project", "")
+        status = arguments.get("status", "") or "<what was done / current state>"
+        next_steps = arguments.get("next_steps", "") or "<what to do next session>"
+        blockers = arguments.get("blockers", "") or "none"
+
+        return types.GetPromptResult(
+            description="Write a session handoff note for cross-session continuity",
+            messages=[
+                types.PromptMessage(
+                    role="user",
+                    content=types.TextContent(
+                        type="text",
+                        text=(
+                            "You are ending a working session and writing a handoff "
+                            "note so a future Claude session can pick up where this "
+                            "one left off. This is Simplenote MCP's Session "
+                            "Continuity workflow: find or create a per-project note, "
+                            "then append a timestamped entry."
+                        ),
+                    ),
+                ),
+                types.PromptMessage(
+                    role="user",
+                    content=types.TextContent(
+                        type="text",
+                        text=(
+                            f'1. Call get_or_create_note with title="Project: '
+                            f'{project}" and tags=["project-active"] to find or '
+                            f"create the project's state note.\n"
+                            f'2. Call add_text on that note (position="end") with '
+                            f"an entry in this format:\n\n"
+                            f"Status: {status}\n"
+                            f"Next: {next_steps}\n"
+                            f"Blockers: {blockers}\n\n"
+                            "Keep each field to one or two sentences — this note is "
+                            "read at the start of the next session, not a full log."
+                        ),
                     ),
                 ),
             ],

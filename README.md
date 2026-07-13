@@ -42,15 +42,20 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 ## What's New
 
-**27 Tools — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
+**27 Tools + 3 Prompts — Full Bear Parity + Simplenote Differentiators + Claude Companion Tools**
+
+MCP Resources and Prompts hardened for the working-memory companion use case:
+
+- **Fixed**: `list_resources`/`read_resource` were silently dropping tag/date/pagination metadata via non-schema fields — now attached through the MCP spec's `_meta` extension field, the correct mechanism.
+- **`session-handoff` MCP Prompt**: scaffolds the Session Continuity workflow (`get_or_create_note` + `add_text` with a `Status:`/`Next:`/`Blockers:` format) for cross-session context handoff.
 
 Irreversible-deletion tools with mandatory safety guards:
 
 - **`permanent_delete_note`**: Permanently destroy a single note; requires `confirm=true`; dry-run preview by default
 - **`empty_trash`**: Permanently delete all trashed notes; defaults to `dry_run=true` (preview); requires `dry_run=false` AND `confirm=true`
-- **1227 tests passing**, 77%+ coverage, zero linting/type errors
+- **1231 tests passing**, 77%+ coverage, zero linting/type errors
 
-**In progress**: correctness hardening (tag-sanitization consistency, search result limits, background-sync indexing) and an opt-in, client-side note-encryption feature ("Vault") to close Simplenote's lack of encryption-at-rest for sensitive notes. See [ROADMAP.md](ROADMAP.md).
+**Also in flight** (separate PR): an opt-in, client-side note-encryption feature ("Vault") to close Simplenote's lack of encryption-at-rest for sensitive notes. See [ROADMAP.md](ROADMAP.md).
 
 ### v1.17.0
 
