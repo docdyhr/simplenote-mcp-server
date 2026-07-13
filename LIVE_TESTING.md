@@ -1,7 +1,16 @@
-# Live Testing Guide — Simplenote MCP v1.13.0
+# Live Testing Guide — Simplenote MCP v1.17.1
 
 Paste each prompt block into Claude Desktop to verify the tool works.
 Run them in order — later tests depend on notes created earlier.
+
+Sections 19-20 (Vault, Companion Architecture) were additionally verified by an
+automated harness — `simplenote_mcp/scripts/live_test_redesign.py` — that drives
+the real server subprocess over the actual MCP stdio protocol with
+`mcp.ClientSession`, rather than mocking the Simplenote client the way the unit
+suite does. Run it with `SIMPLENOTE_EMAIL`/`SIMPLENOTE_PASSWORD` set:
+`.venv/bin/python simplenote_mcp/scripts/live_test_redesign.py`. It creates and
+trashes its own `LiveTest-Redesign-`-prefixed notes and cleans up after itself,
+including on failure. Last run: 2026-07-13, 35/35 checks passed.
 
 ---
 
@@ -242,6 +251,9 @@ Run them in order — later tests depend on notes created earlier.
 
 ## 19. Vault — Client-Side Encryption
 
+**Automated result (2026-07-13)**: PASS — all sub-checks below confirmed by
+`live_test_redesign.py` against the real Simplenote account.
+
 > Call vault_status. Tell me whether a key is available and which provider it's using.
 
 **Expect**: `key_available` (bool), `key_provider` (`"keyring"` or `"file"`), `encrypted_note_count`. First call may trigger a one-time macOS Keychain approval dialog — approve it.
@@ -276,7 +288,31 @@ Run them in order — later tests depend on notes created earlier.
 
 ---
 
-## 20. Cleanup
+## 20. MCP Resources & Prompts — Companion Architecture
+
+**Automated result (2026-07-13)**: PASS — all sub-checks below confirmed by
+`live_test_redesign.py`, including the exact regression this section exists to
+catch: `read_resource` previously crashed on every real call (see CHANGELOG
+"Fixed" — `'tuple' object has no attribute 'content'`) because the handler
+returned the wrong type for the MCP SDK's `@server.read_resource()` decorator.
+No unit test caught this since they all called the handler function directly,
+bypassing the decorator; only driving the real stdio protocol surfaced it.
+
+> List the available Simplenote resources.
+
+**Expect**: A list of `simplenote://note/<id>` resources. This exercises `handle_list_resources` — each resource's tags and modify/create dates are attached via the MCP `_meta` field (not visible as prose, but the description text should mention the note's tags).
+
+> Read the resource for one of the notes returned above (ask Claude to fetch its content via the resource, not via get_note).
+
+**Expect**: The note's content comes back without error. Before the fix in this section, this call crashed with `'tuple' object has no attribute 'content'` on every invocation — if it errors, that's a live regression, not a flaky test.
+
+> Use the session_handoff_prompt to draft a handoff note for a project called "test-project", with status "wrapping up live testing" and next steps "none".
+
+**Expect**: A prompt response instructing Claude to call `get_or_create_note` and `add_text` with a `Status:`/`Next:`/`Blockers:` formatted body, mentioning "test-project".
+
+---
+
+## 21. Cleanup
 
 > Delete the following test notes (move to Trash):
 > - Live Test Note
@@ -312,5 +348,13 @@ Run them in order — later tests depend on notes created earlier.
 | 16 | `export_notes` | |
 | 17 | `find_and_merge_duplicates` (dry run) | |
 | 18 | `delete_note` + `restore_note` | |
-| 19 | `vault_status`, `encrypt_note`, `decrypt_note`, encrypted search/add_text behavior | |
-| 20 | Cleanup | |
+| 19 | `vault_status`, `encrypt_note`, `decrypt_note`, encrypted search/add_text behavior | ✅ 2026-07-13 (automated) |
+| 20 | `list_resources`/`read_resource` `_meta`, `session_handoff_prompt` | ✅ 2026-07-13 (automated) |
+| 21 | Cleanup | ✅ 2026-07-13 (automated) |
+
+Rows 0-18 test pre-existing Bear-parity tools, unchanged by the companion
+redesign (Phases 8-10) — not re-verified in this pass; see git history for
+when each was last live-tested. Rows 19-21 cover this redesign and were
+verified by `simplenote_mcp/scripts/live_test_redesign.py` (35/35 checks
+passed) rather than manual Claude Desktop prompts — the prompts above remain
+for anyone who wants to confirm the same behavior conversationally.

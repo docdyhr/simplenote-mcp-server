@@ -128,6 +128,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   management design, and documented limitations.
 - `LIVE_TESTING.md` extended with a Vault section (`vault_status`, `encrypt_note`, `decrypt_note`,
   verifying encrypted bodies never leak into search results or snippets).
+- `LIVE_TESTING.md`: added a new "MCP Resources & Prompts — Companion Architecture" section, and
+  recorded automated pass results (2026-07-13, 35/35 checks) for both it and the Vault section via
+  the new `simplenote_mcp/scripts/live_test_redesign.py` harness, which drives the real server
+  subprocess over the actual MCP stdio protocol rather than mocking the Simplenote client.
+  `README.md`'s test count corrected (1284 → 1289) and `ROADMAP.md`/`SECURITY.md` wording updated
+  now that Phases 8-10 are merged rather than pending.
 
 ## [1.17.1] - 2026-06-24
 

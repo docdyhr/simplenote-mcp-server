@@ -244,7 +244,7 @@ Simplenote has no encryption at rest (confirmed via Automattic's own docs — se
 - [x] `[P2]` **Reconcile the two divergent Bandit configs** — `.bandit` and `security.yml`'s `bandit_skip` no longer skip B105; `pyproject.toml [tool.bandit]` never did
 - [x] `[P2]` **`tests/test_vault.py`**: round-trip, tamper detection (flipped byte → raises, never garbage), missing-key behavior, malformed-envelope parsing, key-provider fallback chain
 - [x] `[P2]` **Safety guards** (beyond original scope, added during implementation): `add_text`/`replace_section` refuse on Vault-encrypted notes; `find_and_merge_duplicates` excludes them
-- [ ] `[P2]` **`LIVE_TESTING.md`** entries for the new vault tools (keychain-prompt UX needs a real Claude Desktop session, not just unit tests) — see LIVE_TESTING.md
+- [x] `[P2]` **`LIVE_TESTING.md`** entries for the new vault tools — verified via automated harness (`simplenote_mcp/scripts/live_test_redesign.py`, drives the real server over stdio) rather than a manual Claude Desktop session; 35/35 checks passed 2026-07-13, including catching and fixing a real `read_resource` wire-protocol crash unit tests missed
 
 ## v1.20 — Companion Architecture Layer (Phase 10) ✅
 
