@@ -179,20 +179,19 @@ class TestHandleReadResource:
             }
             mock_cache.get_note.return_value = mock_note
 
-            # Call handler after simulating API response
-            result = await handle_read_resource("simplenote://note/note123")
+            # Call handler after simulating API response.
+            # handle_read_resource returns Iterable[ReadResourceContents] —
+            # the @server.read_resource() decorator wraps this into
+            # ReadResourceResult (and attaches the real request URI) itself.
+            result = list(await handle_read_resource("simplenote://note/note123"))
             assert mock_cache.get_note.call_count == 1  # Ensure it was called once
 
             # Verify results
-            assert isinstance(result, types.ReadResourceResult)
-            # Check the contents field
-            assert len(result.contents) == 1
-            content = result.contents[0]
-            assert isinstance(content, types.TextResourceContents)
-            assert content.text == "Note content"  # Verify correct content is returned
-
-            # Verify URI
-            assert str(content.uri) == "simplenote://note/note123"
+            assert len(result) == 1
+            content = result[0]
+            assert (
+                content.content == "Note content"
+            )  # Verify correct content is returned
 
     async def test_read_resource_cache_miss(self):
         """Test reading a resource not in cache."""
@@ -217,14 +216,12 @@ class TestHandleReadResource:
             mock_get_client.return_value = mock_client
 
             # Call handler
-            result = await handle_read_resource("simplenote://note/note123")
+            result = list(await handle_read_resource("simplenote://note/note123"))
 
             # Verify results
-            assert len(result.contents) == 1
-            content = result.contents[0]
-            assert isinstance(content, types.TextResourceContents)
-            assert content.text == "Note content"  # Verify API response content
-            assert str(content.uri) == "simplenote://note/note123"
+            assert len(result) == 1
+            content = result[0]
+            assert content.content == "Note content"  # Verify API response content
 
             # Verify API was called
             mock_cache.get_note.assert_called_once()

@@ -11,6 +11,7 @@ import tempfile
 import threading
 import time
 from collections import deque
+from collections.abc import Iterable
 from typing import Any, cast
 
 # MCP imports
@@ -18,6 +19,9 @@ import mcp.server.stdio  # type: ignore  # noqa: E402
 import mcp.server.streamable_http  # type: ignore  # noqa: E402
 import mcp.types as types  # type: ignore  # noqa: E402
 from mcp.server import NotificationOptions, Server  # type: ignore  # noqa: E402
+from mcp.server.lowlevel.helper_types import (  # type: ignore  # noqa: E402
+    ReadResourceContents,
+)
 from mcp.server.models import InitializationOptions  # type: ignore  # noqa: E402
 
 # External imports
@@ -754,7 +758,7 @@ async def handle_list_resources(
 
 
 @server.read_resource()  # type: ignore
-async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
+async def handle_read_resource(uri: AnyUrl) -> Iterable[ReadResourceContents]:
     """Handle the read_resource capability.
 
     Args:
@@ -777,7 +781,6 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
         raise format_error("uri", "simplenote://note/[note_id] format")
 
     note_id = uri_str.replace("simplenote://note/", "")
-    note_uri = f"simplenote://note/{note_id}"
 
     try:
         from .cache_utils import get_cache_or_create_minimal
@@ -822,17 +825,23 @@ async def handle_read_resource(uri: AnyUrl) -> types.ReadResourceResult:
         # Tags/dates are attached via the MCP spec's `_meta` extension field —
         # see the matching comment in handle_list_resources for why this
         # replaces the previous non-schema dynamic-attribute approach.
-        text_contents = types.TextResourceContents(
-            text=note_content,
-            uri=cast(Any, note_uri),
-            _meta={
-                "tags": note_tags,
-                "modifydate": note_modifydate,
-                "createdate": note_createdate,
-            },
-        )
-
-        return types.ReadResourceResult(contents=[text_contents])
+        # The @server.read_resource() decorator wraps whatever this function
+        # returns into ReadResourceResult itself — it expects
+        # Iterable[ReadResourceContents], not a pre-built ReadResourceResult
+        # (returning the latter gets misidentified as the Iterable case,
+        # since pydantic BaseModel defines __iter__, and iterating it yields
+        # (field_name, value) tuples instead of resource-content objects).
+        return [
+            ReadResourceContents(
+                content=note_content,
+                mime_type="text/plain",
+                meta={
+                    "tags": note_tags,
+                    "modifydate": note_modifydate,
+                    "createdate": note_createdate,
+                },
+            )
+        ]
 
     except Exception as e:
         if isinstance(e, ServerError):

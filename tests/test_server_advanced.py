@@ -226,18 +226,22 @@ class TestMCPProtocolHandlers:
         mock_cache.get_note.return_value = mock_note
 
         with patch("simplenote_mcp.server.server.note_cache", mock_cache):
-            result = await handle_read_resource("simplenote://note/test123")
+            # handle_read_resource returns Iterable[ReadResourceContents] —
+            # the @server.read_resource() decorator wraps this into
+            # ReadResourceResult itself. A pre-built ReadResourceResult would
+            # be silently misidentified as that Iterable (pydantic BaseModel
+            # defines __iter__), breaking the real wire protocol.
+            result = list(await handle_read_resource("simplenote://note/test123"))
 
-        assert isinstance(result, types.ReadResourceResult)
-        assert len(result.contents) == 1
+        assert len(result) == 1
 
         # Verify content is returned (format may vary)
-        assert len(result.contents[0].text) > 0
-        assert "Test note content with metadata" in result.contents[0].text
+        assert len(result[0].content) > 0
+        assert "Test note content with metadata" in result[0].content
 
         # Tags/dates must be attached via the schema's `_meta` field, not
         # bare dynamic attributes (regression test for the metadata-loss fix).
-        meta = result.contents[0].meta
+        meta = result[0].meta
         assert meta["tags"] == ["important", "work"]
         assert meta["createdate"] == "2023-01-01T10:00:00Z"
         assert meta["modifydate"] == "2023-01-02T15:30:00Z"
