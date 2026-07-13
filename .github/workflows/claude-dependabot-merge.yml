@@ -50,7 +50,13 @@ jobs:
       issues: read
       checks: read
       statuses: read
-    secrets: inherit
+    # Explicit mapping instead of `secrets: inherit` — the reusable
+    # workflow's own workflow_call interface (docdyhr/.github) declares
+    # exactly these two; inherit would also hand it DOCKER_TOKEN,
+    # CODECOV_TOKEN, and everything else this repo happens to have.
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     with:
       merge_mode: ${{ github.event.inputs.merge_mode || 'dry-run' }}
       scope: ${{ github.event.inputs.scope || 'all' }}

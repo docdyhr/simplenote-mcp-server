@@ -21,15 +21,22 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 COPY pyproject.toml ./
 COPY setup.py ./
 COPY VERSION ./
+COPY requirements-runtime-lock.txt ./
 
-# Install build dependencies first (setuptools>=78.1.1 for jaraco.context CVE fix)
-RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2" build
+# Install build dependencies first (setuptools>=78.1.1 for jaraco.context CVE fix).
+# The standalone `build` package isn't needed: `pip install .` on a PEP
+# 517 project builds via its own isolated build environment.
+RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" "wheel>=0.46.2"
 
 # Copy source code
 COPY simplenote_mcp/ simplenote_mcp/
 
-# Build and install the package properly
-RUN pip install --no-cache-dir .[all]
+# Install pinned runtime dependencies, then the package itself without
+# re-resolving deps. Deliberately NOT `.[all]` — that extra pulls in
+# ruff/mypy/bandit/pytest/pre-commit/twine/build and more, none of which
+# belong in a production image (see requirements-runtime-lock.txt).
+RUN pip install --no-cache-dir -r requirements-runtime-lock.txt \
+    && pip install --no-cache-dir --no-deps .
 
 # Production stage
 ARG PYTHON_VERSION

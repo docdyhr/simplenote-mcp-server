@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -40,13 +40,13 @@ jobs:
             echo "Warning: Large file detected: $file ($(du -h "$file" | cut -f1))"
           done
 
-      - uses: actions/setup-python@v6
+      - uses: ece7cb06caefa5fff74198d8649806c4678c61a1 # actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
 
       - name: Cache dependencies
-        uses: actions/cache@v6
+        uses: 55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # actions/cache@v6
         id: cache
         with:
           path: |
@@ -78,15 +78,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-python@v6
+      - uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
+      - uses: ece7cb06caefa5fff74198d8649806c4678c61a1 # actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
 
       - name: Restore dependencies
-        uses: actions/cache@v6
+        uses: 55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # actions/cache@v6
         with:
           path: |
             ~/.cache/pip
@@ -126,7 +125,7 @@ jobs:
           pytest simplenote_mcp/tests/ --randomly-seed=${{ github.run_id }} --no-cov
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v7
+        uses: a99c28d3f0da835de33ff2feb2e15691c7b9641f # codecov/codecov-action@v7
         with:
           file: ./coverage.xml
           fail_ci_if_error: true
@@ -137,9 +136,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-python@v6
+      - uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
+      - uses: ece7cb06caefa5fff74198d8649806c4678c61a1 # actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -170,22 +168,21 @@ jobs:
       attestations: write
       id-token: write
     steps:
-      - uses: actions/checkout@v7
-
+      - uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
+        uses: 96fe6ef7f33517b61c61be40b68a1882f3264fb8 # docker/setup-qemu-action@v4
         with:
           platforms: linux/amd64,linux/arm64
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # docker/setup-buildx-action@v4
         with:
           version: latest
           platforms: linux/amd64,linux/arm64
 
       - name: Log in to Docker Hub
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4
+        uses: af1e73f918a031802d376d3c8bbc3fe56130a9b0 # docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ secrets.DOCKER_USERNAME }}
@@ -193,7 +190,7 @@ jobs:
 
       - name: Log in to GitHub Container Registry
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v4
+        uses: af1e73f918a031802d376d3c8bbc3fe56130a9b0 # docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -201,7 +198,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v6
+        uses: dc802804100637a589fabce1cb79ff13a1411302 # docker/metadata-action@v6
         with:
           images: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
@@ -218,7 +215,7 @@ jobs:
 
       - name: Build and push Docker image
         id: build
-        uses: docker/build-push-action@v7
+        uses: 53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # docker/build-push-action@v7
         with:
           context: .
           file: ./Dockerfile
@@ -231,7 +228,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner
         if: github.event_name != 'pull_request'
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
           format: "sarif"
@@ -242,14 +239,14 @@ jobs:
 
       - name: Upload Trivy scan results to GitHub Security tab
         if: github.event_name != 'pull_request'
-        uses: github/codeql-action/upload-sarif@v4
+        uses: 1ad29ea4a422cce9a242a9fae469541dcd08addc # github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-results.sarif"
           category: "trivy-container-scan"
 
       - name: Update Docker Hub repository description
         if: github.event_name != 'pull_request'
-        uses: peter-evans/dockerhub-description@v5
+        uses: 1b9a80c056b620d92cedb9d9b5a223409c68ddfa # peter-evans/dockerhub-description@v5
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_TOKEN }}
@@ -262,9 +259,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-python@v6
+      - uses: 9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # actions/checkout@v7
+      - uses: ece7cb06caefa5fff74198d8649806c4678c61a1 # actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           cache: "pip"
