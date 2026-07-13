@@ -6,7 +6,7 @@ on:
     branches: [main]
     paths:
       - "simplenote_mcp/**"
-      - "tests/**" 
+      - "tests/**"
       - "evals/**"
       - "pyproject.toml"
       - "package.json"
@@ -32,8 +32,8 @@ on:
         type: number
 
 env:
-  NODE_VERSION: '18'
-  PYTHON_VERSION: '3.12'
+  NODE_VERSION: "18"
+  PYTHON_VERSION: "3.12"
 
 permissions:
   contents: read
@@ -57,7 +57,7 @@ jobs:
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: 'pip'
+          cache: "pip"
 
       - name: Set up Node.js
         uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
@@ -80,7 +80,7 @@ jobs:
         run: |
           SUITE="${{ github.event.inputs.evaluation_suite || 'basic' }}"
           echo "suite=${SUITE}" >> $GITHUB_OUTPUT
-          
+
           case "${SUITE}" in
             smoke)
               echo "timeout=5" >> $GITHUB_OUTPUT
@@ -126,7 +126,7 @@ jobs:
         timeout-minutes: ${{ fromJSON(steps.eval-suite.outputs.timeout) }}
         run: |
           echo "Running ${{ steps.eval-suite.outputs.description }}..."
-          
+
           # Run evaluations and capture results
           case "${{ steps.eval-suite.outputs.suite }}" in
             smoke)
@@ -139,15 +139,15 @@ jobs:
               timeout 1200s npm run eval:comprehensive > evaluation-output.txt 2>&1
               ;;
           esac
-          
+
           EVAL_EXIT_CODE=$?
           echo "exit_code=${EVAL_EXIT_CODE}" >> $GITHUB_OUTPUT
-          
+
           # Display results
           echo "=== Evaluation Output ==="
           cat evaluation-output.txt
           echo "========================="
-          
+
           # Save output for later steps
           cp evaluation-output.txt eval-results.txt
 
@@ -160,7 +160,7 @@ jobs:
           import sys
           import os
           from pathlib import Path
-          
+
           def parse_evaluation_results(output_file):
               """Parse MCP evaluation results from output."""
               try:
@@ -228,10 +228,10 @@ jobs:
                   results["status"] = "poor"
               
               return results
-          
+
           # Parse results
           results = parse_evaluation_results('eval-results.txt')
-          
+
           if results:
               # Set outputs
               pass_rate = results["pass_rate"]
@@ -266,7 +266,7 @@ jobs:
                       "threshold": fail_threshold,
                       "quality_gate_passed": quality_gate_passed
                   }, f, indent=2)
-          
+
           else:
               print("Failed to parse evaluation results")
               # Set default outputs
@@ -300,7 +300,7 @@ jobs:
     permissions:
       pull-requests: write
       checks: write
-    
+
     steps:
       - name: Create quality gate report
         id: report
@@ -308,9 +308,9 @@ jobs:
           PASS_RATE="${{ needs.run-evaluations.outputs.pass-rate || '0' }}"
           QUALITY_GATE_PASSED="${{ needs.run-evaluations.outputs.quality-gate-passed || 'false' }}"
           STATUS="${{ needs.run-evaluations.outputs.status || 'unknown' }}"
-          
+
           echo "Creating quality gate report..."
-          
+
           # Determine overall result
           if [ "${{ needs.run-evaluations.result }}" = "success" ] && [ "${QUALITY_GATE_PASSED}" = "true" ]; then
             OVERALL_STATUS="✅ PASSED"
@@ -322,22 +322,22 @@ jobs:
             OVERALL_STATUS="❌ FAILED"
             GATE_EMOJI="🔴"
           fi
-          
+
           # Create report
           cat > quality-gate-report.md << EOF
           # ${GATE_EMOJI} Evaluation Quality Gate Report
-          
+
           ## Overall Result: ${OVERALL_STATUS}
-          
+
           **Pass Rate**: ${PASS_RATE}%  
           **Threshold**: ${{ github.event.inputs.fail_threshold || '70' }}%  
           **Evaluation Suite**: ${{ github.event.inputs.evaluation_suite || 'basic' }}  
           **Quality Gate**: ${QUALITY_GATE_PASSED}
-          
+
           ## Assessment
-          
+
           EOF
-          
+
           # Add assessment based on status
           case "${STATUS}" in
             success)
@@ -368,11 +368,11 @@ jobs:
               echo "Please review the evaluation logs for more information." >> quality-gate-report.md
               ;;
           esac
-          
+
           echo "" >> quality-gate-report.md
           echo "## Recommendations" >> quality-gate-report.md
           echo "" >> quality-gate-report.md
-          
+
           if [ "${QUALITY_GATE_PASSED}" = "false" ]; then
             echo "- 🔍 **Review failed evaluations** in the uploaded artifacts" >> quality-gate-report.md
             echo "- 🛠️ **Fix failing test scenarios** to improve pass rate" >> quality-gate-report.md
@@ -383,17 +383,17 @@ jobs:
             echo "- 📊 **Monitor evaluation trends** over time" >> quality-gate-report.md
             echo "- 🎯 **Consider running comprehensive evaluations** for important changes" >> quality-gate-report.md
           fi
-          
+
           echo "" >> quality-gate-report.md
           echo "---" >> quality-gate-report.md
           echo "*Quality gate is currently non-blocking. This assessment is for informational purposes.*" >> quality-gate-report.md
           echo "" >> quality-gate-report.md
           echo "📁 **Evaluation artifacts**: Check the Actions tab for detailed results" >> quality-gate-report.md
-          
+
           # Output for next steps
           echo "overall_status=${OVERALL_STATUS}" >> $GITHUB_OUTPUT
           echo "report_created=true" >> $GITHUB_OUTPUT
-          
+
           cat quality-gate-report.md
 
       - name: Comment on PR
@@ -402,7 +402,7 @@ jobs:
         with:
           script: |
             const fs = require('fs');
-            
+
             try {
               const report = fs.readFileSync('quality-gate-report.md', 'utf8');
               
@@ -444,14 +444,20 @@ jobs:
       - name: Create check run
         if: always()
         uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
+        env:
+          PASS_RATE: ${{ needs.run-evaluations.outputs.pass-rate || '0' }}
+          QUALITY_GATE_PASSED: ${{ needs.run-evaluations.outputs.quality-gate-passed }}
+          EVAL_RESULT: ${{ needs.run-evaluations.result }}
+          FAIL_THRESHOLD: ${{ github.event.inputs.fail_threshold || '70' }}
+          EVALUATION_SUITE: ${{ github.event.inputs.evaluation_suite || 'basic' }}
         with:
           script: |
-            const passRate = '${{ needs.run-evaluations.outputs.pass-rate || '0' }}';
-            const qualityGatePassed = '${{ needs.run-evaluations.outputs.quality-gate-passed }}' === 'true';
-            const evalResult = '${{ needs.run-evaluations.result }}';
-            
+            const passRate = process.env.PASS_RATE;
+            const qualityGatePassed = process.env.QUALITY_GATE_PASSED === 'true';
+            const evalResult = process.env.EVAL_RESULT;
+
             let conclusion, title, summary;
-            
+
             if (evalResult === 'success' && qualityGatePassed) {
               conclusion = 'success';
               title = '✅ Quality Gate Passed';
@@ -465,7 +471,7 @@ jobs:
               title = '❌ Evaluation Failed';
               summary = `Evaluations failed to complete successfully (non-blocking)`;
             }
-            
+
             await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -477,11 +483,11 @@ jobs:
                 summary: summary,
                 text: `
             This is a non-blocking quality gate based on MCP evaluation results.
-            
+
             **Pass Rate**: ${passRate}%
-            **Threshold**: ${{ github.event.inputs.fail_threshold || '70' }}%
-            **Suite**: ${{ github.event.inputs.evaluation_suite || 'basic' }}
-            
+            **Threshold**: ${process.env.FAIL_THRESHOLD}%
+            **Suite**: ${process.env.EVALUATION_SUITE}
+
             Check the evaluation artifacts for detailed results.
                 `
               }

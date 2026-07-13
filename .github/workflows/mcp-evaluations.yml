@@ -254,10 +254,12 @@ jobs:
         if: steps.eval-changes.outputs.eval_files_changed == 'true' && github.event_name == 'pull_request'
         uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
         continue-on-error: true
+        env:
+          HAS_OPENAI_KEY: ${{ needs.evaluate-mcp-server.outputs.has-openai-key || 'false' }}
         with:
           script: |
             const changedFiles = process.env.CHANGED_FILES || 'See file diff above';
-            const hasOpenAI = '${{ needs.evaluate-mcp-server.outputs.has-openai-key || 'false' }}' === 'true';
+            const hasOpenAI = process.env.HAS_OPENAI_KEY === 'true';
 
             const body = `## 🧪 Evaluation Files Updated
 

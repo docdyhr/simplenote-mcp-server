@@ -176,9 +176,11 @@ jobs:
         if: steps.git-check.outputs.changes_made == 'true'
         id: find-pr
         uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
+        env:
+          TARGET_BRANCH: ${{ steps.branch-info.outputs.target_branch }}
         with:
           script: |
-            const branch = '${{ steps.branch-info.outputs.target_branch }}';
+            const branch = process.env.TARGET_BRANCH;
 
             if (branch === 'main') {
               return null;
@@ -196,18 +198,23 @@ jobs:
       - name: Comment on PR about auto-fixes
         if: steps.git-check.outputs.changes_made == 'true' && steps.find-pr.outputs.result
         uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
+        env:
+          PR_NUMBER: ${{ steps.find-pr.outputs.result }}
+          FORMAT_FIXES_NEEDED: ${{ steps.check-issues.outputs.format_fixes_needed }}
+          IMPORT_FIXES: ${{ steps.check-issues.outputs.import_fixes }}
+          WHITESPACE_FIXES: ${{ steps.check-issues.outputs.whitespace_fixes }}
         with:
           script: |
-            const prNumber = ${{ steps.find-pr.outputs.result }};
+            const prNumber = Number(process.env.PR_NUMBER);
             const fixes = [];
 
-            if ('${{ steps.check-issues.outputs.format_fixes_needed }}' === 'true') {
+            if (process.env.FORMAT_FIXES_NEEDED === 'true') {
               fixes.push('Code formatting');
             }
-            if ('${{ steps.check-issues.outputs.import_fixes }}' === 'true') {
+            if (process.env.IMPORT_FIXES === 'true') {
               fixes.push('Import sorting');
             }
-            if ('${{ steps.check-issues.outputs.whitespace_fixes }}' === 'true') {
+            if (process.env.WHITESPACE_FIXES === 'true') {
               fixes.push('Whitespace cleanup');
             }
 
