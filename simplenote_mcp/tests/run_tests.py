@@ -71,7 +71,7 @@ def discover_tests(category: TestCategory = TestCategory.ALL) -> list[str]:
         TestCategory.UNIT: ["test_*py"],
         TestCategory.INTEGRATION: ["test_integration_*py"],
         TestCategory.PERFORMANCE: [
-            "test_pagination_and_cache.py",
+            "pagination_and_cache_diagnostic.py",
             "benchmark_cache.py",
             "test_search.py",
         ],
@@ -84,7 +84,7 @@ def discover_tests(category: TestCategory = TestCategory.ALL) -> list[str]:
         exclude = {str(p) for p in tests_dir.glob("test_integration_*.py")}
         exclude.update(
             {
-                str(tests_dir / "test_pagination_and_cache.py"),
+                str(tests_dir / "pagination_and_cache_diagnostic.py"),
                 str(tests_dir / "benchmark_cache.py"),
             }
         )

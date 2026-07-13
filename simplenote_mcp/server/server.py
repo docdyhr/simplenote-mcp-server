@@ -185,6 +185,68 @@ except Exception as e:
 simplenote_client = None
 
 
+def _build_offline_mock_client() -> Any:
+    """Build a stateful mock Simplenote client for SIMPLENOTE_OFFLINE_MODE.
+
+    A plain MagicMock with static return_values can't satisfy realistic
+    round-trip tests (create a note, then retrieve/update it and expect
+    the same content back) — add_note/get_note/update_note need to share
+    an in-memory store, like a real API would. Scoped to one closure per
+    call, so each fresh client (e.g. after clear_client_cache()) starts
+    with an empty store rather than leaking notes across tests.
+    """
+    from unittest.mock import MagicMock
+
+    mock_client = MagicMock()
+    notes_store: dict[str, dict[str, Any]] = {}
+    next_id = [1]
+
+    def mock_add_note(note: dict[str, Any], *_args: Any, **_kwargs: Any) -> Any:
+        key = f"mock-note-{next_id[0]}"
+        next_id[0] += 1
+        now = time.time()
+        stored = {
+            "key": key,
+            "content": note.get("content", ""),
+            "tags": list(note.get("tags", [])),
+            "systemTags": list(note.get("systemTags", [])),
+            "deleted": False,
+            "createdate": now,
+            "modifydate": now,
+        }
+        notes_store[key] = stored
+        return dict(stored), 0
+
+    def mock_get_note(note_id: str, *_args: Any, **_kwargs: Any) -> Any:
+        stored = notes_store.get(note_id)
+        if stored is None:
+            return None, -1
+        return dict(stored), 0
+
+    def mock_update_note(note: dict[str, Any], *_args: Any, **_kwargs: Any) -> Any:
+        key = note.get("key")
+        stored = notes_store.get(key) if key else None
+        if stored is None:
+            return None, -1
+        stored["content"] = note.get("content", stored["content"])
+        stored["tags"] = list(note.get("tags", stored["tags"]))
+        stored["modifydate"] = time.time()
+        return dict(stored), 0
+
+    def mock_trash_note(note_id: str, *_args: Any, **_kwargs: Any) -> int:
+        stored = notes_store.get(note_id)
+        if stored is not None:
+            stored["deleted"] = True
+        return 0
+
+    mock_client.get_note_list.return_value = ([], 0)
+    mock_client.get_note.side_effect = mock_get_note
+    mock_client.add_note.side_effect = mock_add_note
+    mock_client.update_note.side_effect = mock_update_note
+    mock_client.trash_note.side_effect = mock_trash_note
+    return mock_client
+
+
 def get_simplenote_client() -> Simplenote:
     """Get or create the Simplenote client.
 
@@ -206,17 +268,7 @@ def get_simplenote_client() -> Simplenote:
             # Check if running in offline mode
             if config.offline_mode:
                 logger.info("Running in offline mode - using mock Simplenote client")
-                from unittest.mock import MagicMock
-
-                # Create a mock client for offline mode
-                mock_client = MagicMock()
-                mock_client.get_note_list.return_value = ([], 0)
-                mock_client.get_note.return_value = ({}, 0)
-                mock_client.add_note.return_value = ({}, 0)
-                mock_client.update_note.return_value = ({}, 0)
-                mock_client.trash_note.return_value = 0
-
-                simplenote_client = mock_client
+                simplenote_client = _build_offline_mock_client()
                 logger.info("Mock Simplenote client created for offline mode")
                 return simplenote_client
 

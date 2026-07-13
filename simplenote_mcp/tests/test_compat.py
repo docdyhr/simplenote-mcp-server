@@ -159,23 +159,13 @@ class TestOtherCompat:
     """Test other compatibility features."""
 
     def test_path_module_functionality(self):
-        """Test that the correct Path implementation is used based on Python version."""
-        # This just verifies that the Path class has the expected functionality
-        if sys.version_info >= (3, 13):
-            # Python 3.13+: We should be using our custom Path implementation
-            import inspect
+        """compat.Path is a direct re-export of pathlib.Path on every
+        supported Python version — there is no custom implementation to
+        version-branch on (removed since this test was first written, once
+        pathlib itself covered what it used to work around)."""
+        import pathlib
 
-            path_module = inspect.getmodule(Path)
-            assert "compat" in str(path_module), (
-                "Path should come from our compat module in Python 3.13+"
-            )
-        else:
-            # Python < 3.13: We should be using pathlib.Path
-            import pathlib
-
-            assert Path == pathlib.Path, (
-                "Path should be identical to pathlib.Path in Python < 3.13"
-            )
+        assert Path is pathlib.Path
 
 
 if __name__ == "__main__":

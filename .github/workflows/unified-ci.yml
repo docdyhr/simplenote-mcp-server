@@ -110,6 +110,21 @@ jobs:
         run: |
           python scripts/quality/check_coverage.py --threshold 75.0
 
+      - name: Run legacy test suite (separate process — do not merge into tests/)
+        env:
+          SIMPLENOTE_EMAIL: test@example.com
+          SIMPLENOTE_PASSWORD: test-password
+        run: |
+          # simplenote_mcp/tests/ and tests/ both exercise process-global
+          # singletons (metrics collector, security validator). Each tree
+          # resets them for its own tests via an autouse conftest fixture,
+          # but that only protects tests within the same tree — collecting
+          # both into one `pytest` invocation (one process) lets tests from
+          # one tree corrupt the other's state. Keeping this a fully
+          # separate `pytest` process (own testpaths, own working memory)
+          # sidesteps that; do not add this directory to testpaths above.
+          pytest simplenote_mcp/tests/ --randomly-seed=${{ github.run_id }} --no-cov
+
       - name: Upload coverage
         uses: codecov/codecov-action@v7
         with:
