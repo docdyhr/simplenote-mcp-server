@@ -15,6 +15,7 @@ import pytest
 
 from simplenote_mcp.server.errors import ValidationError
 from simplenote_mcp.server.server import (
+    _create_shutdown_monitor,
     cleanup_pid_file,
     get_simplenote_client,
     handle_call_tool,
@@ -544,3 +545,46 @@ class TestResourceManagement:
             assert result.isError is True
             error_data = json.loads(result.content[0].text)
             assert "error" in error_data or "message" in error_data
+
+
+class TestShutdownMonitor:
+    """Regression test for the monitor_shutdown() already-done-future race."""
+
+    @pytest.mark.asyncio
+    async def test_monitor_shutdown_ignores_already_done_future(self):
+        """monitor_shutdown() must not raise if shutdown_future is already
+        resolved/cancelled by the time it notices shutdown_requested — this
+        raced during real SIGTERM teardown and logged an unretrieved
+        asyncio.InvalidStateError before the `.done()` guard was added.
+        """
+        tasks_before = asyncio.all_tasks()
+        shutdown_future = await _create_shutdown_monitor()
+        monitor_task = next(iter(asyncio.all_tasks() - tasks_before))
+
+        try:
+            # Simulate the future already being resolved via some other path
+            # before the background monitor task notices shutdown_requested.
+            shutdown_future.cancel()
+            server_module.shutdown_requested = True
+            # Awaiting the task re-raises any exception it hit internally —
+            # without the `.done()` guard this would raise InvalidStateError.
+            await asyncio.wait_for(monitor_task, timeout=1)
+        finally:
+            server_module.shutdown_requested = False
+
+        assert monitor_task.exception() is None
+        assert shutdown_future.cancelled()
+
+    @pytest.mark.asyncio
+    async def test_monitor_shutdown_resolves_future_normally(self):
+        """Happy-path complement: when shutdown_future isn't already done,
+        monitor_shutdown() still resolves it once shutdown_requested flips
+        true — the `.done()` guard must not swallow the normal case.
+        """
+        shutdown_future = await _create_shutdown_monitor()
+        try:
+            server_module.shutdown_requested = True
+            result = await asyncio.wait_for(shutdown_future, timeout=1)
+            assert result is None
+        finally:
+            server_module.shutdown_requested = False
