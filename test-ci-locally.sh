@@ -4,6 +4,15 @@ set -e
 echo "🧪 Testing CI/CD Steps Locally"
 echo "==============================="
 
+# Prefer the project virtualenv so this exercises the same python/pip/ruff/mypy
+# a local dev machine uses, not whatever happens to be first on PATH. CI's own
+# "local-test" job runs this same script with no .venv (deps installed straight
+# into the runner's Python, same as Docker) — that's already correct, so this
+# is a no-op there.
+if [ -f .venv/bin/activate ]; then
+    source .venv/bin/activate
+fi
+
 echo ""
 echo "🔍 Step 1: Running diagnostics..."
 python .github/scripts/ci-diagnostics.py

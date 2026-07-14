@@ -42,6 +42,15 @@ check_prerequisites() {
 setup_python() {
     echo "🐍 Setting up Python environment..."
 
+    # Create the project virtualenv if it doesn't exist yet, and install into
+    # it explicitly rather than whatever python3/pip happens to resolve on
+    # PATH (which may be a pyenv/Homebrew global with none of these deps).
+    if [ ! -d .venv ]; then
+        python3 -m venv .venv
+        echo "✅ Created .venv"
+    fi
+    source .venv/bin/activate
+
     # Install Python dependencies
     pip install -e .[dev,test,monitoring]
     echo "✅ Python dependencies installed"
