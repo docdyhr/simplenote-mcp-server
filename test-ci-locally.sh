@@ -4,13 +4,14 @@ set -e
 echo "🧪 Testing CI/CD Steps Locally"
 echo "==============================="
 
-# Use the project virtualenv so this exercises the same python/pip/ruff/mypy
-# CI actually runs against, not whatever happens to be first on PATH.
-if [ ! -f .venv/bin/activate ]; then
-    echo "❌ .venv not found. Run ./setup-dev-env-with-evals.sh or 'python3 -m venv .venv && source .venv/bin/activate && pip install -e .[dev,test]' first."
-    exit 1
+# Prefer the project virtualenv so this exercises the same python/pip/ruff/mypy
+# a local dev machine uses, not whatever happens to be first on PATH. CI's own
+# "local-test" job runs this same script with no .venv (deps installed straight
+# into the runner's Python, same as Docker) — that's already correct, so this
+# is a no-op there.
+if [ -f .venv/bin/activate ]; then
+    source .venv/bin/activate
 fi
-source .venv/bin/activate
 
 echo ""
 echo "🔍 Step 1: Running diagnostics..."

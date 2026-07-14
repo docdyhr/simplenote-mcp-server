@@ -47,11 +47,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   immediately with `ModuleNotFoundError: No module named 'mcp'` and the MCP client saw a bare
   "Connection closed". Now prefers `.venv/bin/python3` when present, falling back to `python3`
   for environments without a local venv (CI/Docker). The same class of bug existed in
-  `setup-dev-env-with-evals.sh` (installed deps via bare `pip` with no venv created/activated),
-  `test-ci-locally.sh`, and `test-mcp-evals.sh` (both ran bare `python3`/`pip`/`ruff`/`mypy`) — all
-  three now create/activate `.venv` before running anything. `docker-entrypoint.sh` was left as-is:
-  the Docker image installs dependencies straight into its own system Python with no venv, so bare
-  `python` there is already correct.
+  `setup-dev-env-with-evals.sh` (installed deps via bare `pip` with no venv created/activated) and
+  `test-mcp-evals.sh` (ran bare `python3`) — both now create/activate `.venv` when present.
+  `test-ci-locally.sh` now activates `.venv` too, but only when it exists: CI's own `local-test`
+  job runs this exact script with no `.venv` (deps installed straight into the runner's Python,
+  same as Docker), so an unconditional activation requirement broke that job — this is a no-op
+  there, matching `test-mcp-evals.sh`'s pattern. `docker-entrypoint.sh` was left as-is: the Docker
+  image installs dependencies straight into its own system Python with no venv, so bare `python`
+  there is already correct.
 - **Shutdown could log a spurious `asyncio.exceptions.InvalidStateError`**: `monitor_shutdown()`
   called `shutdown_future.set_result(None)` unconditionally once `shutdown_requested` flipped true.
   If the future had already been resolved or cancelled by the time the poll loop noticed (observed
