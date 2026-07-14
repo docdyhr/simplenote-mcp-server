@@ -1,6 +1,6 @@
 [project]
 name = "simplenote-mcp-server"
-version = "1.17.1"
+version = "1.17.2"
 description = "A simple MCP Server that connects to Simplenote"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -36,8 +36,9 @@ explicit_package_bases = true
 [[tool.mypy.overrides]]
 module = "tests.*"
 disallow_untyped_defs = false
+
 [[tool.mypy.overrides]]
-module = ["simplenote", "simplenote.*", "thefuzz", "thefuzz.*", "dateutil", "dateutil.*", "mcp", "mcp.*", "aiohttp", "aiohttp.*", "starlette", "starlette.*"]
+module = [ "simplenote", "simplenote.*", "thefuzz", "thefuzz.*", "dateutil", "dateutil.*", "mcp", "mcp.*", "aiohttp", "aiohttp.*", "starlette", "starlette.*",]
 ignore_missing_imports = true
 follow_imports = "silent"
 
