@@ -40,6 +40,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 27 registered tools → 30 (9 read + 21 write).
 
 ### Fixed
+- **Every `npm run eval:*` suite was broken by a wrong Python interpreter**: `mcp-server-wrapper.ts`
+  spawned the MCP server via bare `spawn("python3", ...)`, which resolves to whatever's first on
+  PATH — Homebrew's or pyenv's global Python — not this project's `.venv`. Since the `mcp` package
+  (and everything else the server imports) is only installed in `.venv`, every eval run crashed
+  immediately with `ModuleNotFoundError: No module named 'mcp'` and the MCP client saw a bare
+  "Connection closed". Now prefers `.venv/bin/python3` when present, falling back to `python3`
+  for environments without a local venv (CI/Docker). The same class of bug existed in
+  `setup-dev-env-with-evals.sh` (installed deps via bare `pip` with no venv created/activated),
+  `test-ci-locally.sh`, and `test-mcp-evals.sh` (both ran bare `python3`/`pip`/`ruff`/`mypy`) — all
+  three now create/activate `.venv` before running anything. `docker-entrypoint.sh` was left as-is:
+  the Docker image installs dependencies straight into its own system Python with no venv, so bare
+  `python` there is already correct.
+- **Shutdown could log a spurious `asyncio.exceptions.InvalidStateError`**: `monitor_shutdown()`
+  called `shutdown_future.set_result(None)` unconditionally once `shutdown_requested` flipped true.
+  If the future had already been resolved or cancelled by the time the poll loop noticed (observed
+  during SIGTERM teardown races), `set_result` raised `InvalidStateError('invalid state')` as an
+  unretrieved task exception. Cosmetic only — the server still exited 0 — but now guarded with a
+  `.done()` check before calling `set_result`.
 - **`read_resource` crashed over the real MCP wire protocol**: `handle_read_resource` returned a
   pre-built `types.ReadResourceResult`, but the SDK's `@server.read_resource()` decorator expects
   the handler to return `str | bytes | Iterable[ReadResourceContents]` and wraps that into a

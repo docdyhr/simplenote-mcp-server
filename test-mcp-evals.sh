@@ -5,6 +5,13 @@
 
 set -e
 
+# Use the project virtualenv so the Python server subprocess (spawned by
+# mcp-server-wrapper.ts) sees its installed deps, not whatever python3
+# resolves to on PATH.
+if [ -f .venv/bin/activate ]; then
+    source .venv/bin/activate
+fi
+
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'

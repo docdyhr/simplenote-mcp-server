@@ -4,6 +4,14 @@ set -e
 echo "🧪 Testing CI/CD Steps Locally"
 echo "==============================="
 
+# Use the project virtualenv so this exercises the same python/pip/ruff/mypy
+# CI actually runs against, not whatever happens to be first on PATH.
+if [ ! -f .venv/bin/activate ]; then
+    echo "❌ .venv not found. Run ./setup-dev-env-with-evals.sh or 'python3 -m venv .venv && source .venv/bin/activate && pip install -e .[dev,test]' first."
+    exit 1
+fi
+source .venv/bin/activate
+
 echo ""
 echo "🔍 Step 1: Running diagnostics..."
 python .github/scripts/ci-diagnostics.py

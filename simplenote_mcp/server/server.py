@@ -2114,7 +2114,8 @@ async def _create_shutdown_monitor() -> asyncio.Future:
         while not shutdown_requested:
             await asyncio.sleep(0.1)
         logger.info("Shutdown requested, stopping server gracefully")
-        shutdown_future.set_result(None)
+        if not shutdown_future.done():
+            shutdown_future.set_result(None)
 
     asyncio.create_task(monitor_shutdown())
     return shutdown_future
