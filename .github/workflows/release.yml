@@ -242,8 +242,13 @@ jobs:
         run: |
           echo "📋 Generating SBOM and vulnerability reports for release..."
 
-          # Install required tools
-          pip install cyclonedx-bom==7.0.0 pip-audit==2.7.3
+          # Install required tools. These two must stay mutually compatible
+          # on cyclonedx-python-lib (cyclonedx-bom==7.0.0 required >=8,<11;
+          # pip-audit==2.7.3 required >=5,<8 — no overlap, so this step
+          # always failed with ResolutionImpossible). Verified compatible as
+          # of 2026-07-16: cyclonedx-bom 7.3.0 -> cyclonedx-python-lib 11.x,
+          # pip-audit 2.10.1 -> cyclonedx-python-lib <11 too.
+          pip install cyclonedx-bom==7.3.0 pip-audit==2.10.1
 
           # Generate vulnerability report
           echo "🔍 Generating vulnerability report..."
@@ -252,8 +257,11 @@ jobs:
 
           # Generate SBOM in multiple formats
           echo "📋 Generating Software Bill of Materials..."
-          cyclonedx-py -o sbom-release.json -F json --install-all-packages
-          cyclonedx-py -o sbom-release.xml -F xml --install-all-packages
+          # cyclonedx-bom 7.x replaced the flat `-F`/`--install-all-packages`
+          # flags with a subcommand-based CLI; `environment` scans the
+          # current (virtual) environment, equivalent to the old default.
+          cyclonedx-py environment -o sbom-release.json --of JSON
+          cyclonedx-py environment -o sbom-release.xml --of XML
 
           # Generate additional SBOM from pip-audit
           pip-audit -r pyproject.toml -f cyclonedx-json -o sbom-pip-audit-release.json || true
