@@ -138,7 +138,7 @@ toml==0.10.2
 tomlkit==0.15.0
 tqdm==4.68.4
 twine==6.2.0
-typer==0.26.8
+typer==0.27.0
 typing-inspection==0.4.2
 typing_extensions==4.16.0
 urllib3==2.7.0
