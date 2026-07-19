@@ -144,6 +144,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   invalid configuration (a bad `MCP_TRANSPORT` value, missing credentials outside offline mode,
   etc.) now fails fast at startup with a clear message instead of surfacing later, less clearly,
   during client/cache initialization.
+- **`release.yml`'s `Publish to PyPI` step could never succeed**, blocking every release from
+  v1.17.1 through v1.17.4 from ever reaching PyPI: PyPI's Trusted Publisher for this project is
+  registered against the separate `publish-pypi.yml` workflow, not `release.yml`, so its OIDC
+  token exchange was always rejected with `invalid-publisher`. `release.yml` still tags, builds,
+  and generates SBOM/vulnerability reports on every dispatch; publishing to PyPI is now solely
+  `publish-pypi.yml`'s job (`gh workflow run publish-pypi.yml -f tag=vX.Y.Z`), which has the
+  correct Trusted Publisher registration and has published successfully since 2026-04-30.
+  (Also fixed separately: `cyclonedx-bom==7.0.0` + `pip-audit==2.7.3` had conflicting
+  `cyclonedx-python-lib` requirements, failing the SBOM generation step itself before this bug
+  was even reachable — pinned to `cyclonedx-bom==7.3.0` + `pip-audit==2.10.1`.)
 
 ### Changed
 - Declared JSON schema for `tags` unified to `array<string>` across all tag-accepting tools
