@@ -82,7 +82,7 @@ pathspec==1.1.1
 pbr==7.0.3
 pip-api==0.0.34
 pip-requirements-parser==32.0.1
-pip-tools==7.5.3
+pip-tools==7.6.0
 pip_audit==2.10.1
 platformdirs==4.10.1
 pluggy==1.6.0
