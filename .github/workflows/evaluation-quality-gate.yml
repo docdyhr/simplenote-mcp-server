@@ -398,7 +398,7 @@ jobs:
 
       - name: Comment on PR
         if: github.event_name == 'pull_request' && steps.report.outputs.report_created == 'true'
-        uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         with:
           script: |
             const fs = require('fs');
@@ -443,7 +443,7 @@ jobs:
 
       - name: Create check run
         if: always()
-        uses: actions/github-script@373c709c69115d41ff229c7e5df9f8788daa9553 # v9
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
         # Convention: pass workflow/job values in via env: and read them from process.env
         # in the script below. Do NOT interpolate ${{ }} directly into the script: body —
         # an untrusted value containing a quote can break out of the JS string literal
