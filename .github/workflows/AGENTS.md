@@ -1,0 +1,29 @@
+# .github/workflows/
+
+## Purpose
+
+CI/CD pipeline definitions. `unified-ci.yml` is the main pipeline (validate → test → security → status jobs); `release.yml` is manual-dispatch-only (see root `AGENTS.md`); others handle Dependabot automation, security scanning, docs, and evaluations.
+
+## Ownership
+
+- `unified-ci.yml` — `validate` (version consistency, lint), `test`, `security`, `local-test`, `status` jobs; blocks on version consistency before test/build/security run.
+- `security.yml`, `dependency-review.yml` — Bandit/pip-audit/CodeQL-style scanning.
+- `auto-fix.yml`, `auto-merge.yml`, `claude-dependabot-merge.yml`, `claude-status-check.yml` — Dependabot/PR automation.
+- `evaluation-quality-gate.yml`, `mcp-evaluations.yml` — mcp-evals suite runners; both gate on `ANTHROPIC_API_KEY` presence so Dependabot PRs (no repo secret access) skip gracefully instead of failing.
+- `release.yml` — manual `workflow_dispatch` version bump/release (patch/minor/major). `update-version.yml` — triggers on `v*.*.*` tag push, syncs version references post-release.
+- `docs.yml`, `monitoring-consolidated.yml`, `publish-pypi.yml` — docs build, consolidated monitoring checks, PyPI publish.
+
+## Local Contracts
+
+- **`yaml.safe_load()` is not sufficient to validate `uses:` lines.** A YAML-valid-but-schema-invalid `uses:` value (e.g. a bare SHA with the tag comment misplaced, instead of `owner/repo@<sha> # tag`) parses cleanly but makes GitHub run **zero jobs** for every workflow referencing it. Only a schema-aware linter (`actionlint`) catches this class of bug — not currently run in CI. Run `actionlint` on any `.github/workflows/*.yml` edit before considering it done, especially SHA-pinning changes.
+- **`github-script` steps must pass untrusted values via `env:`**, never interpolate `${{ needs.*.outputs.* }}` / `${{ github.event.inputs.* }}` / `${{ steps.*.outputs.* }}` directly into the `script:` body — an injected value could break out of the JS string literal (script-injection). Read via `process.env.*` instead; see the existing pattern and comment in `auto-fix.yml`.
+- `dependabot.yml` (one directory up, at `.github/dependabot.yml`) covers four ecosystems: `pip`, `npm`, `docker`, `github-actions` — keep all four current when adding a new dependency manager to the project.
+
+## Verification
+
+- `actionlint` on any changed workflow file (manual — not yet wired into CI itself)
+- Push/PR and watch the `validate` job in `unified-ci.yml` actually queues and runs
+
+## Child DOX Index
+
+None.
