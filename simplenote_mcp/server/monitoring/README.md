@@ -2,6 +2,8 @@
 
 A comprehensive performance monitoring system for the Simplenote MCP Server that tracks API performance, cache efficiency, tool usage, and system resources.
 
+> Agent contracts (singleton/test-isolation gotchas) live in [`AGENTS.md`](AGENTS.md) in this folder — this file is end-user/dashboard usage documentation.
+
 ## Features
 
 - **API Performance Tracking**: Monitor API call success rates, response times, and error rates
