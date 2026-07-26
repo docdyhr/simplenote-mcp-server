@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+- **`memory_monitor.py` (dead code)**: `MemoryMonitor` was never imported or instantiated
+  anywhere in the server, CLI, or test suite (0% coverage since introduction). Confirmed via
+  repo-wide grep before deletion; removed rather than tested, per the 2026-07-26 audit
+  handoff's recommendation.
+
 ### Added
 - **`session-handoff` MCP Prompt**: scaffolds the Session Continuity workflow — takes `project`
   (required) plus optional `status`/`next_steps`/`blockers`, and returns instructions to call

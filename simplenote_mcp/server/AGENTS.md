@@ -14,7 +14,7 @@ Core MCP server package: protocol handlers, tool registry, note cache, credentia
 - `errors.py` / `error_codes.py` / `error_helpers.py` / `error_taxonomy.py` — exception hierarchy and MCP-facing error formatting.
 - `auth.py` / `keychain.py` — Simperium token resolution (see Local Contracts).
 - `vault.py` — opt-in client-side AES-256-GCM note encryption (`encrypt_note`/`decrypt_note`/`vault_status` tools).
-- `logging.py` / `logger_factory.py` / `log_monitor.py` / `alerting.py` / `memory_monitor.py` — structured logging, log tailing, threshold alerting.
+- `logging.py` / `logger_factory.py` / `log_monitor.py` / `alerting.py` — structured logging, log tailing, threshold alerting.
 - `duplicates.py`, `export.py`, `http_endpoints.py`, `context.py`, `mcp_types_compat.py` — single-purpose support modules.
 - `compat/`, `utils/` — small compatibility shims and shared helpers (content-type detection, common utilities); no independent rules beyond this doc.
 
