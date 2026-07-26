@@ -107,7 +107,7 @@ pytest-timeout==2.4.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
 python-multipart==0.0.32
-pytz==2026.2
+pytz==2026.3.post1
 PyYAML==6.0.3
 pyyaml_env_tag==1.1
 radon==6.0.1
