@@ -113,14 +113,14 @@ results = await search_engine.search("project AND status", tags=["work"])
 from simplenote_mcp.server.search import AdvancedSearchEngine
 
 search_engine = AdvancedSearchEngine(
-    case_sensitive=False,           # Case-insensitive search by default
-    stemming=True,                  # Enable word stemming
-    stop_words=True,               # Filter common stop words
-    max_results=100,               # Maximum results per search
-    search_timeout=30,             # Search timeout in seconds
-    cache_results=True,            # Cache search results
-    fuzzy_matching=False,          # Disable fuzzy matching by default
-    min_score=0.1                  # Minimum relevance score
+    case_sensitive=False,  # Case-insensitive search by default
+    stemming=True,  # Enable word stemming
+    stop_words=True,  # Filter common stop words
+    max_results=100,  # Maximum results per search
+    search_timeout=30,  # Search timeout in seconds
+    cache_results=True,  # Cache search results
+    fuzzy_matching=False,  # Disable fuzzy matching by default
+    min_score=0.1,  # Minimum relevance score
 )
 ```
 
@@ -146,10 +146,7 @@ results = await search_engine.search("python programming")
 
 # Search with options
 results = await search_engine.search(
-    query="machine learning",
-    limit=50,
-    include_deleted=False,
-    sort_by="relevance"
+    query="machine learning", limit=50, include_deleted=False, sort_by="relevance"
 )
 ```
 
@@ -165,7 +162,7 @@ results = await search_engine.advanced_search(
     min_length=100,
     max_length=5000,
     sort_by="modified_date",
-    sort_order="desc"
+    sort_order="desc",
 )
 ```
 
@@ -175,7 +172,7 @@ results = await search_engine.advanced_search(
 # Search by tags only
 results = await search_engine.search_by_tags(
     tags=["work", "meeting"],
-    operator="AND"  # or "OR"
+    operator="AND",  # or "OR"
 )
 
 # Get all available tags
@@ -190,16 +187,11 @@ notes = await search_engine.get_notes_by_tag("work", limit=20)
 ```python
 # Search in note content only
 results = await search_engine.search_content(
-    query="algorithm implementation",
-    case_sensitive=False,
-    whole_words=True
+    query="algorithm implementation", case_sensitive=False, whole_words=True
 )
 
 # Search in note titles only
-results = await search_engine.search_titles(
-    query="weekly report",
-    fuzzy=True
-)
+results = await search_engine.search_titles(query="weekly report", fuzzy=True)
 ```
 
 ## Search Result Format
@@ -220,9 +212,9 @@ results = await search_engine.search_titles(
             "highlights": [
                 {
                     "field": "content",
-                    "fragment": "...comprehensive guide to <mark>Python</mark> <mark>programming</mark>..."
+                    "fragment": "...comprehensive guide to <mark>Python</mark> <mark>programming</mark>...",
                 }
-            ]
+            ],
         }
     ],
     "total_results": 15,
@@ -230,8 +222,8 @@ results = await search_engine.search_titles(
     "query_info": {
         "original_query": "python programming",
         "parsed_query": "python AND programming",
-        "filters_applied": ["active_notes_only"]
-    }
+        "filters_applied": ["active_notes_only"],
+    },
 }
 ```
 
@@ -252,11 +244,11 @@ Search results include highlighted snippets showing where matches were found:
 ```python
 # Highlighting configuration
 search_engine.configure_highlighting(
-    highlight_tag="<mark>",          # HTML tag for highlights
-    close_tag="</mark>",            # Closing tag
-    fragment_size=150,              # Characters per fragment
-    max_fragments=3,                # Maximum fragments per note
-    fragment_separator="..."        # Separator between fragments
+    highlight_tag="<mark>",  # HTML tag for highlights
+    close_tag="</mark>",  # Closing tag
+    fragment_size=150,  # Characters per fragment
+    max_fragments=3,  # Maximum fragments per note
+    fragment_separator="...",  # Separator between fragments
 )
 ```
 
@@ -282,10 +274,10 @@ print(f"Last updated: {index_info['last_updated']}")
 ```python
 # Configure search performance
 search_engine.configure_performance(
-    index_update_interval=300,      # Update index every 5 minutes
-    background_indexing=True,       # Index updates in background
-    parallel_search=True,           # Enable parallel search
-    max_concurrent_searches=5       # Limit concurrent searches
+    index_update_interval=300,  # Update index every 5 minutes
+    background_indexing=True,  # Index updates in background
+    parallel_search=True,  # Enable parallel search
+    max_concurrent_searches=5,  # Limit concurrent searches
 )
 ```
 
@@ -296,9 +288,9 @@ Search results are automatically cached for improved performance:
 ```python
 # Configure search caching
 search_engine.configure_cache(
-    cache_size=1000,               # Cache up to 1000 search results
-    cache_ttl=300,                 # Cache for 5 minutes
-    cache_similar_queries=True     # Cache similar queries
+    cache_size=1000,  # Cache up to 1000 search results
+    cache_ttl=300,  # Cache for 5 minutes
+    cache_similar_queries=True,  # Cache similar queries
 )
 
 # Clear search cache
@@ -324,8 +316,7 @@ print(f"Most common queries: {stats['top_queries']}")
 ```python
 # Analyze query patterns
 analysis = await search_engine.analyze_queries(
-    start_date="2024-01-01",
-    end_date="2024-12-31"
+    start_date="2024-01-01", end_date="2024-12-31"
 )
 
 print(f"Most searched terms: {analysis['top_terms']}")
@@ -342,7 +333,7 @@ from simplenote_mcp.server.errors import (
     SearchError,
     QueryParseError,
     SearchTimeoutError,
-    IndexError
+    IndexError,
 )
 
 try:
@@ -363,10 +354,10 @@ except SearchError as e:
 ```python
 # Configure error handling
 search_engine.configure_error_handling(
-    auto_retry=True,               # Automatically retry failed searches
-    max_retries=3,                 # Maximum retry attempts
-    retry_delay=1.0,               # Delay between retries
-    fallback_to_simple=True        # Fall back to simple search on complex query failure
+    auto_retry=True,  # Automatically retry failed searches
+    max_retries=3,  # Maximum retry attempts
+    retry_delay=1.0,  # Delay between retries
+    fallback_to_simple=True,  # Fall back to simple search on complex query failure
 )
 ```
 
@@ -379,13 +370,15 @@ Enable fuzzy matching for typo tolerance:
 ```python
 # Enable fuzzy search
 search_engine.enable_fuzzy_search(
-    threshold=0.8,                 # Similarity threshold (0.0-1.0)
-    max_distance=2,                # Maximum edit distance
-    prefix_length=1                # Minimum prefix match length
+    threshold=0.8,  # Similarity threshold (0.0-1.0)
+    max_distance=2,  # Maximum edit distance
+    prefix_length=1,  # Minimum prefix match length
 )
 
 # Fuzzy search example
-results = await search_engine.fuzzy_search("pythno programing")  # Finds "python programming"
+results = await search_engine.fuzzy_search(
+    "pythno programing"
+)  # Finds "python programming"
 ```
 
 ### Semantic Search
@@ -395,8 +388,7 @@ Enable semantic search for concept-based matching:
 ```python
 # Enable semantic search (requires additional setup)
 search_engine.enable_semantic_search(
-    model="sentence-transformers/all-MiniLM-L6-v2",
-    similarity_threshold=0.7
+    model="sentence-transformers/all-MiniLM-L6-v2", similarity_threshold=0.7
 )
 
 # Semantic search example
@@ -412,21 +404,22 @@ Define custom scoring functions for search results:
 def custom_scorer(note, query_terms):
     """Custom scoring function."""
     score = 0.0
-    
+
     # Boost recent notes
-    days_old = (datetime.now() - note['modified_date']).days
+    days_old = (datetime.now() - note["modified_date"]).days
     recency_boost = max(0, 1.0 - days_old / 365)
     score += recency_boost * 0.2
-    
+
     # Boost notes with many tags
-    tag_boost = min(len(note['tags']) * 0.1, 0.3)
+    tag_boost = min(len(note["tags"]) * 0.1, 0.3)
     score += tag_boost
-    
+
     # Boost shorter notes (easier to read)
-    length_penalty = min(len(note['content']) / 10000, 0.2)
+    length_penalty = min(len(note["content"]) / 10000, 0.2)
     score -= length_penalty
-    
+
     return score
+
 
 # Register custom scorer
 search_engine.register_scorer("custom", custom_scorer)
@@ -445,18 +438,17 @@ Define reusable search filters:
 def recent_notes_filter(note):
     """Filter for notes modified in the last 30 days."""
     cutoff = datetime.now() - timedelta(days=30)
-    return note['modified_date'] > cutoff
+    return note["modified_date"] > cutoff
+
 
 @search_engine.filter("long")
 def long_notes_filter(note):
     """Filter for notes longer than 1000 characters."""
-    return len(note['content']) > 1000
+    return len(note["content"]) > 1000
+
 
 # Use filters in search
-results = await search_engine.search(
-    "machine learning",
-    filters=["recent", "long"]
-)
+results = await search_engine.search("machine learning", filters=["recent", "long"])
 ```
 
 ## Integration Examples
@@ -466,23 +458,20 @@ results = await search_engine.search(
 ```python
 from simplenote_mcp.server import SimplenoteServer
 
+
 class SimplenoteServer:
     def __init__(self):
         self.search_engine = AdvancedSearchEngine()
-    
+
     @tool("search_notes")
     async def search_notes(self, query: str, tags: list = None, limit: int = 20):
         """Search notes with advanced features."""
-        results = await self.search_engine.search(
-            query=query,
-            tags=tags,
-            limit=limit
-        )
-        
+        results = await self.search_engine.search(query=query, tags=tags, limit=limit)
+
         return {
             "results": results["results"],
             "total": results["total_results"],
-            "search_time": results["search_time_ms"]
+            "search_time": results["search_time_ms"],
         }
 ```
 
@@ -545,23 +534,23 @@ print(f"Test pass rate: {test_results['pass_rate']:.2%}")
 async def benchmark_search():
     """Benchmark search performance."""
     search_engine = AdvancedSearchEngine()
-    
+
     # Test different query types
     queries = [
         "simple search",
         "boolean AND search",
         '"exact phrase"',
         "wildcard search*",
-        "complex (query OR search) AND test"
+        "complex (query OR search) AND test",
     ]
-    
+
     for query in queries:
         start_time = time.time()
         results = await search_engine.search(query)
         search_time = time.time() - start_time
-        
+
         print(f"Query: {query}")
-        print(f"Time: {search_time*1000:.2f} ms")
+        print(f"Time: {search_time * 1000:.2f} ms")
         print(f"Results: {len(results['results'])}")
         print("---")
 ```
@@ -613,7 +602,7 @@ results = await search_engine.search("debug query")
 ```python
 # Check index health
 health = await search_engine.check_index_health()
-if not health['healthy']:
+if not health["healthy"]:
     print(f"Index issues: {health['issues']}")
     await search_engine.rebuild_index()
 

@@ -44,7 +44,7 @@ from simplenote_mcp.server.monitoring.metrics import (
     record_api_call,
     record_response_time,
     record_cache_hit,
-    record_cache_miss
+    record_cache_miss,
 )
 ```
 

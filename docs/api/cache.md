@@ -40,12 +40,7 @@ The cache system can be configured using the following environment variables:
 ```python
 from simplenote_mcp.server.cache import NoteCache
 
-cache = NoteCache(
-    max_size=1000,
-    ttl=300,
-    strategy="lru",
-    persistent=False
-)
+cache = NoteCache(max_size=1000, ttl=300, strategy="lru", persistent=False)
 ```
 
 ## Cache Strategies
@@ -151,7 +146,7 @@ await cache.clear()
 notes_data = {
     "note1": {"content": "...", "tags": []},
     "note2": {"content": "...", "tags": ["work"]},
-    "note3": {"content": "...", "tags": ["personal"]}
+    "note3": {"content": "...", "tags": ["personal"]},
 }
 
 await cache.put_many(notes_data)
@@ -220,10 +215,12 @@ async def on_cache_hit(note_id: str):
     """Called when a cache hit occurs."""
     print(f"Cache hit for note: {note_id}")
 
-@cache.on_miss  
+
+@cache.on_miss
 async def on_cache_miss(note_id: str):
     """Called when a cache miss occurs."""
     print(f"Cache miss for note: {note_id}")
+
 
 @cache.on_eviction
 async def on_cache_eviction(note_id: str, reason: str):
@@ -275,7 +272,7 @@ print(f"Throughput: {metrics['requests_per_second']:.2f} req/s")
 ```python
 health = await cache.health_check()
 
-if health['status'] == 'healthy':
+if health["status"] == "healthy":
     print("Cache is operating normally")
 else:
     print(f"Cache issues detected: {health['issues']}")
@@ -288,9 +285,9 @@ else:
 ```python
 # Configure memory limits
 cache = NoteCache(
-    max_size=1000,              # Maximum number of items
-    max_memory_mb=100,          # Maximum memory usage in MB
-    max_item_size_kb=1024       # Maximum size per item in KB
+    max_size=1000,  # Maximum number of items
+    max_memory_mb=100,  # Maximum memory usage in MB
+    max_item_size_kb=1024,  # Maximum size per item in KB
 )
 ```
 
@@ -300,13 +297,13 @@ cache = NoteCache(
 # Enable compression for large notes
 cache = NoteCache(
     compression=True,
-    compression_threshold=1024  # Compress notes larger than 1KB
+    compression_threshold=1024,  # Compress notes larger than 1KB
 )
 
 # Configure garbage collection
 cache.configure_gc(
-    gc_interval=300,            # Run GC every 5 minutes
-    gc_threshold=0.8            # GC when 80% full
+    gc_interval=300,  # Run GC every 5 minutes
+    gc_threshold=0.8,  # GC when 80% full
 )
 ```
 
@@ -330,7 +327,7 @@ print(f"Memory utilization: {memory_info['utilization']:.1%}")
 cache = NoteCache(
     persistent=True,
     cache_dir="~/.simplenote-cache",
-    persistence_format="json"  # or "pickle", "msgpack"
+    persistence_format="json",  # or "pickle", "msgpack"
 )
 ```
 
@@ -339,10 +336,10 @@ cache = NoteCache(
 ```python
 # Configure persistence behavior
 cache.configure_persistence(
-    save_interval=60,           # Save to disk every minute
-    load_on_startup=True,       # Load cache on startup
-    compress_files=True,        # Compress cache files
-    max_file_age_days=7         # Delete files older than 7 days
+    save_interval=60,  # Save to disk every minute
+    load_on_startup=True,  # Load cache on startup
+    compress_files=True,  # Compress cache files
+    max_file_age_days=7,  # Delete files older than 7 days
 )
 ```
 
@@ -368,7 +365,7 @@ from simplenote_mcp.cache.exceptions import (
     CacheError,
     CacheFullError,
     CacheCorruptionError,
-    PersistenceError
+    PersistenceError,
 )
 
 try:
@@ -390,10 +387,10 @@ except PersistenceError as e:
 ```python
 # Configure error recovery
 cache.configure_error_handling(
-    auto_recovery=True,         # Automatically recover from errors
-    max_retries=3,              # Maximum retry attempts
-    retry_delay=1.0,            # Delay between retries
-    fallback_to_memory=True     # Fall back to memory-only on persistence errors
+    auto_recovery=True,  # Automatically recover from errors
+    max_retries=3,  # Maximum retry attempts
+    retry_delay=1.0,  # Delay between retries
+    fallback_to_memory=True,  # Fall back to memory-only on persistence errors
 )
 ```
 
@@ -418,11 +415,11 @@ async def warm_cache():
     """Pre-populate cache with frequently accessed notes."""
     # Get most recently accessed notes
     recent_notes = await get_recent_notes(limit=100)
-    
+
     # Pre-load into cache
     for note in recent_notes:
-        await cache.put(note['id'], note)
-    
+        await cache.put(note["id"], note)
+
     print(f"Warmed cache with {len(recent_notes)} notes")
 ```
 
@@ -432,11 +429,11 @@ async def warm_cache():
 async def monitor_cache():
     """Monitor cache performance and adjust if needed."""
     stats = await cache.get_stats()
-    
-    if stats['hit_ratio'] < 0.7:  # Less than 70% hit ratio
+
+    if stats["hit_ratio"] < 0.7:  # Less than 70% hit ratio
         print("Cache hit ratio is low, consider increasing cache size")
-    
-    if stats['memory_usage_mb'] > 90:  # Using more than 90% of allocated memory
+
+    if stats["memory_usage_mb"] > 90:  # Using more than 90% of allocated memory
         print("Cache memory usage is high, consider cleanup")
         await cache.cleanup_expired()
 ```
@@ -450,11 +447,11 @@ class PartitionedCache:
         self.work_cache = NoteCache(max_size=500, ttl=600)
         self.personal_cache = NoteCache(max_size=300, ttl=1800)
         self.archive_cache = NoteCache(max_size=200, ttl=3600)
-    
+
     async def get_cache(self, note_tags):
-        if 'work' in note_tags:
+        if "work" in note_tags:
             return self.work_cache
-        elif 'personal' in note_tags:
+        elif "personal" in note_tags:
             return self.personal_cache
         else:
             return self.archive_cache
@@ -467,21 +464,22 @@ class PartitionedCache:
 ```python
 from simplenote_mcp.cache.testing import CacheTestUtils
 
+
 async def test_cache_behavior():
     # Create test cache
     cache = CacheTestUtils.create_test_cache()
-    
+
     # Populate with test data
     await CacheTestUtils.populate_cache(cache, num_notes=100)
-    
+
     # Verify cache behavior
     assert await cache.get("test_note_1") is not None
-    assert cache.get_stats()['current_size'] == 100
-    
+    assert cache.get_stats()["current_size"] == 100
+
     # Test eviction
     await CacheTestUtils.fill_cache_to_capacity(cache)
     stats = cache.get_stats()
-    assert stats['evictions'] > 0
+    assert stats["evictions"] > 0
 ```
 
 ### Performance Testing
@@ -490,21 +488,21 @@ async def test_cache_behavior():
 async def benchmark_cache():
     """Benchmark cache performance."""
     cache = NoteCache(max_size=1000)
-    
+
     # Benchmark write performance
     start_time = time.time()
     for i in range(1000):
         await cache.put(f"note_{i}", {"content": f"Content {i}"})
     write_time = time.time() - start_time
-    
-    # Benchmark read performance  
+
+    # Benchmark read performance
     start_time = time.time()
     for i in range(1000):
         await cache.get(f"note_{i}")
     read_time = time.time() - start_time
-    
-    print(f"Write performance: {1000/write_time:.2f} ops/sec")
-    print(f"Read performance: {1000/read_time:.2f} ops/sec")
+
+    print(f"Write performance: {1000 / write_time:.2f} ops/sec")
+    print(f"Read performance: {1000 / read_time:.2f} ops/sec")
 ```
 
 ## Integration with MCP Server
@@ -541,7 +539,7 @@ cache = NoteCache(debug=True, log_level="DEBUG")
 
 # This will log all cache operations
 await cache.put(note_id, note_data)  # Logs: "Cache PUT: note_123"
-await cache.get(note_id)             # Logs: "Cache HIT: note_123"
+await cache.get(note_id)  # Logs: "Cache HIT: note_123"
 ```
 
 ### Cache Validation
@@ -550,7 +548,7 @@ await cache.get(note_id)             # Logs: "Cache HIT: note_123"
 # Validate cache integrity
 validation_result = await cache.validate()
 
-if not validation_result['valid']:
+if not validation_result["valid"]:
     print(f"Cache validation failed: {validation_result['errors']}")
     await cache.rebuild_cache()
 ```
