@@ -37,10 +37,14 @@ To add context to your logs, use the `with_context()` method or the `extra` para
 
 ```python
 # Using with_context method (recommended)
-logger.with_context(note_id="abc123", operation="update").info("Note updated successfully")
+logger.with_context(note_id="abc123", operation="update").info(
+    "Note updated successfully"
+)
 
 # Using extra parameter (compatible with standard logging)
-logger.info("Note updated successfully", extra={"note_id": "abc123", "operation": "update"})
+logger.info(
+    "Note updated successfully", extra={"note_id": "abc123", "operation": "update"}
+)
 ```
 
 ### 3. Component-Specific Loggers
@@ -90,21 +94,24 @@ from simplenote_mcp.server import get_logger
 
 perf_logger = get_logger("performance")
 
+
 def measure_execution_time(func):
     def wrapper(*args, **kwargs):
         start_time = time.time()
         result = func(*args, **kwargs)
         duration_ms = (time.time() - start_time) * 1000
-        
+
         perf_logger.with_context(
             function=func.__name__,
             duration_ms=duration_ms,
             args_count=len(args),
-            kwargs_count=len(kwargs)
+            kwargs_count=len(kwargs),
         ).info(f"Function {func.__name__} execution completed")
-        
+
         return result
+
     return wrapper
+
 
 @measure_execution_time
 def my_function(arg1, arg2):
@@ -173,14 +180,11 @@ logger.error(f"Failed to find note with ID {note_id}")
 #### After
 
 ```python
-logger.with_context(
-    notes_count=notes_count,
-    duration_seconds=elapsed
-).info("Updated notes in cache")
+logger.with_context(notes_count=notes_count, duration_seconds=elapsed).info(
+    "Updated notes in cache"
+)
 
-logger.with_context(
-    note_id=note_id
-).error("Failed to find note")
+logger.with_context(note_id=note_id).error("Failed to find note")
 ```
 
 ### Best Practices
@@ -218,18 +222,15 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.Content]:
     # Create a request-specific logger
     request_id = str(uuid.uuid4())
     req_logger = get_request_logger(
-        request_id,
-        tool_name=name,
-        arguments=json.dumps(arguments)
+        request_id, tool_name=name, arguments=json.dumps(arguments)
     )
-    
+
     req_logger.info("Tool call received")
-    
+
     # Later in the function
-    req_logger.with_context(
-        result_type="success",
-        note_id=result_id
-    ).info("Tool call completed")
+    req_logger.with_context(result_type="success", note_id=result_id).info(
+        "Tool call completed"
+    )
 ```
 
 ### Cache Operations
@@ -239,18 +240,15 @@ async def sync(self) -> int:
     """Synchronize the cache with Simplenote."""
     sync_id = str(uuid.uuid4())
     sync_logger = get_request_logger(
-        sync_id,
-        operation="cache_sync",
-        last_sync=self._last_sync
+        sync_id, operation="cache_sync", last_sync=self._last_sync
     )
-    
+
     sync_logger.debug("Starting cache sync")
-    
+
     # Later in the function
-    sync_logger.with_context(
-        changes_count=change_count,
-        duration_seconds=elapsed
-    ).info("Cache sync completed")
+    sync_logger.with_context(changes_count=change_count, duration_seconds=elapsed).info(
+        "Cache sync completed"
+    )
 ```
 
 ## Reference

@@ -282,11 +282,7 @@ The server implements comprehensive error handling:
 Raised when Simplenote credentials are invalid or expired.
 
 ```python
-{
-  "error": "AuthenticationError",
-  "message": "Invalid email or password",
-  "code": 401
-}
+{"error": "AuthenticationError", "message": "Invalid email or password", "code": 401}
 ```
 
 #### NoteNotFoundError
@@ -294,9 +290,9 @@ Raised when a requested note doesn't exist.
 
 ```python
 {
-  "error": "NoteNotFoundError", 
-  "message": "Note with ID 'abc123' not found",
-  "code": 404
+    "error": "NoteNotFoundError",
+    "message": "Note with ID 'abc123' not found",
+    "code": 404,
 }
 ```
 
@@ -305,9 +301,9 @@ Raised when Simplenote API rate limits are exceeded.
 
 ```python
 {
-  "error": "RateLimitError",
-  "message": "Rate limit exceeded, please try again later",
-  "code": 429
+    "error": "RateLimitError",
+    "message": "Rate limit exceeded, please try again later",
+    "code": 429,
 }
 ```
 
@@ -315,11 +311,7 @@ Raised when Simplenote API rate limits are exceeded.
 Raised when network connectivity issues occur.
 
 ```python
-{
-  "error": "NetworkError",
-  "message": "Failed to connect to Simplenote API",
-  "code": 503
-}
+{"error": "NetworkError", "message": "Failed to connect to Simplenote API", "code": 503}
 ```
 
 ## Caching System
@@ -330,9 +322,9 @@ The server implements intelligent caching for improved performance:
 
 ```python
 cache_config = {
-    "size": 1000,        # Maximum cached notes
-    "ttl": 300,          # Time-to-live in seconds
-    "strategy": "lru"    # Least Recently Used eviction
+    "size": 1000,  # Maximum cached notes
+    "ttl": 300,  # Time-to-live in seconds
+    "strategy": "lru",  # Least Recently Used eviction
 }
 ```
 
@@ -365,9 +357,9 @@ The server respects Simplenote's rate limits:
 ```python
 # Configure memory usage
 memory_config = {
-    "cache_size": 1000,     # Notes in memory
+    "cache_size": 1000,  # Notes in memory
     "max_content_size": 1024 * 1024,  # 1MB per note
-    "cleanup_interval": 300  # Cleanup every 5 minutes
+    "cleanup_interval": 300,  # Cleanup every 5 minutes
 }
 ```
 
@@ -402,6 +394,7 @@ from simplenote_mcp.server import SimplenoteServer
 
 server = SimplenoteServer()
 
+
 @server.tool("custom_tool")
 async def custom_tool(args: dict) -> dict:
     """Custom tool implementation."""
@@ -416,7 +409,8 @@ async def on_note_created(note_id: str, note_data: dict):
     """Called when a note is created."""
     pass
 
-@server.on_note_updated  
+
+@server.on_note_updated
 async def on_note_updated(note_id: str, note_data: dict):
     """Called when a note is updated."""
     pass
@@ -428,11 +422,7 @@ async def on_note_updated(note_id: str, note_data: dict):
 @server.resource_provider("custom://")
 async def custom_resource_provider(uri: str) -> dict:
     """Custom resource provider."""
-    return {
-        "uri": uri,
-        "name": "Custom Resource",
-        "content": "Custom content"
-    }
+    return {"uri": uri, "name": "Custom Resource", "content": "Custom content"}
 ```
 
 ## API Reference Links

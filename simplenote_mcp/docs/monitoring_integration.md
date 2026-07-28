@@ -22,7 +22,7 @@ The `MetricsCollector` class provides a singleton instance that collects metrics
 from simplenote_mcp.server.monitoring.metrics import (
     start_metrics_collection,
     record_api_call,
-    record_response_time, 
+    record_response_time,
     record_cache_hit,
     record_cache_miss,
     record_tool_call,
@@ -137,7 +137,9 @@ def get_simplenote_client():
         record_response_time("get_simplenote_client", time.time() - api_start_time)
         return client
     except Exception as e:
-        record_api_call("get_simplenote_client", success=False, error_type=type(e).__name__)
+        record_api_call(
+            "get_simplenote_client", success=False, error_type=type(e).__name__
+        )
         raise
 ```
 

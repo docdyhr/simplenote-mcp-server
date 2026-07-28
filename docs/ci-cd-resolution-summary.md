@@ -178,9 +178,9 @@ concurrency:
 ### Offline Mode Configuration
 ```python
 # simplenote_mcp/server/config.py
-self.offline_mode: bool = os.environ.get("SIMPLENOTE_OFFLINE_MODE", "false").lower() in (
-    "true", "1", "t", "yes"
-)
+self.offline_mode: bool = os.environ.get(
+    "SIMPLENOTE_OFFLINE_MODE", "false"
+).lower() in ("true", "1", "t", "yes")
 
 # Skip credential validation in offline mode
 if not self.offline_mode and not self.has_credentials:

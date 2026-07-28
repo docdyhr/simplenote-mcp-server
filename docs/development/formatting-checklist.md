@@ -67,6 +67,7 @@ pytest tests/ -k "not integration"
 ```python
 # ❌ Wrong: Imports not at top
 import sys
+
 print("Hello")
 import os
 
@@ -83,6 +84,7 @@ print("Hello")
 # ❌ Wrong: No type hints
 def process_note(note_id, content=None):
     return True
+
 
 # ✅ Correct: Proper type hints
 def process_note(note_id: str, content: Optional[str] = None) -> bool:

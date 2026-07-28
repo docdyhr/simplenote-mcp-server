@@ -158,19 +158,19 @@ def test_cache_at_max_capacity():
 async def test_background_sync_network_timeout():
     """Test background sync handling of network timeouts."""
     cache = NoteCache(sync_interval=1)
-    
-    with patch('simplenote.Simplenote.get_note_list') as mock_sync:
+
+    with patch("simplenote.Simplenote.get_note_list") as mock_sync:
         mock_sync.side_effect = TimeoutError("Network timeout")
-        
+
         sync_manager = BackgroundSync(cache, sync_interval=0.1)
         sync_manager.start()
-        
+
         await asyncio.sleep(0.2)
-        
+
         # Verify cache remains operational
         cache.set("key", "value")
         assert cache.get("key") == "value"
-        
+
         # Verify error was logged
         assert "Network timeout" in captured_logs
 ```
@@ -181,17 +181,17 @@ async def test_background_sync_network_timeout():
 async def test_background_sync_invalid_data():
     """Test background sync handling of corrupted data."""
     cache = NoteCache()
-    
-    with patch('simplenote.Simplenote.get_note_list') as mock_sync:
+
+    with patch("simplenote.Simplenote.get_note_list") as mock_sync:
         # Return malformed data
         mock_sync.return_value = [None, {"invalid": "structure"}]
-        
+
         sync_manager = BackgroundSync(cache, sync_interval=0.1)
         result = await sync_manager.sync_once()
-        
+
         # Should handle gracefully
         assert result is False or result is None
-        
+
         # Cache should still be usable
         cache.set("key", "value")
         assert cache.get("key") == "value"
@@ -480,14 +480,15 @@ pytest tests/test_cache*.py -k "edge_case or boundary"
 import coverage
 import json
 
+
 def analyze_missing_coverage():
     """Analyze which cache.py lines are not covered."""
     cov = coverage.Coverage()
     cov.load()
-    
-    analysis = cov.analysis('simplenote_mcp/server/cache.py')
+
+    analysis = cov.analysis("simplenote_mcp/server/cache.py")
     missing_lines = analysis[2]  # Lines not covered
-    
+
     print(f"Missing coverage on {len(missing_lines)} lines:")
     for line in missing_lines:
         print(f"  Line {line}")

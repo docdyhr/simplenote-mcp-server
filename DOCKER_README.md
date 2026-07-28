@@ -125,17 +125,25 @@ docker inspect --format='{{.State.Health.Status}}' simplenote-mcp-server
 import asyncio
 from mcp import StdioServerManager
 
+
 async def main():
-    async with StdioServerManager("docker", [
-        "run", "--rm", "-i",
-        "-e", "SIMPLENOTE_EMAIL=your-email@example.com",
-        "-e", "SIMPLENOTE_PASSWORD=your-password",
-        "docdyhr/simplenote-mcp-server:latest"
-    ]) as server:
+    async with StdioServerManager(
+        "docker",
+        [
+            "run",
+            "--rm",
+            "-i",
+            "-e",
+            "SIMPLENOTE_EMAIL=your-email@example.com",
+            "-e",
+            "SIMPLENOTE_PASSWORD=your-password",
+            "docdyhr/simplenote-mcp-server:latest",
+        ],
+    ) as server:
         # List available tools
         tools = await server.list_tools()
         print(f"Available tools: {[tool.name for tool in tools.tools]}")
-        
+
         # Search notes
         result = await server.call_tool("search_notes", {"query": "important"})
         print(f"Search results: {result}")

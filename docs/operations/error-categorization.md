@@ -83,9 +83,9 @@ from simplenote_mcp.server.errors import ValidationError
 raise ValidationError("Note content cannot be empty", field="content")
 
 # With subcategory
-raise ValidationError("Note content cannot be empty", 
-                    subcategory="required", 
-                    field="content")
+raise ValidationError(
+    "Note content cannot be empty", subcategory="required", field="content"
+)
 
 # With detailed context
 raise ValidationError(
@@ -94,7 +94,7 @@ raise ValidationError(
     field="content",
     operation="create_note",
     resource_id="note123",
-    details={"max_length": 200000}
+    details={"max_length": 200000},
 )
 ```
 
@@ -110,7 +110,9 @@ try:
     result = api_call()
 except Exception as e:
     # Convert to appropriate ServerError type
-    error = handle_exception(e, context="calling Simplenote API", operation="sync_notes")
+    error = handle_exception(
+        e, context="calling Simplenote API", operation="sync_notes"
+    )
     # Use the structured error information
     print(f"Error code: {error.error_code}")
     print(f"User message: {error.get_user_message()}")
