@@ -168,6 +168,7 @@ A full repository review (security, runtime correctness, deployment, dependencie
 | **Multi-account support** | Needs config and auth refactor. |
 | **Real-time sync** | Replaces polling model. Requires Simperium websocket integration. |
 | **Multi-device Vault key sync** | Deferred from Phase 9 — needs an out-of-band key transfer story. |
+| **Migrate to `mcp` Python SDK v2** | v2.0.0 (2026-07-28) replaces the low-level `Server`'s decorator API (`@server.list_resources()`, `.read_resource()`, `.list_tools()`, `.call_tool()`, `.list_prompts()`, `.get_prompt()` — 6 total, `server.py:689,821,918,1745,1864,1934`) with constructor `on_*` params, which means `server = Server(...)` (currently `server.py:177`, before any handlers are defined) must move to after all 6 handler functions exist — a real restructure, not a find-replace. Pinned to `mcp[cli]<2.0.0` for now (see CHANGELOG); v1.x is in SDK maintainer-confirmed maintenance mode (security fixes only), so this isn't urgent, but shouldn't sit unpinned indefinitely. |
 
 ---
 

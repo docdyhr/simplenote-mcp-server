@@ -46,6 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 27 registered tools → 30 (9 read + 21 write).
 
 ### Fixed
+- **CI broken by an unpinned `mcp` major release**: `mcp[cli]>=1.10.0` had no upper bound, so a
+  fresh `mcp` 2.0.0 release (which removes/renames the `Server.list_resources` decorator API this
+  server registers `handle_list_resources` with) was picked up by CI's `Test`/`Local Test` jobs —
+  both install from `pyproject.toml` directly rather than the pinned `requirements-lock.txt`
+  (`mcp==1.28.1`) — breaking pytest collection entirely (38 errors) and failing the required
+  `CI Status` check on `main`. Pinned to `mcp[cli]>=1.10.0,<2.0.0` as an immediate fix; migrating
+  to the 2.0.0 API is tracked separately.
 - **Every `npm run eval:*` suite was broken by a wrong Python interpreter**: `mcp-server-wrapper.ts`
   spawned the MCP server via bare `spawn("python3", ...)`, which resolves to whatever's first on
   PATH — Homebrew's or pyenv's global Python — not this project's `.venv`. Since the `mcp` package
