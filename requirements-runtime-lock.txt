@@ -43,7 +43,7 @@ more-itertools==11.1.0
 multidict==6.7.1
 propcache==0.5.2
 pycparser==3.0
-pydantic_core==2.46.4
+pydantic_core==2.47.0
 pydantic-settings==2.14.2
 pydantic==2.13.4
 Pygments==2.20.0
