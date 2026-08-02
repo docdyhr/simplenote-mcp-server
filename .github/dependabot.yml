@@ -20,6 +20,12 @@ updates:
       - "python"
     allow:
       - dependency-type: "all"
+    ignore:
+      # pyproject.toml pins mcp[cli]<2.0.0 — mcp 2.0.0 removed Server.list_resources
+      # and breaks the test suite (see PR #751). Re-enable once the codebase is
+      # migrated to the 2.x API.
+      - dependency-name: "mcp"
+        update-types: ["version-update:semver-major"]
     groups:
       production-dependencies:
         dependency-type: "production"
