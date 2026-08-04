@@ -59,6 +59,11 @@ spec:
                 secretKeyRef:
                   name: {{ include "simplenote-mcp-server.secretName" . }}
                   key: MCP_HTTP_AUTH_TOKEN
+            - name: HTTP_ENDPOINT_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "simplenote-mcp-server.secretName" . }}
+                  key: HTTP_ENDPOINT_AUTH_TOKEN
           envFrom:
             {{- if .Values.configMap.create }}
             - configMapRef:
