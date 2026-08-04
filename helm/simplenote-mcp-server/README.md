@@ -40,6 +40,9 @@ The following table lists the configurable parameters and their default values:
 | `simplenote.password` | Simplenote password | `""` |
 | `simplenote.syncIntervalSeconds` | Sync interval | `120` |
 | `simplenote.logLevel` | Log level | `INFO` |
+| `mcpHttp.authToken` | Bearer token for the MCP HTTP transport; required if `MCP_HTTP_HOST` is non-loopback | `""` |
+| `monitoring.port` | Port for the separate health/metrics endpoint | `8080` |
+| `monitoring.authToken` | Bearer token for the health/metrics endpoint; only needed if `HTTP_HOST` is overridden to non-loopback | `""` |
 
 ## Setting Simplenote Credentials
 
@@ -78,6 +81,12 @@ externalSecrets:
 - Dropped all capabilities
 - No privilege escalation allowed
 - Resource limits configured
+- The health/metrics endpoint (`monitoring.port`, default `HTTP_HOST=127.0.0.1`) is not exposed via
+  the Service and isn't reachable outside the pod by default. Liveness/readiness probes run as
+  `exec` checks from inside the container rather than `httpGet`, since kubelet's `httpGet` connects
+  to the Pod IP, not the pod's own loopback. If you override `HTTP_HOST` to a non-loopback address,
+  the server refuses to start unless `monitoring.authToken` is also set — loopback callers (the
+  probes above) stay trusted either way.
 
 ## Monitoring
 

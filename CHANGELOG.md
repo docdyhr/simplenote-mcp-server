@@ -238,6 +238,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reusable-workflow callers (Dependabot auto-merge, status check) narrowed to the specific two
   secrets they actually consume, confirmed against the reusable workflows' own declared interface,
   instead of implicitly handing them every secret this repo has configured.
+- **`keychain.py`'s Simperium token cache had the same write-then-`chmod` TOCTOU window already
+  fixed in `vault.py`**: `_write_file_cache` wrote the plaintext session token via `Path.write_text`
+  (created with the process's default umask, often world-readable) and only restricted it to `0600`
+  afterward. Now creates the file atomically at `0600` via `os.open`, matching the vault key file's
+  pattern.
+- **Health/metrics HTTP endpoint (`ENABLE_HTTP_ENDPOINT`) had no authentication option at all**,
+  unlike the MCP HTTP transport which refuses to start non-loopback without a bearer token.
+  `/health`, `/ready`, `/metrics`, and `/thresholds` would have been silently exposed to anyone who
+  can reach the port if `HTTP_HOST` were ever set non-loopback. Added a new `HTTP_ENDPOINT_AUTH_TOKEN`
+  bearer token, checked via constant-time comparison — the server now refuses to start with a
+  non-loopback `HTTP_HOST` unless it's set, mirroring the MCP transport's own guard exactly. Loopback
+  callers (including the container's own `exec`-based liveness/readiness probe below) are always
+  trusted regardless of whether a token is configured, so this never breaks a local health check.
+- **Several direct dependencies in `pyproject.toml` had no upper version bound** (`aiohttp`,
+  `starlette`, `uvicorn`, `urllib3`, `requests`, `python-dateutil`, `cryptography`, `keyring`,
+  `simplenote`) — the same unbounded-range pattern that let `mcp` 2.0.0 break CI before it was capped
+  at `<2.0.0` in #751. All now capped at the next major version above what's currently locked.
+- **Helm chart's liveness/readiness probes used `httpGet` against a `HTTP_HOST=127.0.0.1`-bound
+  endpoint**: kubelet's `httpGet` probe connects to the Pod IP, not the pod's own loopback, so these
+  probes would fail to connect as shipped — and "fixing" that the obvious way (`HTTP_HOST=0.0.0.0`)
+  would have exposed the unauthenticated monitoring endpoint above outside the pod. Switched both
+  probes to `exec`, running the same Python one-liner already used by the Dockerfile's own
+  `HEALTHCHECK` and `docker-compose.yml`'s healthcheck, so the check runs from inside the container
+  against its own loopback instead.
+- **`requirements-lock.txt` could not actually be installed** — a fresh `pip install -r
+  requirements-lock.txt` failed with `ResolutionImpossible` on two independent stale transitive
+  pins, both introduced by routine (non-security) Dependabot bumps that never re-checked a sibling
+  package's constraint: `wheel-filename==2.1.0` vs. `check-wheel-contents==0.6.3`'s
+  `wheel-filename~=1.1` (#319), and `mando==0.8.2` vs. `radon==6.0.1`'s `mando<0.8,>=0.6` (#338).
+  `check-wheel-contents` turned out to be unused anywhere in the repo (no workflow/script/Makefile
+  references it, and it has had no release since 0.6.3) — removed. `radon` is actively used
+  (`scripts/quality/check_complexity.py`, the pre-commit complexity hook) — kept, with `mando`
+  downgraded back to `0.7.1` to satisfy it. Verified with a clean `pip install -r
+  requirements-lock.txt` (no conflicts) and `pip check` (no broken requirements) in a real venv.
+- PR #769 review fixes (Sourcery + Codex): the Helm chart's `exec` probes and `configMap.data`'s
+  `HTTP_PORT` hardcoded `8080` independently of `monitoring.port` — overriding `monitoring.port`
+  alone would silently desync the probes and the server's actual bind port from each other. `HTTP_PORT`
+  is now derived from `monitoring.port` in `templates/configmap.yaml`, and both probes are built in
+  `templates/deployment.yaml` from the same value. The new `HTTP_ENDPOINT_AUTH_TOKEN` `secretKeyRef`
+  is now `optional: true`, so upgrading a release whose `externalSecrets`-managed Secret predates this
+  key doesn't leave the pod stuck in `CreateContainerConfigError`. `keychain.py`'s atomic `os.open`
+  fix only sets `0600` when it *creates* a new file — a pre-existing file (e.g. from before that fix)
+  kept whatever permissions it already had; added an unconditional `os.fchmod` before writing to
+  self-heal that case too. `_is_authorized` now logs a warning (client address only, never the
+  token/header) on rejected requests. `WWW-Authenticate` now includes a `realm` per RFC 6750.
 
 ### Docs
 - `SECURITY.md` corrected: removed false "encryption at rest" and "memory protection" claims

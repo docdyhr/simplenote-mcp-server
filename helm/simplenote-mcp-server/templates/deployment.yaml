@@ -59,19 +59,43 @@ spec:
                 secretKeyRef:
                   name: {{ include "simplenote-mcp-server.secretName" . }}
                   key: MCP_HTTP_AUTH_TOKEN
+            - name: HTTP_ENDPOINT_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "simplenote-mcp-server.secretName" . }}
+                  key: HTTP_ENDPOINT_AUTH_TOKEN
+                  # Optional: existing externalSecrets-managed Secrets predate
+                  # this key. Without this, upgrading a release whose external
+                  # secret store hasn't been given the new key yet would leave
+                  # the pod stuck in CreateContainerConfigError — even though
+                  # the token itself is only required for a non-loopback
+                  # HTTP_HOST override, not the chart's default.
+                  optional: true
           envFrom:
             {{- if .Values.configMap.create }}
             - configMapRef:
                 name: {{ include "simplenote-mcp-server.fullname" . }}-config
             {{- end }}
-          {{- with .Values.livenessProbe }}
           livenessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.readinessProbe }}
+            exec:
+              command:
+                - python
+                - -c
+                - "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:{{ .Values.monitoring.port }}/health', timeout=5).status == 200 else 1)"
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.livenessProbe.failureThreshold }}
           readinessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
+            exec:
+              command:
+                - python
+                - -c
+                - "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:{{ .Values.monitoring.port }}/ready', timeout=5).status == 200 else 1)"
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           {{- with .Values.volumeMounts }}

@@ -46,6 +46,15 @@ service:
 # via the Service, only within the pod.
 monitoring:
   port: 8080
+  # Bearer token for the health/metrics endpoint — only required if you
+  # override HTTP_HOST to non-loopback (the server refuses to start
+  # otherwise, see http_endpoints.py's HTTPEndpointsServer.start()). Not
+  # needed for the shipped default (HTTP_HOST=127.0.0.1, not exposed via
+  # the Service): loopback callers, including the exec probes below, are
+  # always trusted regardless of this value. Provide via
+  # --set monitoring.authToken=... or a values override; never commit a
+  # real token. Stored in the same Secret as the Simplenote credentials.
+  authToken: ""
 
 ingress:
   enabled: false
@@ -67,21 +76,22 @@ resources:
     memory: 256Mi
 
 # Real probes against the monitoring server (ENABLE_HTTP_ENDPOINT=true in
-# configMap.data below) — an import-only exec check proves the package is
-# installed, not that the process is actually serving requests.
+# configMap.data below). `exec`, not `httpGet`: kubelet's httpGet probe
+# connects to the Pod IP, but HTTP_HOST is intentionally 127.0.0.1 (the
+# monitoring server has no authentication, so it must never be reachable
+# from outside the pod's own network namespace — see SECURITY.md). Runs
+# from inside the container instead, mirroring docker-compose.yml's
+# healthcheck and the Dockerfile's own HEALTHCHECK. Only the timing knobs
+# live here — the exec command itself is built in templates/deployment.yaml
+# from monitoring.port, since values.yaml isn't templated and a hardcoded
+# port string here would silently desync from a monitoring.port override.
 livenessProbe:
-  httpGet:
-    path: /health
-    port: monitoring
   initialDelaySeconds: 30
   periodSeconds: 30
   timeoutSeconds: 10
   failureThreshold: 3
 
 readinessProbe:
-  httpGet:
-    path: /ready
-    port: monitoring
   initialDelaySeconds: 5
   periodSeconds: 10
   timeoutSeconds: 5
@@ -146,6 +156,9 @@ externalSecrets:
     - secretKey: MCP_HTTP_AUTH_TOKEN
       remoteRef:
         key: mcp-http-auth-token
+    - secretKey: HTTP_ENDPOINT_AUTH_TOKEN
+      remoteRef:
+        key: http-endpoint-auth-token
 
 # ConfigMap for environment variables
 configMap:
@@ -159,4 +172,6 @@ configMap:
     MCP_HTTP_HOST: "0.0.0.0"
     ENABLE_HTTP_ENDPOINT: "true"
     HTTP_HOST: "127.0.0.1"
-    HTTP_PORT: "8080"
+    # HTTP_PORT is set from monitoring.port in templates/configmap.yaml,
+    # not here, so the server's actual bind port can never drift from the
+    # port the exec probes and containerPort use.

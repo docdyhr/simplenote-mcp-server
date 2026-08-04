@@ -87,6 +87,15 @@ class Config:
         self.http_health_path: str = os.environ.get("HTTP_HEALTH_PATH", "/health")
         self.http_ready_path: str = os.environ.get("HTTP_READY_PATH", "/ready")
 
+        # Bearer token for the health/metrics endpoint. Optional for loopback
+        # binds (matching the MCP HTTP transport's trust model) but required
+        # for any non-loopback HTTP_HOST — see HTTPEndpointsServer.start().
+        # Loopback callers (e.g. the container's own exec-based liveness
+        # probe) are always trusted regardless of whether a token is set.
+        self.http_endpoint_auth_token: str | None = (
+            os.environ.get("HTTP_ENDPOINT_AUTH_TOKEN") or None
+        )
+
         # Cache health checks (disable for cold-start environments)
         self.cache_health_checks: bool = (
             os.environ.get("CACHE_HEALTH_CHECKS_ENABLED", "true").lower() == "true"

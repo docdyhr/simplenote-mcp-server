@@ -1,9 +1,13 @@
 """Tests for HTTP health and metrics endpoints."""
 
+import socket
 import time
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from simplenote_mcp.server.errors import ConfigurationError
 from simplenote_mcp.server.http_endpoints import (
     HealthStatus,
     HTTPEndpointsHandler,
@@ -17,6 +21,25 @@ from simplenote_mcp.server.http_endpoints import (
     start_http_endpoints,
     stop_http_endpoints,
 )
+
+
+def _wait_until_listening(port: int, timeout: float = 5.0) -> None:
+    """Poll a raw TCP connect until the server's background thread is
+    actually accepting connections, instead of a blind sleep — avoids
+    flakiness on slower environments where serve_forever() hasn't started
+    yet by the time a fixed delay elapses."""
+    deadline = time.monotonic() + timeout
+    last_error: OSError | None = None
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                return
+        except OSError as e:
+            last_error = e
+            time.sleep(0.02)
+    raise TimeoutError(
+        f"Server did not start listening on port {port} within {timeout}s"
+    ) from last_error
 
 
 class TestHealthStatus:
@@ -588,3 +611,206 @@ class TestMetricsCollectorEdgeCases:
 
             # Special chars should be replaced with underscores
             assert "simplenote_mcp_my_metric_name" in output
+
+
+class TestBearerTokenAuth:
+    """Unit tests for HTTPEndpointsHandler._is_authorized.
+
+    Constructs the handler via __new__ to test the auth check in isolation,
+    without a real socket/request — matches this project's convention of
+    not spinning up a live server for pure logic tests.
+    """
+
+    @staticmethod
+    def _make_handler(client_ip: str, headers: dict | None = None):
+        handler = HTTPEndpointsHandler.__new__(HTTPEndpointsHandler)
+        handler.client_address = (client_ip, 12345)
+        handler.headers = headers or {}
+        return handler
+
+    def test_no_token_configured_always_authorized(self):
+        handler = self._make_handler("203.0.113.5")
+        config = MagicMock(http_endpoint_auth_token=None)
+        assert handler._is_authorized(config) is True
+
+    def test_loopback_caller_trusted_without_header(self):
+        handler = self._make_handler("127.0.0.1")
+        config = MagicMock(http_endpoint_auth_token="secret-token")
+        assert handler._is_authorized(config) is True
+
+    def test_ipv6_loopback_caller_trusted(self):
+        handler = self._make_handler("::1")
+        config = MagicMock(http_endpoint_auth_token="secret-token")
+        assert handler._is_authorized(config) is True
+
+    def test_non_loopback_caller_without_header_rejected(self):
+        handler = self._make_handler("203.0.113.5")
+        config = MagicMock(http_endpoint_auth_token="secret-token")
+        assert handler._is_authorized(config) is False
+
+    def test_non_loopback_caller_with_wrong_token_rejected(self):
+        handler = self._make_handler(
+            "203.0.113.5", headers={"Authorization": "Bearer wrong-token"}
+        )
+        config = MagicMock(http_endpoint_auth_token="secret-token")
+        assert handler._is_authorized(config) is False
+
+    def test_non_loopback_caller_with_non_bearer_scheme_rejected(self):
+        handler = self._make_handler(
+            "203.0.113.5", headers={"Authorization": "Basic secret-token"}
+        )
+        config = MagicMock(http_endpoint_auth_token="secret-token")
+        assert handler._is_authorized(config) is False
+
+    def test_non_loopback_caller_with_correct_token_authorized(self):
+        handler = self._make_handler(
+            "203.0.113.5", headers={"Authorization": "Bearer secret-token"}
+        )
+        config = MagicMock(http_endpoint_auth_token="secret-token")
+        assert handler._is_authorized(config) is True
+
+
+class TestBearerTokenAuthIntegration:
+    """End-to-end: a real server, with a token configured, against a real
+    loopback request — confirms the container's own exec-based liveness
+    probe (which always connects via 127.0.0.1) keeps working without
+    needing the secret on its command line."""
+
+    def setup_method(self):
+        HTTPEndpointsHandler.health_status = HealthStatus()
+        HTTPEndpointsHandler.readiness_checker = ReadinessChecker()
+        HTTPEndpointsHandler.metrics_collector = MetricsCollector()
+
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    @patch("simplenote_mcp.server.http_endpoints.get_memory_metrics")
+    def test_loopback_request_succeeds_with_token_configured(
+        self, mock_memory, mock_config
+    ):
+        import urllib.request
+
+        mock_memory.return_value = {"memory_usage": 0}
+        mock_config.return_value = MagicMock(
+            enable_http_endpoint=True,
+            http_host="127.0.0.1",
+            http_port=0,  # OS-assigned free port
+            http_health_path="/health",
+            http_ready_path="/ready",
+            http_metrics_path="/metrics",
+            http_endpoint_auth_token="secret-token",
+            cache_health_checks=False,
+        )
+        server = HTTPEndpointsServer()
+        server.start()
+        port = server.server.server_port
+        _wait_until_listening(port)
+        try:
+            # No Authorization header at all — must still succeed, since
+            # the request originates from 127.0.0.1.
+            with urllib.request.urlopen(
+                f"http://127.0.0.1:{port}/health", timeout=5
+            ) as response:
+                assert response.status == 200
+        finally:
+            server.stop()
+
+    @patch.object(HTTPEndpointsHandler, "_is_authorized", return_value=False)
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_unauthorized_request_gets_401_with_www_authenticate(
+        self, mock_config, _mock_authorized
+    ):
+        """Real end-to-end 401: do_GET must route a failed _is_authorized
+        check to _send_unauthorized rather than any handler, and the
+        response must carry the WWW-Authenticate header real clients rely
+        on. All test connections are loopback, so _is_authorized is
+        patched directly to force the rejection path rather than faking a
+        non-loopback client address."""
+        import urllib.error
+        import urllib.request
+
+        mock_config.return_value = MagicMock(
+            enable_http_endpoint=True,
+            http_host="127.0.0.1",
+            http_port=0,
+            http_health_path="/health",
+            http_ready_path="/ready",
+            http_metrics_path="/metrics",
+            http_endpoint_auth_token="secret-token",
+            cache_health_checks=False,
+        )
+        server = HTTPEndpointsServer()
+        server.start()
+        port = server.server.server_port
+        _wait_until_listening(port)
+        try:
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5)
+                raise AssertionError("expected HTTPError for a 401 response")
+            except urllib.error.HTTPError as e:
+                assert e.code == 401
+                assert (
+                    e.headers.get("WWW-Authenticate")
+                    == 'Bearer realm="simplenote-mcp-monitoring"'
+                )
+        finally:
+            server.stop()
+
+
+class TestNonLoopbackAuthGuard:
+    """HTTPEndpointsServer.start() must fail closed on a non-loopback bind
+    with no HTTP_ENDPOINT_AUTH_TOKEN, and start normally when one is set."""
+
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_non_loopback_without_token_raises(self, mock_config):
+        mock_config.return_value = MagicMock(
+            enable_http_endpoint=True,
+            http_host="0.0.0.0",
+            http_endpoint_auth_token=None,
+        )
+
+        server = HTTPEndpointsServer()
+        with pytest.raises(ConfigurationError):
+            server.start()
+
+        assert server.running is False
+
+    @patch("simplenote_mcp.server.http_endpoints.HTTPServer")
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_non_loopback_with_token_starts(self, mock_config, mock_http_server_cls):
+        # HTTPServer itself is mocked so this never binds a real socket —
+        # only the guard logic in start() is under test here.
+        mock_config.return_value = MagicMock(
+            enable_http_endpoint=True,
+            http_host="0.0.0.0",
+            http_port=8080,
+            http_health_path="/health",
+            http_ready_path="/ready",
+            http_metrics_path="/metrics",
+            http_endpoint_auth_token="secret-token",
+        )
+        mock_http_server_cls.return_value = MagicMock(server_port=8080)
+
+        server = HTTPEndpointsServer()
+        server.start()
+
+        assert server.running is True
+        server.stop()
+
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_loopback_without_token_does_not_raise(self, mock_config):
+        mock_config.return_value = MagicMock(
+            enable_http_endpoint=True,
+            http_host="127.0.0.1",
+            http_port=0,
+            http_health_path="/health",
+            http_ready_path="/ready",
+            http_metrics_path="/metrics",
+            http_endpoint_auth_token=None,
+            cache_health_checks=False,
+        )
+
+        server = HTTPEndpointsServer()
+        try:
+            server.start()
+            assert server.running is True
+        finally:
+            server.stop()

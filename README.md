@@ -120,10 +120,23 @@ stdio by default and nothing listens on the published port at all.
 
 **Docker Health Checks:** health monitoring is a *separate* HTTP endpoint
 from the MCP protocol port above — it's off by default and must be enabled
-explicitly with `-e ENABLE_HTTP_ENDPOINT=true -p 8080:8080`:
+explicitly with `-e ENABLE_HTTP_ENDPOINT=true -e HTTP_HOST=0.0.0.0 -p 8080:8080`
+(Docker's `-p` mapping forwards to the container's network interface, not its
+loopback, so `HTTP_HOST` must be `0.0.0.0` for the published port to actually
+reach it — the `127.0.0.1` default only works if you're calling these
+endpoints from another process *inside the same container*):
 - Health: `http://localhost:8080/health`
 - Readiness: `http://localhost:8080/ready`
 - Metrics: `http://localhost:8080/metrics` (Prometheus format)
+
+The server refuses to start if `HTTP_HOST` is non-loopback and no
+`HTTP_ENDPOINT_AUTH_TOKEN` is set, since these endpoints would otherwise be
+reachable by anyone who can reach the port. Set a bearer token (checked via
+`Authorization: Bearer <token>`, same mechanism as `MCP_HTTP_AUTH_TOKEN`
+above) if you need a non-loopback bind — loopback callers are always
+trusted regardless, so this never breaks a local health check. Prefer
+keeping it loopback-only and publishing with `-p 127.0.0.1:8080:8080`
+instead of `-p 8080:8080` when you can.
 
 Or use Docker Compose:
 
@@ -316,7 +329,9 @@ resources:
 | `MCP_HTTP_ALLOWED_HOSTS` | No      | -       | Comma-separated allowlist for DNS-rebinding protection    |
 | `MCP_HTTP_ALLOWED_ORIGINS` | No   | -       | Comma-separated Origin allowlist (used with the above)    |
 | `ENABLE_HTTP_ENDPOINT`  | No       | false   | Enable the separate `/health`, `/ready`, `/metrics` server |
+| `HTTP_HOST`             | No       | 127.0.0.1 | Bind host for the monitoring endpoint above              |
 | `HTTP_PORT`             | No       | 8080    | Port for the monitoring endpoint above                    |
+| `HTTP_ENDPOINT_AUTH_TOKEN` | Conditional | -  | Bearer token; **required** if `HTTP_HOST` is non-loopback |
 
 ### Claude Desktop Integration
 
