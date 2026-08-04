@@ -266,7 +266,7 @@ class HTTPEndpointsHandler(BaseHTTPRequestHandler):
         ).encode("utf-8")
         self.send_response(401)
         self.send_header("Content-Type", "application/json")
-        self.send_header("WWW-Authenticate", "Bearer")
+        self.send_header("WWW-Authenticate", 'Bearer realm="simplenote-mcp-monitoring"')
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         self.wfile.write(body)
