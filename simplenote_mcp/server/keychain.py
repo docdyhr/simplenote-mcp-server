@@ -42,8 +42,12 @@ def _write_file_cache(email: str, token: str) -> None:
     try:
         _CACHE_DIR.mkdir(parents=True, exist_ok=True)
         path = _cache_path(email)
-        path.write_text(token)
-        os.chmod(path, 0o600)
+        # Create with 0600 atomically via os.open — writing then chmod'ing
+        # afterward leaves a window where the token file has default (often
+        # world-readable) permissions before being restricted.
+        fd = os.open(str(path), os.O_CREAT | os.O_WRONLY | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as f:
+            f.write(token)
     except OSError:
         pass
 

@@ -5,6 +5,7 @@ and metrics collection. These are essential for containerized deployments and
 production monitoring.
 """
 
+import hmac
 import json
 import time
 from datetime import datetime
@@ -14,6 +15,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from .config import get_config
+from .errors import ConfigurationError
 from .logger_factory import get_performance_logger
 from .monitoring.metrics import (
     get_cache_metrics,
@@ -23,6 +25,9 @@ from .monitoring.metrics import (
 from .monitoring.thresholds import get_performance_threshold_status
 
 logger = get_performance_logger(operation="http_endpoints")
+
+_LOOPBACK_HOSTS = ("127.0.0.1", "localhost", "::1")
+_LOOPBACK_ADDRESSES = ("127.0.0.1", "::1")
 
 
 class HealthStatus:
@@ -233,10 +238,47 @@ class HTTPEndpointsHandler(BaseHTTPRequestHandler):
         """Override to use our logging system."""
         logger.info(f"HTTP {self.command} {self.path} - {format % args}")
 
+    def _is_authorized(self, config: Any) -> bool:
+        """Check this request against HTTP_ENDPOINT_AUTH_TOKEN, if configured.
+
+        No token configured: every request is allowed — the endpoint relies
+        entirely on HTTP_HOST staying loopback (enforced at startup, see
+        HTTPEndpointsServer.start()). Token configured: loopback callers are
+        still trusted without a token, matching the MCP HTTP transport's
+        model and keeping the container's own exec-based liveness/readiness
+        probe working without needing the secret in its command line. Any
+        other source must present a matching bearer token.
+        """
+        token = config.http_endpoint_auth_token
+        if not token:
+            return True
+        if self.client_address[0] in _LOOPBACK_ADDRESSES:
+            return True
+        raw = self.headers.get("Authorization", "")
+        if not raw.startswith("Bearer "):
+            return False
+        return hmac.compare_digest(raw[len("Bearer ") :], token)
+
+    def _send_unauthorized(self) -> None:
+        """Send 401 Unauthorized with a WWW-Authenticate header."""
+        body = json.dumps(
+            {"error": "Unauthorized", "timestamp": datetime.utcnow().isoformat()}
+        ).encode("utf-8")
+        self.send_response(401)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("WWW-Authenticate", "Bearer")
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self) -> None:
         """Handle GET requests."""
         config = get_config()
         parsed_url = urlparse(self.path)
+
+        if not self._is_authorized(config):
+            self._send_unauthorized()
+            return
 
         start_time = time.time()
 
@@ -435,6 +477,25 @@ class HTTPEndpointsServer:
         if self.running:
             logger.warning("HTTP server is already running")
             return
+
+        if self.config.http_host not in _LOOPBACK_HOSTS:
+            if not self.config.http_endpoint_auth_token:
+                raise ConfigurationError(
+                    f"Refusing to bind the health/metrics endpoint to "
+                    f"non-loopback HTTP_HOST={self.config.http_host!r} without "
+                    "HTTP_ENDPOINT_AUTH_TOKEN set — /health, /ready, /metrics, "
+                    "and /thresholds would otherwise be reachable by anyone who "
+                    "can reach this port with no authentication. Set a bearer "
+                    "token, or bind HTTP_HOST to 127.0.0.1/localhost for "
+                    "same-host-only access.",
+                    subcategory="http_endpoint_auth_required",
+                )
+            logger.info(
+                f"Health/metrics endpoint bound to non-loopback "
+                f"HTTP_HOST={self.config.http_host!r}, protected by "
+                "HTTP_ENDPOINT_AUTH_TOKEN. Loopback callers (e.g. the "
+                "container's own liveness probe) remain trusted without it."
+            )
 
         try:
             self.server = HTTPServer(
