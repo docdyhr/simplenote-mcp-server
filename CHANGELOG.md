@@ -193,6 +193,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   introduced; both already resolved in `requirements-lock.txt`.
 
 ### Security
+- **`cryptography` bumped 49.0.0 → 50.0.0** (CVE-2026-69247, HIGH): PKCS7 `EnvelopedData`
+  decryption exposed a Bleichenbacher oracle via distinguishable errors/timing. Not directly
+  reachable through this project's own use of `cryptography` (`vault.py` only uses
+  `AESGCM`/`InvalidTag`, not PKCS7), but fixed anyway since it's a direct runtime dependency.
+  Verified via the full test suite (including all Vault/crypto tests) plus a local Trivy rescan
+  of the built container image.
+- Two Trivy container-scan findings (`CVE-2025-47273`, `CVE-2026-59890` — setuptools; and
+  `GHSA-6v7p-g79w-8964` — msgpack) documented in `.trivyignore` as false positives: both version
+  numbers (`setuptools==70.3.0`, `msgpack==1.1.2`) come from `pip`'s own internal
+  `pip/_vendor/vendor.txt`, which pins versions `pip` vendors for its own bootstrapping (never
+  imported by this project, never on the runtime import path since `pip` doesn't run after image
+  build). Confirmed by building the image locally, inspecting the filesystem, and diffing
+  `trivy image --format json` package attribution against the real, already-patched
+  `setuptools==83.0.0` install.
 - Reconciled the two divergent Bandit configs: `.bandit` and `.github/workflows/security.yml`'s
   `bandit_skip` no longer skip B105 (hardcoded-password-string) — `pyproject.toml [tool.bandit]`
   never did. Kept active so key-handling code (`vault.py`) is guarded against accidentally

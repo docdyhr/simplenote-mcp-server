@@ -62,6 +62,21 @@ CVE-2025-8058
 # Risk: low — pip tool itself, not a project dependency; fix in pip>=26.1. Also ignored in pip-audit CI.
 CVE-2026-6357
 
+# setuptools 70.3.0 / msgpack 1.1.2: flagged by Trivy but NOT real installed packages.
+# Verified 2026-08-04 by building the image locally and inspecting the filesystem:
+# these version numbers come from pip's own internal `pip/_vendor/vendor.txt`, which
+# pins the versions pip vendors for its own bootstrapping (msgpack for pip's HTTP
+# cache, pkg_resources from setuptools for pip's legacy compatibility shims). Trivy's
+# python-pkg scanner parses vendor.txt as if it listed real installed distributions
+# (paths: None in `trivy image --format json` output, unlike the real setuptools
+# package, which correctly resolves to setuptools-83.0.0.dist-info — already patched).
+# Risk: low — these are dormant copies bundled inside pip itself, never imported by
+# application code, and pip does not run at container runtime (only during image
+# build). The project has no real dependency on msgpack at all.
+CVE-2025-47273
+CVE-2026-59890
+GHSA-6v7p-g79w-8964
+
 # --- Debian base image system package CVEs — no fix available in Debian Bookworm repos ---
 # These affect system tools not invoked by this application at runtime. The container
 # runs as a non-root user (uid 1000). All have no Debian backport at time of writing.
