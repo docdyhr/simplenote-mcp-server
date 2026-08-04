@@ -713,6 +713,47 @@ class TestBearerTokenAuthIntegration:
         finally:
             server.stop()
 
+    @patch.object(HTTPEndpointsHandler, "_is_authorized", return_value=False)
+    @patch("simplenote_mcp.server.http_endpoints.get_config")
+    def test_unauthorized_request_gets_401_with_www_authenticate(
+        self, mock_config, _mock_authorized
+    ):
+        """Real end-to-end 401: do_GET must route a failed _is_authorized
+        check to _send_unauthorized rather than any handler, and the
+        response must carry the WWW-Authenticate header real clients rely
+        on. All test connections are loopback, so _is_authorized is
+        patched directly to force the rejection path rather than faking a
+        non-loopback client address."""
+        import urllib.error
+        import urllib.request
+
+        mock_config.return_value = MagicMock(
+            enable_http_endpoint=True,
+            http_host="127.0.0.1",
+            http_port=0,
+            http_health_path="/health",
+            http_ready_path="/ready",
+            http_metrics_path="/metrics",
+            http_endpoint_auth_token="secret-token",
+            cache_health_checks=False,
+        )
+        server = HTTPEndpointsServer()
+        server.start()
+        port = server.server.server_port
+        _wait_until_listening(port)
+        try:
+            try:
+                urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=5)
+                raise AssertionError("expected HTTPError for a 401 response")
+            except urllib.error.HTTPError as e:
+                assert e.code == 401
+                assert (
+                    e.headers.get("WWW-Authenticate")
+                    == 'Bearer realm="simplenote-mcp-monitoring"'
+                )
+        finally:
+            server.stop()
+
 
 class TestNonLoopbackAuthGuard:
     """HTTPEndpointsServer.start() must fail closed on a non-loopback bind
