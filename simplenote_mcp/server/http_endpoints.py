@@ -255,9 +255,15 @@ class HTTPEndpointsHandler(BaseHTTPRequestHandler):
         if self.client_address[0] in _LOOPBACK_ADDRESSES:
             return True
         raw = self.headers.get("Authorization", "")
-        if not raw.startswith("Bearer "):
-            return False
-        return hmac.compare_digest(raw[len("Bearer ") :], token)
+        authorized = raw.startswith("Bearer ") and hmac.compare_digest(
+            raw[len("Bearer ") :], token
+        )
+        if not authorized:
+            # Client address only — never the header/token value.
+            logger.warning(
+                f"Unauthorized health/metrics request from {self.client_address[0]}"
+            )
+        return authorized
 
     def _send_unauthorized(self) -> None:
         """Send 401 Unauthorized with a WWW-Authenticate header."""
@@ -266,7 +272,7 @@ class HTTPEndpointsHandler(BaseHTTPRequestHandler):
         ).encode("utf-8")
         self.send_response(401)
         self.send_header("Content-Type", "application/json")
-        self.send_header("WWW-Authenticate", "Bearer")
+        self.send_header("WWW-Authenticate", 'Bearer realm="simplenote-mcp-monitoring"')
         self.send_header("Cache-Control", "no-cache")
         self.end_headers()
         self.wfile.write(body)

@@ -1,5 +1,6 @@
 """Tests for HTTP health and metrics endpoints."""
 
+import socket
 import time
 from datetime import datetime
 from unittest.mock import MagicMock, patch
@@ -20,6 +21,25 @@ from simplenote_mcp.server.http_endpoints import (
     start_http_endpoints,
     stop_http_endpoints,
 )
+
+
+def _wait_until_listening(port: int, timeout: float = 5.0) -> None:
+    """Poll a raw TCP connect until the server's background thread is
+    actually accepting connections, instead of a blind sleep — avoids
+    flakiness on slower environments where serve_forever() hasn't started
+    yet by the time a fixed delay elapses."""
+    deadline = time.monotonic() + timeout
+    last_error: OSError | None = None
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                return
+        except OSError as e:
+            last_error = e
+            time.sleep(0.02)
+    raise TimeoutError(
+        f"Server did not start listening on port {port} within {timeout}s"
+    ) from last_error
 
 
 class TestHealthStatus:
@@ -681,8 +701,8 @@ class TestBearerTokenAuthIntegration:
         )
         server = HTTPEndpointsServer()
         server.start()
-        time.sleep(0.1)
         port = server.server.server_port
+        _wait_until_listening(port)
         try:
             # No Authorization header at all — must still succeed, since
             # the request originates from 127.0.0.1.

@@ -7,4 +7,5 @@ metadata:
     {{- include "simplenote-mcp-server.labels" . | nindent 4 }}
 data:
   {{- toYaml .Values.configMap.data | nindent 2 }}
+  HTTP_PORT: {{ .Values.monitoring.port | quote }}
 {{- end }}

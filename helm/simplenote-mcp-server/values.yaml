@@ -81,24 +81,17 @@ resources:
 # monitoring server has no authentication, so it must never be reachable
 # from outside the pod's own network namespace — see SECURITY.md). Runs
 # from inside the container instead, mirroring docker-compose.yml's
-# healthcheck and the Dockerfile's own HEALTHCHECK.
+# healthcheck and the Dockerfile's own HEALTHCHECK. Only the timing knobs
+# live here — the exec command itself is built in templates/deployment.yaml
+# from monitoring.port, since values.yaml isn't templated and a hardcoded
+# port string here would silently desync from a monitoring.port override.
 livenessProbe:
-  exec:
-    command:
-      - python
-      - -c
-      - "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=5).status == 200 else 1)"
   initialDelaySeconds: 30
   periodSeconds: 30
   timeoutSeconds: 10
   failureThreshold: 3
 
 readinessProbe:
-  exec:
-    command:
-      - python
-      - -c
-      - "import sys,urllib.request; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/ready', timeout=5).status == 200 else 1)"
   initialDelaySeconds: 5
   periodSeconds: 10
   timeoutSeconds: 5
@@ -179,4 +172,6 @@ configMap:
     MCP_HTTP_HOST: "0.0.0.0"
     ENABLE_HTTP_ENDPOINT: "true"
     HTTP_HOST: "127.0.0.1"
-    HTTP_PORT: "8080"
+    # HTTP_PORT is set from monitoring.port in templates/configmap.yaml,
+    # not here, so the server's actual bind port can never drift from the
+    # port the exec probes and containerPort use.

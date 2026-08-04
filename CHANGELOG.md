@@ -272,6 +272,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`scripts/quality/check_complexity.py`, the pre-commit complexity hook) — kept, with `mando`
   downgraded back to `0.7.1` to satisfy it. Verified with a clean `pip install -r
   requirements-lock.txt` (no conflicts) and `pip check` (no broken requirements) in a real venv.
+- PR #769 review fixes (Sourcery + Codex): the Helm chart's `exec` probes and `configMap.data`'s
+  `HTTP_PORT` hardcoded `8080` independently of `monitoring.port` — overriding `monitoring.port`
+  alone would silently desync the probes and the server's actual bind port from each other. `HTTP_PORT`
+  is now derived from `monitoring.port` in `templates/configmap.yaml`, and both probes are built in
+  `templates/deployment.yaml` from the same value. The new `HTTP_ENDPOINT_AUTH_TOKEN` `secretKeyRef`
+  is now `optional: true`, so upgrading a release whose `externalSecrets`-managed Secret predates this
+  key doesn't leave the pod stuck in `CreateContainerConfigError`. `keychain.py`'s atomic `os.open`
+  fix only sets `0600` when it *creates* a new file — a pre-existing file (e.g. from before that fix)
+  kept whatever permissions it already had; added an unconditional `os.fchmod` before writing to
+  self-heal that case too. `_is_authorized` now logs a warning (client address only, never the
+  token/header) on rejected requests. `WWW-Authenticate` now includes a `realm` per RFC 6750.
 
 ### Docs
 - `SECURITY.md` corrected: removed false "encryption at rest" and "memory protection" claims
