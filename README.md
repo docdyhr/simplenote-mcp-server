@@ -1,3 +1,5 @@
+[![MCP Toplist](https://mcptoplist.com/badge/glama%2Fdocdyhr%2Fsimplenote-mcp-server.svg)](https://mcptoplist.com/server/glama%2Fdocdyhr%2Fsimplenote-mcp-server)
+
 <div align="right">
 
 <a href="https://railway.com?referralCode=QhjuBc">
