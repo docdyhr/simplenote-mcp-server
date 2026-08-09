@@ -60,7 +60,7 @@ simplenote==2.1.4
 six==1.17.0
 sse-starlette==3.4.8
 starlette==1.4.1
-typer==0.27.0
+typer==0.27.1
 typing_extensions==4.16.0
 typing-inspection==0.4.2
 urllib3==2.7.0
