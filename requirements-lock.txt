@@ -72,7 +72,7 @@ multidict==6.7.1
 mypy==2.3.0
 mypy_extensions==1.1.0
 nh3==0.3.6
-nltk==3.10.0
+nltk==3.10.2
 nodeenv==1.10.0
 packageurl-python==0.17.6
 packaging==26.2
