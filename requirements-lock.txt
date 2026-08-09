@@ -141,7 +141,7 @@ typer==0.27.0
 typing-inspection==0.4.2
 typing_extensions==4.16.0
 urllib3==2.7.0
-uvicorn==0.52.0
+uvicorn==0.52.1
 virtualenv==21.7.0
 watchdog==6.0.0
 wheel==0.47.0
