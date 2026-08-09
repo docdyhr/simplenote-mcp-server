@@ -13,7 +13,7 @@ boolean.py==5.0
 build==1.5.1
 CacheControl==0.14.4
 certifi==2026.7.22
-cffi==2.1.0
+cffi==2.1.1
 cfgv==3.5.0
 charset-normalizer==3.4.9
 click==8.4.2
