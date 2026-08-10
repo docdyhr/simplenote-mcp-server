@@ -64,7 +64,7 @@ class TestCreateNoteHandlerErrors:
         result = await handler.handle({"content": "Test note"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert "error" in response
@@ -81,7 +81,7 @@ class TestCreateNoteHandlerErrors:
         result = await handler.handle({"content": "Test note"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert "error" in response
@@ -103,7 +103,7 @@ class TestUpdateNoteHandlerErrors:
         result = await handler.handle({"note_id": "nonexistent", "content": "Updated"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert response["error"]["category"] == "not_found"
@@ -125,7 +125,7 @@ class TestUpdateNoteHandlerErrors:
         result = await handler.handle({"note_id": "test123", "content": "New content"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert "error" in response
@@ -145,7 +145,7 @@ class TestDeleteNoteHandlerErrors:
         result = await handler.handle({"note_id": "nonexistent"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert "error" in response
@@ -161,7 +161,7 @@ class TestDeleteNoteHandlerErrors:
         result = await handler.handle({"note_id": "test123"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert "context" in response["error"]
@@ -180,7 +180,7 @@ class TestGetNoteHandlerErrors:
         result = await handler.handle({"note_id": "nonexistent"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert response["error"]["category"] == "not_found"
@@ -196,7 +196,7 @@ class TestGetNoteHandlerErrors:
         result = await handler.handle({"note_id": "test123"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
 
@@ -215,7 +215,7 @@ class TestSearchNotesHandlerErrors:
         result = await handler.handle({"query": "test"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert "context" in response["error"]
@@ -230,7 +230,7 @@ class TestSearchNotesHandlerErrors:
         result = await handler.handle({"query": "test"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
 
@@ -250,7 +250,7 @@ class TestTagHandlerErrors:
         result = await handler.handle({"note_id": "nonexistent", "tags": "test"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert response["error"]["category"] == "not_found"
@@ -268,7 +268,7 @@ class TestTagHandlerErrors:
         result = await handler.handle({"note_id": "test123", "tags": "tag1"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
         assert "context" in response["error"]
@@ -288,7 +288,7 @@ class TestTagHandlerErrors:
         result = await handler.handle({"note_id": "test123", "tags": "new"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["success"] is False
 
@@ -308,7 +308,7 @@ class TestErrorResponseFormat:
         result = await handler.handle({"note_id": "test"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert "success" in response
         assert response["success"] is False
@@ -329,7 +329,7 @@ class TestErrorResponseFormat:
         result = await handler.handle({"note_id": "test123", "content": "new content"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert "context" in response["error"]
         assert "note_id" in response["error"]["context"]
@@ -351,7 +351,7 @@ class TestErrorCategoryMapping:
         result = await handler.handle({"note_id": "missing"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["error"]["category"] == "not_found"
 
@@ -366,6 +366,6 @@ class TestErrorCategoryMapping:
         result = await handler.handle({"content": "test"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["error"]["category"] in ["network", "internal"]

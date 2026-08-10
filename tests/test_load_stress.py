@@ -385,7 +385,7 @@ class TestStressTesting:
                 )
                 total_processed += 1
                 if isinstance(result, types.CallToolResult):
-                    assert result.isError is True
+                    assert result.is_error is True
                     error_count += 1
                 else:
                     result_data = json.loads(result[0].text)

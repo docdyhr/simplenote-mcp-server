@@ -222,7 +222,7 @@ class TestGetNoteVersionsHandler:
         result = await handler.handle({"note_id": "some-id"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         payload = json.loads(result.content[0].text)
         assert payload.get("success") is False
         # Must NOT have called sn.get_note (which would TypeError)
