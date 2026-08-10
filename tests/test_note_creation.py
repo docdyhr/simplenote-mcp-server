@@ -265,7 +265,7 @@ async def test_create_note_error_handling(mock_simplenote_client):
         )
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         result_data = json.loads(result.content[0].text)
 
         assert "error" in result_data

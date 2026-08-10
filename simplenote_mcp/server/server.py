@@ -3,6 +3,8 @@
 # Import standard libraries
 import asyncio
 import atexit
+import base64
+import contextvars
 import hmac
 import json
 import os
@@ -19,7 +21,11 @@ from typing import Any, cast
 import mcp.server.stdio  # type: ignore  # noqa: E402
 import mcp.server.streamable_http  # type: ignore  # noqa: E402
 import mcp.types as types  # type: ignore  # noqa: E402
-from mcp.server import NotificationOptions, Server  # type: ignore  # noqa: E402
+from mcp.server import (  # type: ignore  # noqa: E402
+    NotificationOptions,
+    Server,
+    ServerRequestContext,
+)
 from mcp.server.lowlevel.helper_types import (  # type: ignore  # noqa: E402
     ReadResourceContents,
 )
@@ -171,15 +177,18 @@ def _record_write(client_id: str) -> None:
         _write_timestamps[client_id].append(time.monotonic())
 
 
-# Create a server instance
-try:
-    logger.info("Creating MCP server instance")
-    server = Server("simplenote-mcp-server")
-    logger.info("MCP server instance created successfully")
-except Exception as e:
-    logger.error(f"Error creating MCP server: {str(e)}", exc_info=True)
-    record_api_call("create_note", success=False, error_type=type(e).__name__)
-    raise
+# The mcp SDK's low-level Server moved from decorator-based handler
+# registration to constructor `on_*` callables in 2.0 — handlers must exist
+# before `Server(...)` is constructed. The `server` instance itself (and its
+# protocol-facing adapters, see "MCP 2.0 PROTOCOL ADAPTERS" below) is built
+# further down, after all `handle_*` functions are defined.
+
+# Per-request context, populated by the `on_call_tool` adapter for the
+# duration of each call. Replaces the pre-2.0 `server.request_context`
+# contextvar property, which the SDK removed in 2.0 — see _resolve_client_id.
+_request_ctx_var: contextvars.ContextVar[ServerRequestContext | None] = (
+    contextvars.ContextVar("_request_ctx_var", default=None)
+)
 
 # Initialize Simplenote client
 simplenote_client = None
@@ -686,7 +695,6 @@ async def _background_cache_initialization_safe(
 # ===== RESOURCE CAPABILITIES =====
 
 
-@server.list_resources()
 async def handle_list_resources(
     tag: str | None = None,
     limit: int | None = None,
@@ -818,8 +826,7 @@ async def handle_list_resources(
         return []
 
 
-@server.read_resource()  # type: ignore
-async def handle_read_resource(uri: AnyUrl) -> Iterable[ReadResourceContents]:
+async def handle_read_resource(uri: str | AnyUrl) -> Iterable[ReadResourceContents]:
     """Handle the read_resource capability.
 
     Args:
@@ -915,7 +922,6 @@ async def handle_read_resource(uri: AnyUrl) -> Iterable[ReadResourceContents]:
 # ===== TOOL CAPABILITIES =====
 
 
-@server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
     """Handle the list_tools capability.
 
@@ -1722,18 +1728,22 @@ def _resolve_client_id(*_args: Any, **_kwargs: Any) -> str:
     IP, so concurrent callers sharing one MCP_HTTP_AUTH_TOKEN are still
     isolated from each other rather than sharing a single global bucket.
 
-    Built on confirmed SDK internals: server.request_context.request
+    Built on confirmed SDK internals: the ServerRequestContext.request field
     reliably carries the raw Starlette Request (with a real peer address)
     for every HTTP-transport call, and is reliably None for stdio — see
-    run_http()/the streamable_http transport for how that's populated.
+    run_http()/the streamable_http transport for how that's populated. The
+    `on_call_tool` adapter (see "MCP 2.0 PROTOCOL ADAPTERS" below) stashes
+    the current request's ServerRequestContext in `_request_ctx_var` for
+    the duration of the call, since mcp 2.0 removed the SDK's own
+    `server.request_context` contextvar property in favor of injecting
+    context directly into each handler instead.
 
     Signature matches with_rate_limiting's identifier_func(*args, **kwargs)
     calling convention (invoked with handle_call_tool's own (name,
     arguments)) — both are unused here.
     """
-    try:
-        ctx = server.request_context
-    except LookupError:
+    ctx = _request_ctx_var.get()
+    if ctx is None:
         return "stdio-local"
     request = ctx.request
     if request is None:
@@ -1742,7 +1752,6 @@ def _resolve_client_id(*_args: Any, **_kwargs: Any) -> str:
     return f"http:{client.host}" if client else "http:unknown"
 
 
-@server.call_tool()
 @with_security_monitoring()
 @with_rate_limiting(
     max_requests=100,
@@ -1837,7 +1846,7 @@ async def handle_call_tool(
         # a handler-level failure (isError=True) must not consume write budget.
         result = await handler.handle(arguments)
         if name in WRITE_TOOLS:
-            is_error = isinstance(result, types.CallToolResult) and result.isError
+            is_error = isinstance(result, types.CallToolResult) and result.is_error
             if not is_error:
                 _record_write(client_id)
         return result
@@ -1861,7 +1870,6 @@ async def handle_call_tool(
 # ===== PROMPT CAPABILITIES =====
 
 
-@server.list_prompts()
 async def handle_list_prompts() -> list[types.Prompt]:
     """Handle the list_prompts capability.
 
@@ -1931,7 +1939,6 @@ async def handle_list_prompts() -> list[types.Prompt]:
     ]
 
 
-@server.get_prompt()
 async def handle_get_prompt(
     name: str, arguments: dict[str, str] | None
 ) -> types.GetPromptResult:
@@ -2047,6 +2054,117 @@ async def handle_get_prompt(
         error_msg = UNKNOWN_PROMPT_ERROR.format(name=name)
         logger.error(error_msg)
         raise ValidationError(error_msg, subcategory="unknown_prompt")
+
+
+# ===== MCP 2.0 PROTOCOL ADAPTERS =====
+#
+# mcp 2.0 replaced the low-level Server's decorator-based handler
+# registration (`@server.list_tools()` etc.) with constructor `on_*`
+# callables, each shaped `(ctx: ServerRequestContext, params) -> Result`
+# returning an explicit result type — no more auto-wrapping of bare
+# lists/strings/exceptions. Rather than reshape the `handle_*` functions
+# above (which keep their pre-2.0 signatures and return types so every
+# existing direct call site and test is unaffected), these thin adapters
+# bridge them to the protocol-facing shape and are the only functions
+# actually registered with `Server(...)` below.
+
+
+async def _on_list_resources(
+    ctx: ServerRequestContext, params: types.PaginatedRequestParams | None
+) -> types.ListResourcesResult:
+    resources = await handle_list_resources()
+    return types.ListResourcesResult(resources=resources)
+
+
+def _read_resource_contents_to_result(
+    uri: str | AnyUrl, contents: Iterable[ReadResourceContents]
+) -> types.ReadResourceResult:
+    # ResourceContents.uri is a plain `str` field (no AnyUrl coercion) as of
+    # mcp 2.0 — stringify explicitly so an AnyUrl caller doesn't raise.
+    uri_str = str(uri)
+    result_contents: list[types.TextResourceContents | types.BlobResourceContents] = []
+    for item in contents:
+        meta_kwargs: dict[str, Any] = (
+            {"_meta": item.meta} if item.meta is not None else {}
+        )
+        if isinstance(item.content, bytes):
+            result_contents.append(
+                types.BlobResourceContents(
+                    uri=uri_str,
+                    blob=base64.b64encode(item.content).decode("utf-8"),
+                    mimeType=item.mime_type or "application/octet-stream",
+                    **meta_kwargs,
+                )
+            )
+        else:
+            result_contents.append(
+                types.TextResourceContents(
+                    uri=uri_str,
+                    text=item.content,
+                    mimeType=item.mime_type or "text/plain",
+                    **meta_kwargs,
+                )
+            )
+    return types.ReadResourceResult(contents=result_contents)
+
+
+async def _on_read_resource(
+    ctx: ServerRequestContext, params: types.ReadResourceRequestParams
+) -> types.ReadResourceResult:
+    contents = await handle_read_resource(params.uri)
+    return _read_resource_contents_to_result(params.uri, contents)
+
+
+async def _on_list_tools(
+    ctx: ServerRequestContext, params: types.PaginatedRequestParams | None
+) -> types.ListToolsResult:
+    tools = await handle_list_tools()
+    return types.ListToolsResult(tools=tools)
+
+
+async def _on_call_tool(
+    ctx: ServerRequestContext, params: types.CallToolRequestParams
+) -> types.CallToolResult:
+    token = _request_ctx_var.set(ctx)
+    try:
+        result = await handle_call_tool(params.name, params.arguments or {})
+    finally:
+        _request_ctx_var.reset(token)
+    if isinstance(result, types.CallToolResult):
+        return result
+    return types.CallToolResult(content=result, isError=False)
+
+
+async def _on_list_prompts(
+    ctx: ServerRequestContext, params: types.PaginatedRequestParams | None
+) -> types.ListPromptsResult:
+    prompts = await handle_list_prompts()
+    return types.ListPromptsResult(prompts=prompts)
+
+
+async def _on_get_prompt(
+    ctx: ServerRequestContext, params: types.GetPromptRequestParams
+) -> types.GetPromptResult:
+    return await handle_get_prompt(params.name, params.arguments)
+
+
+# Create a server instance
+try:
+    logger.info("Creating MCP server instance")
+    server = Server(
+        "simplenote-mcp-server",
+        on_list_resources=_on_list_resources,
+        on_read_resource=_on_read_resource,
+        on_list_tools=_on_list_tools,
+        on_call_tool=_on_call_tool,
+        on_list_prompts=_on_list_prompts,
+        on_get_prompt=_on_get_prompt,
+    )
+    logger.info("MCP server instance created successfully")
+except Exception as e:
+    logger.error(f"Error creating MCP server: {str(e)}", exc_info=True)
+    record_api_call("create_note", success=False, error_type=type(e).__name__)
+    raise
 
 
 async def _start_server_components() -> None:

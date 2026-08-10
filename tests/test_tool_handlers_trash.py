@@ -108,7 +108,7 @@ class TestPermanentDeleteNoteHandler:
         """Missing note_id returns an error response."""
         result = await handler.handle({"confirm": True})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False
@@ -121,7 +121,7 @@ class TestPermanentDeleteNoteHandler:
 
         result = await handler.handle({"note_id": "missing", "confirm": True})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False
@@ -137,7 +137,7 @@ class TestPermanentDeleteNoteHandler:
 
         result = await handler.handle({"note_id": "abc", "confirm": True})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False
@@ -153,7 +153,7 @@ class TestPermanentDeleteNoteHandler:
 
         result = await handler.handle({"note_id": "abc", "confirm": True})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False
@@ -342,7 +342,7 @@ class TestEmptyTrashHandler:
 
         result = await handler.handle({"dry_run": True})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False

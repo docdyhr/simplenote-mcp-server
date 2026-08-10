@@ -387,7 +387,7 @@ class TestEndToEndScenarios:
 
         # Check that we got an error response
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response = json.loads(result.content[0].text)
         assert response["error"] is not None  # Should contain error information
 
@@ -434,7 +434,7 @@ class TestEndToEndScenarios:
             )
 
             if isinstance(result, types.CallToolResult):
-                assert result.isError is True
+                assert result.is_error is True
                 failure_count += 1
             else:
                 response = json.loads(result[0].text)

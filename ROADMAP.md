@@ -161,6 +161,13 @@ A full repository review (security, runtime correctness, deployment, dependencie
 - **P2 — Packaging metadata consolidated**: `setup.py`'s version/dependency drift fixed and now covered by the consistency checker.
 - **P3 — Deferred**: `tool_handlers.py`'s size (3,065 lines) and the 111 broad `except Exception` handlers need focused refactoring behind behavioral tests, not a broad rewrite — tracked as future work, not attempted in this pass.
 
+### Phase 12 — mcp Python SDK v2 Migration ✅ (v1.22, unreleased)
+
+- **Migrated off the deprecated decorator API**: mcp 2.0.0 (2026-07-28) removed the low-level `Server`'s decorator-based handler registration (`@server.list_resources()`, `.read_resource()`, `.list_tools()`, `.call_tool()`, `.list_prompts()`, `.get_prompt()`) in favor of constructor `on_*` callables shaped `(ctx, params) -> Result`. Rather than reshape the existing `handle_*` functions (which every test and internal call site depends on with their pre-2.0 signatures), added a thin adapter layer (`_on_list_resources`, `_on_read_resource`, `_on_list_tools`, `_on_call_tool`, `_on_list_prompts`, `_on_get_prompt` in `server.py`) that bridges the protocol-facing shape to the unchanged `handle_*` functions — zero test call-site churn beyond field-naming fixes below.
+- **Replaced `server.request_context`**: the SDK removed this contextvar property in 2.0. `_resolve_client_id()` (per-client rate limiting / write budget identity) now reads a project-owned `_request_ctx_var` contextvar, populated by the `on_call_tool` adapter for the duration of each call.
+- **Fixed snake_case field-name breaks**: mcp 2.0's pydantic models expose canonical attributes as snake_case (`is_error`, `input_schema`) — construction kwargs still accept the old camelCase alias (`isError=`, `inputSchema=`), but *attribute reads* do not. Fixed one production read site (`result.isError` → `result.is_error` in `handle_call_tool`'s write-budget check) and the equivalent read sites across the test suite.
+- **Bumped `mcp[cli]` to `>=2.0.0,<3.0.0`** in `pyproject.toml` (previously pinned `<2.0.0` as a stopgap — see `requirements-lock.txt`/`requirements-runtime-lock.txt`, regenerated). Both `tests/` (1348 tests) and the legacy `simplenote_mcp/tests/` tree (112 tests) pass with no regressions and no new skips.
+
 ### v2.0 Horizon
 
 | Item | Notes |
@@ -168,7 +175,6 @@ A full repository review (security, runtime correctness, deployment, dependencie
 | **Multi-account support** | Needs config and auth refactor. |
 | **Real-time sync** | Replaces polling model. Requires Simperium websocket integration. |
 | **Multi-device Vault key sync** | Deferred from Phase 9 — needs an out-of-band key transfer story. |
-| **Migrate to `mcp` Python SDK v2** | v2.0.0 (2026-07-28) replaces the low-level `Server`'s decorator API (`@server.list_resources()`, `.read_resource()`, `.list_tools()`, `.call_tool()`, `.list_prompts()`, `.get_prompt()` — 6 total, `server.py:689,821,918,1745,1864,1934`) with constructor `on_*` params, which means `server = Server(...)` (currently `server.py:177`, before any handlers are defined) must move to after all 6 handler functions exist — a real restructure, not a find-replace. Pinned to `mcp[cli]<2.0.0` for now (see CHANGELOG); v1.x is in SDK maintainer-confirmed maintenance mode (security fixes only), so this isn't urgent, but shouldn't sit unpinned indefinitely. |
 
 ---
 

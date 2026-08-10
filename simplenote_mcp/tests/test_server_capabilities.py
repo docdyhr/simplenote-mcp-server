@@ -181,8 +181,10 @@ async def test_list_tools():
         assert isinstance(tool, types.Tool), "Each item should be a Tool"
         assert tool.name, "Tool should have a name"
         assert tool.description, "Tool should have a description"
-        assert tool.inputSchema, "Tool should have an input schema"
-        assert isinstance(tool.inputSchema, dict), "Input schema should be a dictionary"
+        assert tool.input_schema, "Tool should have an input schema"
+        assert isinstance(tool.input_schema, dict), (
+            "Input schema should be a dictionary"
+        )
 
 
 @pytest.mark.asyncio

@@ -172,7 +172,7 @@ class TestCreateNoteHandler:
 
         # Should return error response
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         response_data = json.loads(result.content[0].text)
         assert response_data["success"] is False
 
@@ -624,7 +624,7 @@ class TestVaultEncryptionOnCreateAndUpdate:
             {"note_id": "note-1", "content": "plaintext replacement"}
         )
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False
@@ -691,7 +691,7 @@ class TestVaultEncryptionOnCreateAndUpdate:
                 {"content": "Title\nsensitive", "encrypt": True}
             )
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False
@@ -1040,7 +1040,7 @@ class TestResourceNotFoundErrors:
         handler = GetNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "missing-note"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
         # resource_id should appear in error dict
@@ -1055,7 +1055,7 @@ class TestResourceNotFoundErrors:
         handler = DeleteNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "missing-note"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
         error = data["error"]
@@ -1211,7 +1211,7 @@ class TestAddTextHandler:
         mock_client.update_note.return_value = (None, -1)
         result = await handler.handle({"note_id": "note1", "text": "New text"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -1315,7 +1315,7 @@ class TestListTagsHandler:
         handler = ListTagsHandler(mock_client, mock_cache)
         result = await handler.handle({})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -1533,7 +1533,7 @@ class TestRestoreVersionHandler:
         mock_client.get_note.return_value = ({}, -1)
         result = await handler.handle({"note_id": "note1", "version": 99})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2192,7 +2192,7 @@ class TestReplaceSectionHandler:
             }
         )
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2348,7 +2348,7 @@ class TestFindUntaggedNotesHandler:
         handler = FindUntaggedNotesHandler(mock_client, mock_cache)
         result = await handler.handle({})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2441,7 +2441,7 @@ class TestBulkTagHandler:
         """Missing note_ids returns an error."""
         result = await handler.handle({"action": "add", "tags": ["x"]})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2450,7 +2450,7 @@ class TestBulkTagHandler:
         """Missing action returns an error."""
         result = await handler.handle({"note_ids": ["n1"], "tags": ["x"]})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2461,7 +2461,7 @@ class TestBulkTagHandler:
             {"note_ids": ["n1"], "action": "explode", "tags": ["x"]}
         )
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2544,7 +2544,7 @@ class TestRestoreNoteHandler:
         """Missing note_id returns error."""
         result = await handler.handle({})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2554,7 +2554,7 @@ class TestRestoreNoteHandler:
         mock_client.get_note.return_value = ({}, -1)
         result = await handler.handle({"note_id": "bad"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2751,7 +2751,7 @@ class TestPublishNoteHandler:
         """publish_note returns error when note_id is missing."""
         result = await handler.handle({})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2765,7 +2765,7 @@ class TestPublishNoteHandler:
         handler = PublishNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "bad"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2778,7 +2778,7 @@ class TestPublishNoteHandler:
         handler = PublishNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "note123"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2881,7 +2881,7 @@ class TestUnpublishNoteHandler:
         """unpublish_note returns error when note_id is missing."""
         result = await handler.handle({})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2895,7 +2895,7 @@ class TestUnpublishNoteHandler:
         handler = UnpublishNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "bad"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -2986,7 +2986,7 @@ class TestEncryptNoteHandler:
     async def test_encrypt_note_missing_note_id(self, handler):
         result = await handler.handle({})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -3000,7 +3000,7 @@ class TestEncryptNoteHandler:
         handler = EncryptNoteHandler(mock_client, mock_cache)
         result = await handler.handle({"note_id": "bad"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -3109,7 +3109,7 @@ class TestDecryptNoteHandler:
 
         result = await handler.handle({"note_id": "note123"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False
@@ -3120,7 +3120,7 @@ class TestDecryptNoteHandler:
     async def test_decrypt_note_missing_note_id(self, handler):
         result = await handler.handle({})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["success"] is False
 
@@ -3317,7 +3317,7 @@ class TestVaultDecryptOnRead:
         result = await handler.handle({"note_id": "note1"})
 
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
         assert data["error"]["subcategory"] == "vault_key_corrupted"
 
@@ -3422,7 +3422,7 @@ class TestVaultSafetyGuards:
 
         result = await handler.handle({"note_id": "note1", "text": "more stuff"})
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False
@@ -3441,7 +3441,7 @@ class TestVaultSafetyGuards:
             {"note_id": "note1", "header": "Notes", "new_content": "new stuff"}
         )
         assert isinstance(result, types.CallToolResult)
-        assert result.isError is True
+        assert result.is_error is True
         data = json.loads(result.content[0].text)
 
         assert data["success"] is False

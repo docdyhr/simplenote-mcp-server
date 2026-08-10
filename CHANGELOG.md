@@ -191,6 +191,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `cryptography` and `keyring` promoted from transitive (dev/publish tooling only) to direct
   runtime dependencies — both are actually imported by `vault.py` now. No new/unfamiliar package
   introduced; both already resolved in `requirements-lock.txt`.
+- **Migrated to `mcp` Python SDK v2** (`mcp[cli]` bumped `>=1.10.0,<2.0.0` → `>=2.0.0,<3.0.0`).
+  v2.0.0 removed the low-level `Server`'s decorator-based handler registration
+  (`@server.list_resources()`/`.read_resource()`/`.list_tools()`/`.call_tool()`/`.list_prompts()`/
+  `.get_prompt()`) in favor of constructor `on_*` callables. Added a thin protocol-adapter layer in
+  `server.py` (`_on_list_resources`, `_on_read_resource`, `_on_list_tools`, `_on_call_tool`,
+  `_on_list_prompts`, `_on_get_prompt`) so the existing `handle_*` functions — and every test
+  exercising them — keep their pre-2.0 signatures unchanged. Also replaced the SDK's removed
+  `server.request_context` contextvar property with a project-owned `_request_ctx_var` (used by
+  `_resolve_client_id` for per-client rate limiting/write-budget identity), and fixed one
+  production read of the now-snake_case `CallToolResult.is_error` field (was `.isError`, which mcp
+  2.0 no longer exposes as a readable attribute — construction kwargs still accept the old
+  camelCase alias, but attribute reads don't). `requirements-lock.txt` and
+  `requirements-runtime-lock.txt` regenerated accordingly. See ROADMAP.md Phase 12.
 
 ### Security
 - **`cryptography` bumped 49.0.0 → 50.0.0** (CVE-2026-69247, HIGH): PKCS7 `EnvelopedData`

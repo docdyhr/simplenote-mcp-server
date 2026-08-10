@@ -1,11 +1,14 @@
 """Tests for per-client identity resolution and the per-client write budget
 added to server.py: _resolve_client_id(), _check_write_budget(),
 _record_write(). Covers both the stdio fallback and HTTP-transport identity
-derived from mcp.server.lowlevel.server's request_ctx contextvar.
+derived from server.py's own `_request_ctx_var` contextvar (mcp 2.0 removed
+the SDK's `server.request_context` property; the `on_call_tool` adapter now
+stashes the per-request ServerRequestContext there instead).
 """
 
+from contextlib import contextmanager
 from types import SimpleNamespace
-from unittest.mock import MagicMock, PropertyMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -15,58 +18,47 @@ from simplenote_mcp.server.errors import ValidationError
 
 def _fake_request_context(request):
     """Build a minimal object with a `.request` attribute, matching the
-    shape server.request_context returns (only `.request` is read)."""
+    shape _request_ctx_var holds (only `.request` is read)."""
     return SimpleNamespace(request=request)
+
+
+@contextmanager
+def _active_request_context(ctx):
+    token = srv._request_ctx_var.set(ctx)
+    try:
+        yield
+    finally:
+        srv._request_ctx_var.reset(token)
 
 
 class TestResolveClientId:
     def test_no_active_request_context_is_stdio_local(self):
-        # No request_ctx contextvar set at all — matches a direct call
-        # outside of any MCP request (e.g. process startup).
+        # No request context set at all — matches a direct call outside of
+        # any MCP request (e.g. process startup).
         assert srv._resolve_client_id() == "stdio-local"
 
     def test_stdio_request_context_with_no_request_is_stdio_local(self):
         fake_ctx = _fake_request_context(request=None)
-        with patch.object(
-            type(srv.server),
-            "request_context",
-            new_callable=PropertyMock,
-            return_value=fake_ctx,
-        ):
+        with _active_request_context(fake_ctx):
             assert srv._resolve_client_id() == "stdio-local"
 
     def test_http_request_uses_peer_source_ip(self):
         fake_request = SimpleNamespace(client=SimpleNamespace(host="203.0.113.5"))
         fake_ctx = _fake_request_context(request=fake_request)
-        with patch.object(
-            type(srv.server),
-            "request_context",
-            new_callable=PropertyMock,
-            return_value=fake_ctx,
-        ):
+        with _active_request_context(fake_ctx):
             assert srv._resolve_client_id() == "http:203.0.113.5"
 
     def test_http_request_without_client_attr_is_unknown(self):
         fake_request = SimpleNamespace(client=None)
         fake_ctx = _fake_request_context(request=fake_request)
-        with patch.object(
-            type(srv.server),
-            "request_context",
-            new_callable=PropertyMock,
-            return_value=fake_ctx,
-        ):
+        with _active_request_context(fake_ctx):
             assert srv._resolve_client_id() == "http:unknown"
 
     def test_different_peers_get_different_identifiers(self):
         for host in ("10.0.0.1", "10.0.0.2"):
             fake_request = SimpleNamespace(client=SimpleNamespace(host=host))
             fake_ctx = _fake_request_context(request=fake_request)
-            with patch.object(
-                type(srv.server),
-                "request_context",
-                new_callable=PropertyMock,
-                return_value=fake_ctx,
-            ):
+            with _active_request_context(fake_ctx):
                 assert srv._resolve_client_id() == f"http:{host}"
 
 

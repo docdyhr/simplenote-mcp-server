@@ -71,10 +71,10 @@ class TestMCPProtocolHandlers:
         for tool in result_write:
             assert hasattr(tool, "name")
             assert hasattr(tool, "description")
-            assert hasattr(tool, "inputSchema")
-            assert isinstance(tool.inputSchema, dict)
-            assert "type" in tool.inputSchema
-            assert "properties" in tool.inputSchema
+            assert hasattr(tool, "input_schema")
+            assert isinstance(tool.input_schema, dict)
+            assert "type" in tool.input_schema
+            assert "properties" in tool.input_schema
             assert tool.annotations is not None, f"{tool.name} is missing annotations"
 
     @pytest.mark.asyncio
@@ -542,7 +542,7 @@ class TestResourceManagement:
             result = await handle_call_tool("create_note", {"content": "test"})
 
             assert isinstance(result, types.CallToolResult)
-            assert result.isError is True
+            assert result.is_error is True
             error_data = json.loads(result.content[0].text)
             assert "error" in error_data or "message" in error_data
 
