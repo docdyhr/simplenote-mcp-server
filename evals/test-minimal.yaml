@@ -1,7 +1,8 @@
 # Minimal test evaluation for mcp-evals
+# (trivial comment-only edit for CHANGED_FILES verification, no-op)
 model:
   provider: openai
-  name: gpt-4o-mini  # Use cheaper model for testing
+  name: gpt-4o-mini # Use cheaper model for testing
 
 evals:
   - name: server_health_check
