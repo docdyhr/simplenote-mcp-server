@@ -1,0 +1,137 @@
+# NOTE: deliberately over the repo's usual ~80-line thin-caller target (see
+# .github/workflows/AGENTS.md). This job is a single sequential git pipeline
+# (checkout -> bump version files -> commit -> tag -> push -> create release)
+# where every step depends on the SAME working-directory state built up by
+# the ones before it. Splitting into two jobs (as originally considered)
+# would require shipping the bumped files across a job boundary via
+# artifacts, adding real correctness risk (state drift, partial-apply races)
+# to the one workflow in this repo that actually cuts releases and pushes
+# git tags -- not worth it for a line-count target.
+name: Reusable - Prepare Release
+
+on:
+  workflow_call:
+    inputs:
+      bump_type:
+        type: string
+        required: true
+      pre_release:
+        type: string
+        default: ""
+      dry_run:
+        type: string
+        default: "false"
+    outputs:
+      current_version:
+        value: ${{ jobs.prepare.outputs.current_version }}
+      new_version:
+        value: ${{ jobs.prepare.outputs.new_version }}
+      release_created:
+        value: ${{ jobs.prepare.outputs.release_created }}
+
+jobs:
+  prepare:
+    name: Prepare Release
+    timeout-minutes: 12
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      current_version: ${{ steps.get_version.outputs.current_version }}
+      new_version: ${{ steps.bump_version.outputs.new_version }}
+      release_created: ${{ steps.set_release_output.outputs.release_created }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install toml semver pyyaml pre-commit
+
+      - name: Get current version
+        id: get_version
+        run: |
+          VERSION=$(python -c "import toml; print(toml.load('pyproject.toml')['project']['version'])")
+          echo "Current version: $VERSION"
+          echo "current_version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version
+        id: bump_version
+        env:
+          CURRENT_VERSION: ${{ steps.get_version.outputs.current_version }}
+          BUMP_TYPE: ${{ inputs.bump_type }}
+          PRE_RELEASE: ${{ inputs.pre_release }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: scripts/release/bump_version.sh
+
+      - name: Verify version consistency
+        if: inputs.dry_run != 'true'
+        run: python scripts/quality/check_version_consistency.py
+
+      - name: Generate changelog
+        id: changelog
+        if: inputs.dry_run != 'true'
+        env:
+          NEW_VERSION: ${{ steps.bump_version.outputs.new_version }}
+        run: scripts/release/generate_release_changelog.sh
+
+      - name: Commit version bump
+        id: commit
+        if: inputs.dry_run != 'true'
+        env:
+          NEW_VERSION: ${{ steps.bump_version.outputs.new_version }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          # changelog.md is intentionally NOT committed here — it's an
+          # auto-generated conventional-commits dump used only for the
+          # GitHub Release body and the changelog-<version> artifact.
+          # Committing it collides with CHANGELOG.md (the real, hand-curated
+          # changelog) on case-insensitive filesystems (macOS/Windows).
+          git add pyproject.toml simplenote_mcp/__init__.py VERSION \
+            helm/simplenote-mcp-server/Chart.yaml setup.py || true
+          git commit -m "Bump version to $NEW_VERSION" || echo "No changes to commit"
+          git tag -a "v$NEW_VERSION" -m "Version $NEW_VERSION"
+          echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Push changes
+        if: inputs.dry_run != 'true'
+        env:
+          NEW_VERSION: ${{ steps.bump_version.outputs.new_version }}
+        run: |
+          git push origin main
+          git push origin "v$NEW_VERSION"
+
+      - name: Create GitHub Release
+        id: create_release
+        if: inputs.dry_run != 'true'
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
+        with:
+          name: "v${{ steps.bump_version.outputs.new_version }}"
+          tag_name: "v${{ steps.bump_version.outputs.new_version }}"
+          body: ${{ steps.changelog.outputs.changelog }}
+          prerelease: ${{ inputs.pre_release != '' }}
+          draft: false
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload changelog artifact
+        if: inputs.dry_run != 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: changelog-${{ steps.bump_version.outputs.new_version }}
+          path: changelog.md
+          retention-days: 30
+
+      - name: Set release creation output
+        id: set_release_output
+        if: inputs.dry_run != 'true'
+        run: echo "release_created=true" >> "$GITHUB_OUTPUT"
