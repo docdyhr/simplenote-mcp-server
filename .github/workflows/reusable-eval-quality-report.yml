@@ -1,0 +1,78 @@
+name: Reusable - Report Evaluation Quality
+
+on:
+  workflow_call:
+    inputs:
+      run-result:
+        type: string
+        required: true
+      pass-rate:
+        type: string
+        default: "0"
+      quality-gate-passed:
+        type: string
+        default: "false"
+      status:
+        type: string
+        default: "unknown"
+      fail-threshold:
+        type: string
+        default: "70"
+      evaluation-suite:
+        type: string
+        default: "basic"
+
+jobs:
+  report:
+    name: Quality Gate Assessment
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      checks: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Create quality gate report
+        id: report
+        env:
+          PASS_RATE: ${{ inputs.pass-rate }}
+          QUALITY_GATE_PASSED: ${{ inputs.quality-gate-passed }}
+          STATUS: ${{ inputs.status }}
+          RUN_RESULT: ${{ inputs.run-result }}
+          FAIL_THRESHOLD: ${{ inputs.fail-threshold }}
+          EVALUATION_SUITE: ${{ inputs.evaluation-suite }}
+        run: scripts/ci/render_quality_gate_report.sh
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request' && steps.report.outputs.report_created == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          script: |
+            const script = require('./.github/scripts/post-quality-gate-comment.js');
+            return await script({ github, context, core });
+
+      - name: Create check run
+        if: always()
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        # Convention: pass workflow/job values in via env: and read them from process.env
+        # in the required script — never interpolate ${{ }} into script: bodies. See PR #703.
+        env:
+          PASS_RATE: ${{ inputs.pass-rate }}
+          QUALITY_GATE_PASSED: ${{ inputs.quality-gate-passed }}
+          EVAL_RESULT: ${{ inputs.run-result }}
+          FAIL_THRESHOLD: ${{ inputs.fail-threshold }}
+          EVALUATION_SUITE: ${{ inputs.evaluation-suite }}
+        with:
+          script: |
+            const script = require('./.github/scripts/create-quality-gate-check.js');
+            return await script({ github, context });
+
+      - name: Upload quality gate report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: quality-gate-report
+          path: quality-gate-report.md
+          retention-days: 30
