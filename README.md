@@ -22,7 +22,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.17.1-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.17.5-blue.svg)](./CHANGELOG.md)
 [![Test Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -37,7 +37,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![Smithery](https://smithery.ai/badge/@docdyhr/simplenote-mcp-server)](https://smithery.ai/server/@docdyhr/simplenote-mcp-server)
 
-[![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/b215d030-b511-457d-8a6d-3e1e6ea3b541)
+[![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/docdyhr-simplenote-mcp-server)
 ---
 
 ## What's New
@@ -742,8 +742,6 @@ If you find this project helpful, please consider giving it a star on GitHub! Yo
 - 💪 **Motivate continued development** and maintenance
 - 📈 **Build community** around the Model Context Protocol ecosystem
 - 🛡️ **Validate trust** through community engagement
-
-[![GitHub stars](https://img.shields.io/github/stars/docdyhr/simplenote-mcp-server?style=social)](https://github.com/docdyhr/simplenote-mcp-server/stargazers)
 
 **[⭐ Star this repository](https://github.com/docdyhr/simplenote-mcp-server)** — it takes just one click and means a lot!
 
