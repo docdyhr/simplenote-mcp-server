@@ -1,0 +1,57 @@
+name: Reusable - Health Check
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: "3.12"
+
+jobs:
+  health-check:
+    name: Health Check Monitoring
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ".[dev,test]"
+
+      - name: Run health checks
+        run: |
+          echo "Running application health checks..."
+          python -c "import simplenote_mcp.server.server; print('✅ Core server module imports successfully')"
+          python -c "import simplenote_mcp.server.config; print('✅ Configuration module imports successfully')"
+          python -c "import simplenote_mcp.server.cache; print('✅ Cache module imports successfully')"
+          python -c "from simplenote_mcp.server.config import get_config; config = get_config(); print('✅ Configuration loads successfully')"
+
+          # Run smoke tests with addopts cleared — pytest.ini addopts includes --cov* flags
+          # which become unrecognized when the cov plugin is disabled; clearing addopts avoids
+          # the "unrecognized arguments" error while asyncio_mode/timeout remain as standalone keys.
+          python -m pytest tests/test_config.py -v --tb=short --override-ini="addopts="
+
+          echo "✅ All health checks passed"
+
+      - name: Docker health check
+        run: |
+          echo "Running Docker build health check..."
+          docker build -t health-check:latest .
+          echo "✅ Docker build successful"
+
+      - name: Check dependencies
+        run: |
+          echo "Checking dependency health..."
+          pip check
+          echo "✅ No dependency conflicts found"
