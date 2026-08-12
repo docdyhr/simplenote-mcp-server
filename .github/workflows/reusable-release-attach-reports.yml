@@ -1,0 +1,41 @@
+name: Reusable - Attach Release Security Reports
+
+on:
+  workflow_call:
+    inputs:
+      new_version:
+        type: string
+        required: true
+
+jobs:
+  attach:
+    timeout-minutes: 5
+    name: Attach Security Reports to Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download security artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: security-reports-${{ inputs.new_version }}
+          path: security-reports/
+
+      - name: List downloaded files
+        run: |
+          echo "📋 Downloaded security reports:"
+          ls -la security-reports/
+
+      - name: Attach SBOM and vulnerability reports to release
+        uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v3
+        with:
+          tag_name: "v${{ inputs.new_version }}"
+          files: |
+            security-reports/sbom-release.json
+            security-reports/sbom-release.xml
+            security-reports/sbom-release-simple.json
+            security-reports/vulnerability-report.json
+            security-reports/vulnerability-report.md
+            security-reports/vulnerability-summary.json
+          token: ${{ secrets.GITHUB_TOKEN }}
