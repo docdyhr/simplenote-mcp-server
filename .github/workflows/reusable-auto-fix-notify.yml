@@ -1,0 +1,78 @@
+name: Reusable - Notify Auto-Fix Results
+
+on:
+  workflow_call:
+    inputs:
+      target_branch:
+        required: true
+        type: string
+      fix_types:
+        required: true
+        type: string
+      branch_exists:
+        required: true
+        type: string
+      changes_made:
+        required: true
+        type: string
+      format_fixes_needed:
+        required: false
+        type: string
+        default: "false"
+      import_fixes:
+        required: false
+        type: string
+        default: "false"
+      whitespace_fixes:
+        required: false
+        type: string
+        default: "false"
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Find associated PR
+        if: inputs.changes_made == 'true'
+        id: find-pr
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        # Convention: pass workflow/job values in via env: and read them from
+        # process.env in the required script — never interpolate ${{ }} into
+        # script: bodies. See PR #703.
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        with:
+          script: |
+            const script = require('./.github/scripts/find-associated-pr.js');
+            return await script({ github, context });
+
+      - name: Comment on PR about auto-fixes
+        if: inputs.changes_made == 'true' && steps.find-pr.outputs.result
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        env:
+          PR_NUMBER: ${{ steps.find-pr.outputs.result }}
+          FORMAT_FIXES_NEEDED: ${{ inputs.format_fixes_needed }}
+          IMPORT_FIXES: ${{ inputs.import_fixes }}
+          WHITESPACE_FIXES: ${{ inputs.whitespace_fixes }}
+        with:
+          script: |
+            const script = require('./.github/scripts/comment-auto-fix.js');
+            return await script({ github, context });
+
+      - name: Summary
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          FIX_TYPES: ${{ inputs.fix_types }}
+          BRANCH_EXISTS: ${{ inputs.branch_exists }}
+          CHANGES_MADE: ${{ inputs.changes_made }}
+        run: |
+          echo "🎯 Auto-fix Summary — target: $TARGET_BRANCH, fix types: $FIX_TYPES"
+          if [ "$BRANCH_EXISTS" != "true" ]; then echo "⏭️ Branch no longer exists — skipped (branch was merged or deleted)"; elif [ "$CHANGES_MADE" == "true" ]; then echo "✅ Auto-fixes were applied and committed"; else echo "ℹ️ No auto-fixes were needed"; fi

@@ -1,0 +1,119 @@
+# NOTE: deliberately over the repo's usual ~80-line thin-caller target (see
+# .github/workflows/AGENTS.md). This job checks out an arbitrary target
+# branch that may predate this refactor and lack any scripts/ci/*.sh helper
+# files, so its fix-detection/commit logic must stay inline rather than call
+# out to an external script that could silently go missing on older branches.
+name: Reusable - Apply Auto-Fixes
+
+on:
+  workflow_call:
+    inputs:
+      target_branch:
+        required: true
+        type: string
+      fix_types:
+        required: true
+        type: string
+    outputs:
+      branch_exists:
+        value: ${{ jobs.apply.outputs.branch_exists }}
+      changes_made:
+        value: ${{ jobs.apply.outputs.changes_made }}
+      format_fixes_needed:
+        value: ${{ jobs.apply.outputs.format_fixes_needed }}
+      import_fixes:
+        value: ${{ jobs.apply.outputs.import_fixes }}
+      whitespace_fixes:
+        value: ${{ jobs.apply.outputs.whitespace_fixes }}
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    outputs:
+      branch_exists: ${{ steps.branch-check.outputs.exists }}
+      changes_made: ${{ steps.git-check.outputs.changes_made }}
+      format_fixes_needed: ${{ steps.check-issues.outputs.format_fixes_needed }}
+      import_fixes: ${{ steps.check-issues.outputs.import_fixes }}
+      whitespace_fixes: ${{ steps.check-issues.outputs.whitespace_fixes }}
+
+    steps:
+      - name: Check branch exists
+        id: branch-check
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          if git ls-remote --exit-code --heads "https://github.com/$REPOSITORY.git" "$TARGET_BRANCH" > /dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; echo "Branch '$TARGET_BRANCH' no longer exists (likely merged/deleted). Skipping."; fi
+
+      - name: Checkout target branch
+        if: steps.branch-check.outputs.exists == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.target_branch }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        if: steps.branch-check.outputs.exists == 'true'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        if: steps.branch-check.outputs.exists == 'true'
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff==0.15.5 isort
+
+      - name: Check for auto-fixable issues
+        if: steps.branch-check.outputs.exists == 'true'
+        id: check-issues
+        run: |
+          if ruff check --select=W291,W292,W293 --fix --quiet . > /dev/null 2>&1; then echo "whitespace_fixes=true" >> "$GITHUB_OUTPUT"; else echo "whitespace_fixes=false" >> "$GITHUB_OUTPUT"; fi
+          if ! ruff format --check --quiet . > /dev/null 2>&1; then echo "format_fixes_needed=true" >> "$GITHUB_OUTPUT"; else echo "format_fixes_needed=false" >> "$GITHUB_OUTPUT"; fi
+          if ! ruff check --select=I --fix --quiet . > /dev/null 2>&1; then echo "import_fixes=true" >> "$GITHUB_OUTPUT"; else echo "import_fixes=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Apply formatting fixes
+        if: steps.branch-check.outputs.exists == 'true' && contains(inputs.fix_types, 'formatting') && steps.check-issues.outputs.format_fixes_needed == 'true'
+        run: ruff format .
+
+      - name: Apply import sorting fixes
+        if: steps.branch-check.outputs.exists == 'true' && contains(inputs.fix_types, 'imports') && steps.check-issues.outputs.import_fixes == 'true'
+        run: ruff check --select=I --fix .
+
+      - name: Apply whitespace fixes
+        if: steps.branch-check.outputs.exists == 'true' && contains(inputs.fix_types, 'trailing-whitespace') && steps.check-issues.outputs.whitespace_fixes == 'true'
+        run: ruff check --select=W291,W292,W293 --fix .
+
+      - name: Check if changes were made
+        if: steps.branch-check.outputs.exists == 'true'
+        id: git-check
+        run: |
+          if git diff --quiet; then echo "changes_made=false" >> "$GITHUB_OUTPUT"; else echo "changes_made=true" >> "$GITHUB_OUTPUT"; git diff --stat; fi
+
+      - name: Commit auto-fixes
+        if: steps.git-check.outputs.changes_made == 'true'
+        env:
+          FORMAT_FIXES_NEEDED: ${{ steps.check-issues.outputs.format_fixes_needed }}
+          IMPORT_FIXES: ${{ steps.check-issues.outputs.import_fixes }}
+          WHITESPACE_FIXES: ${{ steps.check-issues.outputs.whitespace_fixes }}
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          msg="style: auto-fix common code quality issues"
+          [ "$FORMAT_FIXES_NEEDED" == "true" ] && msg="$msg\n\n* Applied code formatting with ruff"
+          [ "$IMPORT_FIXES" == "true" ] && msg="$msg\n\n* Sorted imports"
+          [ "$WHITESPACE_FIXES" == "true" ] && msg="$msg\n\n* Fixed trailing whitespace issues"
+          git commit -m "$(printf '%b' "$msg\n\n🤖 Generated by auto-fix workflow")"
+
+      - name: Push changes
+        if: steps.git-check.outputs.changes_made == 'true'
+        env:
+          TARGET_BRANCH: ${{ inputs.target_branch }}
+        run: git push origin "$TARGET_BRANCH"
