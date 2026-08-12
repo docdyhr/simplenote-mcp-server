@@ -1,0 +1,72 @@
+name: Reusable - Dependabot Auto-Merge
+
+on:
+  workflow_call:
+
+jobs:
+  dependabot-auto-merge:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+
+    steps:
+      - name: Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      - name: Auto-approve Dependabot PRs
+        if: >
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
+          !contains(steps.metadata.outputs.dependency-names, 'cryptography') &&
+          !contains(steps.metadata.outputs.dependency-names, 'requests') &&
+          !contains(steps.metadata.outputs.dependency-names, 'urllib3') &&
+          !contains(steps.metadata.outputs.dependency-names, 'aiohttp')
+        run: gh pr review --approve "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Wait for CI checks to complete
+        if: >
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
+          !contains(steps.metadata.outputs.dependency-names, 'cryptography') &&
+          !contains(steps.metadata.outputs.dependency-names, 'requests') &&
+          !contains(steps.metadata.outputs.dependency-names, 'urllib3') &&
+          !contains(steps.metadata.outputs.dependency-names, 'aiohttp')
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Waiting for CI checks to complete..."
+          for _ in {1..30}; do
+            PENDING=$(gh pr checks "$PR_URL" --json state --jq '[.[] | select(.state == "PENDING")] | length' 2>/dev/null || echo "1")
+            if [ "$PENDING" = "0" ]; then echo "All checks completed"; break; fi
+            echo "Checks still pending ($PENDING remaining), waiting 10s..."
+            sleep 10
+          done
+
+      - name: Merge Dependabot PRs
+        if: >
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
+          !contains(steps.metadata.outputs.dependency-names, 'cryptography') &&
+          !contains(steps.metadata.outputs.dependency-names, 'requests') &&
+          !contains(steps.metadata.outputs.dependency-names, 'urllib3') &&
+          !contains(steps.metadata.outputs.dependency-names, 'aiohttp')
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FAILED=$(gh pr checks "$PR_URL" --json state --jq '[.[] | select(.state == "FAILURE")] | length' 2>/dev/null || echo "0")
+          if [ "$FAILED" != "0" ]; then
+            echo "Some checks failed, skipping merge"
+            exit 0
+          fi
+          gh pr merge --squash --delete-branch "$PR_URL" || { echo "Direct merge failed, PR may need manual review"; exit 0; }
+          echo "Successfully merged PR"
