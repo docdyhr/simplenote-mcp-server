@@ -1,0 +1,159 @@
+# NOTE: deliberately over the repo's usual ~80-line thin-caller target (see
+# .github/workflows/AGENTS.md). Unlike other reusable workflows in this repo,
+# this one must NOT add a checkout step: it's triggered by pull_request/
+# pull_request_review/check_suite/status events (which can originate from
+# forks) and runs with write-level permissions (contents: write,
+# pull-requests: write). Checking out PR content and then require()-ing a
+# script from it would be a classic "pwn request" vulnerability -- a fork PR
+# could ship a malicious .github/scripts/*.js and have it executed with this
+# job's write token. The github-script bodies below must stay inline,
+# sourced only from this trusted workflow file (resolved from the caller's
+# own ref, never the PR branch), not extracted to scripts/.
+name: Reusable - Auto-Merge PR
+
+on:
+  workflow_call:
+
+jobs:
+  auto-merge:
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: write
+      checks: read
+
+    steps:
+      - name: Check if PR is ready for merge
+        id: check
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Handle different event types that might not have pull_request
+            let pr = context.payload.pull_request;
+
+            // For check_suite events, we need to find PRs associated with the commit
+            if (!pr && context.payload.check_suite) {
+              const checkSuite = context.payload.check_suite;
+              const { data: pulls } = await github.rest.pulls.list({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                head: `${checkSuite.head_branch}`,
+                state: 'open'
+              });
+
+              if (pulls.length > 0) {
+                pr = pulls[0];
+              }
+            }
+
+            // Skip if PR is already merged or is a draft
+            if (!pr || pr.merged || pr.draft) {
+              console.log('PR is not eligible for auto-merge');
+              return false;
+            }
+
+            // Get PR details
+            const { data: pullRequest } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            // Check if PR has auto-merge label
+            const hasAutoMergeLabel = pullRequest.labels.some(
+              label => label.name === 'auto-merge'
+            );
+
+            // Check target branch (only auto-merge to develop or main)
+            const validTargetBranches = ['develop', 'main'];
+            const isValidTarget = validTargetBranches.includes(pullRequest.base.ref);
+
+            // Get reviews
+            const { data: reviews } = await github.rest.pulls.listReviews({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: pr.number
+            });
+
+            // Check for approved reviews
+            const approvedReviews = reviews.filter(
+              review => review.state === 'APPROVED'
+            );
+            const hasApproval = approvedReviews.length > 0;
+
+            // Get check runs
+            const { data: checkRuns } = await github.rest.checks.listForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: pullRequest.head.sha
+            });
+
+            // Check if all required checks passed. Tokens are matched as a
+            // case-insensitive substring against real check-run names (e.g.
+            // 'validate' matches both today's "Validate" job and the
+            // "<caller-job-id> / Validate"-style name a local reusable
+            // workflow produces).
+            const requiredChecks = ['test', 'validate', 'build'];
+            const allChecksPassed = requiredChecks.every(checkName => {
+              const check = checkRuns.check_runs.find(
+                run => run.name.toLowerCase().includes(checkName)
+              );
+              return check && check.conclusion === 'success';
+            });
+
+            const canMerge = hasAutoMergeLabel && isValidTarget && hasApproval && allChecksPassed;
+
+            console.log(`Auto-merge eligibility: ${canMerge}`);
+            console.log(`- Has auto-merge label: ${hasAutoMergeLabel}`);
+            console.log(`- Valid target branch: ${isValidTarget}`);
+            console.log(`- Has approval: ${hasApproval}`);
+            console.log(`- All checks passed: ${allChecksPassed}`);
+
+            return canMerge;
+
+      - name: Enable auto-merge
+        if: steps.check.outputs.result == 'true'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const pr = context.payload.pull_request;
+
+            try {
+              // Enable auto-merge using the correct API
+              await github.rest.pulls.enableAutoMerge({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.number,
+                merge_method: "squash"
+              });
+
+              console.log(`✅ Auto-merge enabled for PR #${pr.number}`);
+
+              // Remove auto-merge label
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: pr.number,
+                  name: 'auto-merge'
+                });
+              } catch (labelError) {
+                console.log('Label auto-merge not found or already removed');
+              }
+
+            } catch (error) {
+              console.error(`❌ Failed to enable auto-merge: ${error.message}`);
+
+              // Fallback: Use gh CLI for auto-merge
+              const { exec } = require('child_process');
+              exec(`gh pr merge ${pr.number} --auto --squash`, (err, stdout, stderr) => {
+                if (err) {
+                  console.error(`CLI fallback failed: ${err}`);
+                  throw err;
+                }
+                console.log(`✅ Auto-merge enabled via CLI for PR #${pr.number}`);
+              });
+            }
