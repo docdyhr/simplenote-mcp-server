@@ -1,0 +1,63 @@
+name: Reusable - Build Documentation
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: "Python version to build docs with"
+        type: string
+        default: "3.12"
+
+jobs:
+  build-docs:
+    name: Build Documentation
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . || pip install -e ".[test]" || echo "Package installation failed, continuing with minimal setup"
+          pip install mkdocs mkdocs-material mkdocstrings[python] || echo "Some docs dependencies failed, continuing..."
+
+      - name: Verify installation
+        run: |
+          python -c "import simplenote_mcp; print('Package import successful')" || echo "Package import failed, continuing..."
+          mkdocs --version || echo "MkDocs not found, will create basic structure"
+        continue-on-error: true
+
+      - name: Verify docs structure and files
+        run: |
+          echo "📁 Checking documentation structure..."
+          if [ -d docs ]; then echo "✅ docs directory found"; else echo "⚠️ docs directory missing, but mkdocs.yml exists - this is OK"; fi
+          if [ -f mkdocs.yml ]; then echo "✅ mkdocs.yml found"; else echo "❌ mkdocs.yml missing - this should not happen"; exit 1; fi
+
+          echo "📋 Checking API documentation..."
+          if [ -d docs/api ]; then echo "✅ docs/api directory found"; ls -la docs/api/; else echo "⚠️ docs/api directory missing, but should exist from repo"; fi
+
+          echo "📄 Checking documentation files..."
+          for file in docs/index.md docs/installation.md docs/configuration.md docs/usage.md docs/contributing.md docs/changelog.md; do
+            if [ -f "$file" ]; then echo "✅ $file found"; else echo "⚠️ $file missing"; fi
+          done
+
+      - name: Build documentation
+        run: mkdocs build
+
+      - name: Upload documentation artifacts
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: ./site

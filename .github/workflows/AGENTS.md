@@ -11,7 +11,8 @@ CI/CD pipeline definitions. `unified-ci.yml` is the main pipeline (validate → 
 - `auto-fix.yml`, `auto-merge.yml`, `claude-dependabot-merge.yml`, `claude-status-check.yml` — Dependabot/PR automation.
 - `evaluation-quality-gate.yml`, `mcp-evaluations.yml` — mcp-evals suite runners; both gate on `ANTHROPIC_API_KEY` presence so Dependabot PRs (no repo secret access) skip gracefully instead of failing.
 - `release.yml` — manual `workflow_dispatch` version bump/release (patch/minor/major). `update-version.yml` — triggers on `v*.*.*` tag push, syncs version references post-release.
-- `docs.yml`, `monitoring-consolidated.yml`, `publish-pypi.yml` — docs build, consolidated monitoring checks, PyPI publish.
+- `docs.yml` — thin caller (docs build via `reusable-docs-build.yml`, Pages deploy via `reusable-docs-deploy.yml`, link check via `reusable-docs-link-check.yml`). `monitoring-consolidated.yml`, `publish-pypi.yml` — consolidated monitoring checks, PyPI publish.
+- `reusable-*.yml` — local `workflow_call` reusable workflows, each owned by and used only by the caller(s) listed against it above. Not standalone triggers; see the owning caller for `on:` semantics. Introduced 2026-08-12 as part of a phased thin-caller refactor (org-standard ≤80-line-per-file check) — the docdyhr org's usual pattern delegates to the separate `docdyhr/.github` repo (see `security.yml`/`claude-status-check.yml`/`claude-dependabot-merge.yml` below), but these use local composition instead by deliberate choice (no cross-repo versioning/tagging overhead for logic specific to this repo).
 
 ## Local Contracts
 

@@ -79,7 +79,6 @@ Thumbs.db
 **/.github/copilot/
 **/.copilot/
 **/.aider*
-CLAUDE.md
 
 # Documentation build output
 site/
