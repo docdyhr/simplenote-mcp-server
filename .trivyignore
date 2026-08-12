@@ -1,75 +1,49 @@
 # Trivy ignore file — CVEs accepted as no Debian package fix is available.
 # These all have upstream patches, but the patched packages are not yet in
 # the Debian stable apt repository, so apt-get upgrade cannot resolve them.
-# Revisit when python:3.13-slim ships a Debian stable refresh that includes fixes.
-
-# perl: CPAN.pm skips TLS certificate verification over HTTPS
-# Risk: low — CPAN.pm is not used by this application at runtime
-CVE-2023-31484
-
-# zlib: integer overflow in zipOpenNewFileInZip4_6
-# Risk: low — zlib is used by Python internals; the vulnerable code path
-# requires crafted ZIP inputs not reachable from the MCP API surface
-CVE-2023-45853
-
-# glibc: static setuid binary dlopen may search LD_LIBRARY_PATH incorrectly
-# Risk: low — container runs as non-root (uid 1000); no setuid binaries in use
-CVE-2025-4802
-
-# linux-pam: directory traversal
-# Risk: low — PAM is not used by this application
-CVE-2025-6020
-
-# sqlite: integer truncation
-# Risk: low — sqlite3 is a Python stdlib dependency; the vulnerable code path
-# is not reachable through the MCP API surface
-CVE-2025-6965
-
-# ncurses: segmentation fault via _nc_wrap_entry()
-# Risk: low — ncurses is a system library; the vulnerable code path is not
-# reachable from the MCP API surface
-CVE-2023-50495
-
-# pam: libpam vulnerable to read hashed password
-# Risk: low — PAM is not used by this application
-CVE-2024-10041
-
-# pam: unprivileged user to block another user namespace
-# Risk: low — PAM is not used by this application
-CVE-2024-22365
-
-# sqlite: Denial of Service in SQLite
-# Risk: low — sqlite3 is a Python stdlib dependency; not reachable from the MCP API surface
-CVE-2025-29088
-
-# perl: working directory race condition across threads
-# Risk: low — perl is not used by this application at runtime
-CVE-2025-40909
-
-# tar: path traversal
-# Risk: low — tar is not invoked by this application at runtime
-CVE-2025-45582
-
-# sqlite: integer overflow
-# Risk: low — sqlite3 is a Python stdlib dependency; not reachable from the MCP API surface
-CVE-2025-7458
-
-# glibc: double free
-# Risk: low — container runs as non-root (uid 1000); not exploitable from the MCP API surface
-CVE-2025-8058
+#
+# Last reviewed: 2026-08-11. Rebuilt the image locally (linux/amd64, matching
+# the GitHub Actions runner architecture that actually executes the CI Trivy
+# scan) and ran `trivy image` against it fresh. Findings below were removed
+# because they no longer reproduce; everything else was re-verified present.
+#
+# Two things learned during this review, worth knowing before editing this
+# file again:
+# 1. The base image (python:3.13-slim) is now on Debian 13 (Trixie), not
+#    Debian 12 (Bookworm) as previously assumed — but most of the specific
+#    CVE IDs below turned out to still apply (same long-unfixed upstream
+#    issues persist release over release), so most of the list carried over.
+# 2. `apt-get update`/`upgrade` pulls whatever the live Debian mirror serves
+#    at build time, so an image built for linux/arm64 vs linux/amd64 (or at
+#    a different moment) can land on a genuinely different package snapshot
+#    with a different CVE set — a rebuild for arm64 during this review
+#    surfaced ~90 additional, newer CVEs not present in the amd64 build.
+#    This file is scoped to what the CI-published amd64 image actually
+#    contains; it is not a perfectly stable pin. Re-verify by rebuilding
+#    for linux/amd64 and running `trivy image` locally before trusting an
+#    old review date.
+#
+# CI's own Trivy step (unified-ci.yml) also runs with `ignore-unfixed: true`
+# and `severity: CRITICAL,HIGH` — so any CVE with no fix available is
+# already excluded from the CI gate regardless of whether it's listed here.
+# The two entries that actually matter for CI to stay green are the
+# setuptools/msgpack ones below (both HIGH severity *with* a fix available).
+# Everything else in this file exists for the benefit of a broader manual
+# `trivy image` scan (no --ignore-unfixed, all severities).
 
 # pip: arbitrary code execution via malicious wheel package installation (self-update check)
 # Risk: low — pip tool itself, not a project dependency; fix in pip>=26.1. Also ignored in pip-audit CI.
 CVE-2026-6357
 
 # setuptools 70.3.0 / msgpack 1.1.2: flagged by Trivy but NOT real installed packages.
-# Verified 2026-08-04 by building the image locally and inspecting the filesystem:
-# these version numbers come from pip's own internal `pip/_vendor/vendor.txt`, which
-# pins the versions pip vendors for its own bootstrapping (msgpack for pip's HTTP
-# cache, pkg_resources from setuptools for pip's legacy compatibility shims). Trivy's
-# python-pkg scanner parses vendor.txt as if it listed real installed distributions
-# (paths: None in `trivy image --format json` output, unlike the real setuptools
-# package, which correctly resolves to setuptools-83.0.0.dist-info — already patched).
+# Verified 2026-08-04, re-verified 2026-08-11 by building the image locally and
+# inspecting the filesystem: these version numbers come from pip's own internal
+# `pip/_vendor/vendor.txt`, which pins the versions pip vendors for its own
+# bootstrapping (msgpack for pip's HTTP cache, pkg_resources from setuptools for
+# pip's legacy compatibility shims). Trivy's python-pkg scanner parses vendor.txt
+# as if it listed real installed distributions (paths: None in
+# `trivy image --format json` output, unlike the real setuptools package, which
+# correctly resolves to its own dist-info — already patched).
 # Risk: low — these are dormant copies bundled inside pip itself, never imported by
 # application code, and pip does not run at container runtime (only during image
 # build). The project has no real dependency on msgpack at all.
@@ -77,41 +51,35 @@ CVE-2025-47273
 CVE-2026-59890
 GHSA-6v7p-g79w-8964
 
-# --- Debian base image system package CVEs — no fix available in Debian Bookworm repos ---
+# --- Debian base image system package CVEs — no fix available in Debian repos ---
 # These affect system tools not invoked by this application at runtime. The container
 # runs as a non-root user (uid 1000). All have no Debian backport at time of writing.
+# None of these are CRITICAL/HIGH-with-a-fix, so CI's `ignore-unfixed` already
+# excludes them from the actual gate — kept here for broader manual-scan hygiene.
 
 # tar: does not warn about setuid/setgid files on extraction
 # Risk: low — tar not invoked by this application at runtime
 CVE-2005-2541
 
-# initscripts: insecure permissions for /var/log
-# Risk: low — initscripts not relevant in a container environment
+# login.defs/passwd (originally attributed to initscripts): insecure permissions for /var/log
+# Risk: low — not relevant in a container environment
 CVE-2007-5686
 
 # glibc: glob implementation excessive CPU/memory with crafted expressions
 # Risk: low — not reachable from MCP API surface
 CVE-2010-4756
 
-# apt-key: does not validate signatures correctly
-# Risk: low — apt-key is a build-time tool, not available in production stage
+# apt/libapt-pkg7.0 (originally attributed to apt-key): does not validate signatures correctly
+# Risk: low — apt is a build-time tool, not invoked in the production stage
 CVE-2011-3374
-
-# HTTPS: BEAST (block-wise chosen-plaintext) attack against SSL/TLS
-# Risk: low — mitigated by modern TLS client defaults; not exploitable in this context
-CVE-2011-3389
 
 # perl: File::Temp insecure temporary file handling
 # Risk: low — perl not used by this application at runtime
 CVE-2011-4116
 
-# systemd: TOCTOU race condition updating file permissions and SELinux contexts
+# systemd (libsystemd0/libudev1): TOCTOU race condition updating file permissions and SELinux contexts
 # Risk: low — systemd not used inside this container
 CVE-2013-4392
-
-# coreutils: non-privileged session can escape chroot
-# Risk: low — container is isolated; coreutils not invoked by the MCP server
-CVE-2016-2781
 
 # coreutils: race condition in chown/chgrp
 # Risk: low — coreutils not invoked by the MCP server at runtime
@@ -120,10 +88,6 @@ CVE-2017-18018
 # glibc: uncontrolled recursion in check_dst_limits_calc_pos_1 (regex)
 # Risk: low — not reachable from MCP API surface
 CVE-2018-20796
-
-# libgcrypt: ElGamal implementation semantic security issue
-# Risk: low — libgcrypt not directly used by this application
-CVE-2018-6829
 
 # glibc: stack guard protection bypass
 # Risk: low — container runs as non-root; not exploitable from MCP API surface
@@ -149,17 +113,10 @@ CVE-2019-9192
 # Risk: low — sqlite3 is a Python stdlib dependency; MCP API does not accept raw SQL
 CVE-2021-45346
 
-# util-linux: partial disclosure of arbitrary files in chfn/chsh with libreadline
+# util-linux family (bsdutils, libblkid1, liblastlog2-2, libmount1, libsmartcols1,
+# libuuid1, login, mount): partial disclosure of arbitrary files in chfn/chsh with libreadline
 # Risk: low — chfn/chsh are not invoked by this application
 CVE-2022-0563
-
-# binutils: libiberty stack exhaustion in rust-demangle.c
-# Risk: low — binutils not present in production stage
-CVE-2022-27943
-
-# gnupg: resource consumption with crafted compressed packets
-# Risk: low — gnupg not used by this application at runtime
-CVE-2022-3219
 
 # systemd: attacker can modify sealed log file
 # Risk: low — systemd not used inside this container
@@ -173,54 +130,30 @@ CVE-2023-31438
 # Risk: low — systemd not used inside this container
 CVE-2023-31439
 
-# http-tiny: insecure TLS certificate default
-# Risk: low — http-tiny (Perl) not used by this application
-CVE-2023-31486
-
-# libgcrypt: vulnerable to Marvin Attack (RSA timing side-channel)
-# Risk: low — libgcrypt not directly used by this application
-CVE-2024-2236
-
-# shadow-utils: default subordinate ID config could lead to compromise
+# login.defs/passwd (originally attributed to shadow-utils): default subordinate ID config could lead to compromise
 # Risk: low — container runs as non-root; subordinate IDs not configured
 CVE-2024-56433
-
-# OpenSSL 3.0-3.3.2: integer overflow on PowerPC architecture only
-# Risk: none — container targets linux/amd64 and linux/arm64, not PowerPC
-CVE-2025-27587
-
-# gnupg: verification DoS via malicious subkey
-# Risk: low — gnupg not used by this application at runtime
-CVE-2025-30258
 
 # coreutils: heap buffer under-read in sort via key specification
 # Risk: low — coreutils not invoked by the MCP server at runtime
 CVE-2025-5278
 
-# gnu-ncurses: stack buffer overflow
+# gnu-ncurses (libncursesw6, libtinfo6, ncurses-base, ncurses-bin): stack buffer overflow
 # Risk: low — ncurses is a system library; not reachable from MCP API surface
 CVE-2025-6141
-
-# dpkg-deb: does not properly sanitize directory path during extraction
-# Risk: low — dpkg-deb is a build-time tool, not present in production stage
-CVE-2025-6297
 
 # tar: rmt command may have undesired side effects (TEMP ID)
 # Risk: low — tar not invoked by this application at runtime
 TEMP-0290435-0B57B5
 
-# sysvinit: no-root option in expert installer (TEMP ID)
+# sysvinit-utils: no-root option in expert installer (TEMP ID)
 # Risk: low — sysvinit not relevant in a container environment
 TEMP-0517018-A83CE6
 
-# shadow: privilege escalation related to CVE-2005-4890 (TEMP ID)
+# login.defs/passwd (originally attributed to shadow): privilege escalation related to CVE-2005-4890 (TEMP ID)
 # Risk: low — container runs as non-root; not exploitable from MCP API surface
 TEMP-0628843-DBAD28
 
-# shadow: privilege escalation to other users (TEMP ID)
+# bash (originally attributed to shadow): privilege escalation to other users (TEMP ID)
 # Risk: low — container runs as non-root; not exploitable from MCP API surface
 TEMP-0841856-B18BAF
-
-# sed: symlink-following vulnerability when using -i and --follow-symlinks
-# Risk: low — sed is a system tool, not invoked by this application at runtime; container runs as non-root (uid 1000)
-CVE-2026-5958

@@ -35,24 +35,54 @@ jobs:
     steps:
       - name: Determine target branch
         id: branch-info
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_TARGET_BRANCH: ${{ github.event.inputs.target_branch }}
+          INPUT_FIX_TYPES: ${{ github.event.inputs.fix_types }}
+          WORKFLOW_RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "target_branch=${{ github.event.inputs.target_branch }}" >> $GITHUB_OUTPUT
-            echo "fix_types=${{ github.event.inputs.fix_types }}" >> $GITHUB_OUTPUT
+          if [ "$EVENT_NAME" == "workflow_dispatch" ]; then
+            TARGET_BRANCH="$INPUT_TARGET_BRANCH"
+            FIX_TYPES="$INPUT_FIX_TYPES"
           else
             # Security: Only use branches from same repository
-            echo "target_branch=${{ github.event.workflow_run.head_branch }}" >> $GITHUB_OUTPUT
-            echo "fix_types=formatting,imports,trailing-whitespace" >> $GITHUB_OUTPUT
+            TARGET_BRANCH="$WORKFLOW_RUN_HEAD_BRANCH"
+            FIX_TYPES="formatting,imports,trailing-whitespace"
           fi
+
+          # Validate target branch against an allowlist pattern before it is
+          # ever interpolated into a later shell step (git ls-remote/push).
+          if ! printf '%s' "$TARGET_BRANCH" | grep -qE '^(main|develop|feature/[A-Za-z0-9._/-]+|dependabot/[A-Za-z0-9._/-]+)$'; then
+            echo "::error::Target branch '$TARGET_BRANCH' does not match the allowed branch pattern" >&2
+            exit 1
+          fi
+
+          # Validate fix_types is a comma-separated list of known tokens only.
+          IFS=',' read -ra FIX_TYPE_TOKENS <<< "$FIX_TYPES"
+          for token in "${FIX_TYPE_TOKENS[@]}"; do
+            case "$token" in
+              formatting|imports|trailing-whitespace) ;;
+              *)
+                echo "::error::Unknown fix type token: $token" >&2
+                exit 1
+                ;;
+            esac
+          done
+
+          echo "target_branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
+          echo "fix_types=$FIX_TYPES" >> $GITHUB_OUTPUT
 
       - name: Check branch exists
         id: branch-check
+        env:
+          TARGET_BRANCH: ${{ steps.branch-info.outputs.target_branch }}
+          REPOSITORY: ${{ github.repository }}
         run: |
-          if git ls-remote --exit-code --heads https://github.com/${{ github.repository }}.git "${{ steps.branch-info.outputs.target_branch }}" > /dev/null 2>&1; then
+          if git ls-remote --exit-code --heads "https://github.com/$REPOSITORY.git" "$TARGET_BRANCH" > /dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
           else
             echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Branch '${{ steps.branch-info.outputs.target_branch }}' no longer exists (likely merged/deleted). Skipping."
+            echo "Branch '$TARGET_BRANCH' no longer exists (likely merged/deleted). Skipping."
           fi
 
       - name: Checkout repository
@@ -167,9 +197,11 @@ jobs:
 
       - name: Push changes
         if: steps.git-check.outputs.changes_made == 'true'
+        env:
+          TARGET_BRANCH: ${{ steps.branch-info.outputs.target_branch }}
         run: |
           echo "📤 Pushing auto-fixes..."
-          git push origin ${{ steps.branch-info.outputs.target_branch }}
+          git push origin "$TARGET_BRANCH"
           echo "✅ Auto-fixes pushed successfully"
 
       - name: Find associated PRs
@@ -241,11 +273,14 @@ jobs:
 
       - name: Summary
         if: always()
+        env:
+          TARGET_BRANCH: ${{ steps.branch-info.outputs.target_branch }}
+          FIX_TYPES: ${{ steps.branch-info.outputs.fix_types }}
         run: |
           echo "🎯 Auto-fix Summary"
           echo "=================="
-          echo "Target branch: ${{ steps.branch-info.outputs.target_branch }}"
-          echo "Fix types requested: ${{ steps.branch-info.outputs.fix_types }}"
+          echo "Target branch: $TARGET_BRANCH"
+          echo "Fix types requested: $FIX_TYPES"
 
           if [[ "${{ steps.branch-check.outputs.exists }}" != "true" ]]; then
             echo "⏭️ Branch no longer exists — skipped (branch was merged or deleted)"

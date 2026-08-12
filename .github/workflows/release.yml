@@ -62,10 +62,29 @@ jobs:
 
       - name: Bump version
         id: bump_version
+        env:
+          CURRENT_VERSION: ${{ steps.get_version.outputs.current_version }}
+          BUMP_TYPE: ${{ github.event.inputs.bump_type }}
+          PRE_RELEASE: ${{ github.event.inputs.pre_release }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
         run: |
-          CURRENT_VERSION="${{ steps.get_version.outputs.current_version }}"
-          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
-          PRE_RELEASE="${{ github.event.inputs.pre_release }}"
+          # Validate bump_type against the known enum, even though the input
+          # is a `type: choice` field — defense in depth in case workflow_dispatch
+          # is ever triggered via the API with an unvalidated value.
+          case "$BUMP_TYPE" in
+            patch|minor|major) ;;
+            *)
+              echo "::error::Invalid bump_type: $BUMP_TYPE" >&2
+              exit 1
+              ;;
+          esac
+
+          # Validate pre_release is a safe semver prerelease identifier before
+          # it ever reaches a shell-interpolated python -c invocation.
+          if [ -n "$PRE_RELEASE" ] && ! printf '%s' "$PRE_RELEASE" | grep -qE '^[a-zA-Z0-9.-]+$'; then
+            echo "::error::Invalid pre_release label: $PRE_RELEASE" >&2
+            exit 1
+          fi
 
           echo "Bumping $BUMP_TYPE version from $CURRENT_VERSION"
 
@@ -76,10 +95,17 @@ jobs:
             NEW_VERSION=$(python -c "import semver; print(str(semver.VersionInfo.parse('$CURRENT_VERSION').bump_$BUMP_TYPE()))")
           fi
 
+          # Validate the computed version before it's used in any further
+          # shell-interpolated step (git commit/tag/push, changelog generation).
+          if ! printf '%s' "$NEW_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+            echo "::error::Computed version failed validation: $NEW_VERSION" >&2
+            exit 1
+          fi
+
           echo "New version: $NEW_VERSION"
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
-          if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+          if [ "$DRY_RUN" != "true" ]; then
             # Update version in pyproject.toml
             python -c "
           import toml, pathlib
@@ -118,6 +144,8 @@ jobs:
       - name: Generate changelog
         id: changelog
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          NEW_VERSION: ${{ steps.bump_version.outputs.new_version }}
         run: |
           # Get last tag for changelog generation
           LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
@@ -129,12 +157,12 @@ jobs:
             echo "Generating changelog since $LAST_TAG"
             python scripts/conventional_changelog.py \
               --since "$LAST_TAG" \
-              --version "${{ steps.bump_version.outputs.new_version }}" \
+              --version "$NEW_VERSION" \
               --output changelog.md
           else
             echo "No previous tag found, generating changelog from all commits"
             python scripts/conventional_changelog.py \
-              --version "${{ steps.bump_version.outputs.new_version }}" \
+              --version "$NEW_VERSION" \
               --output changelog.md
           fi
 
@@ -158,6 +186,8 @@ jobs:
       - name: Commit version bump
         id: commit
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          NEW_VERSION: ${{ steps.bump_version.outputs.new_version }}
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -168,15 +198,17 @@ jobs:
           # changelog) on case-insensitive filesystems (macOS/Windows).
           git add pyproject.toml simplenote_mcp/__init__.py VERSION \
             helm/simplenote-mcp-server/Chart.yaml setup.py || true
-          git commit -m "Bump version to ${{ steps.bump_version.outputs.new_version }}" || echo "No changes to commit"
-          git tag -a v${{ steps.bump_version.outputs.new_version }} -m "Version ${{ steps.bump_version.outputs.new_version }}"
+          git commit -m "Bump version to $NEW_VERSION" || echo "No changes to commit"
+          git tag -a "v$NEW_VERSION" -m "Version $NEW_VERSION"
           echo "commit_sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
       - name: Push changes
         if: ${{ github.event.inputs.dry_run != 'true' }}
+        env:
+          NEW_VERSION: ${{ steps.bump_version.outputs.new_version }}
         run: |
           git push origin main
-          git push origin v${{ steps.bump_version.outputs.new_version }}
+          git push origin "v$NEW_VERSION"
 
       - name: Create GitHub Release
         id: create_release
@@ -237,6 +269,8 @@ jobs:
         run: twine check dist/*
 
       - name: Generate SBOM and vulnerability report
+        env:
+          NEW_VERSION: ${{ needs.prepare-release.outputs.new_version }}
         run: |
           echo "📋 Generating SBOM and vulnerability reports for release..."
 
@@ -285,7 +319,10 @@ jobs:
                   return []
 
           # Generate release SBOM with version info
+          import os
+
           packages = get_package_info()
+          release_version = os.environ["NEW_VERSION"]
           sbom = {
               "bomFormat": "CycloneDX",
               "specVersion": "1.4",
@@ -297,13 +334,13 @@ jobs:
                       {
                           "vendor": "Simplenote MCP Server",
                           "name": "Release SBOM Generator",
-                          "version": "${{ needs.prepare-release.outputs.new_version }}"
+                          "version": release_version
                       }
                   ],
                   "component": {
                       "type": "application",
                       "name": "simplenote-mcp-server",
-                      "version": "${{ needs.prepare-release.outputs.new_version }}",
+                      "version": release_version,
                       "description": "Model Context Protocol (MCP) server for Simplenote"
                   }
               },
