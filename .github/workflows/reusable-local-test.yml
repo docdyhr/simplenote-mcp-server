@@ -29,4 +29,6 @@ jobs:
           pip install build
 
       - name: Run local test script
+        env:
+          SIMPLENOTE_OFFLINE_MODE: "true"
         run: ./test-ci-locally.sh

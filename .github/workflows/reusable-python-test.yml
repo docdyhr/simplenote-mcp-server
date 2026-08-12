@@ -41,6 +41,7 @@ jobs:
 
       - name: Run tests
         env:
+          SIMPLENOTE_OFFLINE_MODE: "true"
           SIMPLENOTE_EMAIL: test@example.com
           SIMPLENOTE_PASSWORD: test-password
         run: pytest tests/ --randomly-seed=${{ github.run_id }} --cov=simplenote_mcp --cov-report=xml --cov-report=json --cov-report=term
@@ -52,6 +53,7 @@ jobs:
 
       - name: Run legacy test suite (separate process — do not merge into tests/)
         env:
+          SIMPLENOTE_OFFLINE_MODE: "true"
           SIMPLENOTE_EMAIL: test@example.com
           SIMPLENOTE_PASSWORD: test-password
         run: |
