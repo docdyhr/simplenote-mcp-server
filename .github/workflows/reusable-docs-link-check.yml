@@ -1,0 +1,46 @@
+name: Reusable - Documentation Link Check
+
+on:
+  workflow_call:
+
+jobs:
+  link-check:
+    timeout-minutes: 8
+    name: Check Documentation Links
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Download documentation artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: github-pages
+          path: ./site
+
+      - name: Extract site
+        run: |
+          cd site
+          tar -xf artifact.tar
+
+      - name: Check links
+        uses: lycheeverse/lychee-action@e7477775783ea5526144ba13e8db5eec57747ce8 # v2
+        with:
+          args: --verbose --no-progress --config .lycheerc.toml './site/**/*.html' --exclude-mail
+          fail: false # Don't fail workflow on link issues, just report them
+          failIfEmpty: false # Don't fail if no links found
+          output: lychee-report.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Upload link check report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: link-check-report
+          path: lychee-report.md
+          retention-days: 7
