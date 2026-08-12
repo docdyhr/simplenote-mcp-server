@@ -296,6 +296,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   kept whatever permissions it already had; added an unconditional `os.fchmod` before writing to
   self-heal that case too. `_is_authorized` now logs a warning (client address only, never the
   token/header) on rejected requests. `WWW-Authenticate` now includes a `realm` per RFC 6750.
+- 2026-08-11 code quality/security audit remediation (12 findings):
+  `release.yml`/`auto-fix.yml` workflow_dispatch inputs and computed version strings now pass
+  through `env:` with validation (enum/regex checks) before reaching `run:` scripts, closing a
+  script-injection vector. Added `.github/CODEOWNERS`. Bandit is now blocking in pre-commit (was
+  `--exit-zero`) — required adding the missing `-c pyproject.toml` flag too, since without it
+  bandit ignored `[tool.bandit]`'s `exclude_dirs`/`skips` entirely and would have scanned the
+  legacy `simplenote_mcp/tests/` tree (documented two intentional `except: pass` blocks in
+  `logging.py` with `# nosec B110` so they don't now block commits). `ruff-pre-commit` pinned to
+  `v0.16.1` to match `pyproject.toml`. Removed `dependabot.yml`'s stale `mcp` major-version ignore
+  rule (the v2 SDK migration it was blocking on shipped in #785). `auto-merge.yml`'s Dependabot
+  auto-merge now skips PRs touching `cryptography`/`requests`/`urllib3`/`aiohttp`, falling through
+  to manual review regardless of patch/minor classification. `main` branch protection now requires
+  the `Test`, `Security`, and `Dependency Review` status checks (previously none were configured —
+  any CI failure could still be merged). `.trivyignore` rebuilt from a fresh local scan of the
+  actual amd64 image (matching the CI runner architecture): the base image moved from Debian 12
+  to Debian 13 since it was last reviewed, most old CVE IDs still reproduced and were kept, a
+  handful that no longer reproduce were dropped. Also discovered CI's Trivy step already runs with
+  `ignore-unfixed: true`, so unfixed CVEs are excluded from the gate regardless of this file — the
+  only load-bearing entries are the setuptools/msgpack ones (both have real fixes available).
+  Dockerfile's production stage no longer copies the builder's entire `/usr/local/bin` (which
+  pulled in `pip`, `wheel`, `typer`, `uvicorn`, `keyring`, `jsonschema`, `pygmentize`, and other
+  build-time-only CLI tools) — now copies only the `simplenote-mcp-server` entry-point script.
+  Moved `tests/test_server_{comprehensive,integration}.py.disabled` into `tests/disabled/` with a
+  README explaining why (predate the mcp v2 migration; not collected by pytest either way).
+  Checked `mypy.ini`/`setup.cfg` against `.gitignore` — neither is actually ignored, so the
+  handoff's claim they were tracked-but-gitignored didn't hold up; left untouched.
 
 ### Docs
 - `SECURITY.md` corrected: removed false "encryption at rest" and "memory protection" claims

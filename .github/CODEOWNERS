@@ -1,0 +1,9 @@
+# See https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @docdyhr
+
+.github/workflows/ @docdyhr
+simplenote_mcp/server/ @docdyhr
+simplenote_mcp/server/security.py @docdyhr
+simplenote_mcp/server/vault.py @docdyhr
+helm/ @docdyhr

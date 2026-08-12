@@ -58,9 +58,16 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy installed packages from builder
+# Copy installed packages from builder. Only the package's own console-script
+# entry point is copied from /usr/local/bin — not the full directory, which
+# would also pull in build-time-only CLI tools (pip, wheel, typer, uvicorn,
+# mcp, keyring, jsonschema, pygmentize, idle, pydoc, etc.) that the runtime
+# image has no use for and that needlessly grow its attack surface. The
+# entrypoint's `python -m simplenote_mcp` fallback needs no console script at
+# all, and the script's shebang (/usr/local/bin/python3.13) resolves against
+# this stage's own base-image Python.
 COPY --from=builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+COPY --from=builder /usr/local/bin/simplenote-mcp-server /usr/local/bin/simplenote-mcp-server
 
 # Copy application code with proper ownership
 COPY --chown=mcp:mcp simplenote_mcp/ ./simplenote_mcp/

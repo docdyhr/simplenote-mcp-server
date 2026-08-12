@@ -42,12 +42,16 @@ repos:
     hooks:
       - id: bandit
         pass_filenames: false
-        args: ["--exit-zero", "-r", "simplenote_mcp", "-f", "json"]
+        # -c pyproject.toml is required for [tool.bandit]'s exclude_dirs/skips
+        # to take effect at all — without it, bandit falls back to scanning
+        # everything under simplenote_mcp, including the legacy
+        # simplenote_mcp/tests/ tree (hundreds of noisy B101 assert findings).
+        args: ["-c", "pyproject.toml", "-r", "simplenote_mcp", "-f", "json"]
         exclude: "tests/"
         additional_dependencies: []
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.15.12
+    rev: v0.16.1
     hooks:
       - id: ruff
         args: ["--fix", "--show-fixes"]

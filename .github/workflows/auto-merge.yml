@@ -170,14 +170,26 @@ jobs:
           github-token: "${{ secrets.GITHUB_TOKEN }}"
 
       - name: Auto-approve Dependabot PRs
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        if: >
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
+          !contains(steps.metadata.outputs.dependency-names, 'cryptography') &&
+          !contains(steps.metadata.outputs.dependency-names, 'requests') &&
+          !contains(steps.metadata.outputs.dependency-names, 'urllib3') &&
+          !contains(steps.metadata.outputs.dependency-names, 'aiohttp')
         run: gh pr review --approve "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Wait for CI checks to complete
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        if: >
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
+          !contains(steps.metadata.outputs.dependency-names, 'cryptography') &&
+          !contains(steps.metadata.outputs.dependency-names, 'requests') &&
+          !contains(steps.metadata.outputs.dependency-names, 'urllib3') &&
+          !contains(steps.metadata.outputs.dependency-names, 'aiohttp')
         run: |
           echo "Waiting for CI checks to complete..."
           # Wait up to 5 minutes for checks to complete
@@ -198,7 +210,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Merge Dependabot PRs
-        if: steps.metadata.outputs.update-type == 'version-update:semver-patch' || steps.metadata.outputs.update-type == 'version-update:semver-minor'
+        if: >
+          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
+           steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
+          !contains(steps.metadata.outputs.dependency-names, 'cryptography') &&
+          !contains(steps.metadata.outputs.dependency-names, 'requests') &&
+          !contains(steps.metadata.outputs.dependency-names, 'urllib3') &&
+          !contains(steps.metadata.outputs.dependency-names, 'aiohttp')
         run: |
           # Check if all required checks passed
           FAILED=$(gh pr checks "$PR_URL" --json state --jq '[.[] | select(.state == "FAILURE")] | length' 2>/dev/null || echo "0")
