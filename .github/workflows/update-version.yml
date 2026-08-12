@@ -4,131 +4,37 @@ on:
   push:
     tags:
       - "v*.*.*"
-
-permissions:
-  contents: write
-  pull-requests: write
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to sync version references for (e.g. v1.17.5) — manual testing only"
+        required: true
+        type: string
 
 jobs:
-  update-version:
+  extract-version:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 2
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Extract version from tag
+        id: version
+        env:
+          INPUT_TAG: ${{ github.event.inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          RAW_TAG="${INPUT_TAG:-$REF_NAME}"
+          echo "version=${RAW_TAG#v}" >> "$GITHUB_OUTPUT"
+          echo "tag=${RAW_TAG}" >> "$GITHUB_OUTPUT"
+
+  update-version:
+    needs: extract-version
     permissions:
       contents: write
       pull-requests: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Extract version from tag
-        id: version
-        run: |
-          # Remove 'v' prefix from tag to get version
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-          echo "Version: $VERSION"
-          echo "Tag: ${GITHUB_REF#refs/tags/}"
-
-      - name: Update README.md version badge
-        run: |
-          # Update version badge in README.md
-          sed -i.bak "s|version-[0-9]*\.[0-9]*\.[0-9]*-blue|version-${{ steps.version.outputs.version }}-blue|g" README.md
-
-          # Update example tags in README.md
-          sed -i.bak "s|- \`v[0-9]*\.[0-9]*\.[0-9]*\` - Specific version|- \`${{ steps.version.outputs.tag }}\` - Specific version|g" README.md
-
-          # Clean up backup files
-          rm -f README.md.bak
-
-      - name: Update Helm Chart version
-        run: |
-          # Update Chart.yaml
-          sed -i.bak "s|^version: .*|version: ${{ steps.version.outputs.version }}|g" helm/simplenote-mcp-server/Chart.yaml
-          sed -i.bak "s|^appVersion: .*|appVersion: \"${{ steps.version.outputs.version }}\"|g" helm/simplenote-mcp-server/Chart.yaml
-
-          # Update values.yaml default tag
-          sed -i.bak "s|tag: \".*\"|tag: \"${{ steps.version.outputs.tag }}\"|g" helm/simplenote-mcp-server/values.yaml
-
-          # Clean up backup files
-          rm -f helm/simplenote-mcp-server/Chart.yaml.bak helm/simplenote-mcp-server/values.yaml.bak
-
-      - name: Update documentation examples
-        run: |
-          # Update Docker CI/CD setup documentation
-          if [ -f "docs/DOCKER_CI_CD_SETUP.md" ]; then
-            sed -i.bak "s|docdyhr/simplenote-mcp-server:v[0-9]*\.[0-9]*\.[0-9]*|docdyhr/simplenote-mcp-server:${{ steps.version.outputs.tag }}|g" docs/DOCKER_CI_CD_SETUP.md
-            rm -f docs/DOCKER_CI_CD_SETUP.md.bak
-          fi
-
-      - name: Check for changes
-        id: changes
-        run: |
-          if git diff --quiet; then
-            echo "No changes detected"
-            echo "has_changes=false" >> $GITHUB_OUTPUT
-          else
-            echo "Changes detected"
-            echo "has_changes=true" >> $GITHUB_OUTPUT
-            echo "Changed files:"
-            git diff --name-only
-          fi
-
-      - name: Create Pull Request
-        if: steps.changes.outputs.has_changes == 'true'
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: |
-            docs: Update version references to ${{ steps.version.outputs.tag }}
-
-            - Update README.md version badge
-            - Update Helm chart version and appVersion
-            - Update documentation examples
-
-            🤖 Generated with [Claude Code](https://claude.ai/code)
-
-            Co-Authored-By: Claude <noreply@anthropic.com>
-          title: "📝 Update version references to ${{ steps.version.outputs.tag }}"
-          body: |
-            ## Summary
-
-            This PR automatically updates version references throughout the repository following the release of `${{ steps.version.outputs.tag }}`.
-
-            ## Changes
-
-            - ✅ **README.md**: Updated version badge and example tags
-            - ✅ **Helm Chart**: Updated Chart.yaml version and appVersion
-            - ✅ **Helm Values**: Updated default image tag
-            - ✅ **Documentation**: Updated version references in examples
-
-            ## Verification
-
-            - [ ] Version badge displays correctly: ![Version](https://img.shields.io/badge/version-${{ steps.version.outputs.version }}-blue.svg)
-            - [ ] Docker examples reference the correct tag: `${{ steps.version.outputs.tag }}`
-            - [ ] Helm chart metadata is accurate
-
-            ---
-
-            🤖 This PR was automatically created by the version update workflow.
-          branch: update-version-${{ steps.version.outputs.tag }}
-          base: main
-          labels: |
-            documentation
-            automated
-            version-update
-          reviewers: docdyhr
-          assignees: docdyhr
-
-      - name: Log results
-        run: |
-          if [ "${{ steps.changes.outputs.has_changes }}" == "true" ]; then
-            echo "✅ Version update PR created for ${{ steps.version.outputs.tag }}"
-            echo "📝 Updated version references in documentation"
-          else
-            echo "ℹ️ No version references needed updating"
-          fi
+    uses: ./.github/workflows/reusable-version-sync.yml
+    with:
+      version: ${{ needs.extract-version.outputs.version }}
+      tag: ${{ needs.extract-version.outputs.tag }}
