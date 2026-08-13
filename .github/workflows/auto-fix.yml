@@ -15,13 +15,8 @@ on:
         required: true
         default: "formatting,imports,trailing-whitespace"
 
-permissions:
-  contents: write
-  pull-requests: write
-  actions: read
-
 jobs:
-  auto-fix:
+  resolve-target:
     # Security: Only run on workflow_dispatch OR when workflow_run is from same repo (not forks)
     # This prevents checking out untrusted code from fork PRs
     if: >
@@ -30,10 +25,15 @@ jobs:
        contains(github.event.workflow_run.name, 'CI/CD') &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    timeout-minutes: 2
+    outputs:
+      target_branch: ${{ steps.branch-info.outputs.target_branch }}
+      fix_types: ${{ steps.branch-info.outputs.fix_types }}
     steps:
-      - name: Determine target branch
+      # Security: both values are validated against an allowlist here, before
+      # either is ever passed to a downstream job / interpolated into a shell
+      # step (git ls-remote/push).
+      - name: Determine and validate target branch
         id: branch-info
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -41,253 +41,36 @@ jobs:
           INPUT_FIX_TYPES: ${{ github.event.inputs.fix_types }}
           WORKFLOW_RUN_HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
         run: |
-          if [ "$EVENT_NAME" == "workflow_dispatch" ]; then
-            TARGET_BRANCH="$INPUT_TARGET_BRANCH"
-            FIX_TYPES="$INPUT_FIX_TYPES"
-          else
-            # Security: Only use branches from same repository
-            TARGET_BRANCH="$WORKFLOW_RUN_HEAD_BRANCH"
-            FIX_TYPES="formatting,imports,trailing-whitespace"
-          fi
+          if [ "$EVENT_NAME" == "workflow_dispatch" ]; then TARGET_BRANCH="$INPUT_TARGET_BRANCH"; FIX_TYPES="$INPUT_FIX_TYPES"; else TARGET_BRANCH="$WORKFLOW_RUN_HEAD_BRANCH"; FIX_TYPES="formatting,imports,trailing-whitespace"; fi
 
-          # Validate target branch against an allowlist pattern before it is
-          # ever interpolated into a later shell step (git ls-remote/push).
-          if ! printf '%s' "$TARGET_BRANCH" | grep -qE '^(main|develop|feature/[A-Za-z0-9._/-]+|dependabot/[A-Za-z0-9._/-]+)$'; then
-            echo "::error::Target branch '$TARGET_BRANCH' does not match the allowed branch pattern" >&2
-            exit 1
-          fi
+          if ! printf '%s' "$TARGET_BRANCH" | grep -qE '^(main|develop|feature/[A-Za-z0-9._/-]+|dependabot/[A-Za-z0-9._/-]+)$'; then echo "::error::Target branch '$TARGET_BRANCH' does not match the allowed branch pattern" >&2; exit 1; fi
+          if ! printf '%s' "$FIX_TYPES" | grep -qE '^(formatting|imports|trailing-whitespace)(,(formatting|imports|trailing-whitespace))*$'; then echo "::error::fix_types must be a comma-separated list of: formatting,imports,trailing-whitespace" >&2; exit 1; fi
 
-          # Validate fix_types is a comma-separated list of known tokens only.
-          IFS=',' read -ra FIX_TYPE_TOKENS <<< "$FIX_TYPES"
-          for token in "${FIX_TYPE_TOKENS[@]}"; do
-            case "$token" in
-              formatting|imports|trailing-whitespace) ;;
-              *)
-                echo "::error::Unknown fix type token: $token" >&2
-                exit 1
-                ;;
-            esac
-          done
+          echo "target_branch=$TARGET_BRANCH" >> "$GITHUB_OUTPUT"
+          echo "fix_types=$FIX_TYPES" >> "$GITHUB_OUTPUT"
 
-          echo "target_branch=$TARGET_BRANCH" >> $GITHUB_OUTPUT
-          echo "fix_types=$FIX_TYPES" >> $GITHUB_OUTPUT
+  auto-fix-apply:
+    needs: resolve-target
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/reusable-auto-fix-apply.yml
+    with:
+      target_branch: ${{ needs.resolve-target.outputs.target_branch }}
+      fix_types: ${{ needs.resolve-target.outputs.fix_types }}
 
-      - name: Check branch exists
-        id: branch-check
-        env:
-          TARGET_BRANCH: ${{ steps.branch-info.outputs.target_branch }}
-          REPOSITORY: ${{ github.repository }}
-        run: |
-          if git ls-remote --exit-code --heads "https://github.com/$REPOSITORY.git" "$TARGET_BRANCH" > /dev/null 2>&1; then
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "exists=false" >> $GITHUB_OUTPUT
-            echo "Branch '$TARGET_BRANCH' no longer exists (likely merged/deleted). Skipping."
-          fi
-
-      - name: Checkout repository
-        if: steps.branch-check.outputs.exists == 'true'
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ steps.branch-info.outputs.target_branch }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          fetch-depth: 0
-
-      - name: Set up Python
-        if: steps.branch-check.outputs.exists == 'true'
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
-      - name: Install dependencies
-        if: steps.branch-check.outputs.exists == 'true'
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff==0.15.5 isort
-
-      - name: Check for auto-fixable issues
-        if: steps.branch-check.outputs.exists == 'true'
-        id: check-issues
-        run: |
-          echo "Checking for common auto-fixable issues..."
-
-          # Check formatting issues
-          if ruff check --select=W291,W292,W293 --fix --quiet . > /dev/null 2>&1; then
-            echo "whitespace_fixes=true" >> $GITHUB_OUTPUT
-          else
-            echo "whitespace_fixes=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Check formatting with ruff
-          if ! ruff format --check --quiet . > /dev/null 2>&1; then
-            echo "format_fixes_needed=true" >> $GITHUB_OUTPUT
-          else
-            echo "format_fixes_needed=false" >> $GITHUB_OUTPUT
-          fi
-
-          # Check import sorting
-          if ! ruff check --select=I --fix --quiet . > /dev/null 2>&1; then
-            echo "import_fixes=true" >> $GITHUB_OUTPUT
-          else
-            echo "import_fixes=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Apply formatting fixes
-        if: steps.branch-check.outputs.exists == 'true' && contains(steps.branch-info.outputs.fix_types, 'formatting') && steps.check-issues.outputs.format_fixes_needed == 'true'
-        run: |
-          echo "🔧 Applying code formatting fixes..."
-          ruff format .
-          echo "✅ Code formatting applied"
-
-      - name: Apply import sorting fixes
-        if: steps.branch-check.outputs.exists == 'true' && contains(steps.branch-info.outputs.fix_types, 'imports') && steps.check-issues.outputs.import_fixes == 'true'
-        run: |
-          echo "📦 Applying import sorting fixes..."
-          ruff check --select=I --fix .
-          echo "✅ Import sorting applied"
-
-      - name: Apply whitespace fixes
-        if: steps.branch-check.outputs.exists == 'true' && contains(steps.branch-info.outputs.fix_types, 'trailing-whitespace') && steps.check-issues.outputs.whitespace_fixes == 'true'
-        run: |
-          echo "🧹 Applying whitespace fixes..."
-          ruff check --select=W291,W292,W293 --fix .
-          echo "✅ Whitespace fixes applied"
-
-      - name: Check if changes were made
-        if: steps.branch-check.outputs.exists == 'true'
-        id: git-check
-        run: |
-          if git diff --quiet; then
-            echo "changes_made=false" >> $GITHUB_OUTPUT
-            echo "No auto-fixes were needed"
-          else
-            echo "changes_made=true" >> $GITHUB_OUTPUT
-            echo "Auto-fixes were applied"
-            git diff --stat
-          fi
-
-      - name: Commit auto-fixes
-        if: steps.git-check.outputs.changes_made == 'true'
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Add all changes
-          git add -A
-
-          # Create commit message based on fixes applied
-          commit_msg="style: auto-fix common code quality issues"
-
-          if [[ "${{ steps.check-issues.outputs.format_fixes_needed }}" == "true" ]]; then
-            commit_msg="$commit_msg\n\n* Applied code formatting with ruff"
-          fi
-
-          if [[ "${{ steps.check-issues.outputs.import_fixes }}" == "true" ]]; then
-            commit_msg="$commit_msg\n\n* Sorted imports"
-          fi
-
-          if [[ "${{ steps.check-issues.outputs.whitespace_fixes }}" == "true" ]]; then
-            commit_msg="$commit_msg\n\n* Fixed trailing whitespace issues"
-          fi
-
-          commit_msg="$commit_msg\n\n🤖 Generated by auto-fix workflow"
-
-          git commit -m "$commit_msg"
-
-      - name: Push changes
-        if: steps.git-check.outputs.changes_made == 'true'
-        env:
-          TARGET_BRANCH: ${{ steps.branch-info.outputs.target_branch }}
-        run: |
-          echo "📤 Pushing auto-fixes..."
-          git push origin "$TARGET_BRANCH"
-          echo "✅ Auto-fixes pushed successfully"
-
-      - name: Find associated PRs
-        if: steps.git-check.outputs.changes_made == 'true'
-        id: find-pr
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
-        # Convention: pass workflow/job values in via env: and read them from process.env
-        # in the script below. Do NOT interpolate ${{ }} directly into the script: body —
-        # an untrusted value containing a quote can break out of the JS string literal
-        # (script injection). See https://github.com/docdyhr/simplenote-mcp-server/pull/703
-        env:
-          TARGET_BRANCH: ${{ steps.branch-info.outputs.target_branch }}
-        with:
-          script: |
-            const branch = process.env.TARGET_BRANCH;
-
-            if (branch === 'main') {
-              return null;
-            }
-
-            const { data: pulls } = await github.rest.pulls.list({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              head: `${context.repo.owner}:${branch}`,
-              state: 'open'
-            });
-
-            return pulls.length > 0 ? pulls[0].number : null;
-
-      - name: Comment on PR about auto-fixes
-        if: steps.git-check.outputs.changes_made == 'true' && steps.find-pr.outputs.result
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
-        env:
-          PR_NUMBER: ${{ steps.find-pr.outputs.result }}
-          FORMAT_FIXES_NEEDED: ${{ steps.check-issues.outputs.format_fixes_needed }}
-          IMPORT_FIXES: ${{ steps.check-issues.outputs.import_fixes }}
-          WHITESPACE_FIXES: ${{ steps.check-issues.outputs.whitespace_fixes }}
-        with:
-          script: |
-            const prNumber = Number(process.env.PR_NUMBER);
-            const fixes = [];
-
-            if (process.env.FORMAT_FIXES_NEEDED === 'true') {
-              fixes.push('Code formatting');
-            }
-            if (process.env.IMPORT_FIXES === 'true') {
-              fixes.push('Import sorting');
-            }
-            if (process.env.WHITESPACE_FIXES === 'true') {
-              fixes.push('Whitespace cleanup');
-            }
-
-            const comment = `## 🤖 Auto-fixes Applied
-
-            I've automatically fixed some common code quality issues:
-
-            ${fixes.map(fix => `- ✅ ${fix}`).join('\n')}
-
-            These changes should help the CI/CD pipeline pass. Please review the changes and re-run any failing checks.
-
-            **Auto-generated by auto-fix workflow**`;
-
-            await github.rest.issues.createComment({
-              issue_number: prNumber,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: comment
-            });
-
-      - name: Summary
-        if: always()
-        env:
-          TARGET_BRANCH: ${{ steps.branch-info.outputs.target_branch }}
-          FIX_TYPES: ${{ steps.branch-info.outputs.fix_types }}
-        run: |
-          echo "🎯 Auto-fix Summary"
-          echo "=================="
-          echo "Target branch: $TARGET_BRANCH"
-          echo "Fix types requested: $FIX_TYPES"
-
-          if [[ "${{ steps.branch-check.outputs.exists }}" != "true" ]]; then
-            echo "⏭️ Branch no longer exists — skipped (branch was merged or deleted)"
-          elif [[ "${{ steps.git-check.outputs.changes_made }}" == "true" ]]; then
-            echo "Changes made: true"
-            echo "✅ Auto-fixes were applied and committed"
-          else
-            echo "Changes made: false"
-            echo "ℹ️ No auto-fixes were needed"
-          fi
+  auto-fix-notify:
+    needs: [resolve-target, auto-fix-apply]
+    if: always() && needs.auto-fix-apply.result != 'skipped'
+    permissions:
+      contents: read
+      pull-requests: write
+    uses: ./.github/workflows/reusable-auto-fix-notify.yml
+    with:
+      target_branch: ${{ needs.resolve-target.outputs.target_branch }}
+      fix_types: ${{ needs.resolve-target.outputs.fix_types }}
+      branch_exists: ${{ needs.auto-fix-apply.outputs.branch_exists }}
+      changes_made: ${{ needs.auto-fix-apply.outputs.changes_made }}
+      format_fixes_needed: ${{ needs.auto-fix-apply.outputs.format_fixes_needed }}
+      import_fixes: ${{ needs.auto-fix-apply.outputs.import_fixes }}
+      whitespace_fixes: ${{ needs.auto-fix-apply.outputs.whitespace_fixes }}

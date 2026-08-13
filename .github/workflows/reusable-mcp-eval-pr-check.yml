@@ -1,0 +1,70 @@
+name: Reusable - MCP Eval PR Check
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: "20"
+      has-openai-key:
+        type: string
+        default: "false"
+
+jobs:
+  check:
+    name: evaluate-pr-changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0 # Need full history for diff
+
+      - name: Setup Node.js for mcp-evals
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          # Note: npm cache disabled - package-lock.json may not exist
+
+      - name: Install mcp-evals
+        run: |
+          npm init -y
+          npm install mcp-evals
+
+      - name: Check for evaluation file changes
+        id: eval-changes
+        run: |
+          CHANGED=$(git diff --name-only origin/main...HEAD | grep -E "^evals/.*\.yaml$" || true)
+          if [ -n "$CHANGED" ]; then
+            echo "eval_files_changed=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "changed_files<<EVALEOF"
+              echo "$CHANGED"
+              echo "EVALEOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "eval_files_changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate evaluation files
+        if: steps.eval-changes.outputs.eval_files_changed == 'true'
+        run: python scripts/ci/validate_eval_yaml.py
+
+      - name: Comment on PR with evaluation info
+        if: steps.eval-changes.outputs.eval_files_changed == 'true' && github.event_name == 'pull_request'
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9
+        continue-on-error: true
+        # Convention: pass workflow/job values in via env: and read them from process.env
+        # in the required script — never interpolate ${{ }} into script: bodies. See PR #703.
+        env:
+          HAS_OPENAI_KEY: ${{ inputs.has-openai-key || 'false' }}
+          CHANGED_FILES: ${{ steps.eval-changes.outputs.changed_files }}
+        with:
+          script: |
+            const script = require('./.github/scripts/comment-eval-files-changed.js');
+            return await script({ github, context });

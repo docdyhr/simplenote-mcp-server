@@ -1,0 +1,114 @@
+# NOTE: deliberately over the repo's usual ~80-line thin-caller target (see
+# .github/workflows/AGENTS.md). This is a single sequential pipeline (Python/
+# Node setup -> installs -> determine suite -> run evals -> parse results);
+# splitting it into two jobs would require duplicating the setup+install
+# steps (~20 lines) in the second job, netting more total lines, not fewer.
+name: Reusable - Run Evaluation Quality
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: "3.12"
+      node-version:
+        type: string
+        default: "18"
+      evaluation-suite:
+        type: string
+        default: "basic"
+      fail-threshold:
+        type: string
+        default: "70"
+    secrets:
+      ANTHROPIC_API_KEY:
+        required: false
+    outputs:
+      pass-rate:
+        value: ${{ jobs.run.outputs.pass-rate }}
+      quality-gate-passed:
+        value: ${{ jobs.run.outputs.quality-gate-passed }}
+      status:
+        value: ${{ jobs.run.outputs.status }}
+
+jobs:
+  run:
+    name: Run MCP Evaluations
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      pass-rate: ${{ steps.eval-results.outputs.pass_rate }}
+      quality-gate-passed: ${{ steps.eval-results.outputs.quality_gate_passed }}
+      status: ${{ steps.eval-results.outputs.status }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: "pip"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
+        with:
+          node-version: ${{ inputs.node-version }}
+          # Note: npm cache disabled - package-lock.json may not exist
+
+      - name: Install Python dependencies
+        run: python -m pip install --upgrade pip && pip install -e ".[dev,test,all]"
+
+      - name: Install Node.js dependencies
+        run: npm install && npm run validate:evals
+
+      - name: Determine evaluation suite
+        id: eval-suite
+        env:
+          SUITE: ${{ inputs.evaluation-suite }}
+        run: scripts/ci/determine_eval_suite.sh
+
+      - name: Configure test environment
+        run: |
+          {
+            echo "SIMPLENOTE_OFFLINE_MODE=true"
+            echo "SIMPLENOTE_EMAIL=test@example.com"
+            echo "SIMPLENOTE_PASSWORD=test_password"
+          } >> "$GITHUB_ENV"
+          mkdir -p test-data/
+          echo '{"test": "data"}' > test-data/sample.json
+
+      - name: Check API key availability
+        id: check-api-key
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: scripts/ci/check_anthropic_api_key.sh
+
+      - name: Run MCP evaluations
+        id: run-evals
+        if: steps.check-api-key.outputs.has-api-key == 'true'
+        timeout-minutes: ${{ fromJSON(steps.eval-suite.outputs.timeout) }}
+        env:
+          SUITE: ${{ steps.eval-suite.outputs.suite }}
+          DESCRIPTION: ${{ steps.eval-suite.outputs.description }}
+        run: scripts/ci/run_mcp_evaluations.sh
+
+      - name: Parse evaluation results
+        id: eval-results
+        env:
+          INPUT_FAIL_THRESHOLD: ${{ inputs.fail-threshold }}
+        run: python scripts/ci/parse_eval_results.py
+
+      - name: Upload evaluation artifacts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: evaluation-results-${{ steps.eval-suite.outputs.suite }}
+          path: |
+            evaluation-output.txt
+            eval-results.txt
+            evaluation-summary.json
+          retention-days: 14

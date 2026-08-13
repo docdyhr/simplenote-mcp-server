@@ -14,152 +14,38 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
-env:
-  PYTHON_VERSION: "3.13"
-  NODE_VERSION: "20"
-  SIMPLENOTE_OFFLINE_MODE: "true"
-  TSX_CACHE_DIR: /tmp/tsx-cache
-  NODE_OPTIONS: "--max-old-space-size=4096"
-  PYTEST_TIMEOUT: "60"
-  REGISTRY: docker.io
-  IMAGE_NAME: docdyhr/simplenote-mcp-server
-
 jobs:
   validate:
-    name: Validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
-
-      - name: Validate files
-        run: |
-          find . -type f -size +1M | grep -v "^./.git" | while read file; do
-            echo "Warning: Large file detected: $file ($(du -h "$file" | cut -f1))"
-          done
-
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-
-      - name: Cache dependencies
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        id: cache
-        with:
-          path: |
-            ~/.cache/pip
-            ~/.local
-            .venv
-          key: deps-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
-          restore-keys: |
-            deps-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev,test]"
-
-      - name: Check version consistency
-        run: |
-          python scripts/quality/check_version_consistency.py
-
-      - name: Run linters
-        run: |
-          ruff check .
-          ruff format --check .
-          mypy simplenote_mcp
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-python-lint.yml
+    with:
+      python-version: "3.13"
 
   test:
-    name: Test
     needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-
-      - name: Restore dependencies
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
-        with:
-          path: |
-            ~/.cache/pip
-            ~/.local
-            .venv
-          key: deps-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev,test]"
-
-      - name: Run tests
-        env:
-          SIMPLENOTE_EMAIL: test@example.com
-          SIMPLENOTE_PASSWORD: test-password
-        run: |
-          pytest tests/ --randomly-seed=${{ github.run_id }} --cov=simplenote_mcp --cov-report=xml --cov-report=json --cov-report=term
-
-      - name: Check coverage threshold
-        run: |
-          python scripts/quality/check_coverage.py --threshold 75.0
-
-      - name: Run legacy test suite (separate process — do not merge into tests/)
-        env:
-          SIMPLENOTE_EMAIL: test@example.com
-          SIMPLENOTE_PASSWORD: test-password
-        run: |
-          # simplenote_mcp/tests/ and tests/ both exercise process-global
-          # singletons (metrics collector, security validator). Each tree
-          # resets them for its own tests via an autouse conftest fixture,
-          # but that only protects tests within the same tree — collecting
-          # both into one `pytest` invocation (one process) lets tests from
-          # one tree corrupt the other's state. Keeping this a fully
-          # separate `pytest` process (own testpaths, own working memory)
-          # sidesteps that; do not add this directory to testpaths above.
-          pytest simplenote_mcp/tests/ --randomly-seed=${{ github.run_id }} --no-cov
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
-        with:
-          file: ./coverage.xml
-          fail_ci_if_error: true
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-python-test.yml
+    with:
+      python-version: "3.13"
+      coverage-threshold: "75.0"
 
   security:
-    name: Security
     needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install security tools
-        run: |
-          pip install bandit pip-audit
-
-      - name: Run security scans
-        run: |
-          bandit -r simplenote_mcp --severity-level high
-          pip install -e .
-          # CVE-2026-4539: pygments ReDoS (local-only, no fix available as of 2026-03-28)
-          # CVE-2026-3219: affects pip itself (CI runner tool), not a project dependency; no fix available
-          # CVE-2026-6357: affects pip itself (CI runner tool); fix is pip>=26.1
-          # PYSEC-2026-196: affects pip itself (CI runner tool); path traversal in entry-point install; fix is pip>=26.1.2
-          pip-audit --desc --ignore-vuln CVE-2026-4539 --ignore-vuln CVE-2026-3219 --ignore-vuln CVE-2026-6357 --ignore-vuln PYSEC-2026-196
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-security-scan.yml
+    with:
+      python-version: "3.13"
+      # CVE-2026-4539: pygments ReDoS (local-only, no fix available as of 2026-03-28)
+      # CVE-2026-3219: affects pip itself (CI runner tool), not a project dependency; no fix available
+      # CVE-2026-6357: affects pip itself (CI runner tool); fix is pip>=26.1
+      # PYSEC-2026-196: affects pip itself (CI runner tool); path traversal in entry-point install; fix is pip>=26.1.2
+      pip-audit-ignore-cves: "CVE-2026-4539,CVE-2026-3219,CVE-2026-6357,PYSEC-2026-196"
 
   build_and_publish:
-    name: Build and Publish
     needs: [test, security]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
@@ -167,113 +53,20 @@ jobs:
       actions: read
       attestations: write
       id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
-        with:
-          platforms: linux/amd64,linux/arm64
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
-        with:
-          version: latest
-          platforms: linux/amd64,linux/arm64
-
-      - name: Log in to Docker Hub
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
-
-      - name: Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
-        with:
-          images: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-            ghcr.io/${{ github.repository }}
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=semver,pattern={{major}}
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix={{date 'YYYYMMDD'}}-
-            type=schedule,pattern={{date 'YYYYMMDD'}}
-
-      - name: Build and push Docker image
-        id: build
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
-        with:
-          context: .
-          file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Run Trivy vulnerability scanner
-        if: github.event_name != 'pull_request'
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          format: "sarif"
-          output: "trivy-results.sarif"
-          severity: "CRITICAL,HIGH"
-          ignore-unfixed: true
-          trivyignores: ".trivyignore"
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        if: github.event_name != 'pull_request'
-        uses: github/codeql-action/upload-sarif@1ad29ea4a422cce9a242a9fae469541dcd08addc # v4
-        with:
-          sarif_file: "trivy-results.sarif"
-          category: "trivy-container-scan"
-
-      - name: Update Docker Hub repository description
-        if: github.event_name != 'pull_request'
-        uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_TOKEN }}
-          repository: ${{ env.IMAGE_NAME }}
-          readme-filepath: ./DOCKER_README.md
-          short-description: "MCP server for Simplenote integration with note management and search capabilities."
+    uses: ./.github/workflows/reusable-docker-build.yml
+    with:
+      registry: docker.io
+      image-name: docdyhr/simplenote-mcp-server
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
   local-test:
-    name: Local Test
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          cache: "pip"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev,test]"
-          pip install build
-
-      - name: Run local test script
-        run: |
-          ./test-ci-locally.sh
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-local-test.yml
+    with:
+      python-version: "3.13"
 
   status:
     name: CI Status
@@ -283,12 +76,6 @@ jobs:
     steps:
       - name: Check status
         run: |
-          if [[ "${{ contains(join(needs.*.result, ','), 'failure') }}" == "true" ]]; then
-            echo "❌ CI pipeline failed"
-            exit 1
-          elif [[ "${{ contains(join(needs.*.result, ','), 'cancelled') }}" == "true" ]]; then
-            echo "⚠️ CI pipeline was cancelled"
-            exit 1
-          else
-            echo "✅ CI pipeline passed successfully!"
-          fi
+          if [[ "${{ contains(join(needs.*.result, ','), 'failure') }}" == "true" ]]; then echo "❌ CI pipeline failed"; exit 1; fi
+          if [[ "${{ contains(join(needs.*.result, ','), 'cancelled') }}" == "true" ]]; then echo "⚠️ CI pipeline was cancelled"; exit 1; fi
+          echo "✅ CI pipeline passed successfully!"

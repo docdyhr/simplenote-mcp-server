@@ -1,0 +1,55 @@
+name: Reusable - Badge Validation
+
+on:
+  workflow_call:
+    inputs:
+      readme-path:
+        type: string
+        default: "README.md"
+
+jobs:
+  badge-check:
+    name: Badge Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Validate README badges
+        env:
+          README_PATH: ${{ inputs.readme-path }}
+        run: python scripts/validate-badges.py --readme "$README_PATH" --json badge-validation-report.json || echo "⚠️ Some badges failed validation (non-blocking, see report)"
+
+      - name: Upload badge validation report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: badge-validation-report-${{ github.run_id }}
+          path: badge-validation-report.json
+          retention-days: 30
+
+      - name: Validate badge syntax
+        env:
+          README_PATH: ${{ inputs.readme-path }}
+        run: |
+          echo "Validating badge markdown syntax..."
+          malformed=$(grep -n '!\[.*\](' "$README_PATH" | grep -v '!\[.*\]([^)]*\)' || true)
+          if [ -n "$malformed" ]; then
+            echo "❌ Found malformed badge syntax:"
+            echo "$malformed"
+            exit 1
+          else
+            echo "✅ Badge syntax validation passed"
+          fi

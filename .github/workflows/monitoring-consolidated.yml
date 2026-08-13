@@ -36,249 +36,34 @@ on:
   release:
     types: [published]
 
-permissions:
-  contents: read
-  actions: read
-  security-events: write
-
-env:
-  REGISTRY: docker.io
-  IMAGE_NAME: docdyhr/simplenote-mcp-server
-  PYTHON_VERSION: "3.12"
-
 jobs:
-  # Security monitoring job
   security-monitoring:
-    name: Security Monitoring
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
     if: github.event_name == 'schedule' || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_security_check == 'true') || (github.event_name == 'push' && contains(github.event.head_commit.modified, 'simplenote_mcp/'))
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-security-scan.yml
+    with:
+      bandit-confidence: "high"
+      upload-artifacts: true
+      fail-on-issues: ${{ github.event.inputs.fail_on_security_issues == 'true' }}
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install security tools
-        run: |
-          pip install --upgrade pip
-          pip install bandit pip-audit
-
-      - name: Run Bandit security scan
-        id: bandit
-        run: |
-          echo "Running Bandit security scan..."
-          bandit -r simplenote_mcp -f json -o bandit-report.json || true
-          bandit -r simplenote_mcp --severity-level high --confidence-level high
-
-      - name: Run pip-audit vulnerability scan
-        id: pip-audit
-        run: |
-          echo "Running pip-audit vulnerability scan..."
-          pip install -e .
-          pip-audit --format=json --output=pip-audit-report.json || true
-          pip-audit --desc || echo "⚠️ pip-audit found vulnerabilities (see report artifact)"
-
-      - name: Upload security reports
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: security-reports-${{ github.run_id }}
-          path: |
-            bandit-report.json
-            pip-audit-report.json
-          retention-days: 30
-
-      - name: Check for critical security issues
-        if: github.event.inputs.fail_on_security_issues == 'true'
-        run: |
-          # Parse reports and fail if critical issues found
-          if [ -f bandit-report.json ]; then
-            high_severity=$(jq '.results | map(select(.issue_severity == "HIGH")) | length' bandit-report.json)
-            if [ "$high_severity" -gt 0 ]; then
-              echo "❌ Found $high_severity high-severity security issues"
-              exit 1
-            fi
-          fi
-
-  # Health check monitoring job
   health-monitoring:
-    name: Health Check Monitoring
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
     if: github.event_name == 'schedule' || github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_health_check == 'true')
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-health-check.yml
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install dependencies
-        run: |
-          pip install --upgrade pip
-          pip install -e ".[dev,test]"
-
-      - name: Run health checks
-        run: |
-          echo "Running application health checks..."
-
-          # Check if core modules can be imported
-          python -c "import simplenote_mcp.server.server; print('✅ Core server module imports successfully')"
-          python -c "import simplenote_mcp.server.config; print('✅ Configuration module imports successfully')"
-          python -c "import simplenote_mcp.server.cache; print('✅ Cache module imports successfully')"
-
-          # Check configuration validation
-          python -c "from simplenote_mcp.server.config import get_config; config = get_config(); print('✅ Configuration loads successfully')"
-
-          # Run smoke tests with addopts cleared — pytest.ini addopts includes --cov* flags
-          # which become unrecognized when the cov plugin is disabled; clearing addopts avoids
-          # the "unrecognized arguments" error while asyncio_mode/timeout remain as standalone keys.
-          python -m pytest tests/test_config.py -v --tb=short --override-ini="addopts="
-
-          echo "✅ All health checks passed"
-
-      - name: Docker health check
-        run: |
-          echo "Running Docker build health check..."
-          docker build -t health-check:latest .
-          echo "✅ Docker build successful"
-
-      - name: Check dependencies
-        run: |
-          echo "Checking dependency health..."
-          pip check
-          echo "✅ No dependency conflicts found"
-
-  # Badge validation job
   badge-monitoring:
-    name: Badge Validation
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && github.event.inputs.run_badge_check == 'true') || (github.event_name == 'push' && contains(github.event.head_commit.modified, 'README.md'))
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-badge-check.yml
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-      - name: Validate README badges
-        run: |
-          echo "Validating badges in README.md..."
-
-          # Check if README exists
-          if [ ! -f README.md ]; then
-            echo "❌ README.md not found"
-            exit 1
-          fi
-
-          # Extract badge URLs and check them
-          badge_urls=$(grep -oP '!\[.*?\]\(\K[^)]+' README.md | grep -E '(shields\.io|badge|travis|circleci|codecov|pypi)' || true)
-
-          if [ -z "$badge_urls" ]; then
-            echo "ℹ️ No badges found in README.md"
-            exit 0
-          fi
-
-          failed_badges=0
-          total_badges=0
-
-          echo "Found badges to validate:"
-          for url in $badge_urls; do
-            echo "  - $url"
-            total_badges=$((total_badges + 1))
-
-            # Check if badge URL is accessible
-            if curl -s -f -L "$url" > /dev/null; then
-              echo "    ✅ Badge accessible"
-            else
-              echo "    ❌ Badge not accessible"
-              failed_badges=$((failed_badges + 1))
-            fi
-          done
-
-          echo ""
-          echo "Badge validation summary:"
-          echo "  Total badges: $total_badges"
-          echo "  Failed badges: $failed_badges"
-          echo "  Success rate: $(( (total_badges - failed_badges) * 100 / total_badges ))%"
-
-          if [ $failed_badges -gt 0 ]; then
-            echo "⚠️ Some badges are not accessible"
-            # Don't fail the workflow for badge issues - just warn
-          else
-            echo "✅ All badges are accessible"
-          fi
-
-      - name: Validate badge syntax
-        run: |
-          echo "Validating badge markdown syntax..."
-
-          # Check for malformed badge syntax
-          malformed=$(grep -n '!\[.*\](' README.md | grep -v '!\[.*\]([^)]*\)' || true)
-
-          if [ -n "$malformed" ]; then
-            echo "❌ Found malformed badge syntax:"
-            echo "$malformed"
-            exit 1
-          else
-            echo "✅ Badge syntax validation passed"
-          fi
-
-  # Summary job
   monitoring-summary:
-    name: Monitoring Summary
-    runs-on: ubuntu-latest
     needs: [security-monitoring, health-monitoring, badge-monitoring]
     if: always()
-
-    steps:
-      - name: Generate monitoring summary
-        run: |
-          echo "## 📊 Consolidated Monitoring Report" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
-
-          # Security monitoring status
-          if [ "${{ needs.security-monitoring.result }}" = "success" ]; then
-            echo "| 🔒 Security Monitoring | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.security-monitoring.result }}" = "skipped" ]; then
-            echo "| 🔒 Security Monitoring | ⏭️ Skipped |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 🔒 Security Monitoring | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # Health monitoring status
-          if [ "${{ needs.health-monitoring.result }}" = "success" ]; then
-            echo "| 🏥 Health Monitoring | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.health-monitoring.result }}" = "skipped" ]; then
-            echo "| 🏥 Health Monitoring | ⏭️ Skipped |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 🏥 Health Monitoring | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          # Badge monitoring status
-          if [ "${{ needs.badge-monitoring.result }}" = "success" ]; then
-            echo "| 🏆 Badge Validation | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
-          elif [ "${{ needs.badge-monitoring.result }}" = "skipped" ]; then
-            echo "| 🏆 Badge Validation | ⏭️ Skipped |" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "| 🏆 Badge Validation | ❌ Failed |" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Monitoring completed at:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
-
-          # Determine overall status
-          if [ "${{ needs.security-monitoring.result }}" = "failure" ] || [ "${{ needs.health-monitoring.result }}" = "failure" ]; then
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "⚠️ **Action Required:** Some monitoring checks failed. Please review the logs above." >> $GITHUB_STEP_SUMMARY
-            exit 1
-          else
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "✅ **All monitoring checks completed successfully!**" >> $GITHUB_STEP_SUMMARY
-          fi
+    uses: ./.github/workflows/reusable-monitoring-summary.yml
+    with:
+      security-result: ${{ needs.security-monitoring.result }}
+      health-result: ${{ needs.health-monitoring.result }}
+      badge-result: ${{ needs.badge-monitoring.result }}

@@ -24,7 +24,13 @@ def install_tools() -> None:
     """Install required tools for SBOM and vulnerability scanning."""
     print("🔧 Installing required tools...")
 
-    tools = ["cyclonedx-bom==7.0.0", "pip-audit==2.7.3"]
+    # These two must stay mutually compatible on cyclonedx-python-lib
+    # (cyclonedx-bom==7.0.0 required >=8,<11; pip-audit==2.7.3 required
+    # >=5,<8 -- no overlap, so older pins always failed with
+    # ResolutionImpossible). Verified compatible as of 2026-07-16:
+    # cyclonedx-bom 7.3.0 -> cyclonedx-python-lib 11.x, pip-audit 2.10.1 ->
+    # cyclonedx-python-lib <11 too. Keep in sync with release.yml.
+    tools = ["cyclonedx-bom==7.3.0", "pip-audit==2.10.1"]
 
     for tool in tools:
         print(f"Installing {tool}...")
@@ -89,16 +95,20 @@ def generate_sbom_reports() -> None:
     """Generate SBOM reports in multiple formats."""
     print("📋 Generating SBOM reports...")
 
+    # cyclonedx-bom 7.x replaced the flat `-F`/`--install-all-packages` flags
+    # with a subcommand-based CLI; `environment` scans the current (virtual)
+    # environment, equivalent to the old default. Keep in sync with release.yml.
+
     # CycloneDX JSON format
     print("Generating CycloneDX SBOM (JSON)...")
     code, _, stderr = run_command(
         [
             "cyclonedx-py",
+            "environment",
             "-o",
             "sbom-release.json",
-            "-F",
-            "json",
-            "--install-all-packages",
+            "--of",
+            "JSON",
         ]
     )
     if code == 0:
@@ -111,11 +121,11 @@ def generate_sbom_reports() -> None:
     code, _, stderr = run_command(
         [
             "cyclonedx-py",
+            "environment",
             "-o",
             "sbom-release.xml",
-            "-F",
-            "xml",
-            "--install-all-packages",
+            "--of",
+            "XML",
         ]
     )
     if code == 0:

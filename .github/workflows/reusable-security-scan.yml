@@ -1,0 +1,80 @@
+name: Reusable - Security Scan
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: "3.12"
+      bandit-severity:
+        type: string
+        default: "high"
+      bandit-confidence:
+        type: string
+        default: ""
+      pip-audit-ignore-cves:
+        type: string
+        default: ""
+      upload-artifacts:
+        type: boolean
+        default: false
+      fail-on-issues:
+        type: boolean
+        default: false
+
+jobs:
+  scan:
+    name: Security
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ inputs.python-version }}
+
+      - name: Install security tools
+        run: |
+          pip install --upgrade pip
+          pip install bandit pip-audit
+
+      - name: Run Bandit security scan
+        env:
+          BANDIT_SEVERITY: ${{ inputs.bandit-severity }}
+          BANDIT_CONFIDENCE: ${{ inputs.bandit-confidence }}
+        run: |
+          bandit -r simplenote_mcp -f json -o bandit-report.json || true
+          if [ -n "$BANDIT_CONFIDENCE" ]; then bandit -r simplenote_mcp --severity-level "$BANDIT_SEVERITY" --confidence-level "$BANDIT_CONFIDENCE"; else bandit -r simplenote_mcp --severity-level "$BANDIT_SEVERITY"; fi
+
+      - name: Run pip-audit vulnerability scan
+        env:
+          IGNORE_CVES: ${{ inputs.pip-audit-ignore-cves }}
+        run: |
+          pip install -e .
+          pip-audit --format=json --output=pip-audit-report.json || true
+          IGNORE_FLAGS=()
+          if [ -n "$IGNORE_CVES" ]; then IFS=',' read -ra CVES <<< "$IGNORE_CVES"; for cve in "${CVES[@]}"; do IGNORE_FLAGS+=(--ignore-vuln "$cve"); done; fi
+          pip-audit --desc "${IGNORE_FLAGS[@]}" || echo "⚠️ pip-audit found vulnerabilities (see report artifact)"
+
+      - name: Upload security reports
+        if: always() && inputs.upload-artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: security-reports-${{ github.run_id }}
+          path: |
+            bandit-report.json
+            pip-audit-report.json
+          retention-days: 30
+
+      - name: Check for critical security issues
+        if: inputs.fail-on-issues
+        run: |
+          [ -f bandit-report.json ] || exit 0
+          high_severity=$(jq '.results | map(select(.issue_severity == "HIGH")) | length' bandit-report.json)
+          if [ "$high_severity" -gt 0 ]; then echo "❌ Found $high_severity high-severity security issues"; exit 1; fi

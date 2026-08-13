@@ -1,0 +1,74 @@
+name: Reusable - Python Test
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        default: "3.13"
+      coverage-threshold:
+        type: string
+        default: "75.0"
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache: "pip"
+
+      - name: Restore dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.local
+            .venv
+          key: deps-${{ runner.os }}-py${{ inputs.python-version }}-${{ hashFiles('**/requirements*.txt', '**/pyproject.toml') }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev,test]"
+
+      - name: Run tests
+        env:
+          SIMPLENOTE_OFFLINE_MODE: "true"
+          SIMPLENOTE_EMAIL: test@example.com
+          SIMPLENOTE_PASSWORD: test-password
+        run: pytest tests/ --randomly-seed=${{ github.run_id }} --cov=simplenote_mcp --cov-report=xml --cov-report=json --cov-report=term
+
+      - name: Check coverage threshold
+        env:
+          THRESHOLD: ${{ inputs.coverage-threshold }}
+        run: python scripts/quality/check_coverage.py --threshold "$THRESHOLD"
+
+      - name: Run legacy test suite (separate process — do not merge into tests/)
+        env:
+          SIMPLENOTE_OFFLINE_MODE: "true"
+          SIMPLENOTE_EMAIL: test@example.com
+          SIMPLENOTE_PASSWORD: test-password
+        run: |
+          # simplenote_mcp/tests/ and tests/ both exercise process-global
+          # singletons (metrics collector, security validator). Each tree
+          # resets them for its own tests via an autouse conftest fixture,
+          # but that only protects tests within the same tree — collecting
+          # both into one `pytest` invocation (one process) lets tests from
+          # one tree corrupt the other's state. Keeping this a fully
+          # separate `pytest` process (own testpaths, own working memory)
+          # sidesteps that; do not add this directory to testpaths above.
+          pytest simplenote_mcp/tests/ --randomly-seed=${{ github.run_id }} --no-cov
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: true

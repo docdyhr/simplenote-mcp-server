@@ -1,0 +1,62 @@
+name: Reusable - Monitoring Summary
+
+on:
+  workflow_call:
+    inputs:
+      security-result:
+        type: string
+        required: true
+      health-result:
+        type: string
+        required: true
+      badge-result:
+        type: string
+        required: true
+
+jobs:
+  summary:
+    name: Monitoring Summary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate monitoring summary
+        env:
+          SECURITY_RESULT: ${{ inputs.security-result }}
+          HEALTH_RESULT: ${{ inputs.health-result }}
+          BADGE_RESULT: ${{ inputs.badge-result }}
+        run: |
+          {
+            echo "## 📊 Consolidated Monitoring Report"
+            echo ""
+            echo "| Check | Status |"
+            echo "|-------|--------|"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for pair in "🔒 Security Monitoring:$SECURITY_RESULT" "🏥 Health Monitoring:$HEALTH_RESULT" "🏆 Badge Validation:$BADGE_RESULT"; do
+            label="${pair%%:*}"
+            result="${pair##*:}"
+            if [ "$result" = "success" ]; then
+              echo "| $label | ✅ Passed |" >> "$GITHUB_STEP_SUMMARY"
+            elif [ "$result" = "skipped" ]; then
+              echo "| $label | ⏭️ Skipped |" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "| $label | ❌ Failed |" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
+          {
+            echo ""
+            echo "**Monitoring completed at:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$SECURITY_RESULT" = "failure" ] || [ "$HEALTH_RESULT" = "failure" ]; then
+            {
+              echo ""
+              echo "⚠️ **Action Required:** Some monitoring checks failed. Please review the logs above."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          else
+            {
+              echo ""
+              echo "✅ **All monitoring checks completed successfully!**"
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi

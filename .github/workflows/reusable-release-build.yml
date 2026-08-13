@@ -1,0 +1,57 @@
+name: Reusable - Build Release Package
+
+on:
+  workflow_call:
+    inputs:
+      new_version:
+        type: string
+        required: true
+
+jobs:
+  build:
+    timeout-minutes: 10
+    name: Build Package and Generate Security Reports
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: v${{ inputs.new_version }}
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine pre-commit
+
+      - name: Run pre-commit checks
+        run: pre-commit run --all-files
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package
+        run: twine check dist/*
+
+      - name: Generate SBOM and vulnerability report
+        env:
+          NEW_VERSION: ${{ inputs.new_version }}
+        run: python scripts/generate_release_security_reports.py --version "$NEW_VERSION"
+
+      - name: Upload SBOM and vulnerability artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: security-reports-${{ inputs.new_version }}
+          path: |
+            sbom-*.json
+            sbom-*.xml
+            vulnerability-*.json
+            vulnerability-*.md
+          retention-days: 90
