@@ -1,12 +1,25 @@
 # NOTE: deliberately over the repo's usual ~80-line thin-caller target (see
 # .github/workflows/AGENTS.md). This job is a single sequential git pipeline
-# (checkout -> bump version files -> commit -> tag -> push -> create release)
-# where every step depends on the SAME working-directory state built up by
-# the ones before it. Splitting into two jobs (as originally considered)
-# would require shipping the bumped files across a job boundary via
-# artifacts, adding real correctness risk (state drift, partial-apply races)
-# to the one workflow in this repo that actually cuts releases and pushes
-# git tags -- not worth it for a line-count target.
+# (checkout -> bump version files -> commit -> open release PR -> wait for
+# merge -> tag -> create release) where every step depends on the SAME
+# working-directory state built up by the ones before it. Splitting into
+# multiple jobs would require shipping the bumped files across a job
+# boundary via artifacts, adding real correctness risk (state drift,
+# partial-apply races) to the one workflow in this repo that actually cuts
+# releases and pushes git tags -- not worth it for a line-count target.
+#
+# Why a PR instead of a direct push to main: main's branch protection
+# (added 2026-08-11) requires 3 status checks on every push. GITHUB_TOKEN
+# authenticates as github-actions[bot], which is not a repo admin, so a
+# direct `git push origin main` is rejected with GH006 (discovered live
+# while cutting v1.18.0 -- see run 31867178333). Rather than add a static
+# admin credential, this pushes the bump commit to a release/vX.Y.Z branch,
+# opens a PR, and lets the same required checks that gate every other PR
+# gate this one. The version-bump commit's SHA never lands on main as-is
+# (a merge changes it), so the release tag is created AFTER the merge,
+# against the actual resulting commit -- tag pushes aren't subject to
+# branch protection (it only matches refs/heads/main), so no elevated
+# token is needed for that either.
 name: Reusable - Prepare Release
 
 on:
@@ -32,10 +45,11 @@ on:
 jobs:
   prepare:
     name: Prepare Release
-    timeout-minutes: 12
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pull-requests: write
     outputs:
       current_version: ${{ steps.get_version.outputs.current_version }}
       new_version: ${{ steps.bump_version.outputs.new_version }}
@@ -100,16 +114,64 @@ jobs:
           git add pyproject.toml simplenote_mcp/__init__.py VERSION \
             helm/simplenote-mcp-server/Chart.yaml setup.py || true
           git commit -m "Bump version to $NEW_VERSION" || echo "No changes to commit"
-          git tag -a "v$NEW_VERSION" -m "Version $NEW_VERSION"
           echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
-      - name: Push changes
+      - name: Open release PR and enable auto-merge
+        id: open_pr
+        if: inputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ steps.bump_version.outputs.new_version }}
+        run: |
+          set -euo pipefail
+          BRANCH="release/v$NEW_VERSION"
+          git checkout -b "$BRANCH"
+          git push origin "$BRANCH"
+          PR_URL=$(gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore: release v$NEW_VERSION" \
+            --body "Automated release PR for v$NEW_VERSION — bumps pyproject.toml, simplenote_mcp/__init__.py, VERSION, helm/simplenote-mcp-server/Chart.yaml, and setup.py.
+
+          Auto-merges once required status checks pass. The workflow then tags the resulting merge commit and creates the GitHub Release.")
+          gh pr merge "$PR_URL" --auto --squash --delete-branch
+          echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for release PR to merge
+        if: inputs.dry_run != 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ steps.open_pr.outputs.pr_url }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 60); do
+            STATE=$(gh pr view "$PR_URL" --json state --jq .state)
+            if [ "$STATE" = "MERGED" ]; then
+              echo "Release PR merged: $PR_URL"
+              exit 0
+            fi
+            if [ "$STATE" = "CLOSED" ]; then
+              echo "::error::Release PR was closed without merging: $PR_URL"
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "::error::Timed out waiting for release PR to merge (required checks may have failed): $PR_URL"
+          exit 1
+
+      - name: Tag the merged release commit
+        id: tag
         if: inputs.dry_run != 'true'
         env:
           NEW_VERSION: ${{ steps.bump_version.outputs.new_version }}
         run: |
-          git push origin main
+          set -euo pipefail
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+          git tag -a "v$NEW_VERSION" -m "Version $NEW_VERSION"
           git push origin "v$NEW_VERSION"
+          echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
         id: create_release

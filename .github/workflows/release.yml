@@ -26,6 +26,7 @@ jobs:
   prepare-release:
     permissions:
       contents: write
+      pull-requests: write
     uses: ./.github/workflows/reusable-release-prepare.yml
     with:
       bump_type: ${{ github.event.inputs.bump_type }}
