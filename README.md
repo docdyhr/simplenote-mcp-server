@@ -22,7 +22,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.17.5-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.18.0-blue.svg)](./CHANGELOG.md)
 [![Test Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)](./htmlcov/index.html)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
@@ -217,7 +217,7 @@ docker-compose up -d
 Available tags:
 
 - `latest` - Latest stable release
-- `v1.17.5` - Specific version
+- `v1.18.0` - Specific version
 - `main` - Latest development build
 
 ### Production Deployment
