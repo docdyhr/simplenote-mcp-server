@@ -46,6 +46,14 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
+          # main requires 3 status checks on every push (branch protection added
+          # 2026-08-11); GITHUB_TOKEN authenticates as github-actions[bot], which
+          # is not an admin and so cannot push a fresh commit straight to main
+          # (GH006). RELEASE_ADMIN_TOKEN is a classic PAT from an admin account;
+          # enforce_admins is false, so an admin-authenticated push bypasses the
+          # required-checks block. Falls back to GITHUB_TOKEN if the secret is
+          # ever removed (fails the same way this did before the secret existed).
+          token: ${{ secrets.RELEASE_ADMIN_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
