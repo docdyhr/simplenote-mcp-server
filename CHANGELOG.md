@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.0] - 2026-08-15
+
 ### Removed
 - **`memory_monitor.py` (dead code)**: `MemoryMonitor` was never imported or instantiated
   anywhere in the server, CLI, or test suite (0% coverage since introduction). Confirmed via
@@ -921,7 +923,8 @@ This release marks a significant milestone with **98% startup performance improv
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.17.0...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.0...HEAD
+[1.18.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.17.5...v1.18.0
 [1.17.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.1...v1.17.0
 [1.16.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.15.0...v1.16.0
