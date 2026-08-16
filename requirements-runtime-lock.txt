@@ -62,7 +62,7 @@ sse-starlette==3.4.8
 starlette==1.6.0
 truststore==0.10.4
 typer==0.27.1
-typing-inspection==0.4.3
+typing-inspection==0.4.4
 typing_extensions==4.16.0
 urllib3==2.7.0
 uvicorn==0.52.1
