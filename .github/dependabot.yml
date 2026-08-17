@@ -20,6 +20,12 @@ updates:
       - "python"
     allow:
       - dependency-type: "all"
+    ignore:
+      # pydantic_core is pinned exactly by pydantic (pydantic==2.13.4 requires
+      # pydantic_core==2.46.4), so a standalone bump is unsatisfiable and fails
+      # the Docker build with ResolutionImpossible — see closed PR #811.
+      # It moves only when pydantic itself bumps.
+      - dependency-name: "pydantic-core"
     groups:
       production-dependencies:
         dependency-type: "production"
