@@ -33,13 +33,15 @@ updates:
           - "mcp*"
           - "simplenote*"
       security-dependencies:
+        # A group's `update-types` accepts only major/minor/patch; "security"
+        # was invalid and silently prevented this group from applying.
+        # Security-only grouping is expressed via `applies-to`.
+        applies-to: "security-updates"
         dependency-type: "production"
         patterns:
           - "starlette*"
           - "urllib3*"
           - "requests*"
-        update-types:
-          - "security"
       development-dependencies:
         dependency-type: "development"
         patterns:
