@@ -54,7 +54,7 @@ joserfc==1.7.4
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 keyring==25.7.0
-librt==0.13.0
+librt==0.15.0
 license-expression==30.4.4
 mando==0.7.1
 Markdown==3.10.3
