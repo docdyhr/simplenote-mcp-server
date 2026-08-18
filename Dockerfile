@@ -11,6 +11,11 @@ ARG PYTHON_VERSION
 WORKDIR /app
 
 # Install build dependencies (upgrade first to pick up latest security patches)
+# CACHE_DATE busts the BuildKit layer cache weekly (passed as %Y-W%V from CI)
+# so apt-get upgrade always hits a live mirror at least once a week instead of
+# silently reusing a stale cached layer indefinitely (cache-to: mode=max has
+# no built-in expiry).
+ARG CACHE_DATE
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     gcc \
     build-essential \
@@ -54,6 +59,8 @@ RUN groupadd -g 1000 mcp && useradd -u 1000 -g mcp -m -d /home/mcp mcp
 WORKDIR /app
 
 # Apply security updates and install minimal runtime dependencies
+# CACHE_DATE busts the BuildKit layer cache weekly, see builder stage above.
+ARG CACHE_DATE
 RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
