@@ -31,7 +31,7 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Wait for CI checks to complete
+      - name: Enable auto-merge for Dependabot PRs
         if: >
           (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
            steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
@@ -42,31 +42,8 @@ jobs:
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "Waiting for CI checks to complete..."
-          for _ in {1..30}; do
-            PENDING=$(gh pr checks "$PR_URL" --json state --jq '[.[] | select(.state == "PENDING")] | length' 2>/dev/null || echo "1")
-            if [ "$PENDING" = "0" ]; then echo "All checks completed"; break; fi
-            echo "Checks still pending ($PENDING remaining), waiting 10s..."
-            sleep 10
-          done
-
-      - name: Merge Dependabot PRs
-        if: >
-          (steps.metadata.outputs.update-type == 'version-update:semver-patch' ||
-           steps.metadata.outputs.update-type == 'version-update:semver-minor') &&
-          !contains(steps.metadata.outputs.dependency-names, 'cryptography') &&
-          !contains(steps.metadata.outputs.dependency-names, 'requests') &&
-          !contains(steps.metadata.outputs.dependency-names, 'urllib3') &&
-          !contains(steps.metadata.outputs.dependency-names, 'aiohttp')
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          FAILED=$(gh pr checks "$PR_URL" --json state --jq '[.[] | select(.state == "FAILURE")] | length' 2>/dev/null || echo "0")
-          if [ "$FAILED" != "0" ]; then
-            echo "Some checks failed, skipping merge"
-            exit 0
-          fi
-          gh pr merge --squash --delete-branch "$PR_URL" || { echo "Direct merge failed, PR may need manual review"; exit 0; }
-          echo "Successfully merged PR"
+        # Native GitHub auto-merge lets GitHub itself wait for required status
+        # checks to register and pass, instead of a manual poll-then-merge
+        # race that can fire before checks exist yet and fail against branch
+        # protection ("the base branch policy prohibits the merge").
+        run: gh pr merge --auto --squash --delete-branch "$PR_URL"
