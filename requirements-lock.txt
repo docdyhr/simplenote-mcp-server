@@ -17,7 +17,7 @@ CacheControl==0.14.4
 certifi==2026.7.22
 cffi==2.1.1
 cfgv==3.5.0
-charset-normalizer==3.4.9
+charset-normalizer==3.5.1
 click==8.4.2
 colorama==0.4.6
 coverage==7.15.4
