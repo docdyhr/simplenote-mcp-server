@@ -14,10 +14,10 @@
   },
   "devDependencies": {
     "mcp-evals": "^2.0.1",
-    "yaml": "^2.3.4",
+    "yaml": "^2.9.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@types/node": "^22.10.1",
-    "typescript": "^5.7.2"
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
   },
   "engines": {
     "node": ">=18"
@@ -29,7 +29,7 @@
   "author": "Thomas Juul Dyhr <docdyhr@me.com>",
   "license": "MIT",
   "dependencies": {
-    "tsx": "^4.20.3"
+    "tsx": "^4.23.12"
   },
   "overrides": {
     "undici": "^6.28.0"
