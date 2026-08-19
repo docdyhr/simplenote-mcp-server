@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "strict": true,
@@ -14,13 +14,6 @@
     "rootDir": "./",
     "types": ["node"]
   },
-  "include": [
-    "mcp-server-wrapper.ts",
-    "evals/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/*.js"
-  ]
+  "include": ["mcp-server-wrapper.ts", "evals/**/*.ts"],
+  "exclude": ["node_modules", "dist", "**/*.js"]
 }
