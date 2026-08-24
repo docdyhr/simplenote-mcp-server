@@ -32,6 +32,7 @@
     "tsx": "^4.23.12"
   },
   "overrides": {
-    "undici": "^6.28.0"
+    "undici": "^6.28.0",
+    "jsondiffpatch": "^0.7.2"
   }
 }
