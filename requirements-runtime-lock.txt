@@ -36,8 +36,8 @@ jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 keyring==25.7.0
 markdown-it-py==4.2.0
-mcp==2.0.0
-mcp-types==2.0.0
+mcp==2.1.1
+mcp-types==2.1.1
 mdurl==0.1.2
 more-itertools==11.1.0
 multidict==6.7.1
