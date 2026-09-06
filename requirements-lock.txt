@@ -6,7 +6,7 @@ annotated-types==0.8.0
 anyio==4.14.2
 ast_serialize==0.8.0
 attrs==26.1.0
-Authlib==1.7.2
+Authlib==1.8.0
 babel==2.18.0
 backrefs==8.0
 bandit==1.9.4
