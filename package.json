@@ -16,7 +16,7 @@
     "mcp-evals": "^2.0.1",
     "yaml": "^2.9.0",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "@types/node": "^26.4.0",
+    "@types/node": "^26.4.1",
     "typescript": "^7.0.2"
   },
   "engines": {
