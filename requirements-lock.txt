@@ -87,7 +87,7 @@ packaging==26.3
 paginate==0.5.7
 pathspec==1.1.1
 pbr==7.0.3
-pip-api==0.0.34
+pip-api==0.0.35
 pip-requirements-parser==32.0.1
 pip-tools==7.6.1
 pip_audit==2.10.1
