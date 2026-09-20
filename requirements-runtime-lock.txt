@@ -42,7 +42,7 @@ mdurl==0.1.2
 more-itertools==11.1.0
 multidict==6.7.1
 opentelemetry-api==1.44.0
-propcache==0.5.2
+propcache==0.5.4
 pycparser==3.0
 pydantic==2.13.4
 pydantic_core==2.46.4
