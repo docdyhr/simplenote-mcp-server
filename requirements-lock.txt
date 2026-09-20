@@ -12,7 +12,7 @@ backrefs==8.0
 bandit==1.9.4
 black==26.5.1
 boolean.py==5.0
-build==1.5.1
+build==1.6.1
 CacheControl==0.14.4
 certifi==2026.7.22
 cffi==2.1.1
