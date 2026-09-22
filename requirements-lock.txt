@@ -148,7 +148,7 @@ toml==0.10.2
 tomli==2.4.1
 tomli_w==1.2.0
 tomlkit==0.15.1
-tqdm==4.70.0
+tqdm==4.70.1
 truststore==0.10.4
 twine==7.0.0
 typer==0.27.1
