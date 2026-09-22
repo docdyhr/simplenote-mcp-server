@@ -22,7 +22,7 @@ jobs:
           fail-on-severity: moderate
 
           # Allow specific licenses (Python ecosystem friendly)
-          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Python-2.0, PSF-2.0, CC0-1.0, Unlicense
+          allow-licenses: MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, Python-2.0, PSF-2.0, CC0-1.0, Unlicense, MPL-2.0
 
           # Deny specific licenses that might be problematic
           # deny-licenses: GPL-3.0, AGPL-3.0
@@ -43,7 +43,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Review Configuration:" >> $GITHUB_STEP_SUMMARY
           echo "- Fail on severity: moderate and above" >> $GITHUB_STEP_SUMMARY
-          echo "- Allowed licenses: MIT, Apache-2.0, BSD, ISC, Python-2.0, PSF, CC0, Unlicense" >> $GITHUB_STEP_SUMMARY
+          echo "- Allowed licenses: MIT, Apache-2.0, BSD, ISC, Python-2.0, PSF, CC0, Unlicense, MPL-2.0" >> $GITHUB_STEP_SUMMARY
           echo "- OpenSSF Scorecard: Enabled" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Check the PR comment for detailed results." >> $GITHUB_STEP_SUMMARY
