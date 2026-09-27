@@ -118,7 +118,7 @@ python-discovery==1.6.1
 python-dotenv==1.2.3
 python-multipart==0.0.32
 pytokens==0.4.1
-pytz==2026.3.post1
+pytz==2026.4
 PyYAML==6.0.3
 pyyaml_env_tag==1.1
 radon==6.0.1
