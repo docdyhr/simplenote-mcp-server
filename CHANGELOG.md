@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Docker build `ResolutionImpossible` on `main`**: Dependabot PR #896 bumped `httpcore2` to
+  2.13.1 in both lock files while `httpx2` stayed at 2.12.0, which pins `httpcore2==2.12.0`
+  exactly — so `pip install -r requirements-runtime-lock.txt` failed in the Docker build, and
+  every Dependabot PR rebased afterwards inherited the failure. Bumped `httpx2` to 2.13.1 (which
+  requires `httpcore2==2.13.1`) in `requirements-runtime-lock.txt` and `requirements-lock.txt`.
+  Added an `httpx2-stack` Dependabot group so the exact-pinned pair always moves in one PR (same
+  break as #840/#842).
+
 ## [1.18.0] - 2026-08-15
 
 ### Removed
