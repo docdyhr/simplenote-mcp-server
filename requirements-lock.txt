@@ -18,7 +18,7 @@ certifi==2026.7.22
 cffi==2.1.1
 cfgv==3.5.0
 charset-normalizer==3.5.1
-click==8.4.2
+click==8.5.0
 colorama==0.4.6
 coverage==7.16.2
 cryptography==50.0.1
