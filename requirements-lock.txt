@@ -81,7 +81,7 @@ mypy==2.3.1
 mypy_extensions==1.1.0
 nh3==0.3.7
 nodeenv==1.11.0
-opentelemetry-api==1.44.0
+opentelemetry-api==1.45.0
 packageurl-python==0.17.6
 packaging==26.3
 paginate==0.5.7
