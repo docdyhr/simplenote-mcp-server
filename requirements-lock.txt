@@ -33,8 +33,8 @@ ghp-import==2.1.0
 gitdb==4.0.12
 GitPython==3.1.62
 griffe==2.3.0
-griffecli==2.2.0
-griffelib==2.2.0
+griffecli==2.3.0
+griffelib==2.3.0
 h11==0.16.0
 httpcore==1.0.9
 httpcore2==2.13.1
@@ -56,7 +56,7 @@ jsonschema-specifications==2025.9.1
 keyring==25.7.0
 librt==0.15.0
 license-expression==30.4.4
-mando==0.8.2
+mando==0.7.1
 Markdown==3.10.3
 markdown-it-py==4.2.0
 MarkupSafe==3.0.3
@@ -156,7 +156,7 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 urllib3==2.7.0
 uvicorn==0.54.0
-virtualenv==21.7.5
+virtualenv==21.14.1
 watchdog==6.0.0
 wheel==0.48.0
 wheel-filename==2.1.0

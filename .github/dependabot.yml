@@ -26,6 +26,11 @@ updates:
       # the Docker build with ResolutionImpossible — see closed PR #811.
       # It moves only when pydantic itself bumps.
       - dependency-name: "pydantic-core"
+      # radon 6.0.1 (latest release) requires mando<0.8, so mando 0.8.x makes
+      # requirements-lock.txt unresolvable. Bumped and reverted twice already
+      # (#338, #769 -> #858). Drop this once a radon release allows mando>=0.8.
+      - dependency-name: "mando"
+        versions: [">=0.8"]
     groups:
       # httpx2 pins httpcore2 exactly (httpx2 2.13.1 requires
       # httpcore2==2.13.1), so a standalone bump of either one is
@@ -35,6 +40,13 @@ updates:
         patterns:
           - "httpx2"
           - "httpcore2"
+      # Same exact-pin shape: griffe 2.3.0 requires griffecli==2.3.0 and
+      # griffelib==2.3.0 (mkdocstrings docs tooling). #914 bumped griffe alone.
+      griffe-stack:
+        patterns:
+          - "griffe"
+          - "griffecli"
+          - "griffelib"
       production-dependencies:
         dependency-type: "production"
         patterns:
