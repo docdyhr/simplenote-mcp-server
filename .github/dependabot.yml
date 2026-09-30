@@ -40,8 +40,8 @@ updates:
         patterns:
           - "httpx2"
           - "httpcore2"
-      # Same exact-pin shape: griffe 2.2.0 requires griffecli==2.2.0 and
-      # griffelib==2.2.0 (mkdocstrings docs tooling).
+      # Same exact-pin shape: griffe 2.3.0 requires griffecli==2.3.0 and
+      # griffelib==2.3.0 (mkdocstrings docs tooling). #914 bumped griffe alone.
       griffe-stack:
         patterns:
           - "griffe"

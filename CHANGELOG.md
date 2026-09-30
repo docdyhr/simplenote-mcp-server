@@ -17,10 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   break as #840/#842).
 - **`requirements-lock.txt` was not installable**: two exact-pin conflicts had accumulated
   unnoticed, since CI installs from `pyproject.toml` and never resolves this file.
-  `griffe==2.1.0` requires `griffecli==2.1.0`, but the lock had `griffecli`/`griffelib` 2.2.0
-  (since #785). `radon==6.0.1` (its latest release) requires `mando<0.8`, but Dependabot #858
-  re-bumped `mando` to 0.8.2 after #769 had downgraded it for this exact reason. Bumped `griffe`
-  to 2.2.0 and restored `mando` to 0.7.1. Added a `griffe-stack` Dependabot group and a `mando>=0.8`
+  `griffe` pins `griffecli`/`griffelib` to its own exact version, but the three have drifted
+  apart since #785; Dependabot #914 then bumped `griffe` alone to 2.3.0. `radon==6.0.1` (its
+  latest release) requires `mando<0.8`, but Dependabot #858 re-bumped `mando` to 0.8.2 after #769
+  had downgraded it for this exact reason. Bumped `griffecli`/`griffelib` to 2.3.0 to match
+  `griffe`, and restored `mando` to 0.7.1. Added a `griffe-stack` Dependabot group and a `mando>=0.8`
   ignore rule so neither conflict can come back. Also bumped `virtualenv` 21.7.5 → 21.14.1,
   because 21.7.5 caps `filelock<4` and blocked the `filelock` 4.x update. The fixed lock resolves
   cleanly on macOS and Linux (Python 3.13), and `pip check` finds no broken requirements.
