@@ -32,7 +32,7 @@ frozenlist==1.8.0
 ghp-import==2.1.0
 gitdb==4.0.12
 GitPython==3.1.61
-griffe==2.1.0
+griffe==2.3.0
 griffecli==2.2.0
 griffelib==2.2.0
 h11==0.16.0
