@@ -56,6 +56,7 @@ docs/, evals/           # Reference docs and mcp-evals suites; no durable local 
 - **Release process is manual, not automatic**: `.github/workflows/release.yml` runs only on `workflow_dispatch` (explicit bump-type input). No workflow triggers a release from a conventional-commit push to `main` — merging a `docs:`/`feat:`/`fix:` PR never cuts a release by itself.
 - **Write-mode gate**: any tool that mutates Simplenote data must be added to the `WRITE_TOOLS` frozenset in `server/server.py` or it bypasses the write-mode/write-budget gate — see `server/AGENTS.md`.
 - **Bandit config**: `[tool.bandit]` in `pyproject.toml` is authoritative; the separate `.bandit` YAML file disagrees on skipped checks and must not be used. Always run with `-c pyproject.toml`.
+- **The runtime Docker image has no pip, setuptools or wheel**: the `Dockerfile` final stage uninstalls them after copying the builder's `site-packages`. Install every runtime dependency in the builder stage (via `requirements-runtime-lock.txt`). Don't add `pip install` steps after the uninstall, and don't add anything that needs pip, setuptools or `pkg_resources` at runtime. Re-adding these tools brings back the Trivy findings from pip's `pip/_vendor/vendor.txt` and `setuptools/_vendor` (#937). Check any Dockerfile change with a local `linux/amd64` build and `trivy image`.
 - **No credentials, tokens, or Simplenote account data** in any AGENTS.md, doc, script output, or committed fixture, ever.
 
 ## Work Guidance
