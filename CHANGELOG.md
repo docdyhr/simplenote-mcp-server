@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed
+- **Docker image flagged for urllib3 2.7.0 after the 2.8.0 bump**: code-scanning alerts #592–#594
+  (CVE-2026-97687/97688/97689) opened right after #882 bumped urllib3 to 2.8.0. The urllib3 the
+  server actually imports is 2.8.0. Trivy was reading the `urllib3==2.7.0` that pip 26.2.1 lists
+  in its bundled `pip/_vendor/vendor.txt`, and no pip release yet bundles 2.8.0. The runtime
+  stage now uninstalls pip, setuptools and wheel. These are build-time tools that nothing imports
+  at runtime, and removing them removes all 33 packages Trivy detected inside them. A
+  `linux/amd64` scan with no ignore file now finds no Python-package CVEs, so the four
+  `.trivyignore` entries for pip-bundled setuptools/msgpack and pip itself (`CVE-2026-6357`,
+  `CVE-2025-47273`, `CVE-2026-59890`, `GHSA-6v7p-g79w-8964`) are removed. `pip install` is no
+  longer available inside the container.
 - **Docker build `ResolutionImpossible` on `main`**: Dependabot PR #896 bumped `httpcore2` to
   2.13.1 in both lock files while `httpx2` stayed at 2.12.0, which pins `httpcore2==2.12.0`
   exactly — so `pip install -r requirements-runtime-lock.txt` failed in the Docker build, and

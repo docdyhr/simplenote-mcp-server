@@ -76,6 +76,15 @@ RUN apt-get update && apt-get upgrade -y && apt-get install -y --no-install-reco
 COPY --from=builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 COPY --from=builder /usr/local/bin/simplenote-mcp-server /usr/local/bin/simplenote-mcp-server
 
+# pip, setuptools and wheel are build-time tools: the base image ships pip,
+# and the site-packages copy above brings all three from the builder. Nothing
+# imports them at runtime, and Trivy reads pip's pip/_vendor/vendor.txt as if
+# it listed installed packages — e.g. flagging urllib3 2.7.0 (CVE-2026-97687,
+# -97688, -97689) while the real, importable urllib3 is 2.8.0. Removing them
+# drops that whole class of finding along with the tools themselves.
+RUN python -m pip uninstall --yes --no-input pip setuptools wheel \
+    && rm -f /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.*
+
 # Copy application code with proper ownership
 COPY --chown=mcp:mcp simplenote_mcp/ ./simplenote_mcp/
 COPY --chown=mcp:mcp pyproject.toml setup.py VERSION ./
