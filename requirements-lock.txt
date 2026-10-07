@@ -17,17 +17,17 @@ CacheControl==0.14.4
 certifi==2026.7.22
 cffi==2.1.1
 cfgv==3.5.0
-charset-normalizer==3.5.1
+charset-normalizer==3.5.2
 click==8.5.0
 colorama==0.4.6
 coverage==7.16.2
-cryptography==50.0.1
+cryptography==50.0.2
 cyclonedx-python-lib==11.12.0
 defusedxml==0.7.1
 distlib==0.4.3
 docutils==0.23
 dparse==0.6.4
-filelock==3.32.3
+filelock==4.0.8
 frozenlist==1.8.0
 ghp-import==2.1.0
 gitdb==4.0.12
@@ -76,7 +76,7 @@ mkdocstrings==1.0.6
 mkdocstrings-python==2.0.9
 more-itertools==11.1.0
 msgpack==1.2.2
-multidict==6.7.1
+multidict==6.9.1
 mypy==2.3.1
 mypy_extensions==1.1.0
 nh3==0.3.7
@@ -111,7 +111,7 @@ pytest-asyncio==1.4.0
 pytest-cov==7.1.0
 pytest-env==1.7.1
 pytest-mock==3.15.1
-pytest-randomly==4.1.0
+pytest-randomly==5.0.0
 pytest-timeout==2.4.0
 python-dateutil==2.9.0.post0
 python-discovery==1.6.1
@@ -154,7 +154,7 @@ twine==7.0.0
 typer==0.27.2
 typing-inspection==0.4.4
 typing_extensions==4.16.0
-urllib3==2.7.0
+urllib3==2.8.0
 uvicorn==0.54.0
 virtualenv==21.14.1
 watchdog==6.0.0
