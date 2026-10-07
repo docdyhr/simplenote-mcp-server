@@ -40,12 +40,8 @@ jobs:
           pip install -e ".[dev,test]"
 
       - name: Check lock files resolve
+        # Install above uses pyproject.toml, so catch unresolvable lock files here (#896, #914, #858).
         run: |
-          # The steps above install from pyproject.toml, so nothing else in CI
-          # would notice a lock file pip can't install — e.g. Dependabot bumping
-          # one half of an exact-pinned pair (httpcore2 #896, griffe #914,
-          # mando #858). Resolve both lock files without installing anything.
-          # This lives in the required Test job so a break blocks the merge.
           python -m pip install --dry-run --ignore-installed --quiet -r requirements-lock.txt
           python -m pip install --dry-run --ignore-installed --quiet -r requirements-runtime-lock.txt
 
