@@ -26,6 +26,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every hook, including `check-yaml` on the workflows. The pattern is now anchored to the
   directories it meant. The newly checked files only needed whitespace fixes: 6 missing final
   newlines and one whitespace-only line.
+- **Releases never published a versioned Docker image**: Unified CI's Docker build runs only on
+  PRs and pushes to `main`, never on tags, and `release.yml` pushes its tag with `GITHUB_TOKEN`,
+  which can't trigger workflows. So Docker Hub and GHCR only ever got `latest`, `main` and
+  date-SHA tags. Meanwhile the README advertises `vX.Y.Z` tags and the Helm chart's default
+  `image.tag` points at one (`v1.18.0` and `v1.18.1` both returned 404). `release.yml` now runs a
+  `docker-publish` job (new `docker-release.yml`) that builds the release tag and pushes `vX.Y.Z`
+  and `X.Y.Z`. Dispatch `docker-release.yml` by hand to backfill an existing release.
 
 ## [1.18.1] - 2026-10-08
 

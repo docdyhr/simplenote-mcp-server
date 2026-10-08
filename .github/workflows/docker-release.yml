@@ -1,0 +1,61 @@
+name: Docker Release Image
+
+# Builds and pushes the versioned image (vX.Y.Z and X.Y.Z) for a release tag.
+# release.yml calls this after tagging. Unified CI can't do it: it never runs on
+# tags, and release.yml's GITHUB_TOKEN-pushed tag doesn't trigger workflows.
+# Dispatch it by hand to backfill an existing release tag.
+on:
+  workflow_call:
+    inputs:
+      tag:
+        type: string
+        required: true
+    secrets:
+      DOCKER_USERNAME:
+        required: false
+      DOCKER_TOKEN:
+        required: false
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build and push (e.g. v1.18.1)"
+        required: true
+        type: string
+
+jobs:
+  resolve-version:
+    permissions: {}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      # Validate before the value reaches the build's checkout ref and image tags.
+      - name: Validate release tag
+        id: version
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! printf '%s' "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$'; then
+            echo "::error::Not a release tag: '$TAG' (expected vX.Y.Z)" >&2
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: resolve-version
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      actions: read
+      attestations: write
+      id-token: write
+    uses: ./.github/workflows/reusable-docker-build.yml
+    with:
+      registry: docker.io
+      image-name: docdyhr/simplenote-mcp-server
+      version: ${{ needs.resolve-version.outputs.version }}
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
