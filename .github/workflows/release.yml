@@ -51,19 +51,47 @@ jobs:
     with:
       new_version: ${{ needs.prepare-release.outputs.new_version }}
 
+  docker-publish:
+    needs: prepare-release
+    if: needs.prepare-release.outputs.release_created == 'true'
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      actions: read
+      attestations: write
+      id-token: write
+    uses: ./.github/workflows/docker-release.yml
+    with:
+      tag: v${{ needs.prepare-release.outputs.new_version }}
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+
   notify:
     timeout-minutes: 5
     name: Notification
-    needs: [prepare-release, build-and-publish, attach-security-reports]
+    needs:
+      [
+        prepare-release,
+        build-and-publish,
+        attach-security-reports,
+        docker-publish,
+      ]
     if: ${{ always() && needs.prepare-release.outputs.release_created == 'true' }}
     permissions: {}
     runs-on: ubuntu-latest
 
     steps:
       - name: Send success notification
-        if: ${{ needs.build-and-publish.result == 'success' }}
-        run: echo "Version ${{ needs.prepare-release.outputs.new_version }} tagged and built. Run publish-pypi.yml to publish to PyPI."
+        if: ${{ needs.build-and-publish.result == 'success' && needs.docker-publish.result == 'success' }}
+        env:
+          NEW_VERSION: ${{ needs.prepare-release.outputs.new_version }}
+        run: echo "Version $NEW_VERSION tagged, built, and pushed to Docker Hub/GHCR. Run publish-pypi.yml to publish to PyPI."
 
       - name: Send failure notification
-        if: ${{ needs.build-and-publish.result != 'success' }}
-        run: echo "Release process failed at the build stage."
+        if: ${{ needs.build-and-publish.result != 'success' || needs.docker-publish.result != 'success' }}
+        env:
+          BUILD_RESULT: ${{ needs.build-and-publish.result }}
+          DOCKER_RESULT: ${{ needs.docker-publish.result }}
+        run: echo "Release process failed (build=$BUILD_RESULT, docker=$DOCKER_RESULT)."

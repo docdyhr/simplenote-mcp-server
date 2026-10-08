@@ -17,6 +17,13 @@ on:
       image-name:
         type: string
         required: true
+      # Set for release builds (bare semver, e.g. 1.18.1): checks out tag v<version> and
+      # pushes only the v<version> and <version> tags. Skips the code-scanning upload and
+      # Docker Hub description update, which belong to main and would be misattributed
+      # (or reverted) when backfilling an older tag.
+      version:
+        type: string
+        default: ""
     secrets:
       DOCKER_USERNAME:
         required: false
@@ -38,6 +45,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ inputs.version != '' && format('v{0}', inputs.version) || '' }}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
         with:
@@ -67,6 +76,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
+        if: inputs.version == ''
         uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
         with:
           images: |
@@ -82,6 +92,18 @@ jobs:
             type=sha,prefix={{date 'YYYYMMDD'}}-
             type=schedule,pattern={{date 'YYYYMMDD'}}
 
+      - name: Extract metadata (release version)
+        id: meta_release
+        if: inputs.version != ''
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: |
+            ${{ inputs.registry }}/${{ inputs.image-name }}
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=raw,value=v${{ inputs.version }}
+            type=raw,value=${{ inputs.version }}
+
       - name: Compute weekly cache-bust date
         id: cache_date
         run: echo "date=$(date -u +%Y-W%V)" >> "$GITHUB_OUTPUT"
@@ -94,8 +116,8 @@ jobs:
           file: ./Dockerfile
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags || steps.meta_release.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels || steps.meta_release.outputs.labels }}
           build-args: |
             CACHE_DATE=${{ steps.cache_date.outputs.date }}
           cache-from: type=gha
@@ -105,22 +127,23 @@ jobs:
         if: github.event_name != 'pull_request'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          image-ref: ${{ inputs.registry }}/${{ inputs.image-name }}:latest
-          format: "sarif"
-          output: "trivy-results.sarif"
+          # Release builds scan their own image and only log the table (see the version input).
+          image-ref: ${{ inputs.registry }}/${{ inputs.image-name }}:${{ inputs.version != '' && format('v{0}', inputs.version) || 'latest' }}
+          format: ${{ inputs.version != '' && 'table' || 'sarif' }}
+          output: ${{ inputs.version == '' && 'trivy-results.sarif' || '' }}
           severity: "CRITICAL,HIGH"
           ignore-unfixed: true
           trivyignores: ".trivyignore"
 
       - name: Upload Trivy scan results to GitHub Security tab
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && inputs.version == ''
         uses: github/codeql-action/upload-sarif@1ad29ea4a422cce9a242a9fae469541dcd08addc # v4
         with:
           sarif_file: "trivy-results.sarif"
           category: "trivy-container-scan"
 
       - name: Update Docker Hub repository description
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && inputs.version == ''
         uses: peter-evans/dockerhub-description@1b9a80c056b620d92cedb9d9b5a223409c68ddfa # v5
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
