@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.1] - 2026-10-08
+
 ### Fixed
 - **Docker image flagged for urllib3 2.7.0 after the 2.8.0 bump**: code-scanning alerts #592–#594
   (CVE-2026-97687/97688/97689) opened right after #882 bumped urllib3 to 2.8.0. The urllib3 the
@@ -35,6 +37,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ignore rule so neither conflict can come back. Also bumped `virtualenv` 21.7.5 → 21.14.1,
   because 21.7.5 caps `filelock<4` and blocked the `filelock` 4.x update. The fixed lock resolves
   cleanly on macOS and Linux (Python 3.13), and `pip check` finds no broken requirements.
+- **Docker image went unpatched between cache misses**: the `apt-get upgrade` layer was cached
+  indefinitely by the BuildKit GitHub Actions cache (`mode=max`), so OS security patches only
+  reached the image when that cache happened to miss. Clearing it once fixed 6 unpatched
+  `util-linux` CVEs. The build now passes the ISO year-week as a `CACHE_DATE` build-arg, which
+  rebuilds that layer at least weekly and keeps the rest of the cache.
+- **GitHub Release notes rendered as one line of literal `%0A`**:
+  `scripts/release/generate_release_changelog.sh` %-escaped newlines the way the retired
+  `::set-output` command expected, but values written to `$GITHUB_OUTPUT` are never decoded, so
+  the v1.17.2–v1.17.5 release pages showed a single line (and `100%` became `100%25`). The script
+  now writes a heredoc-delimited multiline output with a random delimiter;
+  `tests/test_generate_release_changelog.py` covers it.
+- **Dependabot auto-merge stranded PRs without any error**: the old poll-then-merge step could run
+  `gh pr merge` before the required checks had registered, fail with "the base branch policy
+  prohibits the merge", and swallow the failure, leaving approved PRs unmerged. It now enables
+  native auto-merge (`gh pr merge --auto`), so GitHub itself waits for the required checks.
+
+### Changed
+- **Lock files are checked in CI**: the required `Test` job now runs `pip install --dry-run`
+  against `requirements-lock.txt` and `requirements-runtime-lock.txt`, so a lock file that can't
+  be resolved fails the PR that breaks it instead of surfacing later in the Docker build. The
+  `ruff` pre-commit hook now matches the pinned `ruff` 0.16.9.
+- **Dependency Review accepts MPL-2.0 and CNRI-Python**: `tqdm` (MPL-2.0 AND MIT) and `regex`
+  (Apache-2.0 AND CNRI-Python) failed the license allow-list, which blocked their Dependabot
+  updates.
+
+### Dependencies
+- `requirements-runtime-lock.txt` (what the Docker image installs): `mcp`/`mcp-types` 2.0.0 →
+  2.2.0, `cryptography` 50.0.0 → 50.0.2, `urllib3` 2.7.0 → 2.8.0, `pyjwt` 2.13.0 → 2.15.1,
+  `starlette` 1.6.0 → 1.7.0, `uvicorn` 0.52.1 → 0.54.0, `httpx2`/`httpcore2` 2.10.0 → 2.13.1, and
+  12 other routine updates. The runtime ranges in `pyproject.toml` are unchanged, so PyPI installs
+  already resolved current versions.
+
+### Security
+- **Dev-only npm advisories resolved**: `jsondiffpatch` XSS (GHSA-33vc-wfww-vjfv) via an
+  `overrides` pin to `^0.7.2`, and `js-yaml` (high) and `hono` (medium) bumped in
+  `package-lock.json`. All three are transitive dev dependencies of the npm eval tooling; nothing
+  from `package.json` ships in the PyPI package or the Docker image.
 
 ## [1.18.0] - 2026-08-15
 
@@ -952,7 +991,8 @@ This release marks a significant milestone with **98% startup performance improv
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.0...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.1...HEAD
+[1.18.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.0...v1.18.1
 [1.18.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.17.5...v1.18.0
 [1.17.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.1...v1.17.0
 [1.16.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.0...v1.16.1
