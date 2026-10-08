@@ -19,6 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Makefile target, or doc referenced it), and it was the source of two high CodeQL alerts for
   clear-text logging and storage of sensitive data. It only ever wrote secret *types*, not values.
 
+### Fixed
+- **pre-commit never checked `.github/`**: the global `exclude: ".git|.venv|..."` was an
+  unanchored, unescaped regex, so `.git` (any character + "git") also matched `.github/`,
+  `scripts/verify-github-status.py`, `.gitignore` and `.gitkeep`. That hid 63 tracked files from
+  every hook, including `check-yaml` on the workflows. The pattern is now anchored to the
+  directories it meant. The newly checked files only needed whitespace fixes: 6 missing final
+  newlines and one whitespace-only line.
+
 ## [1.18.1] - 2026-10-08
 
 ### Fixed
