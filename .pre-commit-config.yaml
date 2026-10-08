@@ -1,4 +1,6 @@
-exclude: ".git|.venv|venv|__pycache__|.pytest_cache"
+# Anchored: the old unanchored ".git|..." also matched .github/ and
+# verify-github-status.py, so no hook ever checked the workflows.
+exclude: '^(\.git|\.venv|venv)/|(^|/)(__pycache__|\.pytest_cache)/'
 
 # Specify Python version to use for all hooks
 default_language_version:

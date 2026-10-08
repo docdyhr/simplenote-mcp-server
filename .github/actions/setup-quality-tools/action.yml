@@ -22,7 +22,7 @@ runs:
         restore-keys: |
           quality-tools-${{ inputs.python-version }}-
           quality-tools-
-    
+
     - name: Install quality tools
       if: steps.cache.outputs.cache-hit != 'true'
       shell: bash
