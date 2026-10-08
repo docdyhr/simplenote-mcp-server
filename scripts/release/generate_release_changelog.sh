@@ -1,7 +1,7 @@
 #!/bin/bash
 # Generate the release changelog via scripts/conventional_changelog.py and
-# write its GitHub-Release-safe (%-escaped) form to $GITHUB_OUTPUT as
-# `changelog`. Reads NEW_VERSION from the environment.
+# write it to $GITHUB_OUTPUT as the multiline output `changelog`. Reads
+# NEW_VERSION from the environment.
 
 set -euo pipefail
 
@@ -27,8 +27,13 @@ python scripts/conventional_changelog.py \
   $([ -n "$LAST_TAG" ] && echo "--since $LAST_TAG") \
   --format summary
 
-CHANGELOG_CONTENT=$(cat changelog.md)
-CHANGELOG_CONTENT="${CHANGELOG_CONTENT//'%'/'%25'}"
-CHANGELOG_CONTENT="${CHANGELOG_CONTENT//$'\n'/'%0A'}"
-CHANGELOG_CONTENT="${CHANGELOG_CONTENT//$'\r'/'%0D'}"
-echo "changelog=$CHANGELOG_CONTENT" >> "$GITHUB_OUTPUT"
+# Multiline outputs need the heredoc form: $GITHUB_OUTPUT never decodes the
+# %0A escaping of the retired ::set-output command, which is how v1.17.2-v1.17.5
+# got release notes full of literal %0A. The random delimiter stops commit
+# subjects from closing the value early.
+DELIMITER="CHANGELOG_EOF_$(openssl rand -hex 16)"
+{
+  echo "changelog<<$DELIMITER"
+  printf '%s\n' "$(cat changelog.md)"
+  echo "$DELIMITER"
+} >> "$GITHUB_OUTPUT"
