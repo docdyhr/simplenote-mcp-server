@@ -9,6 +9,10 @@ on:
   workflow_dispatch:
 jobs:
   security:
+    # The org scan workflow declares these; a caller can't grant less.
+    permissions:
+      contents: read
+      security-events: write
     uses: docdyhr/.github/.github/workflows/security-scan.yml@v1
     with:
       scan_paths: "simplenote_mcp/"

@@ -16,6 +16,7 @@ on:
 jobs:
   summary:
     name: Monitoring Summary
+    permissions: {}
     runs-on: ubuntu-latest
     steps:
       - name: Generate monitoring summary

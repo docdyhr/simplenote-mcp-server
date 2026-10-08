@@ -56,6 +56,7 @@ jobs:
     name: Notification
     needs: [prepare-release, build-and-publish, attach-security-reports]
     if: ${{ always() && needs.prepare-release.outputs.release_created == 'true' }}
+    permissions: {}
     runs-on: ubuntu-latest
 
     steps:
