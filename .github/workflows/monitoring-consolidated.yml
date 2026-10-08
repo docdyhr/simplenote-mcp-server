@@ -62,6 +62,7 @@ jobs:
   monitoring-summary:
     needs: [security-monitoring, health-monitoring, badge-monitoring]
     if: always()
+    permissions: {}
     uses: ./.github/workflows/reusable-monitoring-summary.yml
     with:
       security-result: ${{ needs.security-monitoring.result }}

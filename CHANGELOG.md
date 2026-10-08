@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Least-privilege tokens for six workflow jobs**: CodeQL (switched back on 2026-10-08 after
+  sitting unconfigured since January) flagged six jobs with no `permissions:` block. This repo's
+  default workflow token is write-scoped, so each ran with write access it never used. Five now
+  get `permissions: {}`; `security.yml`'s job gets exactly the `contents: read` and
+  `security-events: write` that the org `security-scan.yml@v1` reusable workflow declares.
+
+### Removed
+- **`.github/scripts/monitor-security-alerts.py` (dead code)**: nothing ran it (no workflow,
+  Makefile target, or doc referenced it), and it was the source of two high CodeQL alerts for
+  clear-text logging and storage of sensitive data. It only ever wrote secret *types*, not values.
+
 ## [1.18.1] - 2026-10-08
 
 ### Fixed

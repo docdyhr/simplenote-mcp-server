@@ -24,6 +24,7 @@ jobs:
       (github.event.workflow_run.conclusion == 'failure' &&
        contains(github.event.workflow_run.name, 'CI/CD') &&
        github.event.workflow_run.head_repository.full_name == github.repository)
+    permissions: {}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     outputs:
