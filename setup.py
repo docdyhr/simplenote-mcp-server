@@ -14,7 +14,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="simplenote-mcp-server",
-    version="1.18.0",
+    version="1.18.1",
     description="A simple MCP Server that connects to Simplenote",
     packages=find_packages(),
     install_requires=[
