@@ -143,7 +143,7 @@ sortedcontainers==2.4.0
 sse-starlette==3.4.9
 starlette==1.7.0
 stevedore==5.8.0
-tenacity==9.1.4
+tenacity==9.2.1
 toml==0.10.2
 tomli==2.5.0
 tomli_w==1.2.0
