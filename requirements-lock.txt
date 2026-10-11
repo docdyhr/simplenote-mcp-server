@@ -42,7 +42,7 @@ httpx==0.28.1
 httpx-sse==0.4.3
 httpx2==2.13.1
 id==1.6.1
-identify==2.6.19
+identify==2.6.20
 idna==3.18
 iniconfig==2.3.0
 jaraco.classes==3.4.0
