@@ -21,11 +21,6 @@ updates:
     allow:
       - dependency-type: "all"
     ignore:
-      # pydantic_core is pinned exactly by pydantic (pydantic==2.13.4 requires
-      # pydantic_core==2.46.4), so a standalone bump is unsatisfiable and fails
-      # the Docker build with ResolutionImpossible — see closed PR #811.
-      # It moves only when pydantic itself bumps.
-      - dependency-name: "pydantic-core"
       # radon 6.0.1 (latest release) requires mando<0.8, so mando 0.8.x makes
       # requirements-lock.txt unresolvable. Bumped and reverted twice already
       # (#338, #769 -> #858). Drop this once a radon release allows mando>=0.8.
@@ -47,6 +42,15 @@ updates:
           - "griffe"
           - "griffecli"
           - "griffelib"
+      # pydantic pins pydantic-core exactly (pydantic 2.13.5 requires
+      # pydantic-core==2.46.5), so a standalone bump of either one is
+      # unsatisfiable: the Test job's lock dry-run and the Docker build fail
+      # with ResolutionImpossible (#811, #950). pydantic-core used to be
+      # ignored, which left pydantic bumps stuck; move them in one PR instead.
+      pydantic-stack:
+        patterns:
+          - "pydantic"
+          - "pydantic-core"
       production-dependencies:
         dependency-type: "production"
         patterns:

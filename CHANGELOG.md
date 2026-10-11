@@ -20,6 +20,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   clear-text logging and storage of sensitive data. It only ever wrote secret *types*, not values.
 
 ### Fixed
+- **pydantic bumps could never pass the lock dry-run**: `pydantic` pins `pydantic-core` exactly
+  (2.13.5 requires `pydantic-core==2.46.5`), but Dependabot ignored `pydantic-core`, so its
+  pydantic PR (#950) bumped one pin of the pair and failed `test / Test` with
+  `ResolutionImpossible`. Both lock files now carry `pydantic` 2.13.5 with `pydantic_core`
+  2.46.5, the `pydantic-core` ignore is gone, and a `pydantic-stack` Dependabot group moves the
+  pair in one PR, as `httpx2-stack` and `griffe-stack` already do.
 - **pre-commit never checked `.github/`**: the global `exclude: ".git|.venv|..."` was an
   unanchored, unescaped regex, so `.git` (any character + "git") also matched `.github/`,
   `scripts/verify-github-status.py`, `.gitignore` and `.gitkeep`. That hid 63 tracked files from
