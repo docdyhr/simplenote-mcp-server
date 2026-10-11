@@ -160,4 +160,4 @@ virtualenv==21.14.1
 watchdog==6.0.0
 wheel==0.48.0
 wheel-filename==2.1.0
-yarl==1.24.5
+yarl==1.25.1
