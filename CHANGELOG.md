@@ -45,6 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ruff check --fix` used a ruff two minor versions behind the one CI checks with. Both are
   now 0.17.0. Running 0.16.9 and 0.17.0 against the tree gave the same result: 195 enabled
   rules, 0 findings, 261 files already formatted.
+- **Tool pins could drift again on the next bump**: the pre-commit mypy hook was still on
+  1.20.2 while `pyproject.toml` pins `mypy==2.3.1`; it is now v2.3.1. The new
+  `tests/test_tool_pin_parity.py` checks that every extra, `requirements-lock.txt`, the
+  pre-commit hook `rev:` and any workflow `<tool>==` pin all match pyproject's exact ruff and
+  mypy pins. It runs in the required Test job, so a Dependabot ruff or mypy bump now fails CI
+  instead of auto-merging with the hook left behind. To fix one, bump the hook `rev:` named in
+  the failure on the Dependabot branch. The auto-fix workflow no longer pins ruff itself: it
+  reads the version from `requirements-lock.txt`. Run against the tree from before the
+  previous fix, the test reports all three drifts.
 
 ## [1.18.1] - 2026-10-08
 

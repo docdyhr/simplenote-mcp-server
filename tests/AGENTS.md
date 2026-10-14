@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Primary, CI-wired pytest tree (`testpaths = ["tests"]` in `pyproject.toml`) — 60 test files. All new tests go here, not in the legacy `simplenote_mcp/tests/` tree (see that folder's `AGENTS.md`).
+Primary, CI-wired pytest tree (`testpaths = ["tests"]` in `pyproject.toml`) — 62 test files. All new tests go here, not in the legacy `simplenote_mcp/tests/` tree (see that folder's `AGENTS.md`).
 
 ## Ownership
 
@@ -18,6 +18,7 @@ Primary, CI-wired pytest tree (`testpaths = ["tests"]` in `pyproject.toml`) — 
 - Markers available: `unit`, `integration`, `perf`, `security`, `slow`, `network`, `auth`, `offline` (`--strict-markers` enforced — unregistered markers fail collection).
 - Do not merge this tree's pytest invocation with `simplenote_mcp/tests/` — both mutate process-global singletons (see `simplenote_mcp/server/monitoring/AGENTS.md`) and only reset state for their own tests.
 - Offline-mode mock client (`server.py::get_simplenote_client()`) returns `({}, 0)` from `add_note`/`get_note`/`update_note` — don't write assertions expecting a populated `note['key']` against the raw mock.
+- `test_tool_pin_parity.py` fails when pyproject's exact `ruff`/`mypy` pin differs from `requirements-lock.txt`, the pre-commit hook `rev:`, or a `<tool>==` pin in a workflow. Dependabot bumps only pyproject and the lock, so on a failing bot PR bump the hook `rev:` on that branch. Don't loosen the test.
 
 ## Work Guidance
 
