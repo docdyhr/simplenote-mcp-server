@@ -39,6 +39,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `image.tag` points at one (`v1.18.0` and `v1.18.1` both returned 404). `release.yml` now runs a
   `docker-publish` job (new `docker-release.yml`) that builds the release tag and pushes `vX.Y.Z`
   and `X.Y.Z`. Dispatch `docker-release.yml` by hand to backfill an existing release.
+- **Three ruff versions in use**: Dependabot's ruff 0.17.0 bump (#971) changed `pyproject.toml`
+  and `requirements-lock.txt` only. The pre-commit hook stayed on 0.16.9, so the alignment from
+  #917 was undone. The auto-fix workflow still installed 0.15.5, so its `ruff format` and
+  `ruff check --fix` used a ruff two minor versions behind the one CI checks with. Both are
+  now 0.17.0. Running 0.16.9 and 0.17.0 against the tree gave the same result: 195 enabled
+  rules, 0 findings, 261 files already formatted.
 
 ## [1.18.1] - 2026-10-08
 
