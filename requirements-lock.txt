@@ -114,7 +114,7 @@ pytest-mock==3.16.0
 pytest-randomly==5.0.0
 pytest-timeout==2.4.0
 python-dateutil==2.9.0.post0
-python-discovery==1.6.1
+python-discovery==1.6.2
 python-dotenv==1.2.4
 python-multipart==0.0.32
 pytokens==0.4.1
