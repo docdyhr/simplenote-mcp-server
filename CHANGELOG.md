@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`.github/scripts/monitor-security-alerts.py` (dead code)**: nothing ran it (no workflow,
   Makefile target, or doc referenced it), and it was the source of two high CodeQL alerts for
   clear-text logging and storage of sensitive data. It only ever wrote secret *types*, not values.
+- **`scripts/validate-version-pinning.py` (superseded)**: no workflow, Makefile target or hook
+  ran it. It treated the pre-commit config as the source of truth, but Dependabot bumps
+  `pyproject.toml`, so it would have accepted #971's drift.
+  `tests/test_tool_pin_parity.py` replaces it in the required Test job.
+  `docs/ci-cd/improvements-summary.md` now says so.
 
 ### Fixed
 - **pydantic bumps could never pass the lock dry-run**: `pydantic` pins `pydantic-core` exactly

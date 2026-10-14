@@ -31,7 +31,8 @@ This document summarizes the comprehensive improvements made to the CI/CD pipeli
 - All GitHub workflow files: Consistent tool versions across all CI jobs
 
 #### Validation
-- Created comprehensive version validation script (`validate-version-pinning.py`)
+- Created a version validation script (`validate-version-pinning.py`). Removed 2026-10-14:
+  nothing ran it. `tests/test_tool_pin_parity.py` now checks pin parity in the required Test job
 - Automated checking ensures versions remain consistent
 - Single source of truth for tool versions in CI environment variables
 
@@ -124,7 +125,11 @@ Automated timeout addition with:
 - Batch processing of all workflow files
 
 ### 3. Version Pinning Validator (`validate-version-pinning.py`)
-Ensures version consistency with:
+> **Removed 2026-10-14.** No workflow, Makefile target or hook ran it, and its source of
+> truth (the pre-commit config) is not what Dependabot bumps. `tests/test_tool_pin_parity.py`
+> replaced it: it treats `pyproject.toml` as the source of truth and runs in the required Test job.
+
+Ensured version consistency with:
 - Pre-commit config as single source of truth
 - Cross-workflow version validation
 - Detailed mismatch reporting
@@ -182,8 +187,7 @@ Ensures version consistency with:
 │   └── [all others]           # Additional specialized workflows
 └── scripts/
     ├── validate-cicd-health.py      # Health monitoring
-    ├── add-timeouts-to-workflows.py # Timeout management
-    └── validate-version-pinning.py  # Version consistency
+    └── add-timeouts-to-workflows.py # Timeout management
 ```
 
 ### Environment Variables
