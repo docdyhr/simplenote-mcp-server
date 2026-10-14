@@ -97,7 +97,7 @@ pre_commit==4.6.2
 propcache==0.5.4
 psutil==7.2.2
 py-serializable==2.1.0
-pycparser==3.0
+pycparser==3.11
 pydantic==2.14.0
 pydantic-settings==2.15.0
 pydantic_core==2.50.0
