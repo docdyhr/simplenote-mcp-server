@@ -169,3 +169,4 @@ Default section order:
 - `scripts/AGENTS.md` — CI/quality/release tooling (not shipped)
 - `helm/AGENTS.md` — Helm chart for Kubernetes deployment
 - `.github/workflows/AGENTS.md` — CI/CD pipeline definitions
+- `.claude/skills/AGENTS.md` — vendored agent skills (Claude Code + Copilot); edit via upstream, not in place
