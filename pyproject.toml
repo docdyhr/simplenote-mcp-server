@@ -43,6 +43,8 @@ ignore_missing_imports = true
 follow_imports = "silent"
 
 [tool.ruff]
+# Vendored agent skills (github/awesome-copilot) are not project code
+extend-exclude = [".github/skills"]
 target-version = "py310"
 line-length = 88
 
