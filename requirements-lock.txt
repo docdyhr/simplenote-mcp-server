@@ -149,7 +149,7 @@ tomli==2.5.0
 tomli_w==1.2.0
 tomlkit==0.15.1
 tqdm==4.70.1
-truststore==0.10.4
+truststore==0.10.5
 twine==7.0.0
 typer==0.27.3
 typing-inspection==0.4.4
