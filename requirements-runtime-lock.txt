@@ -60,7 +60,7 @@ simplenote==2.1.4
 six==1.17.0
 sse-starlette==3.5.0
 starlette==1.7.0
-truststore==0.10.4
+truststore==0.10.5
 typer==0.27.3
 typing-inspection==0.4.4
 typing_extensions==4.16.0
