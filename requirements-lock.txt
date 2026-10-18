@@ -156,7 +156,7 @@ typing-inspection==0.4.4
 typing_extensions==4.16.0
 urllib3==2.8.0
 uvicorn==0.54.0
-virtualenv==21.14.1
+virtualenv==21.14.7
 watchdog==6.0.0
 wheel==0.48.0
 wheel-filename==2.1.0
