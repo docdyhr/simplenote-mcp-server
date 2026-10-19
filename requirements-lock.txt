@@ -77,7 +77,7 @@ mkdocstrings-python==2.0.9
 more-itertools==11.1.0
 msgpack==1.2.3
 multidict==6.9.1
-mypy==2.3.1
+mypy==2.4.0
 mypy_extensions==1.1.0
 nh3==0.3.7
 nodeenv==1.11.0
