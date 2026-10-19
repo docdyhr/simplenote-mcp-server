@@ -41,10 +41,15 @@ concurrency:
 jobs:
   call-reusable:
     uses: docdyhr/.github/.github/workflows/claude-status-check.yml@v1
+    # The reusable workflow can only use scopes granted here, never more.
     permissions:
       contents: read
-      issues: write
+      issues: write                # report reads; CRITICAL issue writes
       pull-requests: read
+      actions: read                # CI runs
+      checks: read                 # PR CI rollup
+      statuses: read               # PR CI rollup
+      vulnerability-alerts: read   # Dependabot alerts
     # Explicit mapping instead of `secrets: inherit` — see
     # claude-dependabot-merge.yml for why.
     secrets:

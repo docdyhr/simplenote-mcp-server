@@ -1,0 +1,9 @@
+# actionlint configuration.
+#
+# GitHub supports the `vulnerability-alerts` GITHUB_TOKEN scope (Dependabot alerts,
+# read-only), but actionlint 1.7.12 does not know it yet. Remove this ignore once
+# actionlint lists it among the known permission scopes.
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    ignore:
+      - 'unknown permission scope "vulnerability-alerts"'
