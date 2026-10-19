@@ -1,5 +1,7 @@
 """Unit tests for error handling components."""
 
+import pytest
+
 from simplenote_mcp.server.errors import (
     AuthenticationError,
     ConfigurationError,
@@ -303,3 +305,59 @@ class TestHandleExceptionAdvanced:
         assert isinstance(result, ServerError)
         assert result.category == ErrorCategory.INTERNAL
         assert "executing operation" in str(result)
+
+
+class TestHandleExceptionResourceId:
+    """Resource IDs extracted from exception messages by handle_exception."""
+
+    @pytest.mark.parametrize(
+        "message",
+        [
+            # Messages this codebase raises or formats; none carries an ID.
+            "note not found",
+            "tag not found",
+            "Note ID is required",
+            "Note ID too long (max 64 characters)",
+            "Note ID contains invalid characters",
+            "Note with specified ID not found",
+            "Failed to update note tags",
+            "Failed to move note to trash",
+            "Failed to update note after adding text",
+            "The requested resource was not found.",
+            "old_tag is required",
+            "Simplenote API connection successful, received 12 items",
+            "Client ID mismatch",
+        ],
+    )
+    def test_prose_after_keyword_is_not_a_resource_id(self, message):
+        error = handle_exception(FileNotFoundError(message))
+
+        assert error.resource_id is None
+
+    @pytest.mark.parametrize(
+        ("message", "expected"),
+        [
+            (
+                "Failed to find note with ID 8f2c1e0b5a2d4c6e9f1a3b5c7d9e0f12",
+                "8f2c1e0b5a2d4c6e9f1a3b5c7d9e0f12",
+            ),
+            ("Failed to find note with ID note123", "note123"),
+            ("note abc123 is locked", "abc123"),
+            ("resource r42 is gone", "r42"),
+            ("tag v2 not found", "v2"),
+            # Unambiguous syntax accepts IDs without digits (review on #993).
+            ("Note with ID abc not found", "abc"),
+            ("tag 'work' not found", "work"),
+            ('note "meeting-notes" is locked', "meeting-notes"),
+            # The validator's charset includes "-" (security.py).
+            (
+                "Failed to find note with ID 8f2c1e0b-5a2d-4c6e",
+                "8f2c1e0b-5a2d-4c6e",
+            ),
+            ("ID abc-123 rejected", "abc-123"),
+        ],
+    )
+    def test_id_after_keyword_is_extracted(self, message, expected):
+        error = handle_exception(Exception(message))
+
+        assert error.resource_id == expected

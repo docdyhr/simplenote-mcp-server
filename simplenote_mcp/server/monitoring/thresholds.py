@@ -5,6 +5,7 @@ for the Simplenote MCP Server. It monitors key metrics and triggers alerts
 when performance degrades beyond acceptable levels.
 """
 
+import copy
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -107,6 +108,32 @@ class PerformanceThreshold:
             self.consecutive_warning_count = 0
             self.consecutive_critical_count = 0
 
+        return None, ""
+
+    def classify(self, current_value: float) -> tuple[AlertSeverity | None, str]:
+        """Compare a reading with the limits without counting it as a check.
+
+        Unlike evaluate(), this ignores consecutive_violations and changes no
+        state, so status reads can report a reading without advancing (or
+        projecting) the counters that gate alerts.
+
+        Args:
+            current_value: Metric value to classify
+
+        Returns:
+            Tuple of (severity, message) or (None, "") if within limits
+        """
+        if not self.enabled:
+            return None, ""
+        for severity, limit in (
+            (AlertSeverity.CRITICAL, self.critical_value),
+            (AlertSeverity.MEDIUM, self.warning_value),
+        ):
+            if self._check_threshold(current_value, limit):
+                return severity, (
+                    f"{self.name}: {current_value:.3f}{self.unit} "
+                    f"{self.operator.value} {limit:.3f}{self.unit}"
+                )
         return None, ""
 
     def check_regression(
@@ -219,7 +246,8 @@ DEFAULT_THRESHOLDS = [
     # Error Rate Thresholds
     PerformanceThreshold(
         name="API Error Rate",
-        metric_type=MetricType.ERROR_RATE,
+        # Measured as a success rate, so lower is worse for regression checks.
+        metric_type=MetricType.API_SUCCESS_RATE,
         metric_path="api.success_rate",
         operator=ThresholdOperator.LESS_THAN,
         warning_value=95.0,  # 95% success rate (5% error rate)
@@ -318,7 +346,11 @@ class PerformanceThresholdMonitor:
         Args:
             thresholds: List of thresholds to monitor, uses defaults if None
         """
-        self.thresholds = thresholds or DEFAULT_THRESHOLDS.copy()
+        # Deep copy: each threshold carries mutable violation counters, so a
+        # shallow copy would share them between every default monitor.
+        self.thresholds = (
+            thresholds if thresholds is not None else copy.deepcopy(DEFAULT_THRESHOLDS)
+        )
         self.baseline_history: dict[
             str, list[tuple[float, float]]
         ] = {}  # metric_name -> [(timestamp, value), ...]
@@ -378,12 +410,12 @@ class PerformanceThresholdMonitor:
                     regression_severity, regression_message = (
                         threshold.check_regression(current_value, baseline)
                     )
-                    if regression_severity and self._should_alert(
-                        f"{threshold.name}_regression"
-                    ):
+                    # Same key trigger_alerts_for_violations records the cooldown under.
+                    regression_name = f"{threshold.name} (Regression)"
+                    if regression_severity and self._should_alert(regression_name):
                         alerts.append(
                             {
-                                "threshold_name": f"{threshold.name} (Regression)",
+                                "threshold_name": regression_name,
                                 "severity": regression_severity,
                                 "message": regression_message,
                                 "current_value": current_value,
@@ -623,8 +655,10 @@ class PerformanceThresholdMonitor:
                     else None
                 )
 
+                # classify(), not evaluate(): reading the status must not count
+                # as a check, so the counters below are the recorded ones.
                 severity, message = (
-                    threshold.evaluate(current_value)
+                    threshold.classify(current_value)
                     if current_value is not None
                     else (None, "")
                 )

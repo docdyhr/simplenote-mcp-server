@@ -42,6 +42,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `docs/ci-cd/improvements-summary.md` now says so.
 
 ### Fixed
+- **Threshold monitor shared and miscounted its state** (`monitoring/thresholds.py`):
+  - Every default `PerformanceThresholdMonitor` shared the same `PerformanceThreshold` objects
+    (a shallow `list.copy()`), so violations one monitor counted applied to all of them.
+    Monitors now deep-copy the defaults. An explicit empty threshold list is now honoured
+    instead of being replaced by the defaults.
+  - `get_threshold_status()`, served at `GET /thresholds`, called the stateful `evaluate()`,
+    so every poll counted as a check: two polls moved a counter from 0 to 2 and made real
+    alerts fire sooner. It now uses a new side-effect-free `PerformanceThreshold.classify()`.
+    A threshold's `status` is `"violation"` when the current reading breaches a limit, the
+    message no longer claims a consecutive-violation count, and `consecutive_*` report the
+    recorded counts. The consecutive-check gating applies to alerts only.
+  - Regression alerts were never rate-limited: the cooldown was checked under
+    `"<name>_regression"` but recorded under `"<name> (Regression)"`. Both now use the latter.
+  - The "API Error Rate" threshold reads `api.success_rate` but was typed `ERROR_RATE`, where
+    higher is worse. A success-rate drop raised no regression alert and an improvement raised
+    one. It is now typed `API_SUCCESS_RATE`, so status and alert payloads report
+    `metric_type: "api_success_rate"` for it. Its name, and so its alert and cooldown keys,
+    are unchanged.
+- **Error responses carried made-up resource IDs**: `handle_exception` took whatever word
+  followed "ID", "note", "resource" or "tag" as the ID. "note not found" gave `"not"`, a
+  tool's "Failed to move note to trash" gave `"to"`, and "Note ID is required" gave `"is"`.
+  About 50 strings in the server matched this way. `with ID x` and quoted tokens (`tag 'work'`)
+  now accept any token in the note-ID validator's charset (`[\w-]`). After a bare keyword, a
+  token must contain a digit. Keywords must start a word, so "Simplenote API" no longer
+  matches. Hex keys, hyphenated IDs and `with ID abc` are all extracted.
 - **pydantic bumps could never pass the lock dry-run**: `pydantic` pins `pydantic-core` exactly
   (2.13.5 requires `pydantic-core==2.46.5`), but Dependabot ignored `pydantic-core`, so its
   pydantic PR (#950) bumped one pin of the pair and failed `test / Test` with
@@ -81,18 +106,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Full coverage for three under-tested modules**: `monitoring/thresholds.py` 27% → 100%,
   `error_helpers.py` 56% → 100%, `mcp_types_compat.py` 59% → 100% (new
   `tests/test_thresholds.py` and `tests/test_error_helpers.py`, extended
-  `tests/test_mcp_types_compat.py`; total coverage 81.65% → 85.40%). Six strict `xfail` tests
-  pin down suspected bugs, still unfixed, for follow-up:
-  - `PerformanceThresholdMonitor()` shallow-copies `DEFAULT_THRESHOLDS`, so every default
-    monitor shares the same violation counters. An explicit empty list is also replaced by the
-    defaults.
-  - The default "API Error Rate" threshold reads `api.success_rate` but is typed `ERROR_RATE`.
-    Its regression check is inverted: a drop never alerts, and an improvement does.
-  - Regression alerts skip their cooldown, because the key checked (`"<name>_regression"`)
-    differs from the key recorded (`"<name> (Regression)"`).
-  - `get_threshold_status()` (served at `GET /thresholds`) advances the violation counters, so
-    polling the endpoint makes real alerts fire sooner.
-  - `handle_exception`'s `note (\w+)` pattern gives "note not found" the resource ID `"not"`.
+  `tests/test_mcp_types_compat.py`; total coverage 81.65% → 85.40%). The six bugs these tests
+  exposed are fixed (see Fixed); their tests now run as regression tests.
 - **`tests/AGENTS.md` named the wrong pytest config**: `pytest.ini` is the active config, and
   pytest ignores `[tool.pytest.ini_options]` in `pyproject.toml`. The `network`, `auth` and
   `offline` markers listed as available are not registered, so a test using them fails
