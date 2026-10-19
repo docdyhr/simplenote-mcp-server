@@ -49,7 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     instead of being replaced by the defaults.
   - `get_threshold_status()`, served at `GET /thresholds`, called the stateful `evaluate()`,
     so every poll counted as a check: two polls moved a counter from 0 to 2 and made real
-    alerts fire sooner. It now evaluates a copy.
+    alerts fire sooner. It now uses a new side-effect-free `PerformanceThreshold.classify()`.
+    A threshold's `status` is `"violation"` when the current reading breaches a limit, the
+    message no longer claims a consecutive-violation count, and `consecutive_*` report the
+    recorded counts. The consecutive-check gating applies to alerts only.
   - Regression alerts were never rate-limited: the cooldown was checked under
     `"<name>_regression"` but recorded under `"<name> (Regression)"`. Both now use the latter.
   - The "API Error Rate" threshold reads `api.success_rate` but was typed `ERROR_RATE`, where
@@ -60,9 +63,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Error responses carried made-up resource IDs**: `handle_exception` took whatever word
   followed "ID", "note", "resource" or "tag" as the ID. "note not found" gave `"not"`, a
   tool's "Failed to move note to trash" gave `"to"`, and "Note ID is required" gave `"is"`.
-  About 50 strings in the server matched this way. An ID token must now contain a digit, and
-  the keyword must start a word, so "Simplenote API" no longer matches. Real IDs such as
-  Simplenote's hex keys are still extracted.
+  About 50 strings in the server matched this way. `with ID x` and quoted tokens (`tag 'work'`)
+  now accept any token in the note-ID validator's charset (`[\w-]`). After a bare keyword, a
+  token must contain a digit. Keywords must start a word, so "Simplenote API" no longer
+  matches. Hex keys, hyphenated IDs and `with ID abc` are all extracted.
 - **pydantic bumps could never pass the lock dry-run**: `pydantic` pins `pydantic-core` exactly
   (2.13.5 requires `pydantic-core==2.46.5`), but Dependabot ignored `pydantic-core`, so its
   pydantic PR (#950) bumped one pin of the pair and failed `test / Test` with

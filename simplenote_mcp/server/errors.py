@@ -474,15 +474,19 @@ def handle_exception(
             e.operation = operation
         return e
 
-    # Extract potential resource ID from error message. An ID token must contain
-    # a digit: otherwise the next word of prose is captured ("note not found",
-    # "Note ID is required"). \b stops "note" matching inside "Simplenote".
+    # Extract potential resource ID from error message. "with ID x" and quoted
+    # tokens are unambiguous, so any ID-charset token counts there. After a bare
+    # keyword the next word is usually prose ("note not found", "Note ID is
+    # required"), so the token must contain a digit. \b stops "note" matching
+    # inside "Simplenote". [\w-] is the note-ID validator's charset.
     resource_id = None
     id_patterns = [
-        r"\bID (\w*\d\w*)",  # "with ID abc123" or "ID abc123"
-        r"\bnote (\w*\d\w*)",  # "note abc123"
-        r"\bresource (\w*\d\w*)",  # "resource abc123"
-        r"\btag (\w*\d\w*)",  # "tag abc123"
+        r"\bwith ID ([\w-]+)",  # "note with ID abc"
+        r"\b(?:ID|note|resource|tag) ['\"]([\w-]+)['\"]",  # "tag 'work'"
+        r"\bID ([\w-]*\d[\w-]*)",  # "ID abc123"
+        r"\bnote ([\w-]*\d[\w-]*)",  # "note abc123"
+        r"\bresource ([\w-]*\d[\w-]*)",  # "resource abc123"
+        r"\btag ([\w-]*\d[\w-]*)",  # "tag v2"
     ]
 
     error_msg = str(e)

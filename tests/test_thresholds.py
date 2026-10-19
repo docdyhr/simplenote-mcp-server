@@ -191,6 +191,27 @@ class TestEvaluate:
         assert message == "Hit Rate: 10.000% < 25.000% (1 consecutive violations)"
 
 
+class TestClassify:
+    """``PerformanceThreshold.classify``: the reading against the limits, no state."""
+
+    @pytest.mark.parametrize(
+        ("value", "expected"),
+        [(4.0, AlertSeverity.CRITICAL), (2.0, AlertSeverity.MEDIUM), (0.5, None)],
+    )
+    def test_classifies_without_touching_counters(self, value, expected):
+        threshold = make_threshold(consecutive_violations=3)
+        threshold.consecutive_warning_count = 1
+
+        severity, _ = threshold.classify(value)
+
+        assert severity == expected
+        assert threshold.consecutive_warning_count == 1
+        assert threshold.consecutive_critical_count == 0
+
+    def test_disabled_threshold_classifies_as_healthy(self):
+        assert make_threshold(enabled=False).classify(99.0) == (None, "")
+
+
 class TestCheckThreshold:
     """``PerformanceThreshold._check_threshold`` for every operator."""
 
@@ -785,6 +806,37 @@ class TestThresholdStatus:
 
         assert threshold.consecutive_critical_count == 0
 
+    def test_status_reports_recorded_counts_without_projecting_a_check(
+        self, clock, metrics
+    ):
+        # With 2 of 3 violations recorded, a status read must not claim a third
+        # (review on #993).
+        metrics.return_value = {"api": {"latency": 4.0}}
+        threshold = make_threshold(consecutive_violations=3)
+        threshold.consecutive_critical_count = 2
+        monitor = PerformanceThresholdMonitor([threshold])
+
+        entry = monitor.get_threshold_status()["thresholds"][0]
+
+        assert entry["status"] == "violation"
+        assert entry["severity"] == "CRITICAL"
+        assert entry["message"] == "Latency: 4.000s > 3.000s"
+        assert entry["consecutive_criticals"] == 2
+        assert threshold.consecutive_critical_count == 2
+
+    def test_status_classifies_reading_before_any_check(self, clock, metrics):
+        metrics.return_value = {"api": {"latency": 2.0}}
+        monitor = PerformanceThresholdMonitor(
+            [make_threshold(consecutive_violations=3)]
+        )
+
+        entry = monitor.get_threshold_status()["thresholds"][0]
+
+        assert entry["status"] == "violation"
+        assert entry["severity"] == "MEDIUM"
+        assert entry["message"] == "Latency: 2.000s > 1.000s"
+        assert entry["consecutive_warnings"] == 0
+
 
 class TestModuleFunctions:
     """Module-level singleton accessor and async entry points."""
@@ -862,5 +914,5 @@ class TestModuleFunctions:
             status = th.get_performance_threshold_status()
 
         assert installed_monitor.thresholds[0].consecutive_critical_count == 0
-        assert status["thresholds"][0]["status"] == "healthy"
+        assert status["thresholds"][0]["status"] == "violation"
         assert status["thresholds"][0]["consecutive_criticals"] == 0

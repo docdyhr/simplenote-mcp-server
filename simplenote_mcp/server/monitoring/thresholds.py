@@ -110,6 +110,32 @@ class PerformanceThreshold:
 
         return None, ""
 
+    def classify(self, current_value: float) -> tuple[AlertSeverity | None, str]:
+        """Compare a reading with the limits without counting it as a check.
+
+        Unlike evaluate(), this ignores consecutive_violations and changes no
+        state, so status reads can report a reading without advancing (or
+        projecting) the counters that gate alerts.
+
+        Args:
+            current_value: Metric value to classify
+
+        Returns:
+            Tuple of (severity, message) or (None, "") if within limits
+        """
+        if not self.enabled:
+            return None, ""
+        for severity, limit in (
+            (AlertSeverity.CRITICAL, self.critical_value),
+            (AlertSeverity.MEDIUM, self.warning_value),
+        ):
+            if self._check_threshold(current_value, limit):
+                return severity, (
+                    f"{self.name}: {current_value:.3f}{self.unit} "
+                    f"{self.operator.value} {limit:.3f}{self.unit}"
+                )
+        return None, ""
+
     def check_regression(
         self, current_value: float, baseline: float
     ) -> tuple[AlertSeverity | None, str]:
@@ -629,10 +655,10 @@ class PerformanceThresholdMonitor:
                     else None
                 )
 
-                # Evaluate a copy: evaluate() advances the violation counters,
-                # and reading the status must not count as a check.
+                # classify(), not evaluate(): reading the status must not count
+                # as a check, so the counters below are the recorded ones.
                 severity, message = (
-                    copy.copy(threshold).evaluate(current_value)
+                    threshold.classify(current_value)
                     if current_value is not None
                     else (None, "")
                 )

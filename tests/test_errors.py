@@ -326,6 +326,7 @@ class TestHandleExceptionResourceId:
             "The requested resource was not found.",
             "old_tag is required",
             "Simplenote API connection successful, received 12 items",
+            "Client ID mismatch",
         ],
     )
     def test_prose_after_keyword_is_not_a_resource_id(self, message):
@@ -344,6 +345,16 @@ class TestHandleExceptionResourceId:
             ("note abc123 is locked", "abc123"),
             ("resource r42 is gone", "r42"),
             ("tag v2 not found", "v2"),
+            # Unambiguous syntax accepts IDs without digits (review on #993).
+            ("Note with ID abc not found", "abc"),
+            ("tag 'work' not found", "work"),
+            ('note "meeting-notes" is locked', "meeting-notes"),
+            # The validator's charset includes "-" (security.py).
+            (
+                "Failed to find note with ID 8f2c1e0b-5a2d-4c6e",
+                "8f2c1e0b-5a2d-4c6e",
+            ),
+            ("ID abc-123 rejected", "abc-123"),
         ],
     )
     def test_id_after_keyword_is_extracted(self, message, expected):
