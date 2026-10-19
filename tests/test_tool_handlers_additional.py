@@ -239,7 +239,9 @@ class TestSearchNotesHandlerEdgeCases:
 
         arguments = {"query": "test", "limit": 10, "offset": 0}
 
-        with patch("simplenote_mcp.server.tool_handlers.get_config") as mock_config:
+        with patch(
+            "simplenote_mcp.server.tool_handlers.search.get_config"
+        ) as mock_config:
             mock_config.return_value.snippet_max_length = 100
             result = await handler._search_with_cache("test", 10, None, None, arguments)
 
@@ -299,7 +301,7 @@ class TestTagOperationHandlers:
 
         arguments = {"note_id": "123", "tags": "new_tag"}
 
-        with patch("simplenote_mcp.server.tool_handlers.safe_split") as mock_split:
+        with patch("simplenote_mcp.server.tool_handlers.base.safe_split") as mock_split:
             mock_split.return_value = ["new_tag"]
             result = await add_handler.handle(arguments)
 
@@ -336,7 +338,7 @@ class TestTagOperationHandlers:
 
         arguments = {"note_id": "123", "tags": "new_tag"}
 
-        with patch("simplenote_mcp.server.tool_handlers.safe_split") as mock_split:
+        with patch("simplenote_mcp.server.tool_handlers.base.safe_split") as mock_split:
             mock_split.return_value = ["new_tag"]
             result = await replace_handler.handle(arguments)
 

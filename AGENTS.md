@@ -31,6 +31,7 @@ Always invoke `.venv/bin/pytest` / `.venv/bin/ruff` / `.venv/bin/mypy` / `.venv/
 ```text
 simplenote_mcp/
 ├── server/            # MCP protocol handlers, tool registry, cache, security — see server/AGENTS.md
+│   ├── tool_handlers/  # One handler class per MCP tool, grouped by domain — see server/tool_handlers/AGENTS.md
 │   ├── search/         # Query parser + boolean/fuzzy/date search engine — see server/search/AGENTS.md
 │   └── monitoring/      # Metrics collection + alerting thresholds — see server/monitoring/AGENTS.md
 ├── scripts/            # Runtime diagnostics shipped with the package — see simplenote_mcp/scripts/AGENTS.md
@@ -45,7 +46,7 @@ docs/, evals/           # Reference docs and mcp-evals suites; no durable local 
 
 ### Design patterns
 
-- **Tool Handler Registry**: each tool (`create_note`, `search_notes`, etc.) is a `ToolHandlerBase` subclass registered in `ToolHandlerRegistry` (`server/tool_handlers.py`).
+- **Tool Handler Registry**: each tool (`create_note`, `search_notes`, etc.) is a `ToolHandlerBase` subclass registered in `ToolHandlerRegistry` (`server/tool_handlers/`, one module per domain).
 - **Middleware chain**: security validation, input validation, and rate limiting applied via decorators (`server/decorators.py`, `server/middleware.py`) before a handler runs.
 - **Background sync**: `NoteCache` (`server/cache.py`) syncs from Simplenote in a background thread so tool calls stay responsive.
 - **Error hierarchy**: custom exceptions in `server/errors.py` / `server/error_taxonomy.py` carry MCP-appropriate error codes and user-facing messages.
@@ -161,6 +162,7 @@ Default section order:
 ### Child DOX Index
 
 - `simplenote_mcp/server/AGENTS.md` — core server package: protocol handlers, tool registry, cache, security, credentials, vault encryption
+- `simplenote_mcp/server/tool_handlers/AGENTS.md` — per-tool handler classes, grouped by domain, and the dispatch registry
 - `simplenote_mcp/server/search/AGENTS.md` — query parser and boolean/fuzzy/date search engine
 - `simplenote_mcp/server/monitoring/AGENTS.md` — metrics collection and alerting thresholds
 - `simplenote_mcp/scripts/AGENTS.md` — runtime diagnostics scripts shipped inside the package

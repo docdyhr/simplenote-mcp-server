@@ -14,6 +14,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   get `permissions: {}`; `security.yml`'s job gets exactly the `contents: read` and
   `security-events: write` that the org `security-scan.yml@v1` reusable workflow declares.
 
+### Changed
+- **`tool_handlers.py` split into a `tool_handlers/` package**: the 3,165-line module is now
+  ten domain modules (`notes`, `editing`, `search`, `tags`, `history`, `trash`, `publishing`,
+  `vault`, `admin`) plus `base.py` and `registry.py`. The code moved verbatim; the only edit is
+  a lazy registry import in `get_server_info` to avoid an import cycle.
+  `from simplenote_mcp.server.tool_handlers import X` still works for every handler, the
+  registry, the base class and the shared constants. Tests that patched helpers on the old
+  module now patch the submodule that uses them (e.g. `tool_handlers.editing.date`).
+- **Tool schemas and prompt templates moved out of `server.py`** (2,617 → 1,663 lines): every
+  `types.Tool` definition now lives in `server/tool_schemas.py` (`build_read_tools`,
+  `build_write_tools`, `build_fallback_tools`), and the prompt handlers in `server/prompts.py`.
+  `handle_list_tools` still applies the write-mode filter and the error fallback, and
+  `handle_list_prompts`/`handle_get_prompt` are still importable from `server.py`. The
+  `list_tools`, `list_prompts` and `get_prompt` output is byte-identical to before.
+  Resources, transports and the client singleton stay in `server.py`, because tests patch
+  them there.
+
 ### Removed
 - **`.github/scripts/monitor-security-alerts.py` (dead code)**: nothing ran it (no workflow,
   Makefile target, or doc referenced it), and it was the source of two high CodeQL alerts for

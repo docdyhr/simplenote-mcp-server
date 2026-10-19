@@ -159,7 +159,7 @@ A full repository review (security, runtime correctness, deployment, dependencie
 - **P2 — Supply chain hardening**: all third-party GitHub Actions pinned to commit SHAs; reusable-workflow `secrets: inherit` narrowed to what's actually consumed; production Docker image installs runtime-only dependencies instead of the full dev/test/security toolchain.
 - **P2 — Config validation wired up**: `Config.validate()` now runs at startup instead of being dead code.
 - **P2 — Packaging metadata consolidated**: `setup.py`'s version/dependency drift fixed and now covered by the consistency checker.
-- **P3 — Deferred**: `tool_handlers.py`'s size (3,065 lines) and the 111 broad `except Exception` handlers need focused refactoring behind behavioral tests, not a broad rewrite — tracked as future work, not attempted in this pass.
+- **P3 — Deferred**: `tool_handlers.py`'s size (3,065 lines) and the 111 broad `except Exception` handlers need focused refactoring behind behavioral tests, not a broad rewrite — tracked as future work, not attempted in this pass. *Size: done 2026-10-19, split verbatim into the `server/tool_handlers/` package. The broad `except Exception` handlers remain.*
 
 ### Phase 12 — mcp Python SDK v2 Migration ✅ (v1.22, unreleased)
 
@@ -184,7 +184,7 @@ Every feature addition must respect these three invariants:
 
 1. **Test-first**: Write failing tests before any handler code. Use `/test-first` workflow. Pattern: `@pytest.mark.unit` class, `@pytest.fixture` for `mock_client`/`mock_cache`, `@pytest.mark.asyncio` on each test method.
 
-2. **Handler pattern**: Every new tool is a class inheriting from `ToolHandlerBase`, registered in `ToolHandlerRegistry._handlers`, and declared in `handle_list_tools()` in `server.py`. No exceptions.
+2. **Handler pattern**: Every new tool is a class inheriting from `ToolHandlerBase`, registered in `ToolHandlerRegistry._handlers` (`server/tool_handlers/registry.py`), and declared in `build_read_tools()`/`build_write_tools()` in `server/tool_schemas.py`. No exceptions.
 
 3. **Tool description quality**: Every tool description must contain a "use this vs. alternatives" clause. Claude uses descriptions to decide *when* to call a tool — a vague description means wrong tool choices.
 
