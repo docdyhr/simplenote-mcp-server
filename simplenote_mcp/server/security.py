@@ -270,7 +270,8 @@ class SecurityValidator:
         "3_days_ago", etc.), or datetime objects. Returns the *original*
         value unchanged rather than a parsed datetime: this method only
         checks that each value is parseable and that the range is sane —
-        the search handler's own date parser (tool_handlers._parse_date)
+        the search handler's own date parser
+        (tool_handlers.search.SearchNotesHandler._parse_date)
         is the single place that actually converts strings to datetimes,
         so it must keep receiving the type it was given.
 

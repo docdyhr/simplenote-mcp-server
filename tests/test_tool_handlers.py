@@ -2038,7 +2038,7 @@ class TestAppendToDailyNoteHandler:
 
         from simplenote_mcp.server.tool_handlers import AppendToDailyNoteHandler
 
-        with patch("simplenote_mcp.server.tool_handlers.date") as mock_date:
+        with patch("simplenote_mcp.server.tool_handlers.editing.date") as mock_date:
             mock_date.today.return_value.isoformat.return_value = "2026-04-12"
             handler = AppendToDailyNoteHandler(mock_client, mock_cache_empty)
             result = await handler.handle({"text": "New entry"})
@@ -2054,7 +2054,7 @@ class TestAppendToDailyNoteHandler:
 
         from simplenote_mcp.server.tool_handlers import AppendToDailyNoteHandler
 
-        with patch("simplenote_mcp.server.tool_handlers.date") as mock_date:
+        with patch("simplenote_mcp.server.tool_handlers.editing.date") as mock_date:
             mock_date.today.return_value.isoformat.return_value = "2026-04-12"
             handler = AppendToDailyNoteHandler(mock_client, mock_cache_with_daily)
             result = await handler.handle({"text": "New entry"})
@@ -2071,8 +2071,10 @@ class TestAppendToDailyNoteHandler:
         from simplenote_mcp.server.tool_handlers import AppendToDailyNoteHandler
 
         with (
-            patch("simplenote_mcp.server.tool_handlers.date") as mock_date,
-            patch("simplenote_mcp.server.tool_handlers.datetime") as mock_datetime,
+            patch("simplenote_mcp.server.tool_handlers.editing.date") as mock_date,
+            patch(
+                "simplenote_mcp.server.tool_handlers.editing.datetime"
+            ) as mock_datetime,
         ):
             mock_date.today.return_value.isoformat.return_value = "2026-04-12"
             mock_datetime.now.return_value.strftime.return_value = "09:45"
@@ -2091,7 +2093,7 @@ class TestAppendToDailyNoteHandler:
 
         from simplenote_mcp.server.tool_handlers import AppendToDailyNoteHandler
 
-        with patch("simplenote_mcp.server.tool_handlers.date") as mock_date:
+        with patch("simplenote_mcp.server.tool_handlers.editing.date") as mock_date:
             mock_date.today.return_value.isoformat.return_value = "2026-04-12"
             handler = AppendToDailyNoteHandler(mock_client, mock_cache_empty)
             await handler.handle({"text": "entry"})

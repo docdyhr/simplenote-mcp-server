@@ -30,7 +30,7 @@ hooks:
       description: "Validate Python syntax before editing"
 
     - name: "Backup critical files"
-      pattern: "**/server.py|**/cache.py|**/tool_handlers.py"
+      pattern: "**/server.py|**/cache.py|**/tool_handlers/*.py"
       command: "cp {file} {file}.backup.$(date +%Y%m%d_%H%M%S)"
       description: "Backup critical server files"
 
@@ -134,7 +134,7 @@ hooks:
   doc-hooks:
     - name: "Update API docs"
       trigger: "file_modified"
-      pattern: "**/tool_handlers.py"
+      pattern: "**/tool_handlers/*.py"
       command: |
         echo "📚 Updating API documentation..."
         python -c "

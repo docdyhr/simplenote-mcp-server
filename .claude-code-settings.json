@@ -161,7 +161,7 @@
     ],
     "core_modules": [
       "simplenote_mcp/server/server.py",
-      "simplenote_mcp/server/tool_handlers.py",
+      "simplenote_mcp/server/tool_handlers/",
       "simplenote_mcp/server/cache.py"
     ]
   }

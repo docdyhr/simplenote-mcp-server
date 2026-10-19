@@ -159,7 +159,7 @@ A full repository review (security, runtime correctness, deployment, dependencie
 - **P2 — Supply chain hardening**: all third-party GitHub Actions pinned to commit SHAs; reusable-workflow `secrets: inherit` narrowed to what's actually consumed; production Docker image installs runtime-only dependencies instead of the full dev/test/security toolchain.
 - **P2 — Config validation wired up**: `Config.validate()` now runs at startup instead of being dead code.
 - **P2 — Packaging metadata consolidated**: `setup.py`'s version/dependency drift fixed and now covered by the consistency checker.
-- **P3 — Deferred**: `tool_handlers.py`'s size (3,065 lines) and the 111 broad `except Exception` handlers need focused refactoring behind behavioral tests, not a broad rewrite — tracked as future work, not attempted in this pass.
+- **P3 — Deferred**: `tool_handlers.py`'s size (3,065 lines) and the 111 broad `except Exception` handlers need focused refactoring behind behavioral tests, not a broad rewrite — tracked as future work, not attempted in this pass. *Size: done 2026-10-19, split verbatim into the `server/tool_handlers/` package. The broad `except Exception` handlers remain.*
 
 ### Phase 12 — mcp Python SDK v2 Migration ✅ (v1.22, unreleased)
 
