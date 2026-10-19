@@ -77,6 +77,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   reads the version from `requirements-lock.txt`. Run against the tree from before the
   previous fix, the test reports all three drifts.
 
+### Tests
+- **Full coverage for three under-tested modules**: `monitoring/thresholds.py` 27% → 100%,
+  `error_helpers.py` 56% → 100%, `mcp_types_compat.py` 59% → 100% (new
+  `tests/test_thresholds.py` and `tests/test_error_helpers.py`, extended
+  `tests/test_mcp_types_compat.py`; total coverage 81.65% → 85.40%). Six strict `xfail` tests
+  pin down suspected bugs, still unfixed, for follow-up:
+  - `PerformanceThresholdMonitor()` shallow-copies `DEFAULT_THRESHOLDS`, so every default
+    monitor shares the same violation counters. An explicit empty list is also replaced by the
+    defaults.
+  - The default "API Error Rate" threshold reads `api.success_rate` but is typed `ERROR_RATE`.
+    Its regression check is inverted: a drop never alerts, and an improvement does.
+  - Regression alerts skip their cooldown, because the key checked (`"<name>_regression"`)
+    differs from the key recorded (`"<name> (Regression)"`).
+  - `get_threshold_status()` (served at `GET /thresholds`) advances the violation counters, so
+    polling the endpoint makes real alerts fire sooner.
+  - `handle_exception`'s `note (\w+)` pattern gives "note not found" the resource ID `"not"`.
+- **`tests/AGENTS.md` named the wrong pytest config**: `pytest.ini` is the active config, and
+  pytest ignores `[tool.pytest.ini_options]` in `pyproject.toml`. The `network`, `auth` and
+  `offline` markers listed as available are not registered, so a test using them fails
+  collection.
+
 ## [1.18.1] - 2026-10-08
 
 ### Fixed
