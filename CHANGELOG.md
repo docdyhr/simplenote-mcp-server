@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `list_tools`, `list_prompts` and `get_prompt` output is byte-identical to before.
   Resources, transports and the client singleton stay in `server.py`, because tests patch
   them there.
+- **`tool_handlers/` is now type-checked**: the `mypy.ini` `ignore_errors` override carried over
+  from the single-module layout is gone. It was hiding only 2 errors: `list_tags` sort keys
+  typed as `object`. One annotation fixes both.
 
 ### Removed
 - **`.github/scripts/monitor-security-alerts.py` (dead code)**: nothing ran it (no workflow,
