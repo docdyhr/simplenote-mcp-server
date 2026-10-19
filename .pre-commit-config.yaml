@@ -70,7 +70,7 @@ repos:
         args: ["--line-length=88"]
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v2.3.1
+    rev: v2.4.0
     hooks:
       - id: mypy
         args: [--config-file=mypy.ini, simplenote_mcp]
