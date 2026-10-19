@@ -5,6 +5,7 @@ for the Simplenote MCP Server. It monitors key metrics and triggers alerts
 when performance degrades beyond acceptable levels.
 """
 
+import copy
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -219,7 +220,8 @@ DEFAULT_THRESHOLDS = [
     # Error Rate Thresholds
     PerformanceThreshold(
         name="API Error Rate",
-        metric_type=MetricType.ERROR_RATE,
+        # Measured as a success rate, so lower is worse for regression checks.
+        metric_type=MetricType.API_SUCCESS_RATE,
         metric_path="api.success_rate",
         operator=ThresholdOperator.LESS_THAN,
         warning_value=95.0,  # 95% success rate (5% error rate)
@@ -318,7 +320,11 @@ class PerformanceThresholdMonitor:
         Args:
             thresholds: List of thresholds to monitor, uses defaults if None
         """
-        self.thresholds = thresholds or DEFAULT_THRESHOLDS.copy()
+        # Deep copy: each threshold carries mutable violation counters, so a
+        # shallow copy would share them between every default monitor.
+        self.thresholds = (
+            thresholds if thresholds is not None else copy.deepcopy(DEFAULT_THRESHOLDS)
+        )
         self.baseline_history: dict[
             str, list[tuple[float, float]]
         ] = {}  # metric_name -> [(timestamp, value), ...]
@@ -378,12 +384,12 @@ class PerformanceThresholdMonitor:
                     regression_severity, regression_message = (
                         threshold.check_regression(current_value, baseline)
                     )
-                    if regression_severity and self._should_alert(
-                        f"{threshold.name}_regression"
-                    ):
+                    # Same key trigger_alerts_for_violations records the cooldown under.
+                    regression_name = f"{threshold.name} (Regression)"
+                    if regression_severity and self._should_alert(regression_name):
                         alerts.append(
                             {
-                                "threshold_name": f"{threshold.name} (Regression)",
+                                "threshold_name": regression_name,
                                 "severity": regression_severity,
                                 "message": regression_message,
                                 "current_value": current_value,
@@ -623,8 +629,10 @@ class PerformanceThresholdMonitor:
                     else None
                 )
 
+                # Evaluate a copy: evaluate() advances the violation counters,
+                # and reading the status must not count as a check.
                 severity, message = (
-                    threshold.evaluate(current_value)
+                    copy.copy(threshold).evaluate(current_value)
                     if current_value is not None
                     else (None, "")
                 )

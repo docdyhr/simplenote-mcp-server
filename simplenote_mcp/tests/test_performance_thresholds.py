@@ -472,7 +472,7 @@ class TestDefaultThresholds(unittest.TestCase):
         # Should cover key metric types
         expected_types = {
             MetricType.RESPONSE_TIME,
-            MetricType.ERROR_RATE,
+            MetricType.API_SUCCESS_RATE,
             MetricType.CACHE_HIT_RATE,
             MetricType.RESOURCE_USAGE,
             MetricType.MEMORY_USAGE,

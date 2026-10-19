@@ -1,9 +1,9 @@
 """Tests for performance threshold evaluation, regression detection and alerting.
 
 ``simplenote_mcp.server.monitoring.thresholds`` holds process-global state: the
-``_global_monitor`` singleton and the ``DEFAULT_THRESHOLDS`` objects, whose
-violation counters are mutated by every monitor built from the defaults. The
-autouse fixture below snapshots and restores both so these tests never leak
+``_global_monitor`` singleton and the module-level ``DEFAULT_THRESHOLDS`` objects
+(monitors deep-copy them; a regression to a shallow copy would mutate them).
+The autouse fixture below snapshots and restores both so these tests never leak
 state into the rest of the suite (see ``simplenote_mcp/server/monitoring/AGENTS.md``).
 
 Time is controlled by swapping the module's ``time`` reference for a fake clock,
@@ -299,15 +299,6 @@ class TestCheckRegression:
         assert severity is AlertSeverity.HIGH
         assert "(infx decrease)" in message
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Bug: the default 'API Error Rate' threshold reads api.success_rate but "
-            "is typed MetricType.ERROR_RATE, which check_regression treats as "
-            "higher-is-worse (thresholds.py:128-136, 220-231). A success-rate drop "
-            "never alerts and an improvement raises a regression alert."
-        ),
-    )
     def test_default_api_error_rate_regression_direction(self):
         default = next(t for t in DEFAULT_THRESHOLDS if t.name == "API Error Rate")
         threshold = copy.deepcopy(default)
@@ -357,27 +348,11 @@ class TestMonitorInit:
 
         assert monitor.thresholds is custom
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Bug: thresholds.py:321 uses `thresholds or DEFAULT_THRESHOLDS.copy()`, "
-            "so an explicit empty list is replaced by the 9 defaults even though "
-            "the docstring says defaults apply only when thresholds is None."
-        ),
-    )
     def test_empty_list_means_no_thresholds(self):
         monitor = PerformanceThresholdMonitor([])
 
         assert monitor.thresholds == []
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Bug: thresholds.py:321 makes a shallow copy of DEFAULT_THRESHOLDS, so "
-            "every default monitor shares the same mutable PerformanceThreshold "
-            "objects and their consecutive-violation counters."
-        ),
-    )
     def test_default_monitors_do_not_share_threshold_state(self):
         first = PerformanceThresholdMonitor()
         second = PerformanceThresholdMonitor()
@@ -387,6 +362,16 @@ class TestMonitorInit:
         cpu_first.evaluate(99.0)
 
         assert cpu_second.consecutive_critical_count == 0
+
+    def test_default_monitor_leaves_module_defaults_untouched(self):
+        monitor = PerformanceThresholdMonitor()
+        cpu = next(t for t in monitor.thresholds if t.name == "CPU Usage")
+
+        cpu.evaluate(99.0)
+
+        module_cpu = next(t for t in DEFAULT_THRESHOLDS if t.name == "CPU Usage")
+        assert cpu is not module_cpu
+        assert module_cpu.consecutive_critical_count == 0
 
 
 class TestExtractMetricValue:
@@ -635,15 +620,6 @@ class TestCheckAllThresholds:
 
         assert monitor.check_all_thresholds() == []
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Bug: regression alerts are never rate-limited. check_all_thresholds "
-            "checks the cooldown key f'{name}_regression' (thresholds.py:381-383) "
-            "but trigger_alerts_for_violations records it under the alert's "
-            "threshold_name f'{name} (Regression)' (thresholds.py:386, 428)."
-        ),
-    )
     async def test_regression_alert_respects_cooldown(self, clock, metrics):
         metrics.return_value = {"api": {"latency": 0.9}}
         threshold = make_threshold(warning_value=5.0, critical_value=10.0)
@@ -657,6 +633,18 @@ class TestCheckAllThresholds:
         clock.now += 1
 
         assert monitor.check_all_thresholds() == []
+
+    def test_api_success_rate_drop_raises_regression_alert(self, clock, metrics):
+        default = next(t for t in DEFAULT_THRESHOLDS if t.name == "API Error Rate")
+        monitor = PerformanceThresholdMonitor([copy.deepcopy(default)])
+        seed_baseline(monitor, "API Error Rate", [95.0, 95.0, 95.0])
+        metrics.return_value = {"api": {"success_rate": 50.0}}
+
+        alerts = monitor.check_all_thresholds()
+
+        assert [a["threshold_name"] for a in alerts] == ["API Error Rate (Regression)"]
+        assert alerts[0]["severity"] == AlertSeverity.MEDIUM
+        assert alerts[0]["metric_type"] == "api_success_rate"
 
 
 class TestTriggerAlertsForViolations:
@@ -787,15 +775,6 @@ class TestThresholdStatus:
 
         assert monitor.get_threshold_status() == {"error": "collector down"}
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Bug: get_threshold_status (served read-only at GET /thresholds) calls "
-            "threshold.evaluate() (thresholds.py:626-630), which advances the "
-            "consecutive-violation counters, so polling the status endpoint makes "
-            "real alerts fire after fewer genuine checks."
-        ),
-    )
     def test_status_is_read_only(self, clock, metrics):
         metrics.return_value = {"api": {"latency": 4.0}}
         threshold = make_threshold(consecutive_violations=3)
@@ -870,3 +849,18 @@ class TestModuleFunctions:
         assert status["total_thresholds"] == 1
         assert status["thresholds"][0]["name"] == "Latency"
         assert status["thresholds"][0]["status"] == "healthy"
+
+    def test_polling_status_endpoint_does_not_advance_counters(
+        self, clock, installed_monitor
+    ):
+        # get_performance_threshold_status backs GET /thresholds
+        # (http_endpoints.py::_handle_thresholds); reading it must not count as
+        # a check.
+        installed_monitor.thresholds[0].consecutive_violations = 3
+        with patch.object(th, "get_metrics", return_value={"api": {"latency": 4.0}}):
+            th.get_performance_threshold_status()
+            status = th.get_performance_threshold_status()
+
+        assert installed_monitor.thresholds[0].consecutive_critical_count == 0
+        assert status["thresholds"][0]["status"] == "healthy"
+        assert status["thresholds"][0]["consecutive_criticals"] == 0

@@ -12,6 +12,7 @@ Performance metrics collection (`metrics.py`) and alerting thresholds (`threshol
 ## Local Contracts
 
 - **`MetricsCollector` is a process-global singleton** — it cannot be reset by reassigning `_instance`; the only way to reset it between tests is replacing its `.metrics` attribute (see `_reset_process_global_singletons` in `simplenote_mcp/tests/conftest.py`). This is the root cause of why `tests/` and `simplenote_mcp/tests/` must run as separate pytest processes: each tree's autouse conftest fixture only resets state for its own tests, so collecting both trees into one pytest invocation lets one tree's leftover singleton state corrupt the other's assertions. Do not attempt to merge the two trees into one `testpaths` list without solving this isolation problem first.
+- **Threshold state is per monitor**: each `PerformanceThreshold` carries mutable violation counters, so `PerformanceThresholdMonitor()` deep-copies `DEFAULT_THRESHOLDS`; never hand monitors the module-level objects. `get_threshold_status()` (served read-only at `GET /thresholds`) evaluates a copy and must not advance counters; only `check_all_thresholds()` counts as a check.
 - Metrics persist to `simplenote_mcp/logs/metrics/performance_metrics.json`, path overridable via `METRICS_FILE_PATH`. Collection interval via `METRICS_COLLECTION_INTERVAL` (default 60s).
 
 ## Work Guidance
