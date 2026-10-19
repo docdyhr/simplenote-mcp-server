@@ -22,6 +22,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `from simplenote_mcp.server.tool_handlers import X` still works for every handler, the
   registry, the base class and the shared constants. Tests that patched helpers on the old
   module now patch the submodule that uses them (e.g. `tool_handlers.editing.date`).
+- **Tool schemas and prompt templates moved out of `server.py`** (2,617 → 1,663 lines): every
+  `types.Tool` definition now lives in `server/tool_schemas.py` (`build_read_tools`,
+  `build_write_tools`, `build_fallback_tools`), and the prompt handlers in `server/prompts.py`.
+  `handle_list_tools` still applies the write-mode filter and the error fallback, and
+  `handle_list_prompts`/`handle_get_prompt` are still importable from `server.py`. The
+  `list_tools`, `list_prompts` and `get_prompt` output is byte-identical to before.
+  Resources, transports and the client singleton stay in `server.py`, because tests patch
+  them there.
 
 ### Removed
 - **`.github/scripts/monitor-security-alerts.py` (dead code)**: nothing ran it (no workflow,

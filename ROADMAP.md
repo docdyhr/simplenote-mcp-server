@@ -184,7 +184,7 @@ Every feature addition must respect these three invariants:
 
 1. **Test-first**: Write failing tests before any handler code. Use `/test-first` workflow. Pattern: `@pytest.mark.unit` class, `@pytest.fixture` for `mock_client`/`mock_cache`, `@pytest.mark.asyncio` on each test method.
 
-2. **Handler pattern**: Every new tool is a class inheriting from `ToolHandlerBase`, registered in `ToolHandlerRegistry._handlers`, and declared in `handle_list_tools()` in `server.py`. No exceptions.
+2. **Handler pattern**: Every new tool is a class inheriting from `ToolHandlerBase`, registered in `ToolHandlerRegistry._handlers` (`server/tool_handlers/registry.py`), and declared in `build_read_tools()`/`build_write_tools()` in `server/tool_schemas.py`. No exceptions.
 
 3. **Tool description quality**: Every tool description must contain a "use this vs. alternatives" clause. Claude uses descriptions to decide *when* to call a tool — a vague description means wrong tool choices.
 
