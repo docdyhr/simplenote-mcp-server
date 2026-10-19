@@ -57,6 +57,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     one. It is now typed `API_SUCCESS_RATE`, so status and alert payloads report
     `metric_type: "api_success_rate"` for it. Its name, and so its alert and cooldown keys,
     are unchanged.
+- **Error responses carried made-up resource IDs**: `handle_exception` took whatever word
+  followed "ID", "note", "resource" or "tag" as the ID. "note not found" gave `"not"`, a
+  tool's "Failed to move note to trash" gave `"to"`, and "Note ID is required" gave `"is"`.
+  About 50 strings in the server matched this way. An ID token must now contain a digit, and
+  the keyword must start a word, so "Simplenote API" no longer matches. Real IDs such as
+  Simplenote's hex keys are still extracted.
 - **pydantic bumps could never pass the lock dry-run**: `pydantic` pins `pydantic-core` exactly
   (2.13.5 requires `pydantic-core==2.46.5`), but Dependabot ignored `pydantic-core`, so its
   pydantic PR (#950) bumped one pin of the pair and failed `test / Test` with

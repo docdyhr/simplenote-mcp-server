@@ -388,14 +388,6 @@ class TestCreateErrorFromException:
 
         assert error.details["resource_id"] == "abc123"
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Bug in errors.py:479-491 (handle_exception, used by "
-            "create_error_from_exception): the r'note (\\w+)' pattern captures the "
-            "next word, so 'note not found' yields resource_id 'not'."
-        ),
-    )
     def test_not_found_message_without_id_has_no_resource_id(self):
         error = eh.create_error_from_exception(FileNotFoundError("note not found"))
 
