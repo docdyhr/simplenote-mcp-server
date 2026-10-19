@@ -40,6 +40,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `pyproject.toml`, so it would have accepted #971's drift.
   `tests/test_tool_pin_parity.py` replaces it in the required Test job.
   `docs/ci-cd/improvements-summary.md` now says so.
+- **`.github/actions/setup-quality-tools/` (dead code)**: no workflow or action used this
+  composite action, and its `ruff==0.15.5` / `mypy==1.17.1` pins had drifted from
+  `pyproject.toml` (`ruff==0.17.0`, `mypy==2.4.0`). That made it a stale pin site for every
+  ruff or mypy bump.
 
 ### Fixed
 - **Threshold monitor shared and miscounted its state** (`monitoring/thresholds.py`):
