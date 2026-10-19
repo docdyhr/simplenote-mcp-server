@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Primary, CI-wired pytest tree (`testpaths = ["tests"]` in `pyproject.toml`) — 62 test files. All new tests go here, not in the legacy `simplenote_mcp/tests/` tree (see that folder's `AGENTS.md`).
+Primary, CI-wired pytest tree (`testpaths = tests` in `pytest.ini`) — 64 test files. All new tests go here, not in the legacy `simplenote_mcp/tests/` tree (see that folder's `AGENTS.md`).
 
 ## Ownership
 
@@ -14,8 +14,9 @@ Primary, CI-wired pytest tree (`testpaths = ["tests"]` in `pyproject.toml`) — 
 ## Local Contracts
 
 - Run with `SIMPLENOTE_OFFLINE_MODE=true` — real Simplenote credentials must never be required to run this suite.
-- Coverage gate: `--cov-fail-under=75` (`pyproject.toml` `addopts`).
-- Markers available: `unit`, `integration`, `perf`, `security`, `slow`, `network`, `auth`, `offline` (`--strict-markers` enforced — unregistered markers fail collection).
+- **`pytest.ini` is the active pytest config.** pytest ignores `[tool.pytest.ini_options]` in `pyproject.toml` and warns about it at startup (`configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml…)`). Change markers, `addopts` and timeouts in `pytest.ini`.
+- Coverage gate: `--cov-fail-under=75` (`pytest.ini` `addopts`).
+- Markers available: `unit`, `integration`, `perf`, `performance`, `security`, `slow`, `flaky`, `timeout`, `asyncio` (`--strict-markers` enforced — unregistered markers fail collection). `network`, `auth` and `offline` appear only in pyproject's ignored section, so using them fails collection.
 - Do not merge this tree's pytest invocation with `simplenote_mcp/tests/` — both mutate process-global singletons (see `simplenote_mcp/server/monitoring/AGENTS.md`) and only reset state for their own tests.
 - Offline-mode mock client (`server.py::get_simplenote_client()`) returns `({}, 0)` from `add_note`/`get_note`/`update_note` — don't write assertions expecting a populated `note['key']` against the raw mock.
 - `test_tool_pin_parity.py` fails when pyproject's exact `ruff`/`mypy` pin differs from `requirements-lock.txt`, the pre-commit hook `rev:`, or a `<tool>==` pin in a workflow. Dependabot bumps only pyproject and the lock, so on a failing bot PR bump the hook `rev:` on that branch. Don't loosen the test.
