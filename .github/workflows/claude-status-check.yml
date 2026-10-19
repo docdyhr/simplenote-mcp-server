@@ -55,6 +55,9 @@ jobs:
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      # Read-only secret-scanning PAT; the reusable workflow uses it only for
+      # the alert count and never hands it to Claude.
+      STATUS_CHECK_ALERTS_TOKEN: ${{ secrets.STATUS_CHECK_ALERTS_TOKEN }}
     with:
       create_issue: ${{ github.event.inputs.create_issue == 'true' }}
       max_budget_usd: ${{ github.event.inputs.max_budget_usd || '0.25' }}

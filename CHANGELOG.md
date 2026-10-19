@@ -46,6 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ruff or mypy bump.
 
 ### Fixed
+- **Claude Status Check always reported secret scanning as "NOT CHECKED"**: the caller passes
+  secrets to the shared `docdyhr/.github` workflow explicitly rather than with `secrets: inherit`,
+  and it mapped only `ANTHROPIC_API_KEY` and `SLACK_WEBHOOK_URL`. The repo's
+  `STATUS_CHECK_ALERTS_TOKEN` therefore never reached the workflow, even though `v1` declares
+  it. The caller now maps it too, and the explicit least-privilege list stays.
 - **Threshold monitor shared and miscounted its state** (`monitoring/thresholds.py`):
   - Every default `PerformanceThresholdMonitor` shared the same `PerformanceThreshold` objects
     (a shallow `list.copy()`), so violations one monitor counted applied to all of them.
