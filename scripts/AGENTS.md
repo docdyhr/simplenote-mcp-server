@@ -10,6 +10,7 @@ CI, quality-gate, and release tooling — not shipped in the package or Docker i
 - `run-quality-checks.py`, `run-comprehensive-tests.py`, `test-categories.py` — local aggregate quality/test runners (mirror CI locally).
 - `validate-*.py` (workflows, badges, CI/CD health/pipeline, Helm, version-pinning, offline) — CI/config validators, mostly read-only.
 - `conventional_changelog.py` — parses conventional-commit history into changelog sections; used by `release.yml`.
+- `release/` — `release.yml`'s steps: `bump_version.sh` (bumps the five version-source files), `set_pyproject_version.py` (its pyproject.toml edit: rewrites only the `[project]` version line, because a `toml` load/dump round-trip drops comments), `generate_release_changelog.sh`, and `sync_version_references.sh` (`update-version.yml`).
 - `manage-prs.py`, `resolve-prs-offline.py`, `check-workflow-status.py`, `verify-github-status.py` — GitHub API tooling for solo-maintainer PR/workflow triage; `--merge`/`--close` operations are destructive (merge/close real PRs) and require explicit invocation, never run unattended.
 - `update-dockerhub-readme.py`/`.sh` — pushes repository description to Docker Hub via `DOCKER_USERNAME`/`DOCKER_TOKEN`; external side effect, requires credentials.
 - `add-timeouts-to-workflows.py` — one-off workflow-mutation helper; review its diff before trusting output on new workflows.

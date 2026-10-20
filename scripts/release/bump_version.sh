@@ -43,13 +43,8 @@ echo "New version: $NEW_VERSION"
 echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
 
 if [ "$DRY_RUN" != "true" ]; then
-  python -c "
-import toml, pathlib
-data = toml.load('pyproject.toml')
-data['project']['version'] = '$NEW_VERSION'
-path = pathlib.Path('pyproject.toml')
-path.write_text(toml.dumps(data))
-"
+  # Edits only the version line: a toml load/dump round-trip drops comments.
+  python "$(dirname "$0")/set_pyproject_version.py" "$NEW_VERSION"
 
   if [ -f "simplenote_mcp/__init__.py" ]; then
     sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/g" simplenote_mcp/__init__.py

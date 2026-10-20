@@ -55,6 +55,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ruff or mypy bump.
 
 ### Fixed
+- **The release version bump deleted `pyproject.toml` comments**: `bump_version.sh` set the
+  version with a `toml.load`/`toml.dumps` round-trip, which drops comments and reformats
+  arrays. The first v1.18.2 release PR (#999, closed) deleted the comment under `[tool.ruff]`
+  and rewrote `[".claude/skills"]` as `[ ".claude/skills",]`. The new
+  `scripts/release/set_pyproject_version.py` rewrites only the `[project]` `version` line. The
+  new `tests/test_set_pyproject_version.py` checks that a bump of the real `pyproject.toml`
+  changes exactly one line, and runs `bump_version.sh` end to end.
 - **Claude Status Check always reported secret scanning as "NOT CHECKED"**: the caller passes
   secrets to the shared `docdyhr/.github` workflow explicitly rather than with `secrets: inherit`,
   and it mapped only `ANTHROPIC_API_KEY` and `SLACK_WEBHOOK_URL`. The repo's
