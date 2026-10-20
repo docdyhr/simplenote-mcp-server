@@ -1,6 +1,6 @@
 [project]
 name = "simplenote-mcp-server"
-version = "1.18.1"
+version = "1.18.2"
 description = "A simple MCP Server that connects to Simplenote"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -43,8 +43,7 @@ ignore_missing_imports = true
 follow_imports = "silent"
 
 [tool.ruff]
-# Vendored agent skills (github/awesome-copilot) are not project code
-extend-exclude = [".claude/skills"]
+extend-exclude = [ ".claude/skills",]
 target-version = "py310"
 line-length = 88
 
