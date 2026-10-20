@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.2] - 2026-10-20
+
 ### Security
 - **Least-privilege tokens for six workflow jobs**: CodeQL (switched back on 2026-10-08 after
   sitting unconfigured since January) flagged six jobs with no `permissions:` block. This repo's
@@ -33,6 +35,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`tool_handlers/` is now type-checked**: the `mypy.ini` `ignore_errors` override carried over
   from the single-module layout is gone. It was hiding only 2 errors: `list_tags` sort keys
   typed as `object`. One annotation fixes both.
+- **Agent skills vendored under `.claude/skills/`**: 9 skills from `github/awesome-copilot`
+  (source commit `cb64ad1`), loaded by both Claude Code and Copilot. ruff excludes the
+  directory. Their `github-release` and `conventional-commit` skills were left out, because they
+  bypass this repo's release automation. Nothing under `.claude/` ships in the package or image.
 
 ### Removed
 - **`.github/scripts/monitor-security-alerts.py` (dead code)**: nothing ran it (no workflow,
@@ -53,7 +59,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   secrets to the shared `docdyhr/.github` workflow explicitly rather than with `secrets: inherit`,
   and it mapped only `ANTHROPIC_API_KEY` and `SLACK_WEBHOOK_URL`. The repo's
   `STATUS_CHECK_ALERTS_TOKEN` therefore never reached the workflow, even though `v1` declares
-  it. The caller now maps it too, and the explicit least-privilege list stays.
+  it. The caller now maps it too, and the explicit least-privilege list stays. The caller also
+  grants the read-only `actions`, `checks`, `statuses` and `vulnerability-alerts` scopes, whose
+  absence made the shared check's CI, Issues and Dependabot sections come back HTTP 403 as N/A.
 - **Threshold monitor shared and miscounted its state** (`monitoring/thresholds.py`):
   - Every default `PerformanceThresholdMonitor` shared the same `PerformanceThreshold` objects
     (a shallow `list.copy()`), so violations one monitor counted applied to all of them.
@@ -113,6 +121,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the failure on the Dependabot branch. The auto-fix workflow no longer pins ruff itself: it
   reads the version from `requirements-lock.txt`. Run against the tree from before the
   previous fix, the test reports all three drifts.
+
+### Dependencies
+- `requirements-runtime-lock.txt` (what the Docker image installs): `mcp`/`mcp-types` 2.2.0 →
+  2.3.0, `pydantic` 2.13.4 → 2.14.1 with `pydantic_core` 2.46.4 → 2.50.1, `multidict` 6.9.1 →
+  7.1.0, `aiohttp` 3.14.3 → 3.14.5, `sse-starlette` 3.4.9 → 3.5.0, and 6 other routine updates.
+  The runtime ranges in `pyproject.toml` are unchanged, so PyPI installs already resolved
+  current versions. In the dev extras, `ruff` moved to 0.17.0 and `mypy` to 2.4.0.
 
 ### Tests
 - **Full coverage for three under-tested modules**: `monitoring/thresholds.py` 27% → 100%,
@@ -1109,7 +1124,8 @@ This release marks a significant milestone with **98% startup performance improv
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.1...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.2...HEAD
+[1.18.2]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.1...v1.18.2
 [1.18.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.0...v1.18.1
 [1.18.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.17.5...v1.18.0
 [1.17.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.16.1...v1.17.0
