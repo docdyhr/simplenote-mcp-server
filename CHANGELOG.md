@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Release build failed on the vendored agent skills**: the release build is the only job that
+  runs `pre-commit run --all-files`, and #980's `.claude/skills/` has a LICENSE without a final
+  newline and a doc example of a hardcoded PEM key header that `detect-private-key` flags. PR checks lint only changed files, so v1.18.2's build job was the first to fail on it,
+  and that release has no CI-generated security reports. pre-commit's global `exclude` now
+  skips `.claude/skills/`, as ruff already does. The new `tests/test_precommit_exclude.py`
+  checks that the pattern skips the vendored tree but still checks `.github/` (#944).
+
 ## [1.18.2] - 2026-10-20
 
 ### Security

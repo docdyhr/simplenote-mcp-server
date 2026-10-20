@@ -1,6 +1,8 @@
 # Anchored: the old unanchored ".git|..." also matched .github/ and
 # verify-github-status.py, so no hook ever checked the workflows.
-exclude: '^(\.git|\.venv|venv)/|(^|/)(__pycache__|\.pytest_cache)/'
+# .claude/skills/ is vendored third-party content (ruff excludes it too); its
+# doc examples trip detect-private-key in the release build's --all-files run.
+exclude: '^(\.git|\.venv|venv|\.claude/skills)/|(^|/)(__pycache__|\.pytest_cache)/'
 
 # Specify Python version to use for all hooks
 default_language_version:
