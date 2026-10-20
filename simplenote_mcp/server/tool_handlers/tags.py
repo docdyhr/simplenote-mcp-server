@@ -439,7 +439,7 @@ class ListTagsHandler(ToolHandlerBase):
 
         try:
             tag_index = self.note_cache._tag_index
-            tags = [
+            tags: list[dict[str, Any]] = [
                 {"tag": tag, "note_count": len(note_ids)}
                 for tag, note_ids in tag_index.items()
             ]
