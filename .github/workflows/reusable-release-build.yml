@@ -49,11 +49,22 @@ jobs:
           "$RUNNER_TEMP/release-env/bin/python" -m pip install --upgrade pip
           "$RUNNER_TEMP/release-env/bin/python" -m pip install dist/*.whl
 
+      # The report script comes from the commit this workflow runs from, not
+      # from the release tag: release-finish.yml rebuilds reports for older
+      # tags, whose own copy of the script predates fixes like #1005.
+      - name: Check out the release tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          path: release-tools
+          sparse-checkout: scripts
+          persist-credentials: false
+
       - name: Generate SBOM and vulnerability report
         env:
           NEW_VERSION: ${{ inputs.new_version }}
         run: |
-          python scripts/generate_release_security_reports.py \
+          python release-tools/scripts/generate_release_security_reports.py \
             --version "$NEW_VERSION" \
             --python "$RUNNER_TEMP/release-env/bin/python"
 

@@ -1,0 +1,127 @@
+name: Finish Release
+
+# Recovery path for a release that release.yml didn't finish: its merge wait
+# expired before someone approved the bot PR's workflow runs, or the build
+# failed after the tag existed. Tags the merged release/vX.Y.Z PR's commit
+# if the tag is missing, creates the GitHub Release if it is missing, then
+# rebuilds the package and (re)attaches the security reports with this
+# workflow's own copy of the release tooling. Also works for older tags,
+# whose reports came from the pre-#1005 script. Every step is safe to re-run.
+# PyPI stays a separate step: publish-pypi.yml.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to finish (e.g. v1.18.2)"
+        required: true
+        type: string
+      docker:
+        description: "Also build and push the versioned Docker image"
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  finish:
+    name: Tag and GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      # Validate before the value reaches git, gh or any image tag.
+      - name: Validate release tag
+        id: version
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          if ! printf '%s' "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Not a release tag: '$TAG' (expected vX.Y.Z)" >&2
+            exit 1
+          fi
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Check out code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+
+      - name: Tag the release PR's merge commit if the tag is missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "$TAG already exists at $(git rev-parse "$TAG^{commit}"); not re-tagging"
+            exit 0
+          fi
+          MERGE_SHA=$(gh pr list --repo "$GITHUB_REPOSITORY" --head "release/$TAG" \
+            --state merged --json mergeCommit --jq '.[0].mergeCommit.oid // empty')
+          if [ -z "$MERGE_SHA" ]; then
+            echo "::error::$TAG doesn't exist and no release/$TAG PR has merged" >&2
+            exit 1
+          fi
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          NEW_VERSION="$VERSION" MERGE_SHA="$MERGE_SHA" scripts/release/tag_release_commit.sh
+
+      - name: Create the GitHub Release if it is missing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "GitHub Release $TAG already exists; leaving it as it is"
+            exit 0
+          fi
+          # Release notes: the tag's own CHANGELOG section.
+          git show "$TAG:CHANGELOG.md" | awk -v v="$VERSION" '
+            index($0, "## [" v "]") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }' > "$RUNNER_TEMP/notes.md"
+          if [ ! -s "$RUNNER_TEMP/notes.md" ]; then
+            echo "::error::No '## [$VERSION]' section in CHANGELOG.md at $TAG" >&2
+            exit 1
+          fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
+
+  build:
+    needs: finish
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-release-build.yml
+    with:
+      new_version: ${{ needs.finish.outputs.version }}
+
+  attach-security-reports:
+    needs: [finish, build]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/reusable-release-attach-reports.yml
+    with:
+      new_version: ${{ needs.finish.outputs.version }}
+
+  docker-publish:
+    needs: finish
+    if: inputs.docker
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+      actions: read
+      attestations: write
+      id-token: write
+    uses: ./.github/workflows/docker-release.yml
+    with:
+      tag: ${{ inputs.tag }}
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
