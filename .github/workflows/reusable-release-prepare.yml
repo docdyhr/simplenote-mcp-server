@@ -199,3 +199,13 @@ jobs:
         id: set_release_output
         if: inputs.dry_run != 'true'
         run: echo "release_created=true" >> "$GITHUB_OUTPUT"
+
+      # Last, and never fatal: the release is done by now. `gh pr merge --auto
+      # --delete-branch` above can't delete a branch that auto-merge merges later.
+      - name: Delete the merged release branch
+        if: inputs.dry_run != 'true'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ steps.bump_version.outputs.new_version }}
+        run: scripts/release/delete_merged_release_branch.sh
