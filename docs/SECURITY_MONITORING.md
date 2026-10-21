@@ -181,7 +181,7 @@ gh run download RUN_ID --name pip-audit-report
 ./scripts/security-check.sh
 
 # Or manually:
-bandit -r simplenote_mcp/
+bandit -c pyproject.toml -r simplenote_mcp/
 pip-audit --desc
 ruff check --select=S .
 ```

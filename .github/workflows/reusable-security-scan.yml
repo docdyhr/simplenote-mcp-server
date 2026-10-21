@@ -49,8 +49,10 @@ jobs:
           BANDIT_SEVERITY: ${{ inputs.bandit-severity }}
           BANDIT_CONFIDENCE: ${{ inputs.bandit-confidence }}
         run: |
-          bandit -r simplenote_mcp -f json -o bandit-report.json || true
-          if [ -n "$BANDIT_CONFIDENCE" ]; then bandit -r simplenote_mcp --severity-level "$BANDIT_SEVERITY" --confidence-level "$BANDIT_CONFIDENCE"; else bandit -r simplenote_mcp --severity-level "$BANDIT_SEVERITY"; fi
+          # -c: bandit doesn't read pyproject's [tool.bandit] on its own. Without it,
+          # exclude_dirs/skips are ignored and the report is ~455 LOW test-tree findings.
+          bandit -c pyproject.toml -r simplenote_mcp -f json -o bandit-report.json || true
+          if [ -n "$BANDIT_CONFIDENCE" ]; then bandit -c pyproject.toml -r simplenote_mcp --severity-level "$BANDIT_SEVERITY" --confidence-level "$BANDIT_CONFIDENCE"; else bandit -c pyproject.toml -r simplenote_mcp --severity-level "$BANDIT_SEVERITY"; fi
 
       - name: Run pip-audit vulnerability scan
         env:
