@@ -46,6 +46,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   vendored files first surfaced in the release build, after the tag and GitHub release were
   public. The release build no longer runs pre-commit. A failed Validate already blocks merges,
   because `test / Test` and `security / Security` are never created.
+- **`release.yml` waits up to 5.5 hours for its release PR to merge**, up from 15 minutes. The
+  bot-opened PR's workflow runs need a human to approve them. On 2026-10-20 the approval came
+  after the window closed, so the job failed before tagging and v1.18.2 had to be re-run.
+- **The release build runs the report script from the workflow's own commit**, not from the
+  release tag, so a rebuild of an older tag gets current tooling. The attach step uses
+  `gh release upload --clobber`, which changes only the assets, never a release's notes or
+  "latest" flag.
+
+### Added
+- **`release-finish.yml`**: a `workflow_dispatch` recovery path for a release `release.yml` didn't
+  finish. It tags the merged `release/vX.Y.Z` PR's commit if the tag is missing, and creates the
+  GitHub Release from the tag's CHANGELOG section if that is missing. Then it rebuilds the
+  package and re-attaches the security reports, and optionally publishes the Docker image.
+  Every step is safe to re-run, so it also regenerates reports for older releases.
 
 ## [1.18.2] - 2026-10-20
 

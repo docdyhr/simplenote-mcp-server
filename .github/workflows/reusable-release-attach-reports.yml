@@ -27,15 +27,18 @@ jobs:
           echo "📋 Downloaded security reports:"
           ls -la security-reports/
 
+      # gh release upload only touches the assets: release-finish.yml
+      # re-attaches reports to existing releases, whose body and "latest"
+      # flag must stay as they are. --clobber replaces same-named files.
       - name: Attach SBOM and vulnerability reports to release
-        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3
-        with:
-          tag_name: "v${{ inputs.new_version }}"
-          files: |
-            security-reports/sbom-release.json
-            security-reports/sbom-release.xml
-            security-reports/sbom-release-simple.json
-            security-reports/vulnerability-report.json
-            security-reports/vulnerability-report.md
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ inputs.new_version }}
+        run: |
+          gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+            security-reports/sbom-release.json \
+            security-reports/sbom-release.xml \
+            security-reports/sbom-release-simple.json \
+            security-reports/vulnerability-report.json \
+            security-reports/vulnerability-report.md \
             security-reports/vulnerability-summary.json
-          token: ${{ secrets.GITHUB_TOKEN }}

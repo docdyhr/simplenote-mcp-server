@@ -45,7 +45,9 @@ on:
 jobs:
   prepare:
     name: Prepare Release
-    timeout-minutes: 20
+    # Most of this is the merge wait below: the bot's release PR needs a human
+    # to approve its workflow runs, so leave hours for that, not minutes.
+    timeout-minutes: 355
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -145,7 +147,10 @@ jobs:
           PR_URL: ${{ steps.open_pr.outputs.pr_url }}
         run: |
           set -euo pipefail
-          for _ in $(seq 1 60); do
+          # Up to 5.5 h (GitHub-hosted jobs stop at 6 h). If this still times
+          # out, approve the runs, let the PR merge, then dispatch
+          # release-finish.yml with the tag to tag, release and build it.
+          for _ in $(seq 1 660); do
             STATE=$(gh pr view "$PR_URL" --json state --jq .state)
             if [ "$STATE" = "MERGED" ]; then
               MERGE_SHA=$(gh pr view "$PR_URL" --json mergeCommit --jq .mergeCommit.oid)
@@ -157,9 +162,9 @@ jobs:
               echo "::error::Release PR was closed without merging: $PR_URL"
               exit 1
             fi
-            sleep 15
+            sleep 30
           done
-          echo "::error::Timed out waiting for release PR to merge (required checks may have failed): $PR_URL"
+          echo "::error::Timed out waiting for release PR to merge (approve its workflow runs, or check failed checks): $PR_URL. After it merges, run release-finish.yml to finish the release."
           exit 1
 
       - name: Tag the merged release commit
