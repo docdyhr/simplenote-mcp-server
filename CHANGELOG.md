@@ -7,13 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Release vulnerability reports were always empty**: `generate_release_security_reports.py`
+  ran `pip-audit -r pyproject.toml`, which fails because `pyproject.toml` isn't a requirements
+  file. Any non-zero exit, including pip-audit's own "vulnerabilities found", was replaced with a
+  "No vulnerabilities found" report. The summary also read a `vulnerabilities` key that pip-audit
+  doesn't emit, so it said 0 even when a report existed. So every release's
+  `vulnerability-report.*` and `vulnerability-summary.json` claimed a clean scan regardless of
+  the dependencies. In an environment with `urllib3` 1.26.5, the old script reported 0
+  vulnerabilities and exited 0. The script now audits the scanned environment directly, keeps
+  pip-audit's report when it finds something, exits non-zero when a scan fails, and merges ids
+  pip-audit lists twice. The new `tests/test_generate_release_security_reports.py` covers each
+  of these cases.
+
 ### Fixed
-- **Release build failed on the vendored agent skills**: the release build is the only job that
-  runs `pre-commit run --all-files`, and #980's `.claude/skills/` has a LICENSE without a final
-  newline and a doc example of a hardcoded PEM key header that `detect-private-key` flags. PR checks lint only changed files, so v1.18.2's build job was the first to fail on it,
-  and that release has no CI-generated security reports. pre-commit's global `exclude` now
-  skips `.claude/skills/`, as ruff already does. The new `tests/test_precommit_exclude.py`
-  checks that the pattern skips the vendored tree but still checks `.github/` (#944).
+- **Release SBOMs described the build runner, not the package**: the release build never
+  installed the package before scanning, so the SBOMs listed `twine`, `build` and the scanners
+  themselves but not `mcp` or `simplenote-mcp-server` (v1.18.1's had 77 components and no
+  `mcp`). The build now installs the built wheel into a clean venv with an up-to-date pip, and
+  the script scans that venv (`--python`) from its own interpreter, so the scanners stay out.
+  Replayed against the `v1.18.2` tag, this gives 57 components and 0 known vulnerabilities.
+- **The release tag could land on a later commit**: `release.yml` tagged `origin/main`'s HEAD
+  after the release PR merged, so a PR merged in between would have got the tag. The new
+  `scripts/release/tag_release_commit.sh` tags the release PR's merge commit, after checking that
+  it is on `origin/main` and that its `VERSION` matches. `tests/test_tag_release_commit.py`
+  covers the race and each refusal. On the same setup, the old step tagged the later commit.
+- **Release build failed on the vendored agent skills**: #980's `.claude/skills/` has a LICENSE
+  without a final newline and a doc example of a hardcoded PEM key header that
+  `detect-private-key` flags. Nothing ran pre-commit over every file before the release build
+  did, so v1.18.2's build job was the first to fail on it, and that release has no CI-generated
+  security reports. pre-commit's global `exclude` now skips `.claude/skills/`, as ruff already
+  does. The new `tests/test_precommit_exclude.py` checks that the pattern skips the vendored
+  tree but still checks `.github/` (#944).
+
+### Changed
+- **The Validate job runs `pre-commit run --all-files`**, with the hook environments cached.
+  Local commits only check the files they touch, so before this, failures in untouched or
+  vendored files first surfaced in the release build, after the tag and GitHub release were
+  public. The release build no longer runs pre-commit. A failed Validate already blocks merges,
+  because `test / Test` and `security / Security` are never created.
 
 ## [1.18.2] - 2026-10-20
 

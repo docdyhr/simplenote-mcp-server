@@ -138,6 +138,7 @@ jobs:
           echo "pr_url=$PR_URL" >> "$GITHUB_OUTPUT"
 
       - name: Wait for release PR to merge
+        id: wait_merge
         if: inputs.dry_run != 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -147,7 +148,9 @@ jobs:
           for _ in $(seq 1 60); do
             STATE=$(gh pr view "$PR_URL" --json state --jq .state)
             if [ "$STATE" = "MERGED" ]; then
-              echo "Release PR merged: $PR_URL"
+              MERGE_SHA=$(gh pr view "$PR_URL" --json mergeCommit --jq .mergeCommit.oid)
+              echo "Release PR merged: $PR_URL as $MERGE_SHA"
+              echo "merge_sha=$MERGE_SHA" >> "$GITHUB_OUTPUT"
               exit 0
             fi
             if [ "$STATE" = "CLOSED" ]; then
@@ -164,14 +167,8 @@ jobs:
         if: inputs.dry_run != 'true'
         env:
           NEW_VERSION: ${{ steps.bump_version.outputs.new_version }}
-        run: |
-          set -euo pipefail
-          git fetch origin main
-          git checkout main
-          git reset --hard origin/main
-          git tag -a "v$NEW_VERSION" -m "Version $NEW_VERSION"
-          git push origin "v$NEW_VERSION"
-          echo "commit_sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          MERGE_SHA: ${{ steps.wait_merge.outputs.merge_sha }}
+        run: scripts/release/tag_release_commit.sh
 
       - name: Create GitHub Release
         id: create_release

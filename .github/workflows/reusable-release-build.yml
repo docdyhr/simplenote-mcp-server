@@ -26,13 +26,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      # No pre-commit here: this job runs after the tag and GitHub Release
+      # exist, so a lint failure could only cost the security reports. The
+      # Validate job runs `pre-commit run --all-files` on every PR instead.
       - name: Install build dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install build twine pre-commit
-
-      - name: Run pre-commit checks
-        run: pre-commit run --all-files
+          pip install build twine
 
       - name: Build package
         run: python -m build
@@ -40,10 +40,22 @@ jobs:
       - name: Check package
         run: twine check dist/*
 
+      # The reports describe a clean venv holding only the built wheel and its
+      # dependencies (pip upgraded, so pip's own advisories don't show up),
+      # not this runner's build tools.
+      - name: Install the built wheel into a clean environment
+        run: |
+          python -m venv "$RUNNER_TEMP/release-env"
+          "$RUNNER_TEMP/release-env/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/release-env/bin/python" -m pip install dist/*.whl
+
       - name: Generate SBOM and vulnerability report
         env:
           NEW_VERSION: ${{ inputs.new_version }}
-        run: python scripts/generate_release_security_reports.py --version "$NEW_VERSION"
+        run: |
+          python scripts/generate_release_security_reports.py \
+            --version "$NEW_VERSION" \
+            --python "$RUNNER_TEMP/release-env/bin/python"
 
       - name: Upload SBOM and vulnerability artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7

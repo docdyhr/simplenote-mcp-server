@@ -51,6 +51,18 @@ jobs:
       - name: Check version consistency
         run: python scripts/quality/check_version_consistency.py
 
+      - name: Cache pre-commit hook environments
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+
+      # Every file, not just the PR's changes: a local commit only checks the
+      # files it touches, so vendored or untouched files could otherwise
+      # carry failures until something lints the whole tree.
+      - name: Run pre-commit on all files
+        run: pre-commit run --all-files --show-diff-on-failure
+
       - name: Run linters
         run: |
           ruff check .
