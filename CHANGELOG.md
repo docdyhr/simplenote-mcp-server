@@ -82,6 +82,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   package and re-attaches the security reports, and optionally publishes the Docker image.
   Every step is safe to re-run, so it also regenerates reports for older releases.
 
+### Removed
+- **CI: the `claude-dependabot-merge.yml` and `claude-status-check.yml` callers.** Their header
+  said the cross-repo orchestrator in `docdyhr/.github` owned their schedule, but it never
+  dispatched them; it checks this repo itself every week. Dependabot PRs still merge through
+  `auto-merge.yml`. Keep the `ANTHROPIC_API_KEY` secret: `evaluation-quality-gate.yml` uses it.
+
 ## [1.18.2] - 2026-10-20
 
 ### Security
