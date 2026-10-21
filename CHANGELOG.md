@@ -26,6 +26,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of these cases.
 
 ### Fixed
+- **Every release left its `release/vX.Y.Z` branch behind**: `release.yml` merges the release PR
+  with `gh pr merge --auto --delete-branch`, but `gh` can't delete a branch that auto-merge merges
+  later, and the repo doesn't auto-delete head branches. `release/v1.18.2` was still there
+  (deleted 2026-10-21). The new `scripts/release/delete_merged_release_branch.sh` runs last in
+  `release.yml` and `release-finish.yml`, marked `continue-on-error`. It deletes the branch only when
+  its tip is the merged PR's head and no open PR uses it.
 - **Offline mode wrote junk token files and failed background start-up**: with
   `SIMPLENOTE_OFFLINE_MODE=true` the client is a `MagicMock`, but `_test_simplenote_connection` still
   acquired and cached a token for it. `cache_token()` got the mock's username and token, built the

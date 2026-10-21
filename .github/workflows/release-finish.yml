@@ -93,6 +93,14 @@ jobs:
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "$TAG" --notes-file "$RUNNER_TEMP/notes.md"
 
+      # A release that stopped part-way never reached release.yml's own cleanup.
+      - name: Delete the merged release branch if it is still there
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: scripts/release/delete_merged_release_branch.sh
+
   build:
     needs: finish
     permissions:
