@@ -2,13 +2,13 @@
 
 > Make Simplenote the best note-taking companion for Claude Desktop: achieve full Bear parity, then surpass it with Simplenote-native capabilities no other note MCP can offer — and become a first-class layer of Claude's working memory, hardened for private data.
 
-**Current version**: v1.17.1 released; Phases 8-10 below (correctness fixes, Vault, companion architecture) merged to `main` and awaiting the next version cut — 30 tools
+**Current version**: v1.18.3; Phases 8-10 below (correctness fixes, Vault, companion architecture) shipped in v1.18.0 — 30 tools
 **Working checklist**: see [TODO.md](TODO.md)
 **Supersedes**: `docs/ROADMAP.md` (deprecated)
 
 ---
 
-## Current State — v1.17.1 + Vault
+## Current State — v1.18.3
 
 ### All Shipped Tools
 
@@ -114,7 +114,7 @@ Python 3.13 fix: `log_monitor._process_log_file` unawaited coroutine eliminated.
 
 The Bear-parity and Simplenote-differentiator phases above are complete. These phases were prompted by a review benchmarking this project against Bear MCP and against the goal of being a genuine **Claude Desktop working-memory companion** (not just a note CRUD server).
 
-### Phase 8 — Correctness Fixes ✅ (v1.18, unreleased)
+### Phase 8 — Correctness Fixes ✅ (shipped in v1.18.0)
 
 Three concrete gaps surfaced by a full research pass (three independent codebase audits) that undercut the companion trust model — Claude and the user both read/write the same notes, so silent inconsistencies are worse here than in a single-user CRUD tool:
 
@@ -124,7 +124,7 @@ Three concrete gaps surfaced by a full research pass (three independent codebase
 | 2 | `search_notes` has no enforced default `limit` — returns unbounded results despite documenting "default: 20" | Enforce `min(limit or 20, 100)`, matching `list_notes` |
 | 3 | Notes edited outside Claude (via background sync) never get re-indexed for tags/words/titles — invisible to `list_tags`/tag-filtered search despite being fully retrievable by `get_note` | Make `_process_sync_notes()` call the same index maintenance as the create/update path; fix the `_initialized=True`-before-loaded race that silently no-ops the real cache initializer |
 
-### Phase 9 — Vault: Opt-In Client-Side Encryption ✅ (v1.19, unreleased)
+### Phase 9 — Vault: Opt-In Client-Side Encryption ✅ (shipped in v1.18.0)
 
 Simplenote has **no encryption at rest** — Automattic's own docs confirm staff can technically read note content and explicitly recommend against storing sensitive data there. As Simplenote MCP becomes a working-memory layer, Claude will write increasingly operational detail into it. Vault closes that gap:
 
@@ -138,7 +138,7 @@ Simplenote has **no encryption at rest** — Automattic's own docs confirm staff
 
 Full design: [`docs/security/encryption-design.md`](docs/security/encryption-design.md).
 
-### Phase 10 — Companion Architecture Layer ✅ (v1.20, unreleased)
+### Phase 10 — Companion Architecture Layer ✅ (shipped in v1.18.0)
 
 - **Fixed MCP Resources metadata loss**: `handle_list_resources`/`handle_read_resource` previously attached tags/dates/pagination via bare dynamic attributes (`resource.tags = ...`) — not part of the `Resource`/`TextResourceContents` schema, so a spec-compliant client has no obligation to preserve them even though this project's own Pydantic models happened to (`extra = "allow"`). Now attached via the MCP spec's dedicated `_meta` extension field, the correct mechanism for exactly this case. The first resource in a `list_resources` page also carries `pagination` in its `_meta`, fulfilling a contract the docstring already promised but the code never delivered. Tag/date info additionally folds into the human-readable `description` string for clients that only render that.
 - **Added `session-handoff` MCP Prompt**: scaffolds the Session Continuity workflow — takes `project` (required) plus optional `status`/`next_steps`/`blockers`, and returns instructions to call `get_or_create_note` + `add_text` with the canonical `Status:`/`Next:`/`Blockers:` format. 3 prompts total now (was 2).
