@@ -201,7 +201,16 @@ class OfflinePRResolver:
         # Run bandit security scan
         print("  🛡️ Running security scan...")
         code, _, _ = self._run_command(
-            ["python", "-m", "bandit", "-r", "simplenote_mcp/", "-ll"]
+            [
+                "python",
+                "-m",
+                "bandit",
+                "-c",
+                "pyproject.toml",
+                "-r",
+                "simplenote_mcp/",
+                "-ll",
+            ]
         )
         checks["bandit"] = code == 0
         print(f"    {'✅' if code == 0 else '❌'} Security scan")

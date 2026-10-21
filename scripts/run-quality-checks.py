@@ -290,7 +290,16 @@ class QualityChecker:
 
         try:
             bandit_success, bandit_stdout, bandit_stderr = self.run_command(
-                ["bandit", "-r", "simplenote_mcp/", "-f", "txt", "-ll"],
+                [
+                    "bandit",
+                    "-c",
+                    "pyproject.toml",
+                    "-r",
+                    "simplenote_mcp/",
+                    "-f",
+                    "txt",
+                    "-ll",
+                ],
                 "bandit",
                 "Bandit security scan",
             )

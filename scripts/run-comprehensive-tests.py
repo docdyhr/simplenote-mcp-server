@@ -98,6 +98,8 @@ class TestRunner:
                     "python",
                     "-m",
                     "bandit",
+                    "-c",
+                    "pyproject.toml",
                     "-r",
                     "simplenote_mcp",
                     "--severity-level",

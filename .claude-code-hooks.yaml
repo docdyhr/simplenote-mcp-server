@@ -65,7 +65,7 @@ hooks:
       required: true
 
     - name: "Security scan"
-      command: "bandit -r simplenote_mcp -f txt --severity-level medium"
+      command: "bandit -c pyproject.toml -r simplenote_mcp -f txt --severity-level medium"
       description: "Scan for security vulnerabilities"
       required: false
 
@@ -275,7 +275,7 @@ commands:
       ruff check . && \
       mypy simplenote_mcp && \
       SIMPLENOTE_OFFLINE_MODE=true pytest tests/ -x && \
-      bandit -r simplenote_mcp -f txt && \
+      bandit -c pyproject.toml -r simplenote_mcp -f txt && \
       echo "✅ All checks passed!"
     description: "Run all quality checks"
 

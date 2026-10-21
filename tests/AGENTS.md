@@ -18,7 +18,7 @@ Primary, CI-wired pytest tree (`testpaths = tests` in `pytest.ini`) — 64 test 
 - Coverage gate: `--cov-fail-under=75` (`pytest.ini` `addopts`).
 - Markers available: `unit`, `integration`, `perf`, `performance`, `security`, `slow`, `flaky`, `timeout`, `asyncio` (`--strict-markers` enforced — unregistered markers fail collection). `network`, `auth` and `offline` appear only in pyproject's ignored section, so using them fails collection.
 - Do not merge this tree's pytest invocation with `simplenote_mcp/tests/` — both mutate process-global singletons (see `simplenote_mcp/server/monitoring/AGENTS.md`) and only reset state for their own tests.
-- Offline-mode mock client (`server.py::get_simplenote_client()`) returns `({}, 0)` from `add_note`/`get_note`/`update_note` — don't write assertions expecting a populated `note['key']` against the raw mock.
+- Offline-mode mock client (`server.py::_build_offline_mock_client()`) keeps an in-memory store: `add_note` returns a note with a `mock-note-N` key that `get_note`/`update_note` round-trip, and each fresh client starts empty. The autouse `isolate_token_file_cache` fixture points `keychain._CACHE_DIR` at the test's `tmp_path`, so assert "nothing cached" by listing `tmp_path`.
 - `test_tool_pin_parity.py` fails when pyproject's exact `ruff`/`mypy` pin differs from `requirements-lock.txt`, the pre-commit hook `rev:`, or a `<tool>==` pin in a workflow. Dependabot bumps only pyproject and the lock, so on a failing bot PR bump the hook `rev:` on that branch. Don't loosen the test.
 
 ## Work Guidance

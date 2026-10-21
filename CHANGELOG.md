@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Security
+- **`certifi` 2026.7.22 → 2026.10.19 (CRITICAL, GHSA-6q48-6c7w-9gw2)**: the old bundle trusts emSign
+  root CAs whose intermediate CA keys were compromised. Bumped in `requirements-runtime-lock.txt` (the
+  Docker image) and `requirements-lock.txt`. `certifi` has no dependencies, so nothing else moves.
+  PyPI installs already resolve the fixed version. The released v1.18.2 and v1.18.0 images still
+  carry the old bundle until the next release.
 - **Release vulnerability reports were always empty**: `generate_release_security_reports.py`
   ran `pip-audit -r pyproject.toml`, which fails because `pyproject.toml` isn't a requirements
   file. Any non-zero exit, including pip-audit's own "vulnerabilities found", was replaced with a
@@ -21,6 +26,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   of these cases.
 
 ### Fixed
+- **Offline mode wrote junk token files and failed background start-up**: with
+  `SIMPLENOTE_OFFLINE_MODE=true` the client is a `MagicMock`, but `_test_simplenote_connection` still
+  acquired and cached a token for it. `cache_token()` got the mock's username and token, built the
+  filename from its repr, created it with `os.open(O_CREAT)`, then failed the write with `TypeError`.
+  Each offline start therefore left a zero-byte `<MagicMock name='mock.username.replace().replace()'
+  …>.token` file in `~/.config/simplenote-mcp/` (12 found) and logged a failed background cache
+  initialization. Only the offline client now carries an explicit marker, and its connection test
+  skips token acquisition. The keychain cache also refuses non-string or empty emails and tokens
+  before touching the disk. New tests in `tests/test_offline_token_cache.py`.
+- **Bandit ran without its config**: bandit doesn't read `[tool.bandit]` unless passed
+  `-c pyproject.toml`, and the `security / Security` job, four scripts, `.claude-code-hooks.yaml` and
+  three docs ran it bare. A bare run reports 455 LOW findings (437 in the legacy test tree), against
+  0 with the config. The hooks file's "all checks" chain could never pass, because bandit exits 1
+  on any finding. All of them now pass `-c pyproject.toml`. The unread `.bandit` YAML, which
+  contradicted `[tool.bandit]`, is removed. `tests/test_bandit_config_usage.py` fails on any bare
+  invocation.
 - **Release SBOMs described the build runner, not the package**: the release build never
   installed the package before scanning, so the SBOMs listed `twine`, `build` and the scanners
   themselves but not `mcp` or `simplenote-mcp-server` (v1.18.1's had 77 components and no

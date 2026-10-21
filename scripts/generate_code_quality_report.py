@@ -177,7 +177,17 @@ def run_bandit(project_dir: str) -> dict[str, Any]:
     """
     print("Running security analysis...")
     run_command(
-        ["bandit", "-r", "simplenote_mcp", "-f", "json", "-o", "bandit-results.json"],
+        [
+            "bandit",
+            "-c",
+            "pyproject.toml",
+            "-r",
+            "simplenote_mcp",
+            "-f",
+            "json",
+            "-o",
+            "bandit-results.json",
+        ],
         cwd=project_dir,
     )
 

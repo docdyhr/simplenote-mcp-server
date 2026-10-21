@@ -39,6 +39,11 @@ def _read_file_cache(email: str) -> str | None:
 
 
 def _write_file_cache(email: str, token: str) -> None:
+    # Checked before anything touches the disk: O_CREAT below would otherwise
+    # create the file before a non-str token fails to write, leaving a
+    # zero-byte file named after whatever the email argument formats as.
+    if not (isinstance(email, str) and email and isinstance(token, str) and token):
+        return
     try:
         _CACHE_DIR.mkdir(parents=True, exist_ok=True)
         path = _cache_path(email)
@@ -137,6 +142,8 @@ def get_simperium_token(email: str) -> str | None:
     Returns:
         The raw token string, or None if unavailable.
     """
+    if not (isinstance(email, str) and email):
+        return None
     cached = _read_file_cache(email)
     if cached:
         return cached

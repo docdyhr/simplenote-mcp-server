@@ -199,6 +199,11 @@ _request_ctx_var: contextvars.ContextVar[ServerRequestContext | None] = (
 simplenote_client = None
 
 
+# Set to True on the SIMPLENOTE_OFFLINE_MODE client only. Compare with
+# `is True`: any other MagicMock answers this attribute with a truthy mock.
+OFFLINE_CLIENT_MARKER = "simplenote_mcp_offline_client"
+
+
 def _build_offline_mock_client() -> Any:
     """Build a stateful mock Simplenote client for SIMPLENOTE_OFFLINE_MODE.
 
@@ -258,6 +263,7 @@ def _build_offline_mock_client() -> Any:
     mock_client.add_note.side_effect = mock_add_note
     mock_client.update_note.side_effect = mock_update_note
     mock_client.trash_note.side_effect = mock_trash_note
+    setattr(mock_client, OFFLINE_CLIENT_MARKER, True)
     return mock_client
 
 
@@ -423,23 +429,11 @@ def setup_signal_handlers() -> None:
     atexit.register(cleanup_pid_file)
 
 
-async def _test_simplenote_connection(sn: Any) -> None:
-    """Test Simplenote API connection.
+async def _acquire_token(sn: Any, loop: asyncio.AbstractEventLoop) -> str:
+    """Acquire a token for ``sn`` and cache it.
 
-    Explicitly verifies the auth token before making any API request so that a
-    failed login produces a clear AuthenticationError at startup instead of a
-    cryptic TypeError 75 seconds later deep inside urllib's putheader().
-
-    Token acquisition order:
-    1. SIMPLENOTE_TOKEN env var — user-supplied pre-authenticated token.
-    2. macOS keychain entry stored by the Simplenote desktop app (darwin only).
-       The Simplenote app keeps this token current; we piggyback on it when
-       auth.simperium.com is unreachable (decommissioned as of 2025).
-    3. simplenote.authenticate() — classic password auth, kept as fallback.
+    The sources, in order, are listed in _test_simplenote_connection's docstring.
     """
-    logger.debug("Testing Simplenote client connection...")
-    loop = asyncio.get_running_loop()
-
     # --- Step 1: acquire a token from the fastest available source ---
 
     token: str | None = None
@@ -496,9 +490,37 @@ async def _test_simplenote_connection(sn: Any) -> None:
 
         await loop.run_in_executor(None, lambda: cache_token(sn.username, token))
 
-    # Cache the token so get_note_list reuses it without re-authenticating.
-    sn.token = token
-    logger.debug("Simplenote authentication successful, token acquired")
+    return token
+
+
+async def _test_simplenote_connection(sn: Any) -> None:
+    """Test Simplenote API connection.
+
+    Explicitly verifies the auth token before making any API request so that a
+    failed login produces a clear AuthenticationError at startup instead of a
+    cryptic TypeError 75 seconds later deep inside urllib's putheader().
+
+    Token acquisition order:
+    1. SIMPLENOTE_TOKEN env var — user-supplied pre-authenticated token.
+    2. macOS keychain entry stored by the Simplenote desktop app (darwin only).
+       The Simplenote app keeps this token current; we piggyback on it when
+       auth.simperium.com is unreachable (decommissioned as of 2025).
+    3. simplenote.authenticate() — classic password auth, kept as fallback.
+
+    The SIMPLENOTE_OFFLINE_MODE client skips token acquisition: it has nothing
+    to authenticate, and its MagicMock username and token must never reach the
+    keychain file cache, where they became zero-byte "<MagicMock ...>.token"
+    files and a TypeError on every offline start.
+    """
+    logger.debug("Testing Simplenote client connection...")
+    loop = asyncio.get_running_loop()
+
+    if getattr(sn, OFFLINE_CLIENT_MARKER, None) is True:
+        logger.debug("Offline mode: skipping token acquisition and caching")
+    else:
+        # Cache the token so get_note_list reuses it without re-authenticating.
+        sn.token = await _acquire_token(sn, loop)
+        logger.debug("Simplenote authentication successful, token acquired")
 
     # Step 2: verify the API is reachable with the fresh token.
     try:

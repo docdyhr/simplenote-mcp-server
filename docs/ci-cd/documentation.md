@@ -329,7 +329,7 @@ cat coverage.xml | head -20
 ```bash
 # Test security tools:
 pip install bandit safety
-bandit -r simplenote_mcp/
+bandit -c pyproject.toml -r simplenote_mcp/
 safety check
 ```
 
@@ -546,7 +546,7 @@ pytest tests/ -v --tb=short
 ruff check .
 ruff format --check .
 mypy simplenote_mcp --config-file=mypy.ini
-bandit -r simplenote_mcp/
+bandit -c pyproject.toml -r simplenote_mcp/
 safety check
 ```
 
