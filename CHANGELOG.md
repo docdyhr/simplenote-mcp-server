@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.3] - 2026-10-21
+
 ### Security
 - **`certifi` 2026.7.22 → 2026.10.19 (CRITICAL, GHSA-6q48-6c7w-9gw2)**: the old bundle trusts emSign
   root CAs whose intermediate CA keys were compromised. Bumped in `requirements-runtime-lock.txt` (the
   Docker image) and `requirements-lock.txt`. `certifi` has no dependencies, so nothing else moves.
-  PyPI installs already resolve the fixed version. The released v1.18.2 and v1.18.0 images still
-  carry the old bundle until the next release.
+  PyPI installs already resolve the fixed version. The v1.18.2 and v1.18.0 images carry the old
+  bundle; the v1.18.3 image is the first with the fixed one.
 - **Release vulnerability reports were always empty**: `generate_release_security_reports.py`
   ran `pip-audit -r pyproject.toml`, which fails because `pyproject.toml` isn't a requirements
   file. Any non-zero exit, including pip-audit's own "vulnerabilities found", was replaced with a
@@ -1218,7 +1220,8 @@ This release marks a significant milestone with **98% startup performance improv
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.2...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.3...HEAD
+[1.18.3]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.2...v1.18.3
 [1.18.2]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.1...v1.18.2
 [1.18.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.0...v1.18.1
 [1.18.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.17.5...v1.18.0
