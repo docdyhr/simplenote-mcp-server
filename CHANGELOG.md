@@ -25,6 +25,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `pre-commit` 4.7.0, `pytest-mock` 3.17.0, and `rpds-py` 0.30.0 → 2026.9.1, which now matches the
   runtime lock. Held back: `python-dateutil` 3.0.0, since `pyproject.toml` caps it at `<3.0.0` and a
   major needs its own review, and `mando` 0.8, since radon 6.0.1 requires `<0.8`.
+- **Both lock files now target Python 3.13 only**: 17 dev-lock pins and 5 runtime-lock pins need
+  Python ≥3.11 (`main`'s runtime lock already had one, `rpds-py` 2026.6.3). So
+  `pip install -r requirements*-lock.txt` and Docker builds with `PYTHON_VERSION=3.10` no longer
+  work on 3.10. CI, Dependabot and the image default all use 3.13. Installs from PyPI or
+  `pyproject.toml` on 3.10–3.12 are unaffected, because the resolver picks compatible versions
+  (e.g. `starlette` 1.7.0 on 3.10). Both lock headers and `AGENTS.md` now say this.
 
 ## [1.18.3] - 2026-10-21
 

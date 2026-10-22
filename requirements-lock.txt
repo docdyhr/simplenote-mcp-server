@@ -1,3 +1,11 @@
+# Full development lock: runtime, dev, test, security and docs tooling.
+#
+# Resolved for Python 3.13, the version CI and Dependabot use. Several
+# pins need Python >= 3.11, so this file does not install on 3.10 even
+# though pyproject.toml allows it. On 3.10-3.12, install from
+# pyproject.toml instead (pip install -e ".[dev,test,all]"); the resolver
+# picks compatible versions there.
+
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.5
 aiosignal==1.4.0

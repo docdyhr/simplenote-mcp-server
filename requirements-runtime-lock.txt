@@ -7,10 +7,16 @@
 # and belong only in requirements-lock.txt (the full development lock),
 # never in the production image.
 #
+# Resolved for Python 3.13, the image's PYTHON_VERSION default and the
+# version CI and Dependabot use. Several pins need Python >= 3.11, so a
+# build with PYTHON_VERSION=3.10 fails even though pyproject.toml allows
+# 3.10. Non-Docker installs on 3.10-3.12 go through pyproject.toml.
+#
 # Regenerate after changing pyproject.toml's core dependencies:
-#   python3 -m venv /tmp/runtime-lock-venv
+#   python3.13 -m venv /tmp/runtime-lock-venv
 #   /tmp/runtime-lock-venv/bin/pip install .
-#   /tmp/runtime-lock-venv/bin/pip freeze | grep -v simplenote-mcp-server > requirements-runtime-lock.txt
+#   /tmp/runtime-lock-venv/bin/pip freeze | grep -v simplenote-mcp-server > /tmp/runtime-freeze.txt
+# then replace everything below this header with /tmp/runtime-freeze.txt.
 
 aiohappyeyeballs==2.7.1
 aiohttp==3.14.5
