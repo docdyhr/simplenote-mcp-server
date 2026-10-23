@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **`virtualenv` 21.14.7 → 21.14.12 in `requirements-lock.txt`** (GHSA-c978-59m8-c77v, high:
+  generated POSIX console launchers interpret destination paths as shell syntax; GHSA-43mp-35q3-x3fq
+  and GHSA-cw65-gx24-rc82, medium; all fixed in 21.14.9, published 2026-10-21). The fix is in the
+  dev lock only: `virtualenv` comes in through `pre-commit` and isn't in the Docker image or the
+  package's dependencies. In the npm eval tooling, `qs` 6.15.3 → 6.16.1 and `fast-uri` 3.1.7 → 3.1.9
+  clear GHSA-4mjr-xmp4-gh2g, GHSA-x5fp-wj9c-mxmx and GHSA-hrr3-gc8f-f4qj. The `mcp-evals` 2.0.1
+  transitive findings (`@opentelemetry/*`, `@ai-sdk/*`, `ai`) remain, because no fixed 2.x exists.
+
+### Changed
+- **Dependency refresh**: the Docker image (`requirements-runtime-lock.txt`) gets `starlette` 1.7.0 →
+  1.9.0, `httpx2`/`httpcore2` 2.13.1 → 2.16.0, `rpds-py` 2026.6.3 → 2026.9.1 and `more-itertools`
+  11.1.0 → 11.2.1, the same set a clean `pip install .` resolves today. The dev lock moves 30 pins.
+  These include `ruff` 0.17.0 → 0.17.1, bumped in `pyproject.toml`'s `dev`/`all` extras and the
+  pre-commit hook too, with the same zero findings and formatting as 0.17.0. They also include
+  `pre-commit` 4.7.0, `pytest-mock` 3.17.0, and `rpds-py` 0.30.0 → 2026.9.1, which now matches the
+  runtime lock. Held back: `python-dateutil` 3.0.0, since `pyproject.toml` caps it at `<3.0.0` and a
+  major needs its own review, and `mando` 0.8, since radon 6.0.1 requires `<0.8`.
+- **Both lock files now target Python 3.13 only**: 17 dev-lock pins and 5 runtime-lock pins need
+  Python ≥3.11 (`main`'s runtime lock already had one, `rpds-py` 2026.6.3). So
+  `pip install -r requirements*-lock.txt` and Docker builds with `PYTHON_VERSION=3.10` no longer
+  work on 3.10. CI, Dependabot and the image default all use 3.13. Installs from PyPI or
+  `pyproject.toml` on 3.10–3.12 are unaffected, because the resolver picks compatible versions
+  (e.g. `starlette` 1.7.0 on 3.10). Both lock headers and `AGENTS.md` now say this.
+
 ## [1.18.3] - 2026-10-21
 
 ### Security
