@@ -13,7 +13,9 @@ on:
         default: "3.12"
       node-version:
         type: string
-        default: "18"
+        # mcp-evals loads tsx with require(), which needs require(esm):
+        # Node >= 20.19. Under Node 18 every run crashed with ERR_REQUIRE_ESM.
+        default: "24"
       evaluation-suite:
         type: string
         default: "basic"
@@ -21,7 +23,7 @@ on:
         type: string
         default: "70"
     secrets:
-      ANTHROPIC_API_KEY:
+      OPENAI_API_KEY:
         required: false
     outputs:
       pass-rate:
@@ -57,13 +59,12 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v6
         with:
           node-version: ${{ inputs.node-version }}
-          # Note: npm cache disabled - package-lock.json may not exist
 
       - name: Install Python dependencies
         run: python -m pip install --upgrade pip && pip install -e ".[dev,test,all]"
 
       - name: Install Node.js dependencies
-        run: npm install && npm run validate:evals
+        run: npm ci && npm run validate:evals
 
       - name: Determine evaluation suite
         id: eval-suite
@@ -84,8 +85,8 @@ jobs:
       - name: Check API key availability
         id: check-api-key
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: scripts/ci/check_anthropic_api_key.sh
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: scripts/ci/check_openai_api_key.sh
 
       - name: Run MCP evaluations
         id: run-evals
@@ -94,12 +95,14 @@ jobs:
         env:
           SUITE: ${{ steps.eval-suite.outputs.suite }}
           DESCRIPTION: ${{ steps.eval-suite.outputs.description }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: scripts/ci/run_mcp_evaluations.sh
 
       - name: Parse evaluation results
         id: eval-results
         env:
           INPUT_FAIL_THRESHOLD: ${{ inputs.fail-threshold }}
+          EVAL_EXIT_CODE: ${{ steps.run-evals.outputs.exit_code }}
         run: python scripts/ci/parse_eval_results.py
 
       - name: Upload evaluation artifacts

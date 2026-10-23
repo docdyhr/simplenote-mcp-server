@@ -62,6 +62,7 @@ jobs:
           PASS_RATE: ${{ inputs.pass-rate }}
           QUALITY_GATE_PASSED: ${{ inputs.quality-gate-passed }}
           EVAL_RESULT: ${{ inputs.run-result }}
+          STATUS: ${{ inputs.status }}
           FAIL_THRESHOLD: ${{ inputs.fail-threshold }}
           EVALUATION_SUITE: ${{ inputs.evaluation-suite }}
         with:

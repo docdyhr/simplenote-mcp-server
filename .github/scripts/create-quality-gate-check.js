@@ -5,7 +5,11 @@ module.exports = async ({ github, context }) => {
 
   let conclusion, title, summary;
 
-  if (evalResult === "success" && qualityGatePassed) {
+  if (process.env.STATUS === "skipped") {
+    conclusion = "neutral";
+    title = "⏭️ Evaluations Skipped";
+    summary = "OPENAI_API_KEY is not available to this run (Dependabot or fork PR)";
+  } else if (evalResult === "success" && qualityGatePassed) {
     conclusion = "success";
     title = "✅ Quality Gate Passed";
     summary = `Evaluation pass rate: ${passRate}% (meets threshold)`;
