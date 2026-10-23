@@ -1,19 +1,14 @@
 module.exports = async ({ github, context }) => {
   const changedFiles = process.env.CHANGED_FILES || "See file diff above";
-  const hasOpenAI = process.env.HAS_OPENAI_KEY === "true";
 
   const body = `## 🧪 Evaluation Files Updated
 
-This PR includes changes to evaluation files. The MCP evaluations will run automatically.
+This PR includes changes to evaluation files. The **Evaluation Quality Gate** workflow runs the basic suite on it automatically. It skips the run when \`OPENAI_API_KEY\` isn't available (Dependabot and fork PRs).
 
-**OpenAI Integration**: ${hasOpenAI ? "✅ Available" : "⚠️ Not configured - manual tests only"}
-
-**Tip**: Add the \`comprehensive-eval\` label to run the full evaluation suite.
+**Tip**: To run the full suite, dispatch *Evaluation Quality Gate* from the Actions tab with \`evaluation_suite: comprehensive\`.
 
 ### Modified evaluation files:
 ${changedFiles}
-
-${hasOpenAI ? "" : "\n**Note**: To run full AI-powered evaluations, configure the `OPENAI_API_KEY` repository secret."}
 `;
 
   await github.rest.issues.createComment({

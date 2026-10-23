@@ -6,10 +6,19 @@ on:
     branches: [main]
     paths:
       - "simplenote_mcp/**"
+      - "simplenote_mcp_server.py"
+      - "mcp-server-wrapper.ts"
       - "tests/**"
       - "evals/**"
       - "pyproject.toml"
       - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/evaluation-quality-gate.yml"
+      - ".github/workflows/reusable-eval-quality-*.yml"
+      - ".github/scripts/*quality-gate*.js"
+      - "scripts/ci/*eval*"
+      - "scripts/ci/check_openai_api_key.sh"
+      - "scripts/ci/render_quality_gate_report.sh"
   workflow_dispatch:
     inputs:
       pr_number:
@@ -31,13 +40,18 @@ on:
         default: 70
         type: number
 
+# Each run makes real OpenAI calls; a newer push to the same PR supersedes it.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   run-evaluations:
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-eval-quality-run.yml
     secrets:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     with:
       evaluation-suite: ${{ github.event.inputs.evaluation_suite || 'basic' }}
       fail-threshold: ${{ github.event.inputs.fail_threshold || '70' }}

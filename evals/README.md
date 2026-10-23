@@ -37,7 +37,7 @@ This directory contains evaluation configurations for testing the Simplenote MCP
 ### Prerequisites
 
 1. **OpenAI API Key**: Set your `OPENAI_API_KEY` environment variable ✅
-2. **Node.js**: Version 18 or higher ✅
+2. **Node.js**: Version 20.19 or higher ✅ (mcp-evals loads `tsx` with `require()`, which fails with `ERR_REQUIRE_ESM` on Node 18)
 3. **Python**: Version 3.10+ with the Simplenote MCP server installed ✅
 
 ### Installation
@@ -108,13 +108,15 @@ Production-readiness testing:
 
 The evaluations run automatically on:
 
-- **Pull Requests**: Smoke tests + basic evaluations
-- **Manual Trigger**: All evaluation suites
-- **Label Trigger**: Add `comprehensive-eval` label to PR for full suite
+- **Pull Requests**: the basic suite, when a PR touches the server, `evals/`, the eval workflows or their scripts. Skipped when `OPENAI_API_KEY` isn't available (Dependabot and fork PRs).
+- **Manual Trigger**: any suite (`smoke`, `basic`, `comprehensive`) via *Evaluation Quality Gate* → Run workflow
+
+An eval passes when the mean of the grader's five 1–5 ratings (accuracy, completeness, relevance, clarity, reasoning) is at least 3.5. The gate compares the share of passing evals with the threshold (70% by default) and is non-blocking.
 
 ### Workflow Files
 
-- `.github/workflows/mcp-evaluations.yml` - Main evaluation workflow
+- `.github/workflows/evaluation-quality-gate.yml` - Runs the evaluations and reports the quality gate
+- `.github/workflows/mcp-evaluations.yml` - Validates changed `evals/*.yaml` files
 
 ### Cost Management
 
