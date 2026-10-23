@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   transitive findings (`@opentelemetry/*`, `@ai-sdk/*`, `ai`) remain, because no fixed 2.x exists.
 
 ### Changed
+- **`python-dateutil` 3.x is now allowed** (`>=2.8.0,<4.0.0`, previously `<3.0.0`). Both locks move to
+  3.0.0 and gain its one new dependency, `tzdata` 2026.5: dateutil no longer bundles its own time zone
+  database. 3.0 still supports Python 3.10, and 4.x will be the series that requires 3.11, which the
+  `<4.0.0` cap keeps out. The release mostly rewrites `dateutil.tz`. The server only calls
+  `dateutil.parser.parse(text, fuzzy=False)` (in `search/date_parser.py`), and 42 date strings
+  (offsets, `Z`, named zones, past 2038, invalid input) parse identically under 2.9.0.post0 and 3.0.0.
 - **Dependency refresh**: the Docker image (`requirements-runtime-lock.txt`) gets `starlette` 1.7.0 →
   1.9.0, `httpx2`/`httpcore2` 2.13.1 → 2.16.0, `rpds-py` 2026.6.3 → 2026.9.1 and `more-itertools`
   11.1.0 → 11.2.1, the same set a clean `pip install .` resolves today. The dev lock moves 30 pins.
