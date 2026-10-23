@@ -74,8 +74,11 @@ jobs:
 
       - name: Configure test environment
         run: |
+          # Write mode exposes the create/update/delete tools the evals exercise
+          # (9 read-only tools without it); offline mode keeps them on the mock client.
           {
             echo "SIMPLENOTE_OFFLINE_MODE=true"
+            echo "SIMPLENOTE_WRITE_MODE=true"
             echo "SIMPLENOTE_EMAIL=test@example.com"
             echo "SIMPLENOTE_PASSWORD=test_password"
           } >> "$GITHUB_ENV"

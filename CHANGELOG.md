@@ -52,8 +52,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     fails the run job instead of reporting 0%. A Dependabot or fork PR without the key is reported as
     skipped. `mcp-evals` hangs after any OpenAI error, so the run is now cut off a minute before the
     step timeout and reported as timed out. The gate also runs when its own workflows, scripts or the
-    TypeScript wrapper change, and a newer push cancels a superseded run. `package.json`'s `engines`
-    now says Node ≥ 20.19.
+    TypeScript wrapper change, and a newer push cancels a superseded run. The eval server now runs
+    with `SIMPLENOTE_WRITE_MODE=true` (on the offline mock client): without it the server offered
+    only its 9 read-only tools, so the create/update/delete evals couldn't pass. `package.json`'s
+    `engines` now says Node ≥ 20.19.
   - *MCP Evaluations* passed `simplenote_mcp_server.py` to `mcp-evals`, which only loads JS/TS
     (`ERR_UNKNOWN_FILE_EXTENSION`), so it never ran either. It also re-ran the basic suite through
     `mclenhard/mcp-evals`, which installs `mcp-evals` unpinned. Its eval run, the
