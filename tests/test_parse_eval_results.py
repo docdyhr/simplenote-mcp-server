@@ -74,15 +74,17 @@ def test_all_evals_graded_above_pass_mark():
     assert [e["score"] for e in r["details"]] == [5.0, 4.0, 4.0]
 
 
-def test_first_real_run_mcp_evals_placeholder_is_ungraded_not_zero():
-    # PR #1015's first run with a valid key: 7 graded evals, 2 placeholders
+def test_first_real_run_ungraded_placeholders_leave_the_pass_rate():
+    # PR #1015's first run with a valid key: 7 graded evals, 2 placeholders.
+    # Counted as failures they gave 77.8%; they say nothing about the server.
     scores = {"a": 4.4, "b": 5, "c": 4.6, "d": 5, "e": 5, "f": 4.4, "g": 5}
     results = {n: _grade(s) for n, s in scores.items()}
     results |= {"lifecycle": UNGRADED, "edge_cases": UNGRADED}
     r = parser.parse_evaluation_results(_output(results), exit_code="0")
-    assert (r["total_tests"], r["passed_tests"], r["failed_tests"]) == (9, 7, 2)
-    assert round(r["pass_rate"], 1) == 77.8
-    assert r["status"] == "acceptable"
+    assert (r["total_tests"], r["graded_tests"], r["ungraded_tests"]) == (9, 7, 2)
+    assert (r["passed_tests"], r["failed_tests"]) == (7, 0)
+    assert r["pass_rate"] == 100.0
+    assert r["status"] == "success"
     by_name = {e["name"]: e for e in r["details"]}
     assert by_name["lifecycle"]["score"] is None  # not a 0.0 score
     assert by_name["lifecycle"]["error"].startswith(
@@ -96,7 +98,7 @@ def test_ratings_outside_one_to_five_are_not_a_grade():
     assert r["details"][0]["error"] == "no 1-5 ratings in grader reply"
 
 
-def test_low_score_errors_and_ungraded_text_count_as_failed():
+def test_low_score_fails_while_errors_and_prose_are_ungraded():
     content = _output(
         {
             "good": _grade(4),
@@ -106,8 +108,9 @@ def test_low_score_errors_and_ungraded_text_count_as_failed():
         }
     )
     r = parser.parse_evaluation_results(content, exit_code="0")
-    assert (r["total_tests"], r["passed_tests"], r["failed_tests"]) == (4, 1, 3)
-    assert r["pass_rate"] == 25.0
+    assert (r["total_tests"], r["graded_tests"], r["ungraded_tests"]) == (4, 2, 2)
+    assert (r["passed_tests"], r["failed_tests"]) == (1, 1)
+    assert r["pass_rate"] == 50.0
     assert r["status"] == "poor"
     by_name = {e["name"]: e for e in r["details"]}
     assert by_name["broken"]["error"].startswith("Failed after 2 attempts")
@@ -158,6 +161,15 @@ def test_timeout_exit_says_it_timed_out():
     assert "timed out" in r["error"]
 
 
+def test_all_ungraded_is_an_error_not_a_rate():
+    r = parser.parse_evaluation_results(
+        _output({"a": UNGRADED, "b": UNGRADED, "c": "prose only"}), exit_code="0"
+    )
+    assert r["status"] == "error"
+    assert (r["total_tests"], r["graded_tests"], r["ungraded_tests"]) == (3, 0, 3)
+    assert r["error"] == "no graded evals: all 3 are ungraded"
+
+
 def test_results_section_without_evals_is_an_error():
     r = parser.parse_evaluation_results(HEADER + "\nEvaluation Results:\n", "0")
     assert r["status"] == "error"
@@ -179,23 +191,40 @@ def test_main_writes_outputs_and_summary(
     tmp_path, monkeypatch, threshold, expected_gate, expected_exit
 ):
     (tmp_path / "evaluation-output.txt").write_text(
-        _output({"good": _grade(5), "low": _grade(2), "x": _grade(1), "y": _grade(1)})
+        _output(
+            {
+                "good": _grade(5),
+                "low": _grade(2),
+                "x": _grade(1),
+                "y": _grade(1),
+                "noise": UNGRADED,
+            }
+        )
     )
     out = tmp_path / "gh_output"
+    step_summary = tmp_path / "step_summary.md"
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("GITHUB_OUTPUT", str(out))
+    monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(step_summary))
     monkeypatch.setenv("INPUT_FAIL_THRESHOLD", threshold)
     monkeypatch.setenv("EVAL_EXIT_CODE", "0")
     assert parser.main() == expected_exit
     outputs = dict(line.split("=", 1) for line in out.read_text().splitlines())
-    assert outputs["total_tests"] == "4"
+    assert outputs["total_tests"] == "5"
+    assert outputs["graded_tests"] == "4"
+    assert outputs["ungraded_tests"] == "1"
     assert outputs["passed_tests"] == "1"
     assert outputs["pass_rate"] == "25.0"
     assert outputs["quality_gate_passed"] == expected_gate
     assert outputs["status"] == "poor"
     summary = json.loads((tmp_path / "evaluation-summary.json").read_text())
     assert summary["threshold"] == float(threshold)
-    assert len(summary["details"]) == 4
+    assert len(summary["details"]) == 5
+    table = step_summary.read_text()
+    assert "1 of 4 graded evals passed (1 ungraded)" in table
+    assert "| noise | ungraded | ungraded: Error running evaluation:" in table
+    # the grader's reply text is one cell: no raw newline or pipe from it
+    assert all(line.count(" | ") == 2 for line in table.splitlines()[2:] if line)
 
 
 @pytest.mark.parametrize(
@@ -204,6 +233,7 @@ def test_main_writes_outputs_and_summary(
         (None, "", "error", 1),  # no output file at all
         ("Error [ERR_REQUIRE_ESM]: ...\n", "1", "error", 1),
         ("Evaluations skipped: API key not available\n", "", "skipped", 0),
+        (_output({"a": UNGRADED}), "0", "error", 1),  # nothing graded
     ],
 )
 def test_main_exit_status(

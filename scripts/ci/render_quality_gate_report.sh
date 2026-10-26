@@ -1,10 +1,21 @@
 #!/bin/bash
 # Render the evaluation quality-gate markdown report (quality-gate-report.md).
-# Reads PASS_RATE, QUALITY_GATE_PASSED, STATUS, RUN_RESULT, FAIL_THRESHOLD,
-# EVALUATION_SUITE from the environment; writes overall_status/report_created
+# Reads PASS_RATE, QUALITY_GATE_PASSED, STATUS, GRADED_TESTS, UNGRADED_TESTS,
+# RUN_RESULT, FAIL_THRESHOLD, EVALUATION_SUITE from the environment; writes overall_status/report_created
 # to $GITHUB_OUTPUT.
 
 set -euo pipefail
+
+GRADED_TESTS="${GRADED_TESTS:-0}"
+UNGRADED_TESTS="${UNGRADED_TESTS:-0}"
+# Ungraded evals (the grader's reply wasn't valid JSON) are left out of the rate
+PASS_RATE_LINE="${PASS_RATE}%"
+if [ "$GRADED_TESTS" != "0" ]; then
+  PASS_RATE_LINE="${PASS_RATE}% of ${GRADED_TESTS} graded evals"
+  if [ "$UNGRADED_TESTS" != "0" ]; then
+    PASS_RATE_LINE="${PASS_RATE_LINE} (${UNGRADED_TESTS} ungraded and excluded; reasons in the Run MCP Evaluations job summary)"
+  fi
+fi
 
 echo "Creating quality gate report..."
 
@@ -27,7 +38,7 @@ cat > quality-gate-report.md << EOF
 
 ## Overall Result: ${OVERALL_STATUS}
 
-**Pass Rate**: ${PASS_RATE}%
+**Pass Rate**: ${PASS_RATE_LINE}
 **Threshold**: ${FAIL_THRESHOLD}%
 **Evaluation Suite**: ${EVALUATION_SUITE}
 **Quality Gate**: ${QUALITY_GATE_PASSED}

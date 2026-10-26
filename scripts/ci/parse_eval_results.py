@@ -9,14 +9,19 @@ grader fences its JSON in ```json so the parse fails, mcp-evals substitutes
 all-zero ratings with ``overall_comments: "Error running evaluation: ..."``;
 that eval is ungraded, not scored 0. JS/TS evals may return the reply as a
 string, and a thrown eval gives ``{"error": ...}``. An eval passes when the
-mean of its five ratings is at least PASS_MARK; ungraded and errored evals
-count as failed. The pass rate is the share of evals that passed.
+mean of its five ratings is at least PASS_MARK. Ungraded evals (no valid 1-5
+ratings, for any of those reasons) are listed with their reason but left out
+of the pass rate, which is the share of *graded* evals that passed: they say
+nothing about the server, and counting them as failures let grader noise
+alone push a run below the threshold.
 
 Reads INPUT_FAIL_THRESHOLD and EVAL_EXIT_CODE from the environment; writes
-pass_rate/total_tests/passed_tests/failed_tests/quality_gate_passed/status to
-$GITHUB_OUTPUT, and a JSON summary to evaluation-summary.json. Exits 1 when
-the run produced no usable result (a crash, a non-zero mcp-evals exit, or no
-evals), so the job fails visibly instead of reporting 0 tests.
+pass_rate/total_tests/graded_tests/ungraded_tests/passed_tests/failed_tests/
+quality_gate_passed/status to $GITHUB_OUTPUT, a per-eval table to
+$GITHUB_STEP_SUMMARY when set, and a JSON summary to evaluation-summary.json.
+Exits 1 when the run produced no usable result (a crash, a non-zero mcp-evals
+exit, no evals, or no graded evals), so the job fails visibly instead of
+reporting a rate over nothing.
 """
 
 import json
@@ -110,6 +115,8 @@ def parse_evaluation_results(content, exit_code=""):
     """Summarise mcp-evals output; exit_code is the mcp-evals exit status."""
     results = {
         "total_tests": 0,
+        "graded_tests": 0,
+        "ungraded_tests": 0,
         "passed_tests": 0,
         "failed_tests": 0,
         "pass_rate": 0.0,
@@ -141,15 +148,24 @@ def parse_evaluation_results(content, exit_code=""):
         )
         return results
 
-    passed = sum(e["passed"] for e in evals)
+    graded = [e for e in evals if e["score"] is not None]
     results.update(
         total_tests=len(evals),
-        passed_tests=passed,
-        failed_tests=len(evals) - passed,
-        pass_rate=passed / len(evals) * 100,
+        graded_tests=len(graded),
+        ungraded_tests=len(evals) - len(graded),
         details=evals,
     )
-    if passed == len(evals):
+    if not graded:
+        results["error"] = f"no graded evals: all {len(evals)} are ungraded"
+        return results
+
+    passed = sum(e["passed"] for e in graded)
+    results.update(
+        passed_tests=passed,
+        failed_tests=len(graded) - passed,
+        pass_rate=passed / len(graded) * 100,
+    )
+    if passed == len(graded):
         results["status"] = "success"
     elif results["pass_rate"] >= 90:
         results["status"] = "good"
@@ -158,6 +174,32 @@ def parse_evaluation_results(content, exit_code=""):
     else:
         results["status"] = "poor"
     return results
+
+
+def _cell(text):
+    """One markdown table cell: single line, no pipes, bounded length."""
+    return " ".join(str(text).split()).replace("|", "\\|")[:160]
+
+
+def _write_step_summary(results):
+    """Append a per-eval table to the job summary, when one is available."""
+    path = os.environ.get("GITHUB_STEP_SUMMARY")
+    if not path or not results["details"]:
+        return
+    rows = ["| Eval | Result | Mean rating |", "| --- | --- | --- |"]
+    for e in results["details"]:
+        if e["score"] is None:
+            rows.append(f"| {_cell(e['name'])} | ungraded | {_cell(e['error'])} |")
+        else:
+            mark = "pass" if e["passed"] else "fail"
+            rows.append(f"| {_cell(e['name'])} | {mark} | {e['score']:.1f} |")
+    with open(path, "a") as f:
+        f.write(
+            f"### Evaluation results: {results['passed_tests']} of "
+            f"{results['graded_tests']} graded evals passed "
+            f"({results['ungraded_tests']} ungraded)\n\n"
+        )
+        f.write("\n".join(rows) + "\n")
 
 
 def main():
@@ -174,13 +216,16 @@ def main():
 
     print("Evaluation Results:")
     for e in results["details"]:
-        score = "n/a" if e["score"] is None else f"{e['score']:.1f}"
-        mark = "PASS" if e["passed"] else "FAIL"
-        print(
-            f"  {mark} {e['name']}: {score}"
-            + (f" ({e['error']})" if e["error"] else "")
-        )
+        if e["score"] is None:
+            print(f"  UNGRADED {e['name']}: {e['error']}")
+        else:
+            mark = "PASS" if e["passed"] else "FAIL"
+            print(f"  {mark} {e['name']}: {e['score']:.1f}")
     print(f"  Total Tests: {results['total_tests']}")
+    print(
+        f"  Graded: {results['graded_tests']} "
+        f"({results['ungraded_tests']} ungraded, excluded from the pass rate)"
+    )
     print(f"  Passed: {results['passed_tests']} (mean rating >= {PASS_MARK})")
     print(f"  Failed: {results['failed_tests']}")
     print(f"  Pass Rate: {results['pass_rate']:.1f}%")
@@ -192,10 +237,14 @@ def main():
     with open(os.environ["GITHUB_OUTPUT"], "a") as f:
         f.write(f"pass_rate={results['pass_rate']:.1f}\n")
         f.write(f"total_tests={results['total_tests']}\n")
+        f.write(f"graded_tests={results['graded_tests']}\n")
+        f.write(f"ungraded_tests={results['ungraded_tests']}\n")
         f.write(f"passed_tests={results['passed_tests']}\n")
         f.write(f"failed_tests={results['failed_tests']}\n")
         f.write(f"quality_gate_passed={str(quality_gate_passed).lower()}\n")
         f.write(f"status={results['status']}\n")
+
+    _write_step_summary(results)
 
     with open("evaluation-summary.json", "w") as f:
         json.dump(

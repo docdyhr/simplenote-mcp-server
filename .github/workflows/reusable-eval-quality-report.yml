@@ -15,6 +15,12 @@ on:
       status:
         type: string
         default: "unknown"
+      graded-tests:
+        type: string
+        default: "0"
+      ungraded-tests:
+        type: string
+        default: "0"
       fail-threshold:
         type: string
         default: "70"
@@ -40,6 +46,8 @@ jobs:
           PASS_RATE: ${{ inputs.pass-rate }}
           QUALITY_GATE_PASSED: ${{ inputs.quality-gate-passed }}
           STATUS: ${{ inputs.status }}
+          GRADED_TESTS: ${{ inputs.graded-tests }}
+          UNGRADED_TESTS: ${{ inputs.ungraded-tests }}
           RUN_RESULT: ${{ inputs.run-result }}
           FAIL_THRESHOLD: ${{ inputs.fail-threshold }}
           EVALUATION_SUITE: ${{ inputs.evaluation-suite }}

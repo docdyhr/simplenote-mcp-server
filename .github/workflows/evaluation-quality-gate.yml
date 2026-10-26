@@ -67,6 +67,8 @@ jobs:
       run-result: ${{ needs.run-evaluations.result }}
       pass-rate: ${{ needs.run-evaluations.outputs.pass-rate || '0' }}
       quality-gate-passed: ${{ needs.run-evaluations.outputs.quality-gate-passed || 'false' }}
+      graded-tests: ${{ needs.run-evaluations.outputs.graded-tests || '0' }}
+      ungraded-tests: ${{ needs.run-evaluations.outputs.ungraded-tests || '0' }}
       status: ${{ needs.run-evaluations.outputs.status || 'unknown' }}
       fail-threshold: ${{ github.event.inputs.fail_threshold || '70' }}
       evaluation-suite: ${{ github.event.inputs.evaluation_suite || 'basic' }}

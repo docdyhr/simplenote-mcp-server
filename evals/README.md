@@ -111,7 +111,7 @@ The evaluations run automatically on:
 - **Pull Requests**: the basic suite, when a PR touches the server, `evals/`, the eval workflows or their scripts. Skipped when `OPENAI_API_KEY` isn't available (Dependabot and fork PRs).
 - **Manual Trigger**: any suite (`smoke`, `basic`, `comprehensive`) via *Evaluation Quality Gate* → Run workflow
 
-An eval passes when the mean of the grader's five 1–5 ratings (accuracy, completeness, relevance, clarity, reasoning) is at least 3.5. The gate compares the share of passing evals with the threshold (70% by default) and is non-blocking.
+An eval passes when the mean of the grader's five 1–5 ratings (accuracy, completeness, relevance, clarity, reasoning) is at least 3.5. Evals the grader couldn't score (its reply wasn't valid JSON) are listed as ungraded and left out of the rate. The gate compares the share of passing *graded* evals with the threshold (70% by default) and is non-blocking. The run's job summary lists every eval with its result or reason.
 
 ### Workflow Files
 
