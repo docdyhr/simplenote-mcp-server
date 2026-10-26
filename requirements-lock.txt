@@ -165,7 +165,7 @@ typing_extensions==4.16.0
 tzdata==2026.5
 urllib3==2.8.0
 uvicorn==0.54.0
-virtualenv==21.14.12
+virtualenv==21.14.13
 watchdog==6.0.0
 wheel==0.48.0
 wheel-filename==2.1.0
