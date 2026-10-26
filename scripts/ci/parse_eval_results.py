@@ -2,11 +2,15 @@
 """Parse mcp-evals output (evaluation-output.txt) into pass/fail counts.
 
 mcp-evals 2.x prints each eval under "Evaluation Results:" as
-``JSON.stringify(result, null, 2)``: a JSON string holding the grader's reply
-(1-5 ratings for accuracy, completeness, relevance, clarity and reasoning,
-often inside a ```json fence), or an ``{"error": ...}`` object when the eval
-itself failed. An eval passes when the mean of its five ratings is at least
-PASS_MARK. The pass rate is the share of evals that passed.
+``JSON.stringify(result, null, 2)``. For YAML evals the result is the grader's
+reply after ``JSON.parse``: an object with 1-5 ratings for accuracy,
+completeness, relevance, clarity and reasoning. When grading fails, or the
+grader fences its JSON in ```json so the parse fails, mcp-evals substitutes
+all-zero ratings with ``overall_comments: "Error running evaluation: ..."``;
+that eval is ungraded, not scored 0. JS/TS evals may return the reply as a
+string, and a thrown eval gives ``{"error": ...}``. An eval passes when the
+mean of its five ratings is at least PASS_MARK; ungraded and errored evals
+count as failed. The pass rate is the share of evals that passed.
 
 Reads INPUT_FAIL_THRESHOLD and EVAL_EXIT_CODE from the environment; writes
 pass_rate/total_tests/passed_tests/failed_tests/quality_gate_passed/status to
@@ -25,13 +29,15 @@ RESULTS_MARKER = "Evaluation Results:"
 SKIPPED_MARKER = "Evaluations skipped:"  # written by check_openai_api_key.sh
 CRITERIA = ("accuracy", "completeness", "relevance", "clarity", "reasoning")
 PASS_MARK = 3.5
+# mcp-evals' placeholder when grading or JSON.parse fails (all ratings 0)
+UNGRADED_PREFIX = "Error running evaluation:"
 
 _NAME_LINE = re.compile(r"^(?P<name>[^\s:][^:\n]*):[ \t]*$", re.MULTILINE)
 _decoder = json.JSONDecoder()
 
 
-def _grade_mean(value):
-    """Return the mean of the five ratings in a grader reply, or None."""
+def _grade(value):
+    """Return (mean rating, None) for a graded reply, else (None, reason)."""
     if isinstance(value, dict):
         candidates = [value]
     elif isinstance(value, str):
@@ -43,7 +49,7 @@ def _grade_mean(value):
                 continue
             candidates.append(obj)
     else:
-        return None
+        return None, "no 1-5 ratings in grader reply"
     for obj in candidates:
         if not isinstance(obj, dict):
             continue
@@ -52,9 +58,12 @@ def _grade_mean(value):
             for r in (obj.get(c) for c in CRITERIA)
             if isinstance(r, (int, float)) and not isinstance(r, bool)
         ]
-        if len(ratings) == len(CRITERIA):
-            return sum(ratings) / len(ratings)
-    return None
+        if len(ratings) == len(CRITERIA) and all(1 <= r <= 5 for r in ratings):
+            return sum(ratings) / len(ratings), None
+        comment = " ".join(str(obj.get("overall_comments", "")).split())
+        if comment.startswith(UNGRADED_PREFIX):
+            return None, "ungraded: " + comment[:200]
+    return None, "no 1-5 ratings in grader reply"
 
 
 def _parse_evals(content):
@@ -85,15 +94,13 @@ def _parse_evals(content):
                 }
             )
             continue
-        score = _grade_mean(value)
+        score, error = _grade(value)
         evals.append(
             {
                 "name": name,
                 "score": score,
                 "passed": score is not None and score >= PASS_MARK,
-                "error": None
-                if score is not None
-                else "no 1-5 ratings in grader reply",
+                "error": error,
             }
         )
     return evals

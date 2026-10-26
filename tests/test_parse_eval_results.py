@@ -4,9 +4,12 @@ Until 2026-10 the Evaluation Quality Gate never produced a result. The
 parser looked for "N passed ... M failed" lines that mcp-evals never prints,
 and it read a crash as "0 tests" with exit 0, so a run that crashed on start
 (ERR_REQUIRE_ESM under Node 18) was reported as "PASSED (Below Threshold)".
-mcp-evals 2.x prints each eval's grader output under "Evaluation Results:" as
-``JSON.stringify(result, null, 2)``: a JSON string holding the grader's
-1-5 ratings, or an ``{"error": ...}`` object when the eval failed.
+mcp-evals 2.x prints each eval under "Evaluation Results:" as
+``JSON.stringify(result, null, 2)``. For YAML evals that is the grader's
+reply after ``JSON.parse`` (an object with 1-5 ratings), or, when grading or
+the parse fails, an all-zero placeholder whose ``overall_comments`` starts
+with "Error running evaluation:" (seen in the first real run: the grader had
+fenced its JSON in ```json). JS/TS evals may return the reply as a string.
 """
 
 import importlib.util
@@ -31,19 +34,22 @@ HEADER = (
 LOG = "2026-10-23 20:06:26,311 - INFO - MCP server instance created successfully\n"
 
 
-def _grade(score: int, comment: str = "ok", fenced: bool = True) -> str:
-    body = json.dumps(
-        {
-            "accuracy": score,
-            "completeness": score,
-            "relevance": score,
-            "clarity": score,
-            "reasoning": score,
-            "overall_comments": comment,
-        },
-        indent=2,
-    )
+def _grade(score: float, comment: str = "ok") -> dict:
+    """A YAML eval's result: the grader's reply after mcp-evals' JSON.parse."""
+    return dict.fromkeys(parser.CRITERIA, score) | {"overall_comments": comment}
+
+
+def _grade_text(score: float, fenced: bool = True) -> str:
+    """A JS/TS eval's result: the grader's reply as text."""
+    body = json.dumps(_grade(score), indent=2)
     return f"```json\n{body}\n```" if fenced else body
+
+
+# mcp-evals' yaml-loader.js substitutes this when grade() or JSON.parse throws
+UNGRADED = _grade(
+    0,
+    "Error running evaluation: Unexpected token '`', \"```json\n{\n\"... is not valid JSON",
+)
 
 
 def _output(results: dict[str, object]) -> str:
@@ -58,12 +64,36 @@ def _output(results: dict[str, object]) -> str:
 
 
 def test_all_evals_graded_above_pass_mark():
-    content = _output({"a": _grade(5), "b": _grade(4), "c": _grade(4, fenced=False)})
+    content = _output(
+        {"a": _grade(5), "b": _grade_text(4), "c": _grade_text(4, fenced=False)}
+    )
     r = parser.parse_evaluation_results(content, exit_code="0")
     assert (r["total_tests"], r["passed_tests"], r["failed_tests"]) == (3, 3, 0)
     assert r["pass_rate"] == 100.0
     assert r["status"] == "success"
     assert [e["score"] for e in r["details"]] == [5.0, 4.0, 4.0]
+
+
+def test_first_real_run_mcp_evals_placeholder_is_ungraded_not_zero():
+    # PR #1015's first run with a valid key: 7 graded evals, 2 placeholders
+    scores = {"a": 4.4, "b": 5, "c": 4.6, "d": 5, "e": 5, "f": 4.4, "g": 5}
+    results = {n: _grade(s) for n, s in scores.items()}
+    results |= {"lifecycle": UNGRADED, "edge_cases": UNGRADED}
+    r = parser.parse_evaluation_results(_output(results), exit_code="0")
+    assert (r["total_tests"], r["passed_tests"], r["failed_tests"]) == (9, 7, 2)
+    assert round(r["pass_rate"], 1) == 77.8
+    assert r["status"] == "acceptable"
+    by_name = {e["name"]: e for e in r["details"]}
+    assert by_name["lifecycle"]["score"] is None  # not a 0.0 score
+    assert by_name["lifecycle"]["error"].startswith(
+        "ungraded: Error running evaluation:"
+    )
+
+
+def test_ratings_outside_one_to_five_are_not_a_grade():
+    r = parser.parse_evaluation_results(_output({"x": _grade(0, "no")}), "0")
+    assert r["details"][0]["score"] is None
+    assert r["details"][0]["error"] == "no 1-5 ratings in grader reply"
 
 
 def test_low_score_errors_and_ungraded_text_count_as_failed():
