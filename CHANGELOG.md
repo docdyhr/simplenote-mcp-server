@@ -38,6 +38,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `pyproject.toml` on 3.10–3.12 are unaffected, because the resolver picks compatible versions
   (e.g. `starlette` 1.7.0 on 3.10). Both lock headers and `AGENTS.md` now say this.
 
+### Fixed
+- **The LLM evaluations never produced a result, and both eval workflows still showed green**:
+  - *Evaluation Quality Gate*: it ran on Node 18, where `mcp-evals` 2.0.1 crashes on start
+    (`ERR_REQUIRE_ESM`: it `require()`s `tsx`'s ES-module loader). This happened on every run since
+    2026-10-20, the first day the key it checked was present. It also checked `ANTHROPIC_API_KEY`,
+    although every `evals/*.yaml` uses `provider: openai`, and it never passed a key to the eval step.
+    On top of that, `parse_eval_results.py` looked for "N passed … M failed" lines that `mcp-evals`
+    never prints, so even a working run counted 0 tests. Each crash was reported as "PASSED (Below
+    Threshold)".
+  - The gate now runs on Node 24 with `npm ci` and `OPENAI_API_KEY`. It reads the grader's five 1–5
+    ratings per eval, and an eval passes at a mean ≥ 3.5. When the grader's reply isn't plain JSON,
+    `mcp-evals` substitutes all-zero ratings with "Error running evaluation: …". That eval is now
+    reported as ungraded with that reason, still counted as failed, never as a 0.0 score. The first
+    real run, with a new key on 2026-10-26, passed 7 of 9 (77.8%); both failures were ungraded. A
+    crash, a non-zero exit or zero evals now fails the run job instead of reporting 0%. A Dependabot
+    or fork PR without the key is reported as skipped. `mcp-evals` hangs after any OpenAI error, so the run is now cut off a minute before the
+    step timeout and reported as timed out. The gate also runs when its own workflows, scripts or the
+    TypeScript wrapper change, and a newer push cancels a superseded run. The eval server now runs
+    with `SIMPLENOTE_WRITE_MODE=true` (on the offline mock client): without it the server offered
+    only its 9 read-only tools, so the create/update/delete evals couldn't pass. `package.json`'s
+    `engines` now says Node ≥ 20.19.
+  - *MCP Evaluations* passed `simplenote_mcp_server.py` to `mcp-evals`, which only loads JS/TS
+    (`ERR_UNKNOWN_FILE_EXTENSION`), so it never ran either. It also re-ran the basic suite through
+    `mclenhard/mcp-evals`, which installs `mcp-evals` unpinned. Its eval run, the
+    `reusable-mcp-eval-run.yml` workflow and its two helper scripts are removed. The workflow, renamed
+    *Eval File Check*, now only validates changed `evals/*.yaml` files, with Python and a pinned PyYAML
+    and no longer installs `mcp-evals`. New tests in `tests/test_parse_eval_results.py`.
+
 ## [1.18.3] - 2026-10-21
 
 ### Security

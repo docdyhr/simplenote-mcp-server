@@ -8,7 +8,10 @@ set -euo pipefail
 
 echo "Creating quality gate report..."
 
-if [ "$RUN_RESULT" = "success" ] && [ "$QUALITY_GATE_PASSED" = "true" ]; then
+if [ "$STATUS" = "skipped" ]; then
+  OVERALL_STATUS="⏭️ SKIPPED"
+  GATE_EMOJI="⚪"
+elif [ "$RUN_RESULT" = "success" ] && [ "$QUALITY_GATE_PASSED" = "true" ]; then
   OVERALL_STATUS="✅ PASSED"
   GATE_EMOJI="🟢"
 elif [ "$RUN_RESULT" = "success" ] && [ "$QUALITY_GATE_PASSED" = "false" ]; then
@@ -34,6 +37,20 @@ cat > quality-gate-report.md << EOF
 EOF
 
 case "$STATUS" in
+  skipped)
+    {
+      echo "⏭️ **Skipped** - \`OPENAI_API_KEY\` is not available to this run."
+      echo ""
+      echo "Dependabot and fork PRs can't read repository secrets. Dispatch the workflow to evaluate this change."
+    } >> quality-gate-report.md
+    ;;
+  error)
+    {
+      echo "❌ **Evaluations did not complete** - no eval result was produced."
+      echo ""
+      echo "See the Run MCP Evaluations job log: mcp-evals crashed, exited non-zero, or printed no results."
+    } >> quality-gate-report.md
+    ;;
   success)
     {
       echo "🎉 **Excellent!** All evaluations passed successfully."
@@ -79,7 +96,11 @@ esac
   echo ""
 } >> quality-gate-report.md
 
-if [ "$QUALITY_GATE_PASSED" = "false" ]; then
+if [ "$STATUS" = "skipped" ]; then
+  {
+    echo "- ▶️ **Run it manually**: dispatch *Evaluation Quality Gate* from the Actions tab"
+  } >> quality-gate-report.md
+elif [ "$QUALITY_GATE_PASSED" = "false" ]; then
   {
     echo "- 🔍 **Review failed evaluations** in the uploaded artifacts"
     echo "- 🛠️ **Fix failing test scenarios** to improve pass rate"
