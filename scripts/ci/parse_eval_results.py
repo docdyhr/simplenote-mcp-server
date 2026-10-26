@@ -243,6 +243,8 @@ def main():
         f.write(f"failed_tests={results['failed_tests']}\n")
         f.write(f"quality_gate_passed={str(quality_gate_passed).lower()}\n")
         f.write(f"status={results['status']}\n")
+        # The parser's own one-line reason (never grader text), for the report
+        f.write(f"error={' '.join((results['error'] or '').split())}\n")
 
     _write_step_summary(results)
 

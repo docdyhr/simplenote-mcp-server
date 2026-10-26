@@ -21,6 +21,9 @@ on:
       ungraded-tests:
         type: string
         default: "0"
+      error-reason:
+        type: string
+        default: ""
       fail-threshold:
         type: string
         default: "70"
@@ -48,6 +51,7 @@ jobs:
           STATUS: ${{ inputs.status }}
           GRADED_TESTS: ${{ inputs.graded-tests }}
           UNGRADED_TESTS: ${{ inputs.ungraded-tests }}
+          ERROR_REASON: ${{ inputs.error-reason }}
           RUN_RESULT: ${{ inputs.run-result }}
           FAIL_THRESHOLD: ${{ inputs.fail-threshold }}
           EVALUATION_SUITE: ${{ inputs.evaluation-suite }}

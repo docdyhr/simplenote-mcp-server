@@ -36,6 +36,8 @@ on:
         value: ${{ jobs.run.outputs.graded-tests }}
       ungraded-tests:
         value: ${{ jobs.run.outputs.ungraded-tests }}
+      error-reason:
+        value: ${{ jobs.run.outputs.error-reason }}
 
 jobs:
   run:
@@ -50,6 +52,7 @@ jobs:
       status: ${{ steps.eval-results.outputs.status }}
       graded-tests: ${{ steps.eval-results.outputs.graded_tests }}
       ungraded-tests: ${{ steps.eval-results.outputs.ungraded_tests }}
+      error-reason: ${{ steps.eval-results.outputs.error }}
 
     steps:
       - name: Checkout code

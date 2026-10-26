@@ -1,13 +1,15 @@
 #!/bin/bash
 # Render the evaluation quality-gate markdown report (quality-gate-report.md).
 # Reads PASS_RATE, QUALITY_GATE_PASSED, STATUS, GRADED_TESTS, UNGRADED_TESTS,
-# RUN_RESULT, FAIL_THRESHOLD, EVALUATION_SUITE from the environment; writes overall_status/report_created
+# ERROR_REASON, RUN_RESULT, FAIL_THRESHOLD, EVALUATION_SUITE from the
+# environment; writes overall_status/report_created
 # to $GITHUB_OUTPUT.
 
 set -euo pipefail
 
 GRADED_TESTS="${GRADED_TESTS:-0}"
 UNGRADED_TESTS="${UNGRADED_TESTS:-0}"
+ERROR_REASON="${ERROR_REASON:-}"
 # Ungraded evals (the grader's reply wasn't valid JSON) are left out of the rate
 PASS_RATE_LINE="${PASS_RATE}%"
 if [ "$GRADED_TESTS" != "0" ]; then
@@ -57,9 +59,15 @@ case "$STATUS" in
     ;;
   error)
     {
-      echo "❌ **Evaluations did not complete** - no eval result was produced."
+      echo "❌ **Evaluations produced no usable result.**"
       echo ""
-      echo "See the Run MCP Evaluations job log: mcp-evals crashed, exited non-zero, or printed no results."
+      if [ -n "$ERROR_REASON" ]; then
+        echo "Reason: ${ERROR_REASON}"
+      else
+        echo "The run stopped before its results were parsed (e.g. the step timed out)."
+      fi
+      echo ""
+      echo "See the Run MCP Evaluations job log and summary."
     } >> quality-gate-report.md
     ;;
   success)

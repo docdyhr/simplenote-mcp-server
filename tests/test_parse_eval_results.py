@@ -217,6 +217,7 @@ def test_main_writes_outputs_and_summary(
     assert outputs["pass_rate"] == "25.0"
     assert outputs["quality_gate_passed"] == expected_gate
     assert outputs["status"] == "poor"
+    assert outputs["error"] == ""
     summary = json.loads((tmp_path / "evaluation-summary.json").read_text())
     assert summary["threshold"] == float(threshold)
     assert len(summary["details"]) == 5
@@ -228,16 +229,22 @@ def test_main_writes_outputs_and_summary(
 
 
 @pytest.mark.parametrize(
-    "content,exit_code,expected_status,expected_exit",
+    "content,exit_code,expected_status,expected_exit,expected_error",
     [
-        (None, "", "error", 1),  # no output file at all
-        ("Error [ERR_REQUIRE_ESM]: ...\n", "1", "error", 1),
-        ("Evaluations skipped: API key not available\n", "", "skipped", 0),
-        (_output({"a": UNGRADED}), "0", "error", 1),  # nothing graded
+        (None, "", "error", 1, "no evaluation-output.txt"),  # no output file
+        ("Error [ERR_REQUIRE_ESM]: ...\n", "1", "error", 1, "exit code 1"),
+        ("Evaluations skipped: API key not available\n", "", "skipped", 0, ""),
+        (_output({"a": UNGRADED}), "0", "error", 1, "no graded evals: all 1"),
     ],
 )
 def test_main_exit_status(
-    tmp_path, monkeypatch, content, exit_code, expected_status, expected_exit
+    tmp_path,
+    monkeypatch,
+    content,
+    exit_code,
+    expected_status,
+    expected_exit,
+    expected_error,
 ):
     if content is not None:
         (tmp_path / "evaluation-output.txt").write_text(content)
@@ -249,3 +256,8 @@ def test_main_exit_status(
     outputs = dict(line.split("=", 1) for line in out.read_text().splitlines())
     assert outputs["status"] == expected_status
     assert outputs["quality_gate_passed"] == "false"
+    # the report's one-line "Reason:", set for every error and only then
+    if expected_error:
+        assert expected_error in outputs["error"]
+    else:
+        assert outputs["error"] == ""

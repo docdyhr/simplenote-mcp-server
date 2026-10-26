@@ -56,7 +56,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     and one more grader slip would have shown 66.7%, below the 70% threshold. The PR comment shows
     the rate's graded count, and the run's job summary lists each eval with its result or reason. A
     crash, a non-zero exit, zero evals or no graded evals now fails the run job instead of reporting
-    a rate. A Dependabot
+    a rate, and the PR comment gives the parser's reason (e.g. "no graded evals: all 9 are
+    ungraded", or a timeout). A Dependabot
     or fork PR without the key is reported as skipped. `mcp-evals` hangs after any OpenAI error, so the run is now cut off a minute before the
     step timeout and reported as timed out. The gate also runs when its own workflows, scripts or the
     TypeScript wrapper change, and a newer push cancels a superseded run. The eval server now runs
