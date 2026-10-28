@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.4] - 2026-10-28
+
 ### Security
 - **`virtualenv` 21.14.7 → 21.14.12 in `requirements-lock.txt`** (GHSA-c978-59m8-c77v, high:
   generated POSIX console launchers interpret destination paths as shell syntax; GHSA-43mp-35q3-x3fq
@@ -29,8 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   These include `ruff` 0.17.0 → 0.17.1, bumped in `pyproject.toml`'s `dev`/`all` extras and the
   pre-commit hook too, with the same zero findings and formatting as 0.17.0. They also include
   `pre-commit` 4.7.0, `pytest-mock` 3.17.0, and `rpds-py` 0.30.0 → 2026.9.1, which now matches the
-  runtime lock. Held back: `python-dateutil` 3.0.0, since `pyproject.toml` caps it at `<3.0.0` and a
-  major needs its own review, and `mando` 0.8, since radon 6.0.1 requires `<0.8`.
+  runtime lock. Held back: `mando` 0.8, since radon 6.0.1 requires `<0.8`. This refresh also held
+  back `python-dateutil` 3.0.0 as a major needing its own review; it came in separately, in the entry
+  above.
 - **Both lock files now target Python 3.13 only**: 17 dev-lock pins and 5 runtime-lock pins need
   Python ≥3.11 (`main`'s runtime lock already had one, `rpds-py` 2026.6.3). So
   `pip install -r requirements*-lock.txt` and Docker builds with `PYTHON_VERSION=3.10` no longer
@@ -1284,7 +1287,8 @@ This release marks a significant milestone with **98% startup performance improv
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.3...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.4...HEAD
+[1.18.4]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.3...v1.18.4
 [1.18.3]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.2...v1.18.3
 [1.18.2]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.1...v1.18.2
 [1.18.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.0...v1.18.1
