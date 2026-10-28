@@ -32,6 +32,12 @@ on:
         value: ${{ jobs.run.outputs.quality-gate-passed }}
       status:
         value: ${{ jobs.run.outputs.status }}
+      graded-tests:
+        value: ${{ jobs.run.outputs.graded-tests }}
+      ungraded-tests:
+        value: ${{ jobs.run.outputs.ungraded-tests }}
+      error-reason:
+        value: ${{ jobs.run.outputs.error-reason }}
 
 jobs:
   run:
@@ -44,6 +50,9 @@ jobs:
       pass-rate: ${{ steps.eval-results.outputs.pass_rate }}
       quality-gate-passed: ${{ steps.eval-results.outputs.quality_gate_passed }}
       status: ${{ steps.eval-results.outputs.status }}
+      graded-tests: ${{ steps.eval-results.outputs.graded_tests }}
+      ungraded-tests: ${{ steps.eval-results.outputs.ungraded_tests }}
+      error-reason: ${{ steps.eval-results.outputs.error }}
 
     steps:
       - name: Checkout code

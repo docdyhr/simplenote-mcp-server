@@ -50,9 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The gate now runs on Node 24 with `npm ci` and `OPENAI_API_KEY`. It reads the grader's five 1–5
     ratings per eval, and an eval passes at a mean ≥ 3.5. When the grader's reply isn't plain JSON,
     `mcp-evals` substitutes all-zero ratings with "Error running evaluation: …". That eval is now
-    reported as ungraded with that reason, still counted as failed, never as a 0.0 score. The first
-    real run, with a new key on 2026-10-26, passed 7 of 9 (77.8%); both failures were ungraded. A
-    crash, a non-zero exit or zero evals now fails the run job instead of reporting 0%. A Dependabot
+    reported as ungraded with that reason, never as a 0.0 score, and is left out of the pass rate,
+    which counts graded evals only. In the first two real runs (2026-10-26) every graded eval passed
+    (14 of 14). The 4 of 18 results that were ungraded would otherwise have capped the rate at 77.8%,
+    and one more grader slip would have shown 66.7%, below the 70% threshold. The PR comment shows
+    the rate's graded count, and the run's job summary lists each eval with its result or reason. A
+    crash, a non-zero exit, zero evals or no graded evals now fails the run job instead of reporting
+    a rate, and the PR comment gives the parser's reason (e.g. "no graded evals: all 9 are
+    ungraded", or a timeout). A Dependabot
     or fork PR without the key is reported as skipped. `mcp-evals` hangs after any OpenAI error, so the run is now cut off a minute before the
     step timeout and reported as timed out. The gate also runs when its own workflows, scripts or the
     TypeScript wrapper change, and a newer push cancels a superseded run. The eval server now runs
