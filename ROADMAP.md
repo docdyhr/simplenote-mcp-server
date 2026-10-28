@@ -2,13 +2,13 @@
 
 > Make Simplenote the best note-taking companion for Claude Desktop: achieve full Bear parity, then surpass it with Simplenote-native capabilities no other note MCP can offer — and become a first-class layer of Claude's working memory, hardened for private data.
 
-**Current version**: v1.18.3; Phases 8-10 below (correctness fixes, Vault, companion architecture) shipped in v1.18.0 — 30 tools
+**Current version**: v1.18.4; Phases 8-12 below (correctness fixes, Vault, companion architecture, audit remediation, mcp SDK v2) shipped in v1.18.0 — 30 tools
 **Working checklist**: see [TODO.md](TODO.md)
 **Supersedes**: `docs/ROADMAP.md` (deprecated)
 
 ---
 
-## Current State — v1.18.3
+## Current State — v1.18.4
 
 ### All Shipped Tools
 
@@ -144,7 +144,7 @@ Full design: [`docs/security/encryption-design.md`](docs/security/encryption-des
 - **Added `session-handoff` MCP Prompt**: scaffolds the Session Continuity workflow — takes `project` (required) plus optional `status`/`next_steps`/`blockers`, and returns instructions to call `get_or_create_note` + `add_text` with the canonical `Status:`/`Next:`/`Blockers:` format. 3 prompts total now (was 2).
 - **Spike: `simplenote://recent`-style auto-context resource — investigated, not building it.** MCP Resources in Claude Desktop are user-attached (picker/attachment UI), not automatically loaded into a conversation at session start — there's no mechanism in the MCP spec or Claude Desktop's client behavior for a server to push a resource into context proactively. A resource the user has to manually attach every session doesn't deliver the "automatic" value the original idea was chasing. The tool-based path (`search_notes`/`get_or_create_note`, now paired with the `session-handoff` prompt) already lets Claude *pull* project-state context autonomously at the start of a conversation, since tools — unlike resources — are always available for the model to call on its own initiative. That's the actual solution to this problem; a curated resource would be redundant with it.
 
-### Phase 11 — Security & Code Quality Audit Remediation ✅ (v1.21, unreleased)
+### Phase 11 — Security & Code Quality Audit Remediation ✅ (shipped in v1.18.0)
 
 A full repository review (security, runtime correctness, deployment, dependencies, CI, test coverage) surfaced 12 findings, all resolved except the explicitly-deferred one:
 
@@ -161,7 +161,7 @@ A full repository review (security, runtime correctness, deployment, dependencie
 - **P2 — Packaging metadata consolidated**: `setup.py`'s version/dependency drift fixed and now covered by the consistency checker.
 - **P3 — Deferred**: `tool_handlers.py`'s size (3,065 lines) and the 111 broad `except Exception` handlers need focused refactoring behind behavioral tests, not a broad rewrite — tracked as future work, not attempted in this pass. *Size: done 2026-10-19, split verbatim into the `server/tool_handlers/` package. The broad `except Exception` handlers remain.*
 
-### Phase 12 — mcp Python SDK v2 Migration ✅ (v1.22, unreleased)
+### Phase 12 — mcp Python SDK v2 Migration ✅ (shipped in v1.18.0)
 
 - **Migrated off the deprecated decorator API**: mcp 2.0.0 (2026-07-28) removed the low-level `Server`'s decorator-based handler registration (`@server.list_resources()`, `.read_resource()`, `.list_tools()`, `.call_tool()`, `.list_prompts()`, `.get_prompt()`) in favor of constructor `on_*` callables shaped `(ctx, params) -> Result`. Rather than reshape the existing `handle_*` functions (which every test and internal call site depends on with their pre-2.0 signatures), added a thin adapter layer (`_on_list_resources`, `_on_read_resource`, `_on_list_tools`, `_on_call_tool`, `_on_list_prompts`, `_on_get_prompt` in `server.py`) that bridges the protocol-facing shape to the unchanged `handle_*` functions — zero test call-site churn beyond field-naming fixes below.
 - **Replaced `server.request_context`**: the SDK removed this contextvar property in 2.0. `_resolve_client_id()` (per-client rate limiting / write budget identity) now reads a project-owned `_request_ctx_var` contextvar, populated by the `on_call_tool` adapter for the duration of each call.
