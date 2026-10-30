@@ -16,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lock goes from 33 to 32 vulnerable packages. The `mcp-evals` 2.0.1 transitive findings remain, as
   does `zod` 3.25.76, which is fixed only in 4.x while its dependents require `zod ^3`.
 
+### Fixed
+- **The Helm docs pointed at a chart repository that doesn't exist**: the chart README and
+  `docs/ci-cd/docker-setup.md` told readers to `helm repo add` a repository at
+  `https://docdyhr.github.io/simplenote-mcp-server`. That URL returns 404, because the chart isn't
+  published to any chart repository. Both now install from the chart in this repository
+  (`./helm/simplenote-mcp-server`).
+
 ## [1.18.4] - 2026-10-28
 
 ### Security

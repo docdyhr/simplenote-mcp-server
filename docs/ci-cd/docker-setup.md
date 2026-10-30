@@ -214,14 +214,11 @@ cosign verify docdyhr/simplenote-mcp-server:latest
 
 ### Kubernetes Deployment
 
-Deploy using Helm:
+Deploy with the Helm chart in this repository (run from the repository root):
 
 ```bash
-# Add Helm repository (when published)
-helm repo add simplenote-mcp https://docdyhr.github.io/simplenote-mcp-server
-
 # Install with custom values
-helm install my-simplenote simplenote-mcp/simplenote-mcp-server \
+helm install my-simplenote ./helm/simplenote-mcp-server \
   --set simplenote.email="your-email@example.com" \
   --set simplenote.password="your-password"
 ```

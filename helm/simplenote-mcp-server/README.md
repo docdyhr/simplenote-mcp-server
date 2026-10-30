@@ -15,13 +15,6 @@ To install the chart with the release name `my-simplenote-mcp`:
 helm install my-simplenote-mcp ./helm/simplenote-mcp-server
 ```
 
-Or from a Helm repository (when published):
-
-```bash
-helm repo add simplenote-mcp https://docdyhr.github.io/simplenote-mcp-server
-helm install my-simplenote-mcp simplenote-mcp/simplenote-mcp-server
-```
-
 ## Configuration
 
 The following table lists the configurable parameters and their default values:
