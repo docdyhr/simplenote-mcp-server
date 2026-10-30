@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **`body-parser` 2.3.0 → 2.4.0 in the npm eval tooling** (GHSA-27r3-jxmh-p828, high: denial of
+  service through trailing bytes after a compressed request body; fixed in 2.4.0). It is a dev
+  dependency that arrives via `express` 5.3.0, which both `@modelcontextprotocol/sdk` and
+  `mcp-evals` 2.0.1 require. Its `^2.3.0` range already admits 2.4.0, so only `package-lock.json`
+  changes. The npm tree isn't in the published Docker image or the PyPI package. `npm audit` on the
+  lock goes from 33 to 32 vulnerable packages. The `mcp-evals` 2.0.1 transitive findings remain, as
+  does `zod` 3.25.76, which is fixed only in 4.x while its dependents require `zod ^3`.
+
 ## [1.18.4] - 2026-10-28
 
 ### Security
