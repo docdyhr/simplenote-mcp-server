@@ -9,17 +9,13 @@ This Helm chart deploys the Simplenote MCP Server on a Kubernetes cluster.
 
 ## Installing the Chart
 
+Run the commands in this README from the repository root. They use the chart path
+`./helm/simplenote-mcp-server`, which is relative to it.
+
 To install the chart with the release name `my-simplenote-mcp`:
 
 ```bash
 helm install my-simplenote-mcp ./helm/simplenote-mcp-server
-```
-
-Or from a Helm repository (when published):
-
-```bash
-helm repo add simplenote-mcp https://docdyhr.github.io/simplenote-mcp-server
-helm install my-simplenote-mcp simplenote-mcp/simplenote-mcp-server
 ```
 
 ## Configuration
