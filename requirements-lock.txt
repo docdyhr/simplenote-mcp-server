@@ -88,7 +88,7 @@ multidict==7.1.0
 mypy==2.4.0
 mypy_extensions==1.1.0
 nh3==0.3.7
-nodeenv==1.11.0
+nodeenv==1.12.0
 opentelemetry-api==1.45.1
 packageurl-python==0.17.6
 packaging==26.3
