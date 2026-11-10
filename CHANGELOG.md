@@ -22,6 +22,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `https://docdyhr.github.io/simplenote-mcp-server`. That URL returns 404, because the chart isn't
   published to any chart repository. Both now install from the chart in this repository
   (`./helm/simplenote-mcp-server`).
+- **`pytest.ini`'s `env` block never applied, so two tool-list tests failed in a shell that exports
+  `SIMPLENOTE_WRITE_MODE=true`**: the block sat below the `[coverage:run]` and `[coverage:report]`
+  headers, which end the `[pytest]` section, so pytest-env never read it.
+  `test_returns_tool_list_normally` and `test_handle_list_tools_full_coverage` assert the read-only
+  default, so a shell that loads write mode from a local `.env` got all 30 tools and both tests
+  failed, while CI, which leaves the variable unset, stayed green. The block now sits inside
+  `[pytest]` and pins `SIMPLENOTE_WRITE_MODE=false`. `SIMPLENOTE_OFFLINE_MODE=true` is set only
+  when the variable is unset, so an explicit `SIMPLENOTE_OFFLINE_MODE=false` still runs the live
+  integration tests. A guard test in `tests/test_config.py` fails if the write-mode pin stops
+  applying. The other pytest keys stranded below those headers (`asyncio_default_fixture_loop_scope`,
+  the `timeout` keys and the `log_cli` keys) move into `[pytest]` too. `addopts` already passed the
+  timeout and asyncio mode that matter. The `[coverage:*]` sections stay in `pytest.ini`, marked as
+  inert: coverage.py reads `setup.cfg`.
 
 ## [1.18.4] - 2026-10-28
 

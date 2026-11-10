@@ -14,6 +14,8 @@ Primary, CI-wired pytest tree (`testpaths = tests` in `pytest.ini`) — 64 test 
 ## Local Contracts
 
 - Run with `SIMPLENOTE_OFFLINE_MODE=true` — real Simplenote credentials must never be required to run this suite.
+- `pytest.ini`'s `env` block (pytest-env) pins `SIMPLENOTE_WRITE_MODE=false` over the caller's environment, so the read-only default that the tool-list tests assert holds even in a shell that exports write mode (from a local `.env`, say). `D:SIMPLENOTE_OFFLINE_MODE=true` is only a default, so an explicit `SIMPLENOTE_OFFLINE_MODE=false` still runs the live integration tests. A test that needs write mode sets it with `patch.dict`, and `test_config.py::TestSuiteEnvironmentPins` fails if the pin stops applying.
+- Keep every pytest key above the `[coverage:run]` header in `pytest.ini`: a section header ends `[pytest]`, and pytest never reads a key below it. The `[coverage:*]` sections there are inert too, since coverage.py reads `setup.cfg`.
 - **`pytest.ini` is the active pytest config.** pytest ignores `[tool.pytest.ini_options]` in `pyproject.toml` and warns about it at startup (`configfile: pytest.ini (WARNING: ignoring pytest config in pyproject.toml…)`). Change markers, `addopts` and timeouts in `pytest.ini`.
 - Coverage gate: `--cov-fail-under=75` (`pytest.ini` `addopts`).
 - Markers available: `unit`, `integration`, `perf`, `performance`, `security`, `slow`, `flaky`, `timeout`, `asyncio` (`--strict-markers` enforced — unregistered markers fail collection). `network`, `auth` and `offline` appear only in pyproject's ignored section, so using them fails collection.
