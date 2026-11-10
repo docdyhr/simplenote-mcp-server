@@ -755,3 +755,17 @@ class TestMcpHttpAuthConfig:
                 "https://example.com",
                 "https://app.example.com",
             ]
+
+
+class TestSuiteEnvironmentPins:
+    """pytest.ini pins the environment variables whose defaults the suite asserts."""
+
+    def test_write_mode_pinned_off(self):
+        """A shell that exports SIMPLENOTE_WRITE_MODE=true must not reach the tests.
+
+        pytest-env sets the value from pytest.ini at startup. Without the pin, the
+        read-only tool-list tests fail in any shell set up for write mode, while CI,
+        which leaves the variable unset, stays green and never notices.
+        """
+        assert os.environ.get("SIMPLENOTE_WRITE_MODE") == "false"
+        assert Config().write_mode is False
