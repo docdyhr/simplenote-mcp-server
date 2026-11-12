@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   does `zod` 3.25.76, which is fixed only in 4.x while its dependents require `zod ^3`.
 
 ### Fixed
+- **The vendored `dependabot` skill misdescribed `[dependabot skip]`**: `.claude/skills/dependabot/SKILL.md`
+  and `references/pr-commands.md` said the marker lets Dependabot "rebase over" commits you push to its
+  branch. It actually lets Dependabot force-push over them, discarding them. Both lines now say so, matching
+  the other docdyhr repos that vendor this skill, and `.claude/skills/README.md` declares the two lines as the
+  only local difference from upstream `cb64ad1` until upstream fixes the wording.
 - **The Helm docs pointed at a chart repository that doesn't exist**: the chart README and
   `docs/ci-cd/docker-setup.md` told readers to `helm repo add` a repository at
   `https://docdyhr.github.io/simplenote-mcp-server`. That URL returns 404, because the chart isn't

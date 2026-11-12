@@ -4,6 +4,13 @@ Installed from [github/awesome-copilot](https://github.com/github/awesome-copilo
 Lives in `.claude/skills/`, which Claude Code loads as project skills and GitHub Copilot (cloud agent, CLI, VS Code agent mode) also reads.
 `github-release` and `conventional-commit` were deliberately left out: they conflict with this repo's release and commit conventions.
 
+Every file matches upstream except one deliberate correction in `dependabot`: the `[dependabot skip]` line under
+"Rebase Strategy" in `dependabot/SKILL.md` and the "Force push over extra commits" tip in
+`dependabot/references/pr-commands.md`. Upstream says the marker lets Dependabot "rebase over" extra commits; per
+[GitHub's docs](https://docs.github.com/en/code-security/dependabot/working-with-dependabot/managing-pull-requests-for-dependency-updates)
+it lets Dependabot force-push over them, discarding them. Keep both corrections when refreshing until upstream fixes
+the wording ([github/awesome-copilot#5858](https://github.com/github/awesome-copilot/issues/5858)).
+
 | Skill | Purpose |
 |---|---|
 | `github-actions-hardening` | Security hardening reviewer for GitHub Actions workflow files (.github/workflows/*.yml). Reasons about the Act… |
