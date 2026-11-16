@@ -6,12 +6,13 @@ Project agent skills, loaded by Claude Code and GitHub Copilot (cloud agent, CLI
 
 ## Ownership
 
-- Every skill here is vendored verbatim from [github/awesome-copilot](https://github.com/github/awesome-copilot); the source commit is recorded in `README.md`.
+- Every skill here is vendored from [github/awesome-copilot](https://github.com/github/awesome-copilot); the source commit, and the one declared local correction (two lines in `dependabot`), are recorded in `README.md`.
 - `README.md` — inventory of installed skills and their source commit.
 
 ## Local Contracts
 
 - Do not edit vendored skill files in place. To change one, update it from upstream (or replace it with a repo-owned skill) and bump the source commit in `README.md`.
+- Keep the `dependabot` correction declared in `README.md` when refreshing, until upstream fixes the wording. Any other local edit needs the same declaration there.
 - `github-release` and `conventional-commit` are deliberately not installed: they conflict with this repo's own release and commit workflow.
 - Bundled `scripts/` are read-only Python audit helpers, not project code.
 - No skill may pre-approve `shell`/`bash` through `allowed-tools`.
