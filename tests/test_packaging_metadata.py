@@ -8,9 +8,11 @@ any release up to 1.18.5, and the build only printed a warning.
 
 import ast
 import configparser
+import fnmatch
 from pathlib import Path
 
 from packaging.requirements import Requirement
+from packaging.version import Version
 
 try:
     import tomllib
@@ -50,11 +52,13 @@ def test_classifiers_are_declared_in_pyproject() -> None:
 
 def test_license_is_an_spdx_expression_without_license_classifiers() -> None:
     project = _pyproject()["project"]
-    # PEP 639: the {text = ...} table form is deprecated and stops building after 2027-02-18.
+    # PEP 639: the {text = ...} table form is deprecated, and setuptools stops
+    # building it after 2027-02-18.
     assert isinstance(project.get("license"), str), (
         "project.license must be an SPDX string"
     )
-    # setuptools refuses to build when a License :: classifier sits beside an expression.
+    # setuptools refuses to build when a License :: classifier sits beside an
+    # SPDX expression.
     license_classifiers = [
         c for c in project.get("classifiers", []) if c.startswith("License ::")
     ]
@@ -64,9 +68,17 @@ def test_license_is_an_spdx_expression_without_license_classifiers() -> None:
 def test_build_floor_accepts_license_expressions() -> None:
     requires = [Requirement(r) for r in _pyproject()["build-system"]["requires"]]
     setuptools_req = next(r for r in requires if r.name == "setuptools")
-    # 76.x refuses an SPDX string for project.license; 77.0.3 is the floor that builds it.
-    assert not setuptools_req.specifier.contains("76.1.0")
-    assert setuptools_req.specifier.contains("77.0.3")
+    # 76.x refuses an SPDX string for project.license; 77.0.3 builds it. Check the
+    # lower bound itself, so a range like ">=42,!=76.1.0" cannot pass.
+    floors = [
+        Version(spec.version)
+        for spec in setuptools_req.specifier
+        if spec.operator in (">=", ">", "~=", "==")
+    ]
+    assert floors, f"no lower bound in {setuptools_req}"
+    assert max(floors) >= Version("77.0.3"), (
+        f"{setuptools_req} admits setuptools<77.0.3"
+    )
 
 
 def test_setup_py_passes_only_the_version() -> None:
@@ -96,3 +108,14 @@ def test_wheel_leaves_out_manifest_only_files() -> None:
     # (release.sh among them), into the wheel too.
     setuptools_cfg = _pyproject()["tool"]["setuptools"]
     assert setuptools_cfg.get("include-package-data") is False
+    # A package-data or data-files rule is the other way to ship them.
+    shell_script = "scripts/release.sh"
+    package_data = setuptools_cfg.get("package-data", {})
+    matching = [
+        (package, pattern)
+        for package, patterns in package_data.items()
+        for pattern in patterns
+        if fnmatch.fnmatch(shell_script, pattern) or pattern.endswith(".sh")
+    ]
+    assert not matching, f"package-data ships the dev shell scripts: {matching}"
+    assert "data-files" not in setuptools_cfg
