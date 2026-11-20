@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Primary, CI-wired pytest tree (`testpaths = tests` in `pytest.ini`) — 64 test files. All new tests go here, not in the legacy `simplenote_mcp/tests/` tree (see that folder's `AGENTS.md`).
+Primary, CI-wired pytest tree (`testpaths = tests` in `pytest.ini`) — 73 test files. All new tests go here, not in the legacy `simplenote_mcp/tests/` tree (see that folder's `AGENTS.md`).
 
 ## Ownership
 
@@ -22,6 +22,7 @@ Primary, CI-wired pytest tree (`testpaths = tests` in `pytest.ini`) — 64 test 
 - Do not merge this tree's pytest invocation with `simplenote_mcp/tests/` — both mutate process-global singletons (see `simplenote_mcp/server/monitoring/AGENTS.md`) and only reset state for their own tests.
 - Offline-mode mock client (`server.py::_build_offline_mock_client()`) keeps an in-memory store: `add_note` returns a note with a `mock-note-N` key that `get_note`/`update_note` round-trip, and each fresh client starts empty. The autouse `isolate_token_file_cache` fixture points `keychain._CACHE_DIR` at the test's `tmp_path`, so assert "nothing cached" by listing `tmp_path`.
 - `test_tool_pin_parity.py` fails when pyproject's exact `ruff`/`mypy` pin differs from `requirements-lock.txt`, the pre-commit hook `rev:`, or a `<tool>==` pin in a workflow. Dependabot bumps only pyproject and the lock, so on a failing bot PR bump the hook `rev:` on that branch. Don't loosen the test.
+- `test_packaging_metadata.py` fails when package metadata moves out of `pyproject.toml`'s `[project]` table (classifiers, license, anything but `version` in `setup.py`, any `[metadata]`/`[options]` in `setup.cfg`), where setuptools ignores it, or when `include-package-data = false` goes (the `.sh` dev scripts would then enter the wheel). Move the metadata back; don't loosen the test.
 
 ## Work Guidance
 
