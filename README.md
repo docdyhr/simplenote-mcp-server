@@ -35,7 +35,6 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 [![MCP Server](https://img.shields.io/badge/MCP-Server-purple.svg)](https://github.com/modelcontextprotocol)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![Smithery](https://smithery.ai/badge/@docdyhr/simplenote-mcp-server)](https://smithery.ai/server/@docdyhr/simplenote-mcp-server)
 
 [![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/docdyhr-simplenote-mcp-server)
 ---
@@ -153,17 +152,7 @@ export SIMPLENOTE_PASSWORD=your-password
 docker-compose up -d
 ```
 
-### Option 2: Smithery (One-click install)
-
-Install automatically via [Smithery](https://smithery.ai/server/@docdyhr/simplenote-mcp-server):
-
-```bash
-npx -y @smithery/cli install @docdyhr/simplenote-mcp-server --client claude
-```
-
-This method automatically configures Claude Desktop with the MCP server.
-
-### Option 3: Traditional Python Install
+### Option 2: Traditional Python Install
 
 ```bash
 git clone https://github.com/docdyhr/simplenote-mcp-server.git

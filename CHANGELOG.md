@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- Smithery. The listing no longer exists: `smithery.ai/servers/docdyhr/simplenote-mcp-server`
+  returns 404, as does the old `/server/@docdyhr/...` address, while other servers' pages load.
+  So the one-click install (`npx -y @smithery/cli install @docdyhr/simplenote-mcp-server`) had
+  nothing to install. The README and `docs/installation.md` drop that install option and the
+  Smithery badge (Smithery's badge endpoint now returns 404 for every server), and
+  `smithery.yaml`, the listing's config, is deleted. The PyPI, Docker and Helm install paths are
+  unchanged.
+
 ### Security
 
 - The README's opening paragraph, which PyPI also renders as the project description, linked
