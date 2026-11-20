@@ -46,7 +46,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the repository; main measures 86%. It's now Codecov's live badge for `main`.
 - Package metadata: no release ever published its classifiers. They were set only in `setup.py`,
   which setuptools ignores once `pyproject.toml` has a `[project]` table, so PyPI lists none for
-  1.18.5; they now live in `[project].classifiers`. `project.license` moves from the deprecated
+  1.18.5; they now live in `[project].classifiers`. That list says
+  `Development Status :: 5 - Production/Stable`, where the `setup.py` copy said `3 - Alpha`: the
+  1.x line has followed semver since 1.0.0 (2025-04), and the README calls the Helm chart
+  production-ready. It also adds `Typing :: Typed` for the `py.typed` marker the wheel ships.
+  `project.license` moves from the deprecated
   `{text = "MIT"}` table to the SPDX expression `"MIT"` (PEP 639; setuptools stops accepting the
   table after 2027-02-18), and the build requirement rises from `setuptools>=42` to
   `setuptools>=77.0.3`, which accepts it (76.1.0 refuses it). `setup.py` is now a shim passing
