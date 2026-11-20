@@ -7,7 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.5] - 2026-11-20
+
 ### Security
+- **`opentelemetry-api` 1.45.1 → 1.45.2 in both lock files** (GHSA-mf5v-w3w3-f6cg, medium: denial
+  of service through quadratic-time `traceparent` parsing; fixed in 1.45.2). It's a runtime
+  dependency: `mcp` 2.3.0 requires `opentelemetry-api>=1.28.0`. The Docker image installs it from
+  `requirements-runtime-lock.txt`, so the 1.18.4 images ship 1.45.1 and this release's images ship
+  1.45.2. The PyPI package's own dependency ranges don't change: a new `pip install` already
+  resolves 1.45.2, and an existing environment needs `pip install -U opentelemetry-api`.
+- **`hono` 4.13.13 → 4.13.18 and `@hono/node-server` 2.1.5 → 2.1.8 in the npm eval tooling** clear
+  five `hono` advisories (GHSA-46wx-v44x-9hh2, GHSA-4h7h-rv7c-7m2v, GHSA-4m76-xfj5-7975 and
+  GHSA-h7mg-cq63-vhpq, medium; GHSA-3gg2-335m-rxc6, low; all fixed in 4.13.16) and two
+  `@hono/node-server` ones (GHSA-jpvv-r467-5p4w and GHSA-qv5m-9pm6-hqp3, medium; fixed in 2.1.6).
+  Both are dev dependencies that arrive via `@modelcontextprotocol/sdk`, and the npm tree isn't in
+  the Docker image or the PyPI package.
 - **`body-parser` 2.3.0 → 2.4.0 in the npm eval tooling** (GHSA-27r3-jxmh-p828, high: denial of
   service through trailing bytes after a compressed request body; fixed in 2.4.0). It is a dev
   dependency that arrives via `express` 5.3.0, which both `@modelcontextprotocol/sdk` and
@@ -16,7 +30,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lock goes from 33 to 32 vulnerable packages. The `mcp-evals` 2.0.1 transitive findings remain, as
   does `zod` 3.25.76, which is fixed only in 4.x while its dependents require `zod ^3`.
 
+### Changed
+- **Dependency refresh**: besides `opentelemetry-api`, the Docker image's runtime lock moves
+  `annotated-doc` 0.0.6, `anyio` 4.16.0, `certifi` 2026.10.23, `click` 8.5.1, `pydantic` 2.14.3 with
+  `pydantic_core` 2.50.4, `sse-starlette` 3.5.1, `typing-inspection` 0.4.5 and `tzdata` 2026.6. The
+  dev lock moves 23 pins, those 10 included. `pydantic` and `pydantic_core` move as a pair, because
+  each `pydantic` release pins one exact `pydantic-core`: a Dependabot PR that paired 2.14.2 with
+  the wrong core couldn't install (#1038), and #1053 replaced it. `ruff` 0.17.1 → 0.17.4 and `mypy`
+  2.4.0 → 2.4.1 move at every pin site: `pyproject.toml`'s `dev`/`all` extras, the dev lock and the
+  pre-commit hooks. The package's runtime dependency ranges in `pyproject.toml` are unchanged.
+
 ### Fixed
+- **Running the server through the root `simplenote_mcp_server.py` shim always logged at DEBUG**:
+  the shim set `LOG_LEVEL=DEBUG` before importing the server, which overrode any level set in the
+  environment (`LOG_LEVEL`, `SIMPLENOTE_LOG_LEVEL`, `MCP_LOG_LEVEL`, `LOGLEVEL` or `DEBUG`). It no
+  longer sets it, so the environment decides, with INFO as the default. README's Local Development
+  section runs the server this way. The shim isn't in the PyPI package or the Docker image, so the
+  `simplenote-mcp-server` command and the image were never affected.
 - **The vendored `dependabot` skill misdescribed `[dependabot skip]`**: `.claude/skills/dependabot/SKILL.md`
   and `references/pr-commands.md` said the marker lets Dependabot "rebase over" commits you push to its
   branch. It actually lets Dependabot force-push over them, discarding them. Both lines now say so, matching
@@ -40,6 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the `timeout` keys and the `log_cli` keys) move into `[pytest]` too. `addopts` already passed the
   timeout and asyncio mode that matter. The `[coverage:*]` sections stay in `pytest.ini`, marked as
   inert: coverage.py reads `setup.cfg`.
+- **The Codecov upload step's report path was ignored**: `reusable-python-test.yml` passed
+  `file: ./coverage.xml`, but codecov-action v7 has a `files` input and no `file` input, so the
+  setting was silently dropped. It now passes `files:`.
 
 ## [1.18.4] - 2026-10-28
 
@@ -1321,7 +1354,8 @@ This release marks a significant milestone with **98% startup performance improv
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.4...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.5...HEAD
+[1.18.5]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.4...v1.18.5
 [1.18.4]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.3...v1.18.4
 [1.18.3]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.2...v1.18.3
 [1.18.2]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.1...v1.18.2
