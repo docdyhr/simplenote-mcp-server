@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.18.6] - 2026-11-20
+
 ### Removed
 
 - Smithery. The listing no longer exists: `smithery.ai/servers/docdyhr/simplenote-mcp-server`
@@ -25,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the name may be open to registration by anyone, who could then serve their own "Claude
   Desktop" or SDK from this project's front page. The links, also in `docs/installation.md`,
   now point to https://claude.ai/download and https://github.com/modelcontextprotocol/python-sdk.
-  The PyPI page keeps the old links until the next release.
+  PyPI shows each release's own README, so the pages of 1.18.5 and earlier keep the old links.
 
 ### Fixed
 
@@ -56,9 +58,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `setuptools>=77.0.3`, which accepts it (76.1.0 refuses it). `setup.py` is now a shim passing
   only the `version` the release tooling tracks. Its stale `install_requires` copy
   (`mcp[cli]>=1.10.0`) and `setup.cfg`'s `[metadata]`/`[options]` sections are gone, as are two
-  `MANIFEST.in` excludes that matched nothing, so `python -m build` prints no warnings (main's
-  build printed six distinct ones, 24 lines in all). The wheel and sdist hold the same files as before. The only METADATA changes are
-  `License-Expression: MIT` replacing `License: MIT`, the seven classifiers, and a dropped
+  `MANIFEST.in` excludes that matched nothing, so `python -m build` prints no warnings (1.18.5's
+  build printed six distinct ones, 24 lines in all). The wheel and sdist hold the same files as
+  1.18.5's. Apart from the version and the README text, the only METADATA changes are
+  `License-Expression: MIT` replacing `License: MIT`, the eight classifiers, and a dropped
   `Dynamic: requires-python`. `tests/test_packaging_metadata.py` keeps the metadata in `[project]`.
 
 ## [1.18.5] - 2026-11-20
@@ -1408,7 +1411,8 @@ This release marks a significant milestone with **98% startup performance improv
 [1.10.1]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.10.0...v1.10.1
 [1.10.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.8.1...v1.9.0
-[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.5...HEAD
+[Unreleased]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.6...HEAD
+[1.18.6]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.5...v1.18.6
 [1.18.5]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.4...v1.18.5
 [1.18.4]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.3...v1.18.4
 [1.18.3]: https://github.com/docdyhr/simplenote-mcp-server/compare/v1.18.2...v1.18.3
