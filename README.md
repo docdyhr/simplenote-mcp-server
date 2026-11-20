@@ -12,7 +12,7 @@
 
 ![Simplenote MCP Server Logo](assets/logo.png)
 
-A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://github.com/johnsmith9982/claude-desktop) using the [MCP Python SDK](https://github.com/johnsmith9982/mcp-python-sdk).
+A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://claude.ai/download) using the [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk).
 
 This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
 
@@ -23,7 +23,7 @@ This allows Claude Desktop to interact with your Simplenote notes as a memory ba
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
 [![Version](https://img.shields.io/badge/version-1.18.5-blue.svg)](./CHANGELOG.md)
-[![Test Coverage](https://img.shields.io/badge/coverage-77%25-brightgreen)](./htmlcov/index.html)
+[![Test Coverage](https://codecov.io/gh/docdyhr/simplenote-mcp-server/branch/main/graph/badge.svg)](https://codecov.io/gh/docdyhr/simplenote-mcp-server)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 <!-- Download & Stats Badges -->

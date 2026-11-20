@@ -5,6 +5,11 @@
 **Current Status:** 🚨 **CRITICAL - IMMEDIATE ACTION REQUIRED**  
 **Maintainer:** @docdyhr
 
+> **Historical snapshot (May 2025).** The status tables and workflow sections below describe
+> the pipeline as it was then: `ci.yml`, `code-quality.yml` and `docker-publish.yml` no longer
+> exist. The current pipeline is `unified-ci.yml` plus `security.yml`; see
+> `.github/workflows/AGENTS.md`.
+
 ---
 
 ## 🚨 CURRENT CRITICAL STATUS (May 2025)
@@ -351,34 +356,9 @@ Based on workflow status, many badges are likely showing red/failing status:
 
 ### Badge Categories
 
-#### Status & Build Badges (5)
-
-| Badge          | Status    | URL                                           | Purpose                  |
-| -------------- | --------- | --------------------------------------------- | ------------------------ |
-| CI/CD Pipeline | ✅ Working | `workflows/ci.yml/badge.svg`                  | Main CI pipeline status with integrated tests |
-| Code Quality   | ✅ Working | `workflows/code-quality.yml/badge.svg`        | Linting & quality checks |
-| Security       | ✅ Working | `workflows/security.yml/badge.svg`            | Security scan results    |
-| Docker         | ✅ Working | `workflows/docker-publish.yml/badge.svg`      | Docker image build status |
-| Coverage       | ⚠️ Mixed   | `codecov.io/gh/docdyhr/simplenote-mcp-server` | Code coverage percentage |
-
-#### Project Info Badges (4)
-
-| Badge          | Status    | URL                                                      | Purpose                   |
-| -------------- | --------- | -------------------------------------------------------- | ------------------------- |
-| Python Version | ✅ Working | `shields.io/badge/python-3.11%20%7C%203.12-blue`         | Supported Python versions |
-| Version        | ✅ Working | `shields.io/badge/version-1.4.0-blue.svg`                | Current project version   |
-| License        | ✅ Working | `shields.io/badge/License-MIT-yellow.svg`                | License information       |
-| GitHub Issues  | ✅ Working | `shields.io/github/issues/docdyhr/simplenote-mcp-server` | Open issues count         |
-
-#### Development & Tool Badges (6)
-
-| Badge             | Status    | URL                                                | Purpose                |
-| ----------------- | --------- | -------------------------------------------------- | ---------------------- |
-| MCP Server        | ✅ Working | `shields.io/badge/MCP-Server-purple.svg`           | Protocol compatibility |
-| Code Style: Black | ✅ Working | `shields.io/badge/code%20style-black-000000.svg`   | Code formatting tool   |
-| Ruff              | ✅ Working | `astral-sh/ruff/main/assets/badge/v2.json`         | Linting tool indicator |
-| Pre-commit        | ✅ Working | `shields.io/badge/pre--commit-enabled-brightgreen` | Git hooks status       |
-| Smithery          | ✅ Working | `smithery.ai/badge/@docdyhr/simplenote-mcp-server` | MCP registry listing   |
+The README's badge block is the badge inventory; this page keeps no copy of it.
+`docs/installation.md` repeats a subset. Check either file with
+`python scripts/validate-badges.py --readme <file>`.
 
 ### Badge Recovery Plan
 
@@ -395,7 +375,7 @@ Based on workflow status, many badges are likely showing red/failing status:
 python scripts/validate-badges.py
 
 # Check specific badge
-curl -I "https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/ci.yml/badge.svg"
+curl -I "https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/unified-ci.yml/badge.svg"
 ```
 
 ---

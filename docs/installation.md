@@ -4,19 +4,17 @@
 
 ![Simplenote MCP Server Logo](assets/logo.png)
 
-A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://github.com/johnsmith9982/claude-desktop) using the [MCP Python SDK](https://github.com/johnsmith9982/mcp-python-sdk).
+A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://claude.ai/download) using the [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk).
 
 This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
 
 <!-- Status & Build Badges -->
-[![CI/CD Pipeline](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/ci.yml)
-[![Code Quality](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/code-quality.yml)
+[![CI/CD Pipeline](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/unified-ci.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/unified-ci.yml)
 [![Security](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/security.yml/badge.svg?branch=main)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/security.yml)
-[![Docker](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/docker-publish.yml)
 
 <!-- Project Info Badges -->
 [![Python Version](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/docdyhr/simplenote-mcp-server)
-[![Version](https://img.shields.io/badge/version-1.8.1-blue.svg)](./CHANGELOG.md)
+[![PyPI version](https://img.shields.io/pypi/v/simplenote-mcp-server?label=version&color=blue)](https://pypi.org/project/simplenote-mcp-server/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Docker](https://img.shields.io/docker/v/docdyhr/simplenote-mcp-server?label=docker&color=blue)](https://hub.docker.com/r/docdyhr/simplenote-mcp-server)
 

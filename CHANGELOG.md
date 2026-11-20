@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- The README's opening paragraph, which PyPI also renders as the project description, linked
+  "Claude Desktop" and "MCP Python SDK" to repositories under `github.com/johnsmith9982`. That
+  GitHub account does not exist (the API returns 404 for the user and both repositories), so
+  the name may be open to registration by anyone, who could then serve their own "Claude
+  Desktop" or SDK from this project's front page. The links, also in `docs/installation.md`,
+  now point to https://claude.ai/download and https://github.com/modelcontextprotocol/python-sdk.
+  The PyPI page keeps the old links until the next release.
+
+### Fixed
+
+- Docs pages frozen at v1.8.1. `docs/changelog.md` was a copy of the CHANGELOG last updated for
+  1.8.1; it now renders the root `CHANGELOG.md` through `pymdownx.snippets`. `docs/installation.md`
+  showed a static `version-1.8.1` badge, now PyPI's live version badge, and status badges for
+  `ci.yml`, `code-quality.yml` and `docker-publish.yml`, workflows that no longer exist; it now
+  shows `unified-ci.yml` and `security.yml`, as the README does.
+- Docs that still presented removed workflows as current. `docs/ci-cd/documentation.md`'s badge
+  inventory listed the `ci.yml`, `code-quality.yml` and `docker-publish.yml` badges as working,
+  beside a `version-1.4.0` badge; it now points to the README's badge block and
+  `scripts/validate-badges.py --readme <file>` instead of keeping a copy, its badge-check example
+  names `unified-ci.yml`, and the page is marked as a May 2025 snapshot.
+  `docs/development/linting-guide.md` named `code-quality.yml` and `ci.yml` as the linting
+  workflows; it now names `unified-ci.yml` (Validate job) and `security.yml`. Dated reports
+  elsewhere in `docs/` that describe those workflows are left as written.
+- The README's coverage badge was a static "77%" linked to a local `htmlcov/` build that isn't in
+  the repository; main measures 86%. It's now Codecov's live badge for `main`.
+
 ## [1.18.5] - 2026-11-20
 
 ### Security
