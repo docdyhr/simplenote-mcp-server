@@ -12,7 +12,7 @@
 
 ![Simplenote MCP Server Logo](assets/logo.png)
 
-A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://github.com/johnsmith9982/claude-desktop) using the [MCP Python SDK](https://github.com/johnsmith9982/mcp-python-sdk).
+A lightweight MCP server that integrates [Simplenote](https://simplenote.com/) with [Claude Desktop](https://claude.ai/download) using the [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk).
 
 This allows Claude Desktop to interact with your Simplenote notes as a memory backend or content source.
 

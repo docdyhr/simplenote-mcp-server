@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- The README's opening paragraph, which PyPI also renders as the project description, linked
+  "Claude Desktop" and "MCP Python SDK" to repositories under `github.com/johnsmith9982`. That
+  GitHub account does not exist (the API returns 404 for the user and both repositories), so
+  the name may be open to registration by anyone, who could then serve their own "Claude
+  Desktop" or SDK from this project's front page. The links, also in `docs/installation.md`,
+  now point to https://claude.ai/download and https://github.com/modelcontextprotocol/python-sdk.
+  The PyPI page keeps the old links until the next release.
+
+### Fixed
+
+- Docs pages frozen at v1.8.1. `docs/changelog.md` was a copy of the CHANGELOG last updated for
+  1.8.1; it now renders the root `CHANGELOG.md` through `pymdownx.snippets`. `docs/installation.md`
+  showed a static `version-1.8.1` badge, now PyPI's live version badge, and status badges for
+  `ci.yml`, `code-quality.yml` and `docker-publish.yml`, workflows that no longer exist; it now
+  shows `unified-ci.yml` and `security.yml`, as the README does. The badge-check example in
+  `docs/ci-cd/documentation.md` also named `ci.yml`.
+
 ## [1.18.5] - 2026-11-20
 
 ### Security

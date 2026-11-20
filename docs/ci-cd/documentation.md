@@ -395,7 +395,7 @@ Based on workflow status, many badges are likely showing red/failing status:
 python scripts/validate-badges.py
 
 # Check specific badge
-curl -I "https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/ci.yml/badge.svg"
+curl -I "https://github.com/docdyhr/simplenote-mcp-server/actions/workflows/unified-ci.yml/badge.svg"
 ```
 
 ---
