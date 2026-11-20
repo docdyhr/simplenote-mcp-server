@@ -25,6 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `ci.yml`, `code-quality.yml` and `docker-publish.yml`, workflows that no longer exist; it now
   shows `unified-ci.yml` and `security.yml`, as the README does. The badge-check example in
   `docs/ci-cd/documentation.md` also named `ci.yml`.
+- The README's coverage badge was a static "77%" linked to a local `htmlcov/` build that isn't in
+  the repository; main measures 86%. It's now Codecov's live badge for `main`.
 
 ## [1.18.5] - 2026-11-20
 
