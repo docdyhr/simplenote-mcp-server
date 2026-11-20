@@ -34,6 +34,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   elsewhere in `docs/` that describe those workflows are left as written.
 - The README's coverage badge was a static "77%" linked to a local `htmlcov/` build that isn't in
   the repository; main measures 86%. It's now Codecov's live badge for `main`.
+- Package metadata: no release ever published its classifiers. They were set only in `setup.py`,
+  which setuptools ignores once `pyproject.toml` has a `[project]` table, so PyPI lists none for
+  1.18.5; they now live in `[project].classifiers`. `project.license` moves from the deprecated
+  `{text = "MIT"}` table to the SPDX expression `"MIT"` (PEP 639; setuptools stops accepting the
+  table after 2027-02-18), and the build requirement rises from `setuptools>=42` to
+  `setuptools>=77.0.3`, which accepts it (76.1.0 refuses it). `setup.py` is now a shim passing
+  only the `version` the release tooling tracks. Its stale `install_requires` copy
+  (`mcp[cli]>=1.10.0`) and `setup.cfg`'s `[metadata]`/`[options]` sections are gone, as are two
+  `MANIFEST.in` excludes that matched nothing, so `python -m build` prints no warnings (main's
+  build printed six distinct ones, 24 lines in all). The wheel and sdist hold the same files as before. The only METADATA changes are
+  `License-Expression: MIT` replacing `License: MIT`, the seven classifiers, and a dropped
+  `Dynamic: requires-python`. `tests/test_packaging_metadata.py` keeps the metadata in `[project]`.
 
 ## [1.18.5] - 2026-11-20
 

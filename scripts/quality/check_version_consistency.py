@@ -7,7 +7,7 @@ consistent. It checks:
 - pyproject.toml
 - simplenote_mcp/__init__.py
 - helm/simplenote-mcp-server/Chart.yaml
-- setup.py (legacy fallback; pyproject.toml is the actual build source of truth)
+- setup.py (a version-only shim; pyproject.toml holds all other package metadata)
 
 Usage:
     python scripts/quality/check_version_consistency.py
