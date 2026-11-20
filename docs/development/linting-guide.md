@@ -72,8 +72,8 @@ The configuration for all linting tools is in the following files:
 
 GitHub Actions workflows automatically run linting checks:
 
-- `code-quality.yml` - Runs pre-commit hooks and security checks
-- `ci.yml` - Runs comprehensive linting, testing, and quality checks in a consolidated workflow
+- `unified-ci.yml` - Its Validate job (`reusable-python-lint.yml`) runs `pre-commit run --all-files` and `ruff check .`; the Test, Security and Docker build jobs run in the same workflow
+- `security.yml` - Runs the standalone security scans
 
 ## Benefits of the Unified Approach
 

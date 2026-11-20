@@ -23,8 +23,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   1.8.1; it now renders the root `CHANGELOG.md` through `pymdownx.snippets`. `docs/installation.md`
   showed a static `version-1.8.1` badge, now PyPI's live version badge, and status badges for
   `ci.yml`, `code-quality.yml` and `docker-publish.yml`, workflows that no longer exist; it now
-  shows `unified-ci.yml` and `security.yml`, as the README does. The badge-check example in
-  `docs/ci-cd/documentation.md` also named `ci.yml`.
+  shows `unified-ci.yml` and `security.yml`, as the README does.
+- Docs that still presented removed workflows as current. `docs/ci-cd/documentation.md`'s badge
+  inventory listed the `ci.yml`, `code-quality.yml` and `docker-publish.yml` badges as working,
+  beside a `version-1.4.0` badge; it now points to the README's badge block and
+  `scripts/validate-badges.py --readme <file>` instead of keeping a copy, its badge-check example
+  names `unified-ci.yml`, and the page is marked as a May 2025 snapshot.
+  `docs/development/linting-guide.md` named `code-quality.yml` and `ci.yml` as the linting
+  workflows; it now names `unified-ci.yml` (Validate job) and `security.yml`. Dated reports
+  elsewhere in `docs/` that describe those workflows are left as written.
 - The README's coverage badge was a static "77%" linked to a local `htmlcov/` build that isn't in
   the repository; main measures 86%. It's now Codecov's live badge for `main`.
 
