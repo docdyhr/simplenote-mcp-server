@@ -11,15 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Docker Compose and the Helm chart exited at startup in every release since 1.16.1. Both run
   the image with a read-only root filesystem (`read_only: true`, `readOnlyRootFilesystem: true`),
-  and the server creates `~/.simplenote_mcp` at import, for its metrics and alert log, so it
-  stopped with `OSError: [Errno 30] Read-only file system: '/home/mcp/.simplenote_mcp'`.
+  and the server creates `~/.simplenote_mcp` at import, for its metrics, so it stopped with
+  `OSError: [Errno 30] Read-only file system: '/home/mcp/.simplenote_mcp'`.
   `docker-compose.yml` now mounts a tmpfs at the image's `HOME`, `/home/mcp`, and the chart an
   emptyDir; the root stays read-only. With the 1.18.5 image in offline mode, main's Compose file
   exits with status 1 and that error, while the fixed one serves `/mcp` and passes the image's
   health check. A container run with the chart's read-only root, volumes and probes passes
   `/health` and `/ready`, and `helm lint`, `helm template` and `scripts/validate-helm.py` pass.
-  `tests/test_deploy_writable_home.py` fails if either mount goes. Plain `docker run`, whose root
-  is writable, and the PyPI package were not affected.
+  `tests/test_deploy_writable_home.py` fails if either mount goes or turns read-only, and
+  PyYAML, which it reads the files with, is now declared in the `test` and `all` extras. Plain
+  `docker run`, whose root is writable, and the PyPI package were not affected.
 - `docs/installation.md` was still a copy of the README from October 2025, and its instructions
   didn't all work. Its Docker quick start ran the image detached without `MCP_TRANSPORT=http`,
   so the server started on stdio, found stdin closed and exited at once, leaving nothing on port
