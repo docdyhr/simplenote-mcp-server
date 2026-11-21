@@ -23,6 +23,7 @@ Primary, CI-wired pytest tree (`testpaths = tests` in `pytest.ini`) — 73 test 
 - Offline-mode mock client (`server.py::_build_offline_mock_client()`) keeps an in-memory store: `add_note` returns a note with a `mock-note-N` key that `get_note`/`update_note` round-trip, and each fresh client starts empty. The autouse `isolate_token_file_cache` fixture points `keychain._CACHE_DIR` at the test's `tmp_path`, so assert "nothing cached" by listing `tmp_path`.
 - `test_tool_pin_parity.py` fails when pyproject's exact `ruff`/`mypy` pin differs from `requirements-lock.txt`, the pre-commit hook `rev:`, or a `<tool>==` pin in a workflow. Dependabot bumps only pyproject and the lock, so on a failing bot PR bump the hook `rev:` on that branch. Don't loosen the test.
 - `test_packaging_metadata.py` fails when package metadata moves out of `pyproject.toml`'s `[project]` table (classifiers, license, anything but `version` in `setup.py`, any `[metadata]`/`[options]` in `setup.cfg`), where setuptools ignores it, or when `include-package-data = false` goes (the `.sh` dev scripts would then enter the wheel). Move the metadata back; don't loosen the test.
+- `test_deploy_writable_home.py` fails when `docker-compose.yml`'s `read_only` service or the Helm chart (`readOnlyRootFilesystem`) has no writable mount at the image's `HOME` (read from the Dockerfile's `ENV HOME`), where the server creates `~/.simplenote_mcp` at import. Restore the mount; don't loosen the test.
 
 ## Work Guidance
 
