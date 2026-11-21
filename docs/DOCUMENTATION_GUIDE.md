@@ -68,7 +68,6 @@ python scripts/quality/check_version_consistency.py
 # - simplenote_mcp/__init__.py
 # - helm/simplenote-mcp-server/Chart.yaml
 # - README.md (badge)
-# - docs/installation.md (badge)
 # - docs/api/server.md (API version)
 ```
 

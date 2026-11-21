@@ -486,4 +486,4 @@ For questions or suggestions about evaluations, please refer to the [Contributin
 - [mcp-evals Documentation](https://github.com/modelcontextprotocol/mcp-evals)
 - [Model Context Protocol Specification](https://spec.modelcontextprotocol.io/)
 - [Simplenote MCP Server README](../../README.md)
-- [Development Setup Guide](../installation.md)
+- [Development Setup Guide](../installation.md#install-from-source)

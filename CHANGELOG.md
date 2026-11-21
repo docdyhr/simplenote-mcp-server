@@ -20,6 +20,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `/health` and `/ready`, and `helm lint`, `helm template` and `scripts/validate-helm.py` pass.
   `tests/test_deploy_writable_home.py` fails if either mount goes. Plain `docker run`, whose root
   is writable, and the PyPI package were not affected.
+- `docs/installation.md` was still a copy of the README from October 2025, and its instructions
+  didn't all work. Its Docker quick start ran the image detached without `MCP_TRANSPORT=http`,
+  so the server started on stdio, found stdin closed and exited at once, leaving nothing on port
+  8000. It called the `latest` image tag the latest stable release, but `latest`, like `main`, is
+  rebuilt from the `main` branch. And it never mentioned `SIMPLENOTE_WRITE_MODE`, without which
+  every tool that writes is hidden. The page is now an installation guide: the Python package
+  (pipx, uv, pip), Claude Desktop and Claude Code setup, Docker over stdio and HTTP, Compose,
+  Helm with an existing Secret, a source install, install-time settings, upgrade, uninstall and
+  troubleshooting. It documents the token lookup order (`SIMPLENOTE_TOKEN`, the token cache, the
+  macOS Simplenote app's keychain entry, then password sign-in), that a token Simplenote rejects
+  stays cached until you delete it, the `X.Y.Z` release tags, `MCP_HTTP_ALLOWED_HOSTS` values
+  with their port, and that the package needs macOS or Linux, because
+  `simplenote_mcp/server/logging.py` calls `os.getuid()` at import, which Windows' Python lacks.
+  pipx, `uv tool install` and `uvx` (on Python 3.10 and 3.15), the image over stdio and HTTP,
+  and the Compose file were run against the 1.18.5 release in offline mode, and the Helm
+  commands were checked with `helm template`. The README's feature list, badges, tool table,
+  eval results and development notes are gone from the page, so `docs/DOCUMENTATION_GUIDE.md`
+  and `docs/ci-cd/documentation.md` no longer list its badges, and
+  `docs/development/evaluation-best-practices.md`'s "Development Setup Guide" link now points
+  at its source-install section.
 
 ## [1.18.6] - 2026-11-20
 
