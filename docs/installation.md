@@ -49,7 +49,9 @@ finds:
    as `_at_`.
 3. On macOS, the token of the signed-in Simplenote desktop app, read from your
    login keychain. macOS asks once whether to allow this. Answer within 5
-   seconds, or the server moves on to step 4 for that start.
+   seconds, or the server moves on to step 4 for that start. If that's too
+   short, run the `security` command below once in Terminal and choose
+   **Always Allow**: the server runs the same command.
 4. A sign-in with your email and password.
 
 The password is required even when the token comes from steps 1–3. A token
@@ -59,12 +61,14 @@ after Simplenote rejects it, so you have to delete the file yourself (see
 [Troubleshooting](#troubleshooting)).
 
 A container can't reach your keychain, and its token cache lives inside the
-container, so a new container signs in with your password. Password sign-in
+container, so a new container signs in with your password. With Compose, whose
+home directory is a temporary mount, so does every restart. Password sign-in
 goes to Simplenote's `auth.simperium.com`, which has been unreachable for long
 stretches before (see version 1.17.1 in the
 [changelog](https://github.com/docdyhr/simplenote-mcp-server/blob/main/CHANGELOG.md)).
-If sign-in fails, set `SIMPLENOTE_TOKEN`. On a Mac where the Simplenote app is
-signed in, this prints the app's token:
+If sign-in fails, set `SIMPLENOTE_TOKEN` (for Compose and Helm, see their
+sections below). On a Mac where the Simplenote app is signed in, this prints
+the app's token:
 
 ```bash
 security find-generic-password -s chalk-bump-f49 -a you@example.com -w
@@ -214,9 +218,11 @@ transport at `MCP_HTTP_PATH` (default `/mcp`). Other paths return 404.
   requests whose `Host` header names one of those (DNS-rebinding protection).
 - Bound to any other address, such as `0.0.0.0` in a container, it won't start
   unless `MCP_HTTP_AUTH_TOKEN` is set, and DNS-rebinding protection is off.
-  To turn it on, list in `MCP_HTTP_ALLOWED_HOSTS` the `Host` values clients
-  send, port included: `mcp.example.internal:8000`, or `mcp.example.internal:*`
-  for any port. The list then replaces the loopback default as well.
+  To turn it on, list in `MCP_HTTP_ALLOWED_HOSTS` each `Host` value exactly as
+  clients send it: `name:port` for a non-default port (or `name:*` for any
+  port), and the bare name for clients on port 80 or 443, such as those behind
+  a reverse proxy. Any other `Host` gets 421. The list then replaces the
+  loopback default as well.
 - While the protection is on, a request with an `Origin` header that isn't
   listed in `MCP_HTTP_ALLOWED_ORIGINS` gets 403. Browser-based clients send
   one, so list the origin of the page they run on, for example
@@ -335,15 +341,19 @@ Clients connect to `http://127.0.0.1:8000/mcp` with the token.
   health check queries, on port 8080 inside the container. Without it,
   `docker ps` reports the container as unhealthy.
 - Without `MCP_TRANSPORT=http`, the server uses stdio, finds stdin closed and
-  exits at once, with status 0 and nothing listening.
+  exits at once with status 0, and `--restart unless-stopped` starts it again,
+  in a loop.
 
 Read the logs with `docker logs simplenote-mcp`. Stop and remove the container
 with `docker rm -f simplenote-mcp`.
 
-If you use [Vault encryption](security/encryption-design.md) in a container,
-set `SIMPLENOTE_VAULT_KEY_FILE` to a file on a mounted volume that UID 1000 can
-write. Otherwise each new container generates a new key and can't decrypt the
-notes earlier ones encrypted.
+[Vault encryption](security/encryption-design.md) needs
+`SIMPLENOTE_VAULT_KEY_FILE` in a container: the image has no keychain backend,
+so without it, encrypting fails with `No vault key is available`. Put the file
+on persistent storage that UID 1000 can write, such as a named volume or a bind
+mount (a PersistentVolumeClaim in Kubernetes), not under `/home/mcp` or `/tmp`,
+which the Compose file and the chart mount as temporary storage. A key that's
+lost with its container leaves the notes it encrypted unreadable.
 
 ### Docker Compose
 
@@ -367,6 +377,30 @@ SIMPLENOTE_PASSWORD='your-password'
 MCP_HTTP_AUTH_TOKEN=<token>
 ```
 
+The file uses the `latest` tag, publishes port 8000 on every host interface,
+and passes the container only the variables it lists, so neither
+`SIMPLENOTE_WRITE_MODE` nor `SIMPLENOTE_TOKEN` reaches the server from `.env`
+alone. To change any of that, don't edit the tracked file, which a later
+`git pull` would have to merge. Put the changes in a
+`docker-compose.override.yml` beside it instead. Compose reads that file
+automatically, and git leaves it alone because it's untracked:
+
+```yaml
+services:
+  simplenote-mcp:
+    image: docdyhr/simplenote-mcp-server:X.Y.Z
+    environment:
+      - SIMPLENOTE_WRITE_MODE=true
+      - SIMPLENOTE_TOKEN=${SIMPLENOTE_TOKEN}
+    ports: !override
+      - "127.0.0.1:8000:8000"
+```
+
+This pins a release, turns on write mode, passes `SIMPLENOTE_TOKEN` from
+`.env` (leave that line out if you don't use a token), and publishes the port
+on the host's loopback interface only. `!override` replaces the file's port
+list instead of adding to it.
+
 Compose mounts `./logs` at `/app/simplenote_mcp/logs`, and the container runs
 as UID 1000, which must be able to write to it. Create the directory first. On
 Linux, if your user isn't UID 1000, also run `sudo chown 1000:1000 logs`. Then
@@ -378,14 +412,8 @@ docker compose up -d
 docker compose logs -f
 ```
 
-- Without `MCP_HTTP_AUTH_TOKEN`, Compose stops with
-  `required variable MCP_HTTP_AUTH_TOKEN is missing a value`.
-- The file uses the `latest` tag and publishes port 8000 on every host
-  interface. To pin a release, edit `image:`. To keep the port local, change
-  `ports:` to `"127.0.0.1:8000:8000"`.
-- The file doesn't pass `SIMPLENOTE_WRITE_MODE` to the container, so the server
-  is read-only unless you add `SIMPLENOTE_WRITE_MODE=true` under
-  `environment:`. Adding it to `.env` isn't enough.
+Without `MCP_HTTP_AUTH_TOKEN`, Compose stops with
+`required variable MCP_HTTP_AUTH_TOKEN is missing a value`.
 
 ### Build the image yourself
 
@@ -430,7 +458,10 @@ values, and Helm keeps them in the release.
 
 To turn on write mode, add
 `--set-string configMap.data.SIMPLENOTE_WRITE_MODE=true`. Use `--set-string`
-rather than `--set`, because ConfigMap values must be strings.
+rather than `--set`, because ConfigMap values must be strings. The chart
+doesn't read `SIMPLENOTE_TOKEN` from the Secret. If password sign-in fails in
+the cluster, `--set-string configMap.data.SIMPLENOTE_TOKEN=<token>` passes a
+token, but it sits in the ConfigMap in plain text.
 
 To reach the service from your machine, forward the port, then connect to
 `http://127.0.0.1:8000/mcp` with the token:
@@ -445,9 +476,9 @@ The service takes the release name when that name contains
 The pod's root filesystem is read-only, so the chart mounts writable volumes at
 `/tmp`, the log directory and the home directory, where the server writes at
 startup. If you override `volumes` or `volumeMounts`, keep all three entries:
-an override replaces the whole list. The
-[chart README](https://github.com/docdyhr/simplenote-mcp-server/blob/main/helm/simplenote-mcp-server/README.md)
-lists the chart's other values.
+an override replaces the whole list. The chart's
+[`values.yaml`](https://github.com/docdyhr/simplenote-mcp-server/blob/main/helm/simplenote-mcp-server/values.yaml)
+lists its other settings, with comments.
 
 ## Install from source
 
@@ -493,7 +524,7 @@ The variables you're most likely to set. Only the credentials are required.
 | `MCP_TRANSPORT` | `stdio` | `stdio` or `http`. |
 | `MCP_HTTP_HOST`, `MCP_HTTP_PORT`, `MCP_HTTP_PATH` | `127.0.0.1`, `8000`, `/mcp` | Where the HTTP transport listens. |
 | `MCP_HTTP_AUTH_TOKEN` | – | Bearer token for the HTTP transport. Required when `MCP_HTTP_HOST` isn't loopback. |
-| `MCP_HTTP_ALLOWED_HOSTS` | – | Comma-separated `Host` values to accept, each with its port or `:*`. Turns on DNS-rebinding protection for a non-loopback bind, and replaces the loopback default. |
+| `MCP_HTTP_ALLOWED_HOSTS` | – | Comma-separated `Host` values to accept, exactly as clients send them: `name:port`, `name:*`, or a bare name for port 80 or 443. Turns on DNS-rebinding protection for a non-loopback bind, and replaces the loopback default. |
 | `MCP_HTTP_ALLOWED_ORIGINS` | – | Comma-separated `Origin` values to accept while DNS-rebinding protection is on. Any other `Origin` gets 403. |
 | `ENABLE_HTTP_ENDPOINT` | `false` | `true` starts the monitoring server (`/health`, `/ready`, `/metrics`). |
 | `HTTP_HOST`, `HTTP_PORT` | `127.0.0.1`, `8080` | Where the monitoring server listens. |
@@ -508,8 +539,8 @@ The variables you're most likely to set. Only the credentials are required.
 | uv | `uv tool upgrade simplenote-mcp-server`. With `uvx`, `uvx simplenote-mcp-server@latest` fetches the newest release. |
 | pip | `~/.venvs/simplenote-mcp/bin/pip install --upgrade simplenote-mcp-server` |
 | Docker | Change the tag in your config or command to the new release. |
-| Docker Compose | In the clone, `git pull`, then `docker compose pull` and `docker compose up -d`. |
-| Helm | In the clone, `git pull`, then run `helm upgrade` with the release name, chart path and `--set` flags you installed with. |
+| Docker Compose | In the clone, `git pull`. Change the tag in `docker-compose.override.yml` to the new release, or, if you run `latest`, run `docker compose pull`. Then `docker compose up -d`. |
+| Helm | In the clone, `git pull`, then run `helm upgrade` with the release name, chart path and `--set` flags you installed with. Don't add `--reuse-values`: it keeps the defaults of the chart you installed, so changes to them, such as the writable home directory, never arrive. `--reset-then-reuse-values` takes the new defaults and keeps your earlier `--set` values. |
 
 Then restart the client. The
 [changelog](https://github.com/docdyhr/simplenote-mcp-server/blob/main/CHANGELOG.md)
@@ -560,9 +591,16 @@ the Simplenote app so the server can use its token. Elsewhere, set
 
 **Tools find no notes, and the log shows
 `Login to Simplenote API failed! Check Token.`** Simplenote rejected the token,
-and the server keeps running with an empty cache. Delete the cached token,
-`~/.config/simplenote-mcp/<email>.token`, or replace `SIMPLENOTE_TOKEN` if you
-set it, and restart the client.
+and the server keeps running with an empty cache. If you set `SIMPLENOTE_TOKEN`,
+replace it. Otherwise clear the cached token and restart:
+
+- Python package: delete `~/.config/simplenote-mcp/<email>.token` and restart
+  the client.
+- Docker Compose: `docker compose restart`. The cache is on a temporary mount,
+  so a restart clears it.
+- Helm: `kubectl rollout restart deployment/simplenote-mcp-server`, which
+  replaces the pods and their volumes.
+- A container started with `docker run -d`: remove it and run it again.
 
 **Tools that create or change notes are missing.** Write mode is off. Set
 `SIMPLENOTE_WRITE_MODE=true` and restart the client.
