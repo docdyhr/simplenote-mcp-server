@@ -41,7 +41,7 @@ jaraco.functools==4.6.0
 jsonschema==4.26.0
 jsonschema-specifications==2025.9.1
 keyring==25.7.0
-markdown-it-py==4.2.0
+markdown-it-py==4.3.0
 mcp==2.3.0
 mcp-types==2.3.0
 mdurl==0.1.2
