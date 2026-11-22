@@ -87,7 +87,7 @@ msgpack==1.2.4
 multidict==7.1.0
 mypy==2.4.1
 mypy_extensions==1.2.0
-nh3==0.3.7
+nh3==0.3.8
 nodeenv==1.12.0
 opentelemetry-api==1.45.2
 packageurl-python==0.17.6
