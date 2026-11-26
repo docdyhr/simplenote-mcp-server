@@ -16,4 +16,4 @@ chart. Keep the call on one line: those sed patterns match it there.
 
 from setuptools import setup
 
-setup(version="1.18.6")
+setup(version="1.18.7")
