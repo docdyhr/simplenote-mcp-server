@@ -70,6 +70,9 @@ services:
     read_only: true
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=100m
+      # The image's HOME. The server creates ~/.simplenote_mcp (metrics, alert log)
+      # at import, so on a read-only root it would exit with "Read-only file system".
+      - /home/mcp:rw,noexec,nosuid,size=50m,uid=1000,gid=1000
 
     # Network configuration
     networks:

@@ -103,10 +103,17 @@ autoscaling:
   maxReplicas: 100
   targetCPUUtilizationPercentage: 80
 
+# readOnlyRootFilesystem needs every path the server writes to be a volume. Besides
+# /tmp and the log directory, that includes the image's HOME: the server creates
+# ~/.simplenote_mcp (metrics, alert log) at import and exits with "Read-only file
+# system" when it can't. Overriding `volumes` or `volumeMounts` replaces the whole
+# list, so keep all three entries in an override.
 volumes:
   - name: tmp
     emptyDir: {}
   - name: logs
+    emptyDir: {}
+  - name: home
     emptyDir: {}
 
 volumeMounts:
@@ -114,6 +121,8 @@ volumeMounts:
     mountPath: /tmp
   - name: logs
     mountPath: /app/simplenote_mcp/logs
+  - name: home
+    mountPath: /home/mcp
 
 nodeSelector: {}
 

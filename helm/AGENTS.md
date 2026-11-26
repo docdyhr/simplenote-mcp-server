@@ -15,11 +15,13 @@ Helm chart for deploying `simplenote-mcp-server` to Kubernetes (`helm/simplenote
 - `Chart.yaml`'s `appVersion` is one of the four files checked by `scripts/quality/check_version_consistency.py` (alongside `VERSION`, `pyproject.toml`, `simplenote_mcp/__init__.py`) — keep it in sync; never bump manually outside the release workflow.
 - `values.yaml`'s `image.tag` is **not** covered by `check_version_consistency.py` or `scripts/validate-helm.py` (the latter only checks `values.yaml` for security settings) — it can silently drift behind `Chart.yaml`'s `appVersion`. Check it manually when bumping versions.
 - No real credentials in `values.yaml` or any committed values file — `secret.yaml` expects `.Values.simplenote.password` to be supplied at install time (`--set` or a separate, untracked values file).
+- `values.yaml`'s `volumes`/`volumeMounts` keep a writable `home` emptyDir at the image's `HOME` (`/home/mcp`) beside `tmp` and `logs`: with `readOnlyRootFilesystem: true`, the server exits at import when it can't create `~/.simplenote_mcp` (root `AGENTS.md`). An override of either list replaces it whole, so it has to repeat all three.
 
 ## Verification
 
 - `python scripts/validate-helm.py`
 - `helm lint helm/simplenote-mcp-server`
+- `tests/test_deploy_writable_home.py` (part of `make test-fast`)
 
 ## Child DOX Index
 

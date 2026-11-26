@@ -357,8 +357,8 @@ Based on workflow status, many badges are likely showing red/failing status:
 ### Badge Categories
 
 The README's badge block is the badge inventory; this page keeps no copy of it.
-`docs/installation.md` repeats a subset. Check either file with
-`python scripts/validate-badges.py --readme <file>`.
+Check it with `python scripts/validate-badges.py`, which reads `README.md` by
+default.
 
 ### Badge Recovery Plan
 
