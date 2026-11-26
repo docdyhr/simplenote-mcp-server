@@ -69,6 +69,8 @@ Thumbs.db
 .python-version
 **/CLAUDE.local.md
 .venv_precommit/
+# Local Compose overrides (image tag, ports, tokens) — see docs/installation.md
+docker-compose.override.yml
 
 # AI Assistant configs
 **/.claude*/
